@@ -4,25 +4,24 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Gestión de Cajas de Almacenamiento — Cuadrícula Vacía + Registrar</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/control_storage_box.css') }}">
 </head>
-<body>
-<div id="mm-app" data-module="storage-box">
-  <div id="mm-topbar" role="region" aria-label="Toolbar">
+<body id="control-caja-mask-metal-unique-container">
+<div id="cmm-app" data-module="storage-box">
+  <div id="cmm-topbar" role="region" aria-label="Toolbar">
     <h1>Estado de Almacenamiento</h1>
-    <div id="mm-filter">
-      <select id="mm-status" aria-label="Filtro de Estado">
+    <div id="cmm-filter">
+      <select id="cmm-status" aria-label="Filtro de Estado">
         <option value="ALL" selected>Todos</option><option value="Disponible">Disponible</option><option value="Ocupado">Ocupado</option><option value="Mantenimiento">Mantenimiento</option>
       </select>
-      <button class="mm-btn" id="mm-btn-search">Buscar</button>
+      <button class="cmm-btn" id="cmm-btn-search">Buscar</button>
     </div>
-    <button class="mm-btn mm-btn-primary" id="mm-btn-open">Registrar</button>
-    <button class="mm-btn" id="mm-btn-export">Exportar Excel</button>
-    <button class="mm-btn" id="mm-btn-import" title="Sube un .xlsx/.csv desde tu backend">Registrar Excel</button>
+    <button class="cmm-btn cmm-btn-primary" id="cmm-btn-open">Registrar</button>
+    <button class="cmm-btn" id="cmm-btn-export">Exportar Excel</button>
+    <button class="cmm-btn" id="cmm-btn-import" title="Sube un .xlsx/.csv desde tu backend">Registrar Excel</button>
   </div>
-  <section id="mm-grid-wrap" aria-label="Grid">
-    <div id="mm-grid-scroll">
-      <table id="mm-grid">
+  <section id="cmm-grid-wrap" aria-label="Grid">
+    <div id="cmm-grid-scroll">
+      <table id="cmm-grid">
         <thead><tr>
           <th style="min-width:160px">Número de Gestión</th>
           <th style="min-width:110px">Código</th>
@@ -33,27 +32,27 @@
           <th style="min-width:200px">Nota</th>
           <th style="min-width:170px">Fecha de Registro</th>
         </tr></thead>
-        <tbody id="mm-grid-body"></tbody>
+        <tbody id="cmm-grid-body"></tbody>
       </table>
     </div>
-    <div id="mm-footer"><span id="mm-total">Total de Filas : 0</span>
+    <div id="cmm-footer"><span id="cmm-total">Total de Filas : 0</span>
   </section>
 </div>
-<aside id="mm-drawer" aria-hidden="true" aria-label="Register panel">
-  <header><strong id="mm-drawer-title">Gestión de Cajas de Almacenamiento — Registrar</strong><button class="mm-btn" id="mm-btn-close" aria-label="Cerrar">✕</button></header>
-  <form id="mm-form">
-    <div class="mm-field"><label for="mm-management_no">Número de Gestión</label><input id="mm-management_no" class="mm-input" placeholder="NO_1-001" readonly style="background:#1a1a2e; color:#16df7e;" /></div>
-    <div class="mm-field"><label for="mm-code">Código</label><input id="mm-code" class="mm-input" placeholder="NO_1" oninput="generateManagementNo()" /></div>
-    <div class="mm-field"><label for="mm-name">Nombre</label><input id="mm-name" class="mm-input" placeholder="NO01" /></div>
-    <div class="mm-field"><label for="mm-location">Ubicación</label><input id="mm-location" class="mm-input" placeholder="001" oninput="generateManagementNo()" /></div>
-    <div class="mm-field"><label for="mm-storage_status">Estado de Almacenamiento</label><select id="mm-storage_status" class="mm-select"><option value="Disponible" selected>Disponible</option><option value="Ocupado">Ocupado</option><option value="Mantenimiento">Mantenimiento</option></select></div>
-    <div class="mm-field"><label for="mm-used_status">Estado de Uso</label><select id="mm-used_status" class="mm-select"><option value="Usado" selected>Usado</option><option value="No Usado">No Usado</option></select></div>
-    <div class="mm-field"><label for="mm-note">Nota</label><textarea id="mm-note" class="mm-input" placeholder="Nota adicional..." rows="3"></textarea></div>
+<aside id="cmm-drawer" aria-hidden="true" aria-label="Register panel">
+  <header><strong id="cmm-drawer-title">Gestión de Cajas de Almacenamiento — Registrar</strong><button class="cmm-btn" id="cmm-btn-close" aria-label="Cerrar">✕</button></header>
+  <form id="cmm-form">
+    <div class="cmm-field"><label for="cmm-management_no">Número de Gestión</label><input id="cmm-management_no" class="cmm-input" placeholder="NO_1-001" readonly style="background:#1a1a2e; color:#16df7e;" /></div>
+    <div class="cmm-field"><label for="cmm-code">Código</label><input id="cmm-code" class="cmm-input" placeholder="NO_1" oninput="cmmGenerateManagementNo()" /></div>
+    <div class="cmm-field"><label for="cmm-name">Nombre</label><input id="cmm-name" class="cmm-input" placeholder="NO01" /></div>
+    <div class="cmm-field"><label for="cmm-location">Ubicación</label><input id="cmm-location" class="cmm-input" placeholder="001" oninput="cmmGenerateManagementNo()" /></div>
+    <div class="cmm-field"><label for="cmm-storage_status">Estado de Almacenamiento</label><select id="cmm-storage_status" class="cmm-select"><option value="Disponible" selected>Disponible</option><option value="Ocupado">Ocupado</option><option value="Mantenimiento">Mantenimiento</option></select></div>
+    <div class="cmm-field"><label for="cmm-used_status">Estado de Uso</label><select id="cmm-used_status" class="cmm-select"><option value="Usado" selected>Usado</option><option value="No Usado">No Usado</option></select></div>
+    <div class="cmm-field"><label for="cmm-note">Nota</label><textarea id="cmm-note" class="cmm-input" placeholder="Nota adicional..." rows="3"></textarea></div>
   </form>
-  <div id="mm-actions"><button class="mm-btn" id="mm-btn-reset" type="button">Limpiar</button><button class="mm-btn mm-btn-success" id="mm-btn-save" type="button">Registrar</button></div>
+  <div id="cmm-actions"><button class="cmm-btn" id="cmm-btn-reset" type="button">Limpiar</button><button class="cmm-btn cmm-btn-success" id="cmm-btn-save" type="button">Registrar</button></div>
 </aside>
-<div id="mm-toast" role="status">Guardado</div>
-<div id="mm-loading" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-  <div style="background:var(--mm-panel); color:var(--mm-text); padding:20px; border-radius:10px; border:1px solid var(--mm-border);">Cargando...</div>
+<div id="cmm-toast" role="status">Guardado</div>
+<div id="cmm-loading" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:var(--cmm-panel); color:var(--cmm-text); padding:20px; border-radius:10px; border:1px solid var(--cmm-border);">Cargando...</div>
 </div>
-<script src="{{ url_for('static', filename='js/Caja-metalmask.js') }}"></script></body></html>
+<script src="{{ url_for('static', filename='js/Caja-metalmask.js', v='20260526a') }}"></script></body></html>

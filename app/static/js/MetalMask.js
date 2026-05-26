@@ -1,5 +1,21 @@
 ﻿(function(){
 const USE_DEMO_BACKEND=false;const API_BASE='';
+// WF_004: CSS persistente cargado desde MainTemplate.html. ensureModuleStyles()
+// solo lo re-injecta si fue quitado o si la version no coincide.
+const STYLESHEET_ID_MM="control-metal-mask-css";
+const STYLESHEET_HREF_MM="/static/css/control_metal_mask.css?v=20260526a";
+function ensureModuleStyles(){
+  const cur=document.getElementById(STYLESHEET_ID_MM);
+  if(cur){
+    if(!cur.getAttribute("href")?.includes("20260526a")){
+      cur.setAttribute("href",STYLESHEET_HREF_MM);
+    }
+    return;
+  }
+  const link=document.createElement("link");
+  link.id=STYLESHEET_ID_MM; link.rel="stylesheet"; link.href=STYLESHEET_HREF_MM;
+  document.head.appendChild(link);
+}
 const isActive=()=>!!document.querySelector('#mm-app[data-module="metal-mask"]');
 let MM_ROWS=[];let MM_FILTER='ALL';let EDIT_MODE=false;let EDIT_ITEM=null;
 let STORAGE_BOXES=[];let SELECTED_STORAGE=null;let PENDING_BOX_OCCUPIED=null;
@@ -120,6 +136,7 @@ if (typeof filterStorageBoxes==='function') window.filterStorageBoxes=filterStor
 window.initMetalMask=window.initMetalMask||(function(){
   return function(){
     try{
+      ensureModuleStyles();
       // Elevar overlays al <body> para evitar quedar debajo del header
       portalToBody('#mm-drawer', 2147483600,'metal-mask');
       portalToBody('#mm-storage-modal', 2147483590,'metal-mask');

@@ -440,6 +440,11 @@ class AuthSystem:
             ('LISTA_CONTROLDEPRODUCCION', 'Control de plan de produccion', 'Crear Plan de produccion', 'Acceso a Crear Plan de produccion'),
             ('LISTA_CONTROLDEPRODUCCION', 'Control de plan de produccion', 'Control de cuchillas de corte', 'Acceso al Control de cuchillas de corte'),
 
+            # LISTA CONTROL DE PRODUCCIÓN - Control de SMT (3 botones del sidebar SMT)
+            ('LISTA_CONTROLDEPRODUCCION', 'Control de SMT', 'Control de mask de metal', 'Acceso al Control de metal mask'),
+            ('LISTA_CONTROLDEPRODUCCION', 'Control de SMT', 'Control de squeegee', 'Acceso al Control de squeegee'),
+            ('LISTA_CONTROLDEPRODUCCION', 'Control de SMT', 'Control de caja de mask de metal', 'Acceso al Control de caja de metal mask'),
+
             # LISTA CONTROL DE PRODUCCIÓN - Control de proceso
             ('LISTA_CONTROLDEPRODUCCION', 'Control de proceso', 'Control de proceso', 'Acceso al control de proceso de producción'),
             
