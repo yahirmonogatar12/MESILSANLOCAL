@@ -54,7 +54,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from app import auth_system
+from app.auth_system import auth_system
 from app.config_mysql import get_pooled_connection
 from app.db import get_db_connection
 from app.db_mysql import execute_query
@@ -5300,4 +5300,3 @@ def export_almacen_embarques_inventario_cierre_report(batch_id):
             f"Error exportando reporte de cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
-
