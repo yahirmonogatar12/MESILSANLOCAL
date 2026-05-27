@@ -937,7 +937,20 @@ def obtener_eco_detalle(eco_id):
             (eco_id,),
             fetch='all'
         ) or []
+        scope = execute_query(
+            """
+            SELECT part_no, family_prefix, bom_revision
+            FROM engineering_change_scope
+            WHERE engineering_change_id = %s
+            ORDER BY part_no
+            """,
+            (eco_id,),
+            fetch='all'
+        ) or []
         eco['items'] = items
+        eco['scope'] = scope
+        eco['scope_parts'] = ', '.join([row.get('part_no') for row in scope if row.get('part_no')])
+        eco['item_count'] = len(items)
         return eco
     except Exception as e:
         print(f"Error obteniendo ECO: {e}")
@@ -1245,6 +1258,8 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
     effective_at = _eco_normalize_datetime(metadata.get('effective_at'))
     notes = _eco_normalize_text(metadata.get('notes'))
     item_name_input = _eco_normalize_text(metadata.get('item_name'))
+    bom_mode = _eco_normalize_upper(metadata.get('bom_mode'))
+    new_bom_mode = bom_mode in ('NEW', 'NEW_BOM', 'NUEVO', 'NUEVO_BOM')
 
     errors = []
     if not eco_no: errors.append("eco_no requerido")
@@ -1253,6 +1268,13 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
     if not excel_rows: errors.append("El Excel no tiene filas")
     if errors:
         return {"success": False, "errors": errors}
+    if new_bom_mode and _eco_revision_rows([part_no]):
+        return {
+            "success": False,
+            "errors": [
+                f"{part_no} ya tiene revisiones BOM registradas o reservadas. Use ECO individual para modificarlo."
+            ],
+        }
     bom_revision = siguiente_revision_bom_eco([part_no])
 
     if not item_name_input:
@@ -1262,6 +1284,13 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
     current_items = _ks_fetch_current_bom_items(part_no, bom_revision) or []
     if not current_items:
         current_items = _ks_fetch_current_bom_items(part_no) or []
+    if new_bom_mode and current_items:
+        return {
+            "success": False,
+            "errors": [
+                f"{part_no} ya tiene BOM vigente en KS. Use ECO individual para modificarlo, no Nuevo BOM."
+            ],
+        }
     current_entries = {}
     current_ref_by_id = {}
     current_ref_by_key = {}
@@ -1535,11 +1564,27 @@ def obtener_diff_eco(eco_id):
     try:
         rows = execute_query(
             """
-            SELECT id, part_no, action, item_no, bom_level, ks_row_id,
-                   field_changed, old_value, new_value, created_at
-            FROM engineering_change_diff
-            WHERE engineering_change_id = %s
-            ORDER BY FIELD(action, 'ADD', 'MODIFY', 'REMOVE'), part_no, bom_level, item_no, field_changed
+            SELECT d.id, d.part_no, d.action, d.item_no, d.bom_level, d.ks_row_id,
+                   d.field_changed, d.old_value, d.new_value, d.created_at,
+                   i.item_name AS eco_item_name,
+                   i.spec AS eco_spec,
+                   i.qty AS eco_qty,
+                   i.unit AS eco_unit,
+                   COALESCE(NULLIF(i.location_text, ''), i.ubicacion) AS eco_location_text,
+                   i.maker AS eco_maker,
+                   i.proveedor AS eco_supplier,
+                   i.item_class AS eco_item_class,
+                   i.item_process AS eco_item_process,
+                   i.process_name AS eco_process_name,
+                   i.item_seq AS eco_item_seq,
+                   i.remark AS eco_remark
+            FROM engineering_change_diff d
+            LEFT JOIN engineering_change_bom_items i
+              ON i.engineering_change_id = d.engineering_change_id
+             AND UPPER(i.material_code) = UPPER(d.item_no)
+             AND COALESCE(i.bom_level, '') = COALESCE(d.bom_level, '')
+            WHERE d.engineering_change_id = %s
+            ORDER BY FIELD(d.action, 'ADD', 'MODIFY', 'REMOVE'), d.part_no, d.bom_level, d.item_no, d.field_changed
             """,
             (int(eco_id),),
             fetch='all'

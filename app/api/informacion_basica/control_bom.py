@@ -5,6 +5,7 @@ registra como Blueprint conforme a WF_003.
 """
 
 from datetime import datetime
+from decimal import Decimal
 from functools import wraps
 import io
 import tempfile
@@ -263,6 +264,8 @@ def consultar_bom():
 def _json_safe_datetime(value):
     if value is None:
         return None
+    if isinstance(value, Decimal):
+        return float(value)
     if hasattr(value, "strftime"):
         return value.strftime("%Y-%m-%d %H:%M:%S")
     return value
@@ -272,11 +275,14 @@ def _serialize_eco_row(row):
     if not row:
         return row
     data = dict(row)
-    for key in (
-        "effective_at", "created_at", "approved_at", "updated_at",
-        "source_updated_at", "synced_at", "sb_date",
-    ):
-        if key in data:
+    for key in data:
+        if (
+            key in (
+                "effective_at", "created_at", "approved_at", "updated_at",
+                "source_updated_at", "synced_at", "sb_date",
+            )
+            or isinstance(data.get(key), Decimal)
+        ):
             data[key] = _json_safe_datetime(data[key])
     return data
 
@@ -440,6 +446,7 @@ def api_ecos_detail(eco_id):
             return jsonify({"success": False, "error": "ECO no encontrado"}), 404
         eco = _serialize_eco_row(eco)
         eco["items"] = [_serialize_eco_row(i) for i in eco.get("items", [])]
+        eco["scope"] = [_serialize_eco_row(i) for i in eco.get("scope", [])]
         return jsonify({"success": True, "data": eco})
     except Exception as e:
         print(f"Error obteniendo ECO: {e}")
@@ -521,11 +528,13 @@ def api_bom_download_excel():
 
     part_no = (request.args.get("part_no") or "").strip().upper()
     bom_rev = (request.args.get("bom_rev") or "").strip().upper() or None
+    mode = (request.args.get("mode") or "").strip().upper()
+    new_bom_template = mode in ("NEW", "NEW_BOM", "NUEVO", "NUEVO_BOM")
     if not part_no:
         return jsonify({"success": False, "error": "part_no requerido"}), 400
 
     try:
-        rows = _ks_fetch_current_bom_items(part_no, bom_rev) or []
+        rows = [] if new_bom_template else (_ks_fetch_current_bom_items(part_no, bom_rev) or [])
 
         wb = Workbook()
         ws = wb.active
@@ -555,6 +564,7 @@ def api_bom_download_excel():
         ws_meta = wb.create_sheet("_meta")
         ws_meta.append(["part_no", part_no])
         ws_meta.append(["bom_rev", rows[0].get("bom_rev") if rows else (bom_rev or "")])
+        ws_meta.append(["mode", "NEW_BOM" if new_bom_template else "ECO"])
         ws_meta.append(["exported_at", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")])
         ws_meta.sheet_state = "hidden"
 
@@ -562,10 +572,15 @@ def api_bom_download_excel():
         wb.save(bio)
         bio.seek(0)
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
+        download_name = (
+            f"PLANTILLA_BOM_NUEVO_{part_no}_{ts}.xlsx"
+            if new_bom_template
+            else f"BOM_{part_no}_{ts}.xlsx"
+        )
         return send_file(
             bio,
             as_attachment=True,
-            download_name=f"BOM_{part_no}_{ts}.xlsx",
+            download_name=download_name,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     except Exception as e:
@@ -775,6 +790,7 @@ def api_ecos_from_excel():
         "effective_at": request.form.get("effective_at"),
         "item_name": request.form.get("item_name"),
         "notes": request.form.get("notes"),
+        "bom_mode": request.form.get("bom_mode"),
     }
 
     try:
@@ -789,22 +805,25 @@ def api_ecos_from_excel():
             return jsonify({"success": False, "errors": ["El Excel no tiene encabezados"]}), 400
         headers = [str(h).strip() if h is not None else "" for h in header_row]
         expected = [label for label, _ in BOM_EXCEL_COLUMNS]
-        missing = [col for col in expected if col not in headers]
+        bom_mode = (metadata.get("bom_mode") or "").strip().upper()
+        new_bom_mode = bom_mode in ("NEW", "NEW_BOM", "NUEVO", "NUEVO_BOM")
+        required = [col for col in expected if col != "__row_id"] if new_bom_mode else expected
+        missing = [col for col in required if col not in headers]
         if missing:
             return jsonify({
                 "success": False,
                 "errors": [f"Faltan columnas en el Excel: {', '.join(missing)}"],
             }), 400
 
-        idx_map = {col: headers.index(col) for col in expected}
+        idx_map = {col: headers.index(col) for col in expected if col in headers}
         excel_rows = []
         for row in ws.iter_rows(min_row=2, values_only=True):
             if row is None or all(v in (None, "") for v in row):
                 continue
             obj = {}
             for col in expected:
-                i = idx_map[col]
-                obj[col] = row[i] if i < len(row) else None
+                i = idx_map.get(col)
+                obj[col] = row[i] if i is not None and i < len(row) else None
             excel_rows.append(obj)
 
         usuario = session.get("usuario", "desconocido")
