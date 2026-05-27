@@ -57,7 +57,7 @@ def crear_tablas_ecos():
                 material_code VARCHAR(128) NOT NULL,
                 numero_parte VARCHAR(128) NOT NULL,
                 qty DECIMAL(10,4) NOT NULL DEFAULT 1,
-                ubicacion VARCHAR(255) NULL,
+                ubicacion TEXT NULL,
                 proveedor VARCHAR(255) NULL,
                 side VARCHAR(50) NULL,
                 classification VARCHAR(100) NULL,
@@ -68,6 +68,13 @@ def crear_tablas_ecos():
                 INDEX idx_ec_items_position (posicion_assy)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         """)
+
+        _eco_modify_column_if_needed(
+            'engineering_change_bom_items',
+            'ubicacion',
+            'ubicacion TEXT NULL',
+            ('text', 'mediumtext', 'longtext')
+        )
 
         extra_columns = [
             ('location_text', 'location_text TEXT NULL AFTER posicion_assy'),
@@ -426,6 +433,28 @@ def _eco_add_column_if_missing(table_name, column_name, column_definition):
             execute_query(f"ALTER TABLE {table_name} ADD COLUMN {column_definition}")
     except Exception as e:
         print(f"Error asegurando columna {table_name}.{column_name}: {e}")
+
+
+def _eco_modify_column_if_needed(table_name, column_name, column_definition, allowed_types):
+    try:
+        existing = execute_query(
+            f"SHOW COLUMNS FROM {table_name} LIKE %s",
+            (column_name,),
+            fetch='one'
+        )
+        if not existing:
+            return
+
+        column_type = str(
+            existing.get('Type')
+            or existing.get('type')
+            or existing.get('column_type')
+            or ''
+        ).lower()
+        if not any(column_type.startswith(t) for t in allowed_types):
+            execute_query(f"ALTER TABLE {table_name} MODIFY COLUMN {column_definition}")
+    except Exception as e:
+        print(f"Error ajustando columna {table_name}.{column_name}: {e}")
 
 
 def _eco_add_index_if_missing(table_name, index_name, index_definition):
@@ -2510,8 +2539,8 @@ def aprobar_eco(eco_id, approved_by='desconocido'):
                     f"""
                     SELECT hist_seq
                     FROM ks_engineering_changes
-                    WHERE family_prefix = %s COLLATE utf8mb4_0900_ai_ci
-                      AND UPPER(item_no) IN ({placeholders}) COLLATE utf8mb4_0900_ai_ci
+                    WHERE family_prefix = %s
+                      AND UPPER(item_no) IN ({placeholders})
                     ORDER BY sb_date DESC, hist_seq DESC
                     LIMIT 2
                     """,
