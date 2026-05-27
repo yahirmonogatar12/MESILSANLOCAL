@@ -1651,6 +1651,9 @@ def crear_eco_familia_desde_excel(metadata, excel_rows, scope_parts, created_by=
 
         parsed_rows.append({
             '__row_key': row_key,
+            '__row_key_raw': row_key_raw,
+            '__blank_fields': _eco_family_raw_blank_fields(raw),
+            '__origin_values': _eco_family_origin_values(raw),
             '__blank_fields': _eco_family_raw_blank_fields(raw),
             '__origin_values': _eco_family_origin_values(raw),
             'item_no': item_no,
@@ -1692,6 +1695,7 @@ def crear_eco_familia_desde_excel(metadata, excel_rows, scope_parts, created_by=
 
     for row in parsed_rows:
         key = row['__row_key']
+        is_new_row_intent = not _eco_normalize_text(row.get('__row_key_raw'))
         for pn in row['modelos_afectados']:
             current = bom_by_part_key.get(pn, {}).get(key)
             if current is None:
@@ -1702,6 +1706,12 @@ def crear_eco_familia_desde_excel(metadata, excel_rows, scope_parts, created_by=
                     'row': row,
                 })
             else:
+                if is_new_row_intent:
+                    errors.append(
+                        f"Fila nueva '{row['item_no']}' en modelo {pn} ya existe con bom_level {row['bom_level']}. "
+                        "Para añadir, use un bom_level nuevo; para modificar, conserve __row_key original."
+                    )
+                    continue
                 field_diffs = []
                 blank_fields = row.get('__blank_fields') or set()
                 for field in _ECO_DIFF_CRITICAL_FIELDS:
@@ -1739,6 +1749,9 @@ def crear_eco_familia_desde_excel(metadata, excel_rows, scope_parts, created_by=
                     'item_no': original.get('item_no'),
                     'bom_level': original.get('bom_level'),
                 })
+
+    if errors:
+        return {"success": False, "errors": errors}
 
     if not (diff_added or diff_removed or diff_modified):
         return {"success": False, "errors": ["El Excel no contiene cambios respecto al BOM actual"]}
