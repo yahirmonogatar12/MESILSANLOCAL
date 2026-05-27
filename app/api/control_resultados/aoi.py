@@ -1,5 +1,8 @@
 """Endpoints HTTP del modulo AOI (Automated Optical Inspection).
 
+Consumido por "Historial de maquina AOI" en LISTA_DE_CONTROL_DE_RESULTADOS
+(seccion "Historial de maquinas SMT").
+
 Reglas de turnos:
   - DIA: 7:30 - 17:30
   - TIEMPO_EXTRA: 17:30 - 22:00
@@ -7,23 +10,55 @@ Reglas de turnos:
   - Gaps de transicion: 22:00-22:30 cuenta como TIEMPO_EXTRA, 7:00-7:30 como NOCHE
 
 Rutas:
-  GET /api/shift-now   -> turno actual + fecha logica
-  GET /api/realtime    -> tabla del turno actual (linea/modelo/lado/cantidad)
-  GET /api/day         -> tabla por dia logico
+  GET /historial_aoi/ajax   -> render template (canonica desde 2026-05-27)
+  GET /api/shift-now        -> turno actual + fecha logica
+  GET /api/realtime         -> tabla del turno actual (linea/modelo/lado/cantidad)
+  GET /api/day              -> tabla por dia logico
+
+Alias 2026-05-27 (clientes con cache viejo):
+  GET /historial-aoi        -> 301 a /historial_aoi/ajax
+  GET /historial-aoi-ajax   -> 301 a /historial_aoi/ajax
 
 Migrado desde `app/aoi_api.py` (2026-05-22). El archivo legacy usaba
 `pymysql.connect(...)` directo; ahora consume `execute_query()` segun WF_003.
+
+2026-05-27: las 3 GETs API recibieron @login_requerido (antes eran
+publicas: cualquier anonimo podia leer produccion por turno). Render movido
+desde routes.py.
 """
 
 from datetime import date, datetime, timedelta
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, redirect, render_template, request
 
-from app.api.shared import execute_query
+from app.api.shared import execute_query, login_requerido
 from app.auth_system import AuthSystem
 
 
 bp = Blueprint("aoi_api", __name__)
+
+
+# ---------------------------------------------------------------------------
+# Render template
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/historial_aoi/ajax")
+@login_requerido
+def historial_aoi_ajax():
+    """Render canonico del template Historial AOI."""
+    try:
+        return render_template("Control de resultados/Historial AOI.html")
+    except Exception as e:
+        print(f"Error al cargar template de Historial AOI: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@bp.route("/historial-aoi")
+@bp.route("/historial-aoi-ajax")
+def alias_legacy_historial_aoi():
+    """Alias 301 -> /historial_aoi/ajax. Mantener hasta que logs no muestren hits."""
+    return redirect("/historial_aoi/ajax", code=301)
 
 
 def classify_shift(dt: datetime) -> str:
@@ -57,6 +92,7 @@ def compute_shift_date(dt: datetime, shift: str) -> date:
 
 
 @bp.get("/api/shift-now")
+@login_requerido
 def api_shift_now():
     now = AuthSystem.get_mexico_time()
     shift = classify_shift(now)
@@ -65,6 +101,7 @@ def api_shift_now():
 
 
 @bp.get("/api/realtime")
+@login_requerido
 def api_realtime():
     now = AuthSystem.get_mexico_time()
     shift = classify_shift(now)
@@ -98,6 +135,7 @@ def api_realtime():
 
 
 @bp.get("/api/day")
+@login_requerido
 def api_day():
     d = request.args.get("date")
     if not d:

@@ -2874,7 +2874,7 @@ window.mostrarHistorialAOI = function () {
     if (typeof window.cargarContenidoDinamico === "function") {
       window.cargarContenidoDinamico(
         "historial-aoi-unique-container",
-        "/historial-aoi-ajax",
+        "/historial_aoi/ajax",
         () => {
           // Ejecutar inicialización del módulo si existe
           if (typeof window.inicializarHistorialAOI === "function") {

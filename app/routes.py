@@ -2166,15 +2166,9 @@ def lista_control_resultados():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/historial-aoi")
-@login_requerido
-def historial_aoi():
-    """Servir la página de Historial AOI"""
-    try:
-        return render_template("Control de resultados/Historial AOI.html")
-    except Exception as e:
-        print(f"Error al cargar Historial AOI: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Migracion 2026-05-27: /historial-aoi y /historial-aoi-ajax movidos a
+# app/api/control_resultados/aoi.py como /historial_aoi/ajax (canonica).
+# Las dos URLs legacy responden con 301 redirect (alias en el blueprint).
 
 
 @app.route("/historial-ict-ajax")
@@ -3394,15 +3388,8 @@ def ict_param_changes_detail():
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
-@app.route("/historial-aoi-ajax")
-@login_requerido
-def historial_aoi_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Historial AOI"""
-    try:
-        return render_template("Control de resultados/Historial AOI.html")
-    except Exception as e:
-        print(f"Error al cargar template de Historial AOI: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Migracion 2026-05-27: /historial-aoi-ajax movido a
+# app/api/control_resultados/aoi.py (ver alias arriba).
 
 
 @app.route("/listas/control_reporte")

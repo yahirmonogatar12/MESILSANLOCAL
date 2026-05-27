@@ -511,6 +511,8 @@ class AuthSystem:
             # LISTA CONTROL DE RESULTADOS - Inventario IMD Terminado
             # (Movido desde LISTA_CONTROL_DE_PROCESO/Inventario el 2026-05-25.)
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de inventario', 'IMD-SMD TERMINADO', 'Acceso al inventario de productos IMD terminados'),
+            # WF_001 (2026-05-27): seed para Historial de maquinas SMT.
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas SMT', 'Historial de maquina AOI', 'Acceso al historial de la maquina AOI'),
             
             # LISTA CONTROL DE CALIDAD - Control de calidad  
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección de entrada', 'Acceso a inspección de entrada'),

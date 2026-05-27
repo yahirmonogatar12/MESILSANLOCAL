@@ -1,0 +1,458 @@
+/* Historial AOI - WF_004 CSS persistente.
+ * Consolida (a) ~340 l de <style> inline del template y (b) ~100 l de
+ * .historial-aoi-unique-container que vivian en style.css:2071-2169.
+ * Cargado desde MainTemplate.html con cache-busting ?v=20260527a.
+ * Fallback ensureModuleStyles() en historial-aoi-module.js.
+ *
+ * Cambio clave 2026-05-27: el template antes era documento HTML completo
+ * con <body id="aoi-root">. Ahora es fragmento AJAX con
+ * <div id="aoi-root" class="historial-aoi-container">. El root selector
+ * cambia de body a clase pero todos los IDs internos (#aoi-*) se preservan.
+ */
+
+/* ==========================================================================
+ * Layout raiz (antes #aoi-root en <body>, ahora .historial-aoi-container
+ * en un <div>). Conservar como ID tambien para retrocompat con el
+ * MutationObserver del JS que busca #aoi-root para auto-init.
+ * ========================================================================== */
+
+.historial-aoi-container,
+#aoi-root {
+    font-family: 'LG regular', sans-serif;
+    background-color: #32323E;
+    color: lightgray;
+    min-height: 100vh;
+    margin: 0;
+    padding: 12px;
+}
+
+#aoi-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #34334E;
+    border: 1px solid #20688C;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+#aoi-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ecf0f1;
+}
+
+#aoi-now {
+    font-size: 12px;
+    color: #3498db;
+    margin-left: auto;
+}
+
+/* Toolbars */
+#aoi-toolbar-rt, #aoi-toolbar-day {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #34334E;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: 1px solid #20688C;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+#aoi-shift-badge {
+    margin-left: auto;
+    background-color: #20688C;
+    color: #fff;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+}
+
+/* Botones */
+#aoi-btn-refresh, #aoi-btn-query {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #3C3940;
+    border: 1px solid #20688C;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+#aoi-btn-refresh:hover, #aoi-btn-query:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+#aoi-date {
+    background-color: #2c3e50;
+    color: lightgray;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12px;
+    transition: border-color 0.3s;
+}
+
+#aoi-date:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Layout */
+#aoi-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+/* Cards */
+#aoi-card-rt, #aoi-card-day {
+    flex: 1 1 520px;
+    background-color: #40424F;
+    border: 1px solid #20688C;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    min-width: 320px;
+}
+
+#aoi-card-rt h3, #aoi-card-day h3 {
+    margin: 0;
+    padding: 12px 15px;
+    background-color: #172A46;
+    border-bottom: 1px solid #20688C;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ecf0f1;
+}
+
+#aoi-wrap-rt, #aoi-wrap-day {
+    overflow: auto;
+    max-height: 400px;
+}
+
+/* Tablas */
+#aoi-table-rt, #aoi-table-day {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 11px;
+    background-color: #40424F;
+    table-layout: fixed;
+}
+
+#aoi-table-rt thead th, #aoi-table-day thead th {
+    background-color: #172A46;
+    color: #ecf0f1;
+    padding: 10px 8px;
+    text-align: center;
+    border: 1px solid #20688C;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 10px;
+    line-height: 1.1;
+}
+
+#aoi-table-rt tbody td, #aoi-table-day tbody td {
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid #5F6375;
+    background-color: #40424F;
+    color: lightgray;
+    transition: background-color 0.3s;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+#aoi-table-rt tbody tr:hover td, #aoi-table-day tbody tr:hover td {
+    background-color: #485563;
+}
+
+#aoi-table-rt tbody tr:nth-child(even) td, #aoi-table-day tbody tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+#aoi-table-rt tbody tr:nth-child(even):hover td, #aoi-table-day tbody tr:nth-child(even):hover td {
+    background-color: #485563;
+}
+
+/* Totales */
+#aoi-rt-total, #aoi-day-total {
+    padding: 10px 15px;
+    text-align: right;
+    color: #3498db;
+    font-size: 12px;
+    font-weight: 600;
+    background-color: #34334E;
+    border-top: 1px solid #20688C;
+}
+
+/* Mensajes vacios */
+#aoi-empty {
+    text-align: center;
+    padding: 20px;
+    color: #95a5a6;
+    font-style: italic;
+    background-color: #40424F;
+    font-size: 11px;
+}
+
+.aoi-no-data {
+    text-align: center;
+    padding: 20px;
+    color: #95a5a6;
+    font-style: italic;
+    background-color: #40424F;
+    font-size: 11px;
+}
+
+/* ==========================================================================
+ * Overrides para layout AJAX (consolidado desde style.css:2071-2169).
+ * Estas reglas usan !important porque sobreescriben los defaults del bloque
+ * generico .*-unique-container que aplica padding/border de container.
+ * ========================================================================== */
+
+.historial-aoi-unique-container {
+    padding: 5px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+.historial-aoi-unique-container table {
+    margin: 5px 0 !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+    background-color: #2B2D3E !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+}
+
+.historial-aoi-unique-container th {
+    background-color: #3498db !important;
+    color: white !important;
+    padding: 8px 5px !important;
+    text-align: left !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #2980b9 !important;
+}
+
+.historial-aoi-unique-container td {
+    padding: 6px 5px !important;
+    border-bottom: 1px solid #3C3F51 !important;
+    color: #E8E8E8 !important;
+}
+
+.historial-aoi-unique-container tr:nth-child(even) {
+    background-color: #32344A !important;
+}
+
+.historial-aoi-unique-container tr:hover {
+    background-color: #3C3F51 !important;
+}
+
+.historial-aoi-unique-container button {
+    margin: 2px !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    border: none !important;
+    background-color: #3498db !important;
+    color: white !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+}
+
+.historial-aoi-unique-container button:hover {
+    background-color: #2980b9 !important;
+}
+
+.historial-aoi-unique-container input[type="date"],
+.historial-aoi-unique-container input[type="text"] {
+    padding: 5px !important;
+    margin: 2px !important;
+    border: 1px solid #3C3F51 !important;
+    border-radius: 4px !important;
+    background-color: #2B2D3E !important;
+    color: #E8E8E8 !important;
+}
+
+.historial-aoi-unique-container .shift-info {
+    background-color: #3498db !important;
+    color: white !important;
+    padding: 8px 5px !important;
+    margin: 5px 0 !important;
+    border-radius: 4px !important;
+    text-align: center !important;
+    font-weight: 600 !important;
+}
+
+.historial-aoi-unique-container::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.historial-aoi-unique-container::-webkit-scrollbar-track {
+    background: #2B2D3E !important;
+    border-radius: 4px !important;
+}
+
+.historial-aoi-unique-container::-webkit-scrollbar-thumb {
+    background: #3498db !important;
+    border-radius: 4px !important;
+}
+
+.historial-aoi-unique-container::-webkit-scrollbar-thumb:hover {
+    background: #2980b9 !important;
+}
+
+/* ==========================================================================
+ * Responsive (preservado del inline)
+ * ========================================================================== */
+
+@media (max-width: 768px) {
+    .historial-aoi-container,
+    #aoi-root {
+        padding: 8px;
+    }
+
+    #aoi-header {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    #aoi-title {
+        font-size: 16px;
+    }
+
+    #aoi-now {
+        margin-left: 0;
+        font-size: 11px;
+    }
+
+    #aoi-toolbar-rt, #aoi-toolbar-day {
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    #aoi-shift-badge {
+        margin-left: 0;
+        align-self: flex-start;
+    }
+
+    #aoi-btn-refresh, #aoi-btn-query {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+
+    #aoi-date {
+        width: 100%;
+        padding: 12px;
+        font-size: 14px;
+    }
+
+    #aoi-layout {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    #aoi-card-rt, #aoi-card-day {
+        min-width: 100%;
+    }
+
+    #aoi-wrap-rt, #aoi-wrap-day {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #aoi-table-rt, #aoi-table-day {
+        min-width: 600px;
+        font-size: 10px;
+    }
+
+    #aoi-table-rt thead th, #aoi-table-day thead th {
+        font-size: 9px;
+        padding: 8px 4px;
+    }
+
+    #aoi-table-rt tbody td, #aoi-table-day tbody td {
+        font-size: 9px;
+        padding: 6px 4px;
+    }
+
+    #aoi-rt-total, #aoi-day-total {
+        font-size: 11px;
+        text-align: center;
+    }
+
+    #aoi-shift-badge {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .historial-aoi-container,
+    #aoi-root {
+        padding: 5px;
+    }
+
+    #aoi-header {
+        padding: 10px;
+    }
+
+    #aoi-title {
+        font-size: 14px;
+    }
+
+    #aoi-toolbar-rt, #aoi-toolbar-day {
+        padding: 10px;
+    }
+
+    #aoi-btn-refresh, #aoi-btn-query {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    #aoi-table-rt, #aoi-table-day {
+        font-size: 9px;
+    }
+
+    #aoi-table-rt thead th, #aoi-table-day thead th {
+        font-size: 8px;
+        padding: 6px 2px;
+    }
+
+    #aoi-table-rt tbody td, #aoi-table-day tbody td {
+        font-size: 8px;
+        padding: 5px 2px;
+    }
+
+    #aoi-rt-total, #aoi-day-total {
+        font-size: 10px;
+        padding: 8px;
+    }
+}
