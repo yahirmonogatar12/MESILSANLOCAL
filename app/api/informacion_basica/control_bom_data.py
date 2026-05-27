@@ -1654,6 +1654,8 @@ def crear_eco_familia_desde_excel(metadata, excel_rows, scope_parts, created_by=
             '__row_key_raw': row_key_raw,
             '__blank_fields': _eco_family_raw_blank_fields(raw),
             '__origin_values': _eco_family_origin_values(raw),
+            '__blank_fields': _eco_family_raw_blank_fields(raw),
+            '__origin_values': _eco_family_origin_values(raw),
             'item_no': item_no,
             'item_name': _eco_normalize_text(raw.get('item_name')),
             'spec': _eco_normalize_text(raw.get('spec')),
