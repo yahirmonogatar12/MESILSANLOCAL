@@ -57,6 +57,8 @@ _MODULOS_REGISTRADOS = [
     # Migracion 2026-05-26: Plan ASSY + Plan IMD a blueprints
     "control_produccion.plan_assy",
     "control_produccion.plan_imd",
+    # Migracion 2026-05-27: Almacen de Embarques (6 modulos sidebar Control de proceso)
+    "control_proceso.almacen_embarques",
     "shared.raw_modelos",
     "portal.tickets",
     "pda.shipping",

@@ -471,7 +471,16 @@ class AuthSystem:
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de produccion IMT', 'Acceso a Control de produccion IMT'),
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de produccion SMT Plan', 'Acceso a Control de produccion SMT Plan'),
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de operacion de linea Main', 'Acceso a Control de operacion de linea Main'),
-            
+
+            # LISTA CONTROL DE PROCESO - Almacen de Embarques (sidebar, 6 botones).
+            # Migracion 2026-05-27: rutas movidas a app/api/control_proceso/almacen_embarques.py
+            ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Entradas almacen embarques', 'Acceso a Entradas almacen embarques'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Salidas almacen embarques', 'Acceso a Salidas almacen embarques'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Retorno almacen embarques', 'Acceso a Retorno almacen embarques'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Modificar movimientos embarques', 'Acceso a Modificar movimientos embarques'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Inventario general embarques', 'Acceso a Inventario general embarques'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Catálogo números de parte embarques', 'Acceso a Catálogo de números de parte de embarques'),
+
             # LISTA CONTROL DE PROCESO - Reporte diario de inspeccion
             ('LISTA_CONTROL_DE_PROCESO', 'Reporte diario de inspeccion', 'Reporte diario de inspeccion', 'Acceso a reporte diario de inspección'),
             
