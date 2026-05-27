@@ -216,7 +216,16 @@
             // Event delegation para change en file input
             document.body.addEventListener('change', function(e) {
                 if (e.target.id === 'ecoExcelInput') {
-                    importarExcelEcoActual();
+                    const fileName = e.target.files?.[0]?.name || '';
+                    const box = document.getElementById('ecoValidationBox');
+                    if (box && fileName) {
+                        box.style.display = 'block';
+                        box.innerHTML = `<span style="color:#b8c7d9;">Archivo seleccionado: ${escapeHtml(fileName)}</span>`;
+                    }
+                    if (ecoScopeKind === 'NEW_BOM') {
+                        inferPartNoFromSelectedFile();
+                    }
+                    return;
                 }
 
                 if (e.target.id === 'ecoPartNoInput' && ecoScopeKind !== 'FAMILY') {
@@ -301,6 +310,19 @@
         if (!input) return;
         input.value = value || 'Automatica';
         input.title = title || 'MES asigna la siguiente revision disponible';
+    }
+
+    function inferPartNoFromSelectedFile() {
+        const partInput = document.getElementById('ecoPartNoInput');
+        const fileInput = document.getElementById('ecoExcelInput');
+        if (!partInput || !fileInput || String(partInput.value || '').trim()) return '';
+        const fileName = fileInput.files?.[0]?.name || '';
+        const match = fileName.toUpperCase().match(/[A-Z]{2,}\d{5,}/);
+        if (!match) return '';
+        partInput.value = match[0];
+        cargarRevisionEcoAutomatica({ partNo: match[0] });
+        setEcoStatus(`Modelo ${match[0]} detectado desde el nombre del archivo.`);
+        return match[0];
     }
 
     async function cargarRevisionEcoAutomatica({ partNo = '', scopeParts = [] } = {}) {
@@ -645,7 +667,8 @@
             fd.append('scope_parts', ecoScopeParts.join(','));
             endpoint = '/api/ecos/from-excel-family';
         } else {
-            const partNo = (document.getElementById('ecoPartNoInput')?.value || '').trim().toUpperCase();
+            const inferredPartNo = ecoScopeKind === 'NEW_BOM' ? inferPartNoFromSelectedFile() : '';
+            const partNo = ((document.getElementById('ecoPartNoInput')?.value || inferredPartNo || '')).trim().toUpperCase();
             if (!partNo) {
                 box.innerHTML = `<span style="color:#e74c3c;">Numero de parte requerido.</span>`;
                 return;
