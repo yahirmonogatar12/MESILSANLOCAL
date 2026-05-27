@@ -359,6 +359,38 @@
         return `${fecha} ${hora.slice(0, 5)}`;
     }
 
+    function asegurarMetadatosEcoParaImportar() {
+        const ecoNoInput = document.getElementById('ecoNoInput');
+        const effectiveAtInput = document.getElementById('ecoEffectiveAtInput');
+        if (!ecoNoInput || !effectiveAtInput) return { ecoNo: '', effectiveAt: '' };
+
+        let ecoNo = (ecoNoInput.value || '').trim().toUpperCase();
+        let effectiveAt = (effectiveAtInput.value || '').trim();
+        const ajustes = [];
+
+        if (!ecoNo) {
+            const now = new Date();
+            const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+            ecoNo = `AUTO-${stamp}`;
+            ecoNoInput.value = ecoNo;
+            ajustes.push(`ECO ${ecoNo}`);
+        }
+
+        if (!effectiveAt) {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            effectiveAt = now.toISOString().slice(0, 16);
+            effectiveAtInput.value = effectiveAt;
+            ajustes.push(`fecha efectiva ${effectiveAt.replace('T', ' ')}`);
+        }
+
+        if (ajustes.length) {
+            setEcoStatus(`Se completaron automaticamente ${ajustes.join(' y ')} para importar el BOM como ECO.`);
+        }
+
+        return { ecoNo, effectiveAt };
+    }
+
     function abrirModalECO() {
         if (!requierePermisoCrearEco()) return;
         const modal = document.getElementById('ecoModal');
@@ -533,8 +565,9 @@
 
     async function validarExcelEco() {
         if (!requierePermisoCrearEco()) return;
-        const ecoNo = (document.getElementById('ecoNoInput')?.value || '').trim().toUpperCase();
-        const effectiveAt = (document.getElementById('ecoEffectiveAtInput')?.value || '').trim();
+        const ecoMeta = asegurarMetadatosEcoParaImportar();
+        const ecoNo = ecoMeta.ecoNo;
+        const effectiveAt = ecoMeta.effectiveAt;
         const itemName = (document.getElementById('ecoItemNameInput')?.value || '').trim();
         const notes = (document.getElementById('ecoNotesInput')?.value || '').trim();
         const fileInput = document.getElementById('ecoExcelInput');

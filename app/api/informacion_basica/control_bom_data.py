@@ -1611,15 +1611,6 @@ def crear_eco_familia_desde_excel(metadata, excel_rows, scope_parts, created_by=
     parsed_rows = []
     seen_keys = set()
     for idx, raw in enumerate(excel_rows, start=1):
-        row_key = _eco_normalize_text(raw.get('__row_key'))
-        if not row_key or '|' not in row_key:
-            errors.append(f"Fila {idx}: __row_key invalido ('{row_key}')")
-            continue
-        if row_key in seen_keys:
-            errors.append(f"Fila {idx}: __row_key '{row_key}' duplicado")
-            continue
-        seen_keys.add(row_key)
-
         item_no = _eco_normalize_upper(raw.get('item_no'))
         if not item_no:
             errors.append(f"Fila {idx}: item_no vacio")
@@ -1642,7 +1633,21 @@ def crear_eco_familia_desde_excel(metadata, excel_rows, scope_parts, created_by=
             # Si no especifica, asumir todos los del scope
             modelos = list(scope_parts)
 
-        bom_level = _eco_normalize_text(raw.get('bom_level')) or row_key.split('|', 1)[1]
+        row_key_raw = _eco_normalize_text(raw.get('__row_key'))
+        bom_level = _eco_normalize_text(raw.get('bom_level'))
+        if not bom_level and row_key_raw and '|' in row_key_raw:
+            bom_level = row_key_raw.split('|', 1)[1]
+        if not bom_level:
+            errors.append(f"Fila {idx} ({item_no}): bom_level vacio")
+            continue
+
+        # Para filas nuevas en ECO de familia permitimos __row_key vacio y lo generamos.
+        # La llave canonical siempre debe ser ITEM_NO|BOM_LEVEL para diff estable.
+        row_key = f"{item_no}|{bom_level}"
+        if row_key in seen_keys:
+            errors.append(f"Fila {idx}: __row_key '{row_key}' duplicado")
+            continue
+        seen_keys.add(row_key)
 
         parsed_rows.append({
             '__row_key': row_key,
