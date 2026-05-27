@@ -247,6 +247,7 @@ def toggle_permission():
 
         conn.commit()
         conn.close()
+        auth_system.invalidar_cache_permisos_botones()
 
         return jsonify({"success": True, "message": message})
 
@@ -293,6 +294,7 @@ def enable_all_permissions():
 
         conn.commit()
         conn.close()
+        auth_system.invalidar_cache_permisos_botones()
 
         return jsonify({
             "success": True,
@@ -333,6 +335,7 @@ def disable_all_permissions():
         affected = cursor.rowcount
         conn.commit()
         conn.close()
+        auth_system.invalidar_cache_permisos_botones()
 
         return jsonify({
             "success": True,

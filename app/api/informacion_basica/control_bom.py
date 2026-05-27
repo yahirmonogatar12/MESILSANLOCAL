@@ -14,7 +14,7 @@ import pandas as pd
 from flask import Blueprint, jsonify, render_template, request, send_file, session
 
 from app.api.shared import auth_system, execute_query, login_requerido, obtener_fecha_hora_mexico
-from app.auth_system import ECO_CREATE_PERMISSION
+from app.auth_system import ECO_APPROVE_PERMISSION, ECO_CREATE_PERMISSION
 from .control_bom_data import (
     _eco_excel_row_ref,
     _ks_fetch_current_bom_items,
@@ -44,6 +44,14 @@ bp = Blueprint("control_bom_api", __name__)
 
 
 def _usuario_puede_crear_eco(username=None):
+    return _usuario_tiene_permiso_eco(ECO_CREATE_PERMISSION, username)
+
+
+def _usuario_puede_aprobar_eco(username=None):
+    return _usuario_tiene_permiso_eco(ECO_APPROVE_PERMISSION, username)
+
+
+def _usuario_tiene_permiso_eco(permission, username=None):
     username = username or session.get("usuario")
     if not username:
         return False
@@ -51,28 +59,45 @@ def _usuario_puede_crear_eco(username=None):
         return True
     return auth_system.verificar_permiso_boton(
         username,
-        ECO_CREATE_PERMISSION["pagina"],
-        ECO_CREATE_PERMISSION["seccion"],
-        ECO_CREATE_PERMISSION["boton"],
+        permission["pagina"],
+        permission["seccion"],
+        permission["boton"],
     )
 
 
-def requiere_permiso_crear_eco(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not _usuario_puede_crear_eco():
-            return jsonify({
-                "success": False,
-                "error": "No tienes permiso para crear o modificar ECOs.",
-                "permiso_requerido": (
-                    f"{ECO_CREATE_PERMISSION['pagina']} > "
-                    f"{ECO_CREATE_PERMISSION['seccion']} > "
-                    f"{ECO_CREATE_PERMISSION['boton']}"
-                ),
-            }), 403
-        return f(*args, **kwargs)
+def _requiere_permiso_eco(permission, error_message):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not _usuario_tiene_permiso_eco(permission):
+                return jsonify({
+                    "success": False,
+                    "error": error_message,
+                    "permiso_requerido": (
+                        f"{permission['pagina']} > "
+                        f"{permission['seccion']} > "
+                        f"{permission['boton']}"
+                    ),
+                }), 403
+            return f(*args, **kwargs)
 
-    return decorated_function
+        return decorated_function
+
+    return decorator
+
+
+def requiere_permiso_crear_eco(f):
+    return _requiere_permiso_eco(
+        ECO_CREATE_PERMISSION,
+        "No tienes permiso para crear o modificar ECOs.",
+    )(f)
+
+
+def requiere_permiso_aprobar_eco(f):
+    return _requiere_permiso_eco(
+        ECO_APPROVE_PERMISSION,
+        "No tienes permiso para aprobar ECOs.",
+    )(f)
 
 
 def _render_control_bom_template():
@@ -80,6 +105,7 @@ def _render_control_bom_template():
         "INFORMACION BASICA/CONTROL_DE_BOM.html",
         modelos=obtener_modelos_bom(),
         puede_crear_eco=_usuario_puede_crear_eco(),
+        puede_aprobar_eco=_usuario_puede_aprobar_eco(),
     )
 
 
@@ -997,7 +1023,7 @@ def api_ecos_import_items(eco_id):
 
 @bp.route("/api/ecos/<int:eco_id>/approve", methods=["POST"])
 @login_requerido
-@requiere_permiso_crear_eco
+@requiere_permiso_aprobar_eco
 def api_ecos_approve(eco_id):
     """Aprobar ECO DRAFT. Desde este punto queda inmutable."""
     try:
@@ -1191,4 +1217,3 @@ def api_bom_update_posiciones_assy():
         "success": False,
         "error": "La edicion directa de posiciones en bom esta deshabilitada. Use Crear ECO.",
     }), 409
-

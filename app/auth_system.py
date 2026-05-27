@@ -34,7 +34,14 @@ ECO_CREATE_PERMISSION = {
     'pagina': 'LISTA_INFORMACIONBASICA',
     'seccion': 'Control de produccion',
     'boton': 'Crear ECO',
-    'descripcion': 'Permite crear, importar, aprobar, cancelar y borrar ECOs desde Control de BOM',
+    'descripcion': 'Permite crear, importar, cancelar y borrar ECOs desde Control de BOM',
+}
+
+ECO_APPROVE_PERMISSION = {
+    'pagina': 'LISTA_INFORMACIONBASICA',
+    'seccion': 'Control de produccion',
+    'boton': 'Aprobar ECO',
+    'descripcion': 'Permite aprobar ECOs y aplicar cambios al BOM desde Control de BOM',
 }
 
 class AuthSystem:
@@ -430,6 +437,12 @@ class AuthSystem:
                 ECO_CREATE_PERMISSION['seccion'],
                 ECO_CREATE_PERMISSION['boton'],
                 ECO_CREATE_PERMISSION['descripcion'],
+            ),
+            (
+                ECO_APPROVE_PERMISSION['pagina'],
+                ECO_APPROVE_PERMISSION['seccion'],
+                ECO_APPROVE_PERMISSION['boton'],
+                ECO_APPROVE_PERMISSION['descripcion'],
             ),
             
             # LISTA CONTROL DE PRODUCCIÓN - Información básica

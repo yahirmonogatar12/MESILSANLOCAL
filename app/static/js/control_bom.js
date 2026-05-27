@@ -185,6 +185,17 @@
                     borrarEco(deleteButton.dataset.ecoDeleteId, deleteButton.dataset.ecoNo || '');
                     return;
                 }
+
+                const approveButton = target.closest('[data-eco-approve-id]');
+                if (approveButton) {
+                    e.preventDefault();
+                    aprobarEcoDesdeLista(
+                        approveButton.dataset.ecoApproveId,
+                        approveButton.dataset.ecoNo || '',
+                        approveButton
+                    );
+                    return;
+                }
             });
             
             // Event delegation para input en el buscador
@@ -246,7 +257,9 @@
     window.initializeControlBOMEventListeners = initializeControlBOMEventListeners;
 
     // Cache para datos de BOM
-    const puedeCrearEco = getControlBomRoot()?.dataset.puedeCrearEco === 'true';
+    const controlBomRoot = getControlBomRoot();
+    const puedeCrearEco = controlBomRoot?.dataset.puedeCrearEco === 'true';
+    const puedeAprobarEco = controlBomRoot?.dataset.puedeAprobarEco === 'true';
     let bomDataCache = [];
     let ecoActualId = null;
     let ecoScopeKind = 'SINGLE'; // 'SINGLE' o 'FAMILY'
@@ -418,6 +431,7 @@
                 }
             }
         }
+        syncEcoApprovalControls();
     }
 
     function onEcoScopeChange() {
@@ -908,10 +922,15 @@
 
             tbody.innerHTML = rows.map(function(row) {
                 const isKs = String(row.origen || '').toUpperCase() === 'KS';
-                const canDelete = !isKs && String(row.status || '').toUpperCase() !== 'APPROVED';
+                const statusValue = String(row.status || '').toUpperCase();
+                const canDelete = !isKs && statusValue !== 'APPROVED';
+                const canApprove = !isKs && statusValue === 'DRAFT';
                 const deleteControl = canDelete
                     ? `<button type="button" class="bom-btn eliminar" data-eco-delete-id="${escapeHtml(row.id)}" data-eco-no="${escapeHtml(row.eco_no)}" style="padding:4px 8px; font-size:11px;">Borrar</button>`
                     : `<span style="color:#8b98a8; font-size:11px;">${isKs ? 'KS sync' : 'Inmutable'}</span>`;
+                const approveControl = canApprove && puedeAprobarEco
+                    ? `<button type="button" class="bom-btn registrar" data-eco-approve-id="${escapeHtml(row.id)}" data-eco-no="${escapeHtml(row.eco_no)}" data-permiso-pagina="LISTA_INFORMACIONBASICA" data-permiso-seccion="Control de produccion" data-permiso-boton="Aprobar ECO" style="padding:4px 8px; font-size:11px;">Aprobar</button>`
+                    : '';
                 const viewControl = isKs
                     ? `<button type="button" class="bom-btn consultar" data-ecn-ks-id="${escapeHtml(String(row.id).replace(/^ks-/, ''))}" style="padding:4px 8px; font-size:11px;">Ver</button>`
                     : `<button type="button" class="bom-btn consultar" data-eco-detail-id="${escapeHtml(row.id)}" style="padding:4px 8px; font-size:11px;">Ver</button>`;
@@ -952,6 +971,7 @@
                         <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(row.approved_by || '-')}</td>
                         <td style="padding:8px; border-bottom:1px solid #283747; text-align:center;">
                             ${viewControl}
+                            ${approveControl}
                             ${deleteControl}
                         </td>
                     </tr>
@@ -980,6 +1000,19 @@
         if (puedeCrearEco) return true;
         ecoAlert('No tienes permiso para crear o modificar ECOs.');
         return false;
+    }
+
+    function requierePermisoAprobarEco() {
+        if (puedeAprobarEco) return true;
+        ecoAlert('No tienes permiso para aprobar ECOs.');
+        return false;
+    }
+
+    function syncEcoApprovalControls() {
+        const approveButton = document.getElementById('btnAprobarEco');
+        if (!approveButton) return;
+        approveButton.style.display = puedeAprobarEco ? '' : 'none';
+        approveButton.disabled = false;
     }
 
     async function borrarEco(ecoId, ecoNo) {
@@ -1109,35 +1142,61 @@
         }
     }
 
-    async function aprobarEcoActual() {
-        if (!requierePermisoCrearEco()) return;
-        if (!ecoActualId) {
-            ecoAlert('No hay ECO activo para aprobar.');
-            return;
+    async function aprobarEcoPorId(ecoId, ecoNo, btn, onSuccess) {
+        if (!requierePermisoAprobarEco()) return false;
+        if (!ecoId) {
+            ecoAlert('No hay ECO seleccionado para aprobar.');
+            return false;
         }
-        if (!confirm('Aprobar este ECO? Una vez aprobado quedara inmutable y los cambios se aplicaran al BOM vigente.')) {
-            return;
+        const label = ecoNo ? ` ${ecoNo}` : '';
+        if (!confirm(`Aprobar el ECO${label}? Una vez aprobado quedara inmutable y los cambios se aplicaran al BOM vigente.`)) {
+            return false;
         }
-        const btn = document.getElementById('btnAprobarEco');
         if (btn) btn.disabled = true;
         try {
-            const response = await fetch(`/api/ecos/${ecoActualId}/approve`, { method: 'POST' });
+            const response = await fetch(`/api/ecos/${encodeURIComponent(ecoId)}/approve`, { method: 'POST' });
             const data = await response.json();
             if (!response.ok || !data.success) {
                 const errors = (data.errors || []).join('<br>');
                 throw new Error(errors || data.error || 'No se pudo aprobar el ECO');
             }
             ecoAlert('ECO aprobado correctamente. Los cambios fueron aplicados al BOM.');
+            if (typeof onSuccess === 'function') {
+                await onSuccess();
+            }
+            return true;
+        } catch (error) {
+            console.error('Error aprobando ECO:', error);
+            ecoAlert(`Error aprobando ECO:<br>${error.message}`);
+            if (btn) btn.disabled = false;
+            return false;
+        }
+    }
+
+    async function aprobarEcoDesdeLista(ecoId, ecoNo, btn) {
+        await aprobarEcoPorId(ecoId, ecoNo, btn, async function() {
+            cerrarModalEcoDetalle();
+            await cargarEcoList(ecoListPage);
+            setEcoListStatus(`ECO${ecoNo ? ' ' + escapeHtml(ecoNo) : ''} aprobado.`);
+            if (typeof consultarBOMOriginal === 'function') {
+                try { consultarBOMOriginal(); } catch (_) {}
+            }
+        });
+    }
+
+    async function aprobarEcoActual() {
+        if (!ecoActualId) {
+            ecoAlert('No hay ECO activo para aprobar.');
+            return;
+        }
+        const btn = document.getElementById('btnAprobarEco');
+        await aprobarEcoPorId(ecoActualId, '', btn, async function() {
             ecoActualId = null;
             cerrarModalECO();
             if (typeof consultarBOMOriginal === 'function') {
                 try { consultarBOMOriginal(); } catch (_) {}
             }
-        } catch (error) {
-            console.error('Error aprobando ECO:', error);
-            ecoAlert(`Error aprobando ECO:<br>${error.message}`);
-            if (btn) btn.disabled = false;
-        }
+        });
     }
 
     function cargarDatosBOMEnTabla(datos) {

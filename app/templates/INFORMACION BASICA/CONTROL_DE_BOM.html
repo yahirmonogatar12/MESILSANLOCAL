@@ -1,5 +1,5 @@
 <!-- Control de BOM - Módulo AJAX Compatible -->
-<div id="controlBomModule" class="bom-container" data-puede-crear-eco="{{ 'true' if puede_crear_eco|default(false) else 'false' }}">
+<div id="controlBomModule" class="bom-container" data-puede-crear-eco="{{ 'true' if puede_crear_eco|default(false) else 'false' }}" data-puede-aprobar-eco="{{ 'true' if puede_aprobar_eco|default(false) else 'false' }}">
     <!-- Botonera -->
     <div class="bom-toolbar">
         <div class="bom-search-container">
@@ -201,7 +201,7 @@
             <div id="ecoDiffDetails" style="max-height:380px; overflow:auto; border:1px solid #34495e; border-radius:6px;"></div>
             <div style="display:flex; gap:10px; justify-content:space-between; margin-top:16px; flex-wrap:wrap;">
                 <button id="btnCancelarEcoDraft" class="bom-btn eliminar" type="button">Cancelar borrador</button>
-                <button id="btnAprobarEco" class="bom-btn consultar" type="button">Aprobar ECO y aplicar cambios</button>
+                <button id="btnAprobarEco" class="bom-btn consultar" type="button" data-permiso-pagina="LISTA_INFORMACIONBASICA" data-permiso-seccion="Control de produccion" data-permiso-boton="Aprobar ECO">Aprobar ECO y aplicar cambios</button>
             </div>
         </div>
     </div>
