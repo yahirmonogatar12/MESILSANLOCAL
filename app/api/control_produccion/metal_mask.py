@@ -207,3 +207,26 @@ def api_update_mask(mask_id: int):
             return jsonify({"error": "El Nomero de Gestion ya existe"}), 400
         print(f"Error en api_update_mask: {e}")
         return jsonify({"error": msg}), 500
+
+
+# =============================
+# GET /api/metal-mask/test  (health check)
+# =============================
+# Migracion 2026-05-27: ruta reintegrada en su blueprint (caller huerfano en
+# control-operacion-smt-ajax.js:2581 - `testMetalMaskConnection`).
+# Verifica conectividad a la tabla `masks` antes de cargar el historial.
+# Respuesta: {success: bool, count?: int, error?: str}.
+
+@bp.route("/api/metal-mask/test", methods=["GET"])
+@login_requerido
+def api_metal_mask_test():
+    """Health check de conectividad a la tabla masks (consumido por Control de operacion SMT)."""
+    try:
+        row = execute_query("SELECT COUNT(*) AS c FROM masks", fetch="one")
+        count = 0
+        if row:
+            count = row.get("c") if isinstance(row, dict) else row[0]
+        return jsonify({"success": True, "count": int(count or 0)})
+    except Exception as e:
+        print(f"Error en api_metal_mask_test: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500

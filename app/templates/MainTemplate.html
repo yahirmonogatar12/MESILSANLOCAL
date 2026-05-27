@@ -499,16 +499,10 @@
         <div id="control-produccion-smt-container" style="display: none;">
             <!-- Contenedor específico para Control de producción SMT AJAX -->
         </div>
-        <div id="Control de produccion SMT-unique-container" style="display: none;">
-                <!-- El contenido se cargará dinámicamente con AJAX -->
-            </div>
-        <div id="operacion-linea-smt-unique-container" style="display: none;">
-                <!-- El contenido se cargará dinámicamente con AJAX -->
-            </div>
+        <!-- Limpieza 2026-05-27: containers 'Control de produccion SMT-unique-container',
+             'operacion-linea-smt-unique-container' y 'operacion-linea-main-unique-container'
+             eliminados (modulos descartados). -->
         <!-- Nuevos contenedores AJAX según prompts -->
-        <div id="operacion-linea-main-unique-container" style="display: none;">
-                <!-- El contenido se cargará dinámicamente con AJAX -->
-            </div>
         <div id="plan-main-assy-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
@@ -525,12 +519,8 @@
 
         <!-- CONTENEDORES AJAX PARA CONTROL DE PROCESO -->
         <!-- Control de produccion -->
-        <div id="control-impresion-identificacion-smt-unique-container" style="display: none;">
-                <!-- El contenido se cargará dinámicamente con AJAX -->
-        </div>
-        <div id="control-registro-identificacion-smt-unique-container" style="display: none;">
-                <!-- El contenido se cargará dinámicamente con AJAX -->
-        </div>
+        <!-- Limpieza 2026-05-27: containers 'control-impresion-identificacion-smt-unique-container'
+             y 'control-registro-identificacion-smt-unique-container' eliminados (modulos descartados). -->
 
         <!-- Control de produccion (segundo grupo) -->
         <div id="historial-operacion-proceso-unique-container" style="display: none;">
@@ -2322,12 +2312,9 @@ function hideAllMaterialContainers() {
 
     const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
     if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'none';
-    const controlProduccionSmtParent = document.getElementById('control-produccion-smt-container');
-    if (controlProduccionSmtParent) controlProduccionSmtParent.style.display = 'none';
-    const controlProduccionSmtContainer = document.getElementById('Control de produccion SMT-unique-container');
-    if (controlProduccionSmtContainer) controlProduccionSmtContainer.style.display = 'none';
-    const controlOperacionLineaContainer = document.getElementById('operacion-linea-smt-unique-container');
-    if (controlOperacionLineaContainer) controlOperacionLineaContainer.style.display = 'none';
+    // Limpieza 2026-05-27: refs a 'control-produccion-smt-container',
+    // 'Control de produccion SMT-unique-container' y 'operacion-linea-smt-unique-container'
+    // eliminadas (modulos descartados).
     const inventarioImdTerminadoContainer = document.getElementById('inventario-imd-terminado-unique-container');
     if (inventarioImdTerminadoContainer) inventarioImdTerminadoContainer.style.display = 'none';
     const controlCuchillasCorteContainer = document.getElementById('control-cuchillas-corte-unique-container');

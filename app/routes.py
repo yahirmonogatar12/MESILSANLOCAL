@@ -1120,11 +1120,7 @@ def front_plan_static(filename):
 # Migracion 2026-05-26: view_plan_main movido a app/api/control_produccion/plan_assy.py
 
 
-@app.route("/control-main")
-@login_requerido
-def view_control_main():
-    # Panel de control de operación (plantilla en Control de proceso)
-    return render_template("Control de proceso/Control de operacion de linea Main.html")
+# Limpieza 2026-05-27: view_control_main eliminado (modulo Control de operacion de linea Main borrado)
 
 
 # Rutas AJAX para cargar módulos en el área de Control de Proceso (prompts)
@@ -1143,15 +1139,7 @@ def plan_main_smt_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/control-operacion-linea-main-ajax")
-@login_requerido
-def ctrl_operacion_linea_main_ajax():
-    try:
-        return render_template(
-            "Control de proceso/Control de operacion de linea Main.html"
-        )
-    except Exception as e:
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Limpieza 2026-05-27: ctrl_operacion_linea_main_ajax eliminado (modulo Control de operacion de linea Main borrado)
 
 
 
@@ -3180,65 +3168,20 @@ def api_inventario_modelo(codigo_modelo):
 
 
 
-@app.route("/control_proceso/control_produccion_smt")
-@login_requerido
-def control_produccion_smt_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de produccion SMT"""
-    try:
-        # Devolver fragmento AJAX dedicado para evitar cargar una página completa dentro de un contenedor
-        return render_template("Control de proceso/control_produccion_smt_ajax.html")
-    except Exception as e:
-        print(f"Error al cargar template Control de produccion SMT AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Limpieza 2026-05-27: control_produccion_smt_ajax eliminado (modulo descartado)
 
 
 # Ruta eliminada - Control de operacion de linea SMT será reemplazado por Control BOM
 
 
-@app.route("/control-operacion-linea-smt-ajax")
-@login_requerido
-def control_operacion_linea_smt_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de operación de línea SMT"""
-    try:
-        fecha_hoy = obtener_fecha_hora_mexico().strftime("%d/%m/%Y")
-        return render_template(
-            "Control de proceso/control_operacion_linea_smt_ajax.html",
-            fecha_hoy=fecha_hoy,
-        )
-    except Exception as e:
-        print(f"Error al cargar template Control de operación de línea SMT AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Limpieza 2026-05-27: control_operacion_linea_smt_ajax eliminado (modulo descartado)
 
 
 # Rutas AJAX para todos los módulos de Control de Proceso
-@app.route("/control-impresion-identificacion-smt-ajax")
-@login_requerido
-def control_impresion_identificacion_smt_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de impresión de identificación SMT"""
-    try:
-        return render_template(
-            "Control de proceso/control_impresion_identificacion_smt_ajax.html"
-        )
-    except Exception as e:
-        print(
-            f"Error al cargar template Control de impresión de identificación SMT AJAX: {e}"
-        )
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Limpieza 2026-05-27: control_impresion_identificacion_smt_ajax eliminado (modulo descartado)
 
 
-@app.route("/control-registro-identificacion-smt-ajax")
-@login_requerido
-def control_registro_identificacion_smt_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de registro de identificación SMT"""
-    try:
-        return render_template(
-            "Control de proceso/control_registro_identificacion_smt_ajax.html"
-        )
-    except Exception as e:
-        print(
-            f"Error al cargar template Control de registro de identificación SMT AJAX: {e}"
-        )
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Limpieza 2026-05-27: control_registro_identificacion_smt_ajax eliminado (modulo descartado)
 
 
 @app.route("/historial-operacion-proceso-ajax")
@@ -13192,438 +13135,19 @@ def generar_lot_no_secuencial(q, like, prefix, fecha):
     return f"{prefix}{fecha}-{seq:04d}"
 
 
-@app.route("/api/plan-run/start", methods=["POST"])
-def api_plan_run_start():
-    """Iniciar un run de producción desde un renglón del plan.
-    Body: { plan_id, linea?, lot_prefix? }
-    """
-    try:
-        data = request.get_json(force=True) or {}
-        plan_id = int(data.get("plan_id"))
-        linea = (data.get("linea") or "").strip()
-        lot_prefix = (data.get("lot_prefix") or "I").strip() or "I"
-        usuario = session.get(
-            "nombre_completo", session.get("usuario", "Sistema")
-        ).strip()
-
-        # Obtener datos del plan
-        plan_row = execute_query(
-            "SELECT * FROM plan_smd WHERE id=%s", (plan_id,), fetch="one"
-        )
-        if not plan_row:
-            return jsonify({"success": False, "error": "Plan no encontrado"}), 404
-        if not linea:
-            linea = plan_row.get("linea", "")
-
-        # VALIDACION CRITICA: Verificar que no haya otro run activo en la misma linea
-        existing_run = execute_query(
-            "SELECT id, lot_no, plan_id FROM plan_smd_runs WHERE linea=%s AND status IN ('RUNNING', 'PAUSED') ORDER BY start_time DESC LIMIT 1",
-            (linea,),
-            fetch="one",
-        )
-        if existing_run:
-            existing_plan = execute_query(
-                "SELECT modelo, nparte FROM plan_smd WHERE id=%s",
-                (existing_run["plan_id"],),
-                fetch="one",
-            )
-            modelo_info = (
-                f" ({existing_plan['modelo']} - {existing_plan['nparte']})"
-                if existing_plan
-                else ""
-            )
-            return jsonify(
-                {
-                    "success": False,
-                    "error": f"Ya hay un run activo en la lonea {linea}: {existing_run['lot_no']}{modelo_info}. Debe finalizar el run actual antes de iniciar uno nuevo.",
-                }
-            ), 409  # 409 Conflict
-
-        # Verificar que este plan especofico no tenga ya un run activo
-        plan_run_active = execute_query(
-            "SELECT id, lot_no, status FROM plan_smd_runs WHERE plan_id=%s AND status IN ('RUNNING', 'PAUSED') ORDER BY start_time DESC LIMIT 1",
-            (plan_id,),
-            fetch="one",
-        )
-        if plan_run_active:
-            return jsonify(
-                {
-                    "success": False,
-                    "error": f"Este plan ya tiene un run activo: {plan_run_active['lot_no']} (Status: {plan_run_active['status']}). Debe finalizar el run actual antes de iniciar uno nuevo.",
-                }
-            ), 409
-
-        # Verificar que el plan no esto ya finalizado
-        trazabilidad_actual = execute_query(
-            "SELECT estado FROM trazabilidad WHERE lot_no=%s ORDER BY updated_at DESC LIMIT 1",
-            (plan_row.get("lote"),),
-            fetch="one",
-        )
-        if trazabilidad_actual and trazabilidad_actual.get("estado") == "FINALIZADO":
-            return jsonify(
-                {
-                    "success": False,
-                    "error": f"Este plan ya esto finalizado (LOT: {plan_row.get('lote')}). No se puede reiniciar un plan finalizado.",
-                }
-            ), 409
-
-        # Usar LOT NO ya definido en el plan; no generar uno nuevo
-        lot_no = plan_row.get("lote")
-        if not lot_no:
-            return jsonify(
-                {"success": False, "error": "El plan no tiene LOT asignado"}
-            ), 400
-        uph = plan_row.get("uph") or 0
-        ct = plan_row.get("ct") or 0
-        qty_plan = plan_row.get("qty") or 0
-
-        # Preparar baseline AOI al iniciar RUN
-        aoi_model = (plan_row.get("nparte") or plan_row.get("modelo") or "").upper()
-
-        def _map_line_no(s: str):
-            try:
-                ss = (s or "").upper().strip()
-                if ss.startswith("SMT "):
-                    ss = ss[4:].strip()
-                if ss and ss[0].isalpha():
-                    return max(1, min(26, ord(ss[0]) - ord("A") + 1))
-                if ss.isdigit():
-                    return int(ss)
-            except Exception:
-                pass
-            return None
-
-        aoi_line_no = _map_line_no(linea)
-        from app.api.control_resultados.aoi import classify_shift, compute_shift_date
-        from .auth_system import AuthSystem as _AS
-
-        now_mx = _AS.get_mexico_time()
-        current_shift = classify_shift(now_mx)
-        current_shift_date = compute_shift_date(now_mx, current_shift).strftime(
-            "%Y-%m-%d"
-        )
-        aoi_baseline = None
-        if aoi_model and aoi_line_no:
-            baseline_sql = """
-                SELECT COALESCE(SUM(piece_w),0) AS total
-                FROM aoi_file_log
-                WHERE shift_date=%s AND shift=%s AND model=%s AND line_no=%s
-            """
-            try:
-                rowb = (
-                    execute_query(
-                        baseline_sql,
-                        (current_shift_date, current_shift, aoi_model, aoi_line_no),
-                        fetch="one",
-                    )
-                    or {}
-                )
-                aoi_baseline = int(rowb.get("total") or 0)
-            except Exception as e2:
-                print(f"?? Error obteniendo baseline AOI: {e2}")
-                aoi_baseline = 0
-
-        insert = """
-            INSERT INTO plan_smd_runs (plan_id, linea, lot_no, uph, ct, qty_plan, status, created_by,
-                                       aoi_model, aoi_line_no, aoi_baseline, aoi_baseline_shift_date, aoi_baseline_shift)
-            VALUES (%s,%s,%s,%s,%s,%s,'RUNNING',%s, %s,%s,%s,%s,%s)
-        """
-        execute_query(
-            insert,
-            (
-                plan_id,
-                linea,
-                lot_no,
-                uph,
-                ct,
-                qty_plan,
-                usuario,
-                aoi_model,
-                aoi_line_no,
-                aoi_baseline,
-                current_shift_date,
-                current_shift,
-            ),
-        )
-
-        # Actualizar trazabilidad: INICIADO
-        try:
-            # Intentar INSERT primero
-            try:
-                execute_query(
-                    """
-                    INSERT INTO trazabilidad (lot_no, estado, updated_at)
-                    VALUES (%s, 'INICIADO', NOW())
-                """,
-                    (lot_no,),
-                )
-            except Exception:
-                # Si falla (probablemente duplicado), actualizar el mos reciente
-                execute_query(
-                    """
-                    UPDATE trazabilidad SET estado='INICIADO', updated_at=NOW()
-                    WHERE lot_no=%s AND updated_at = (
-                        SELECT MAX(updated_at) FROM (SELECT updated_at FROM trazabilidad WHERE lot_no=%s) AS t
-                    )
-                """,
-                    (lot_no, lot_no),
-                )
-        except Exception as e2:
-            print(f"⚠️ Error actualizando trazabilidad (INICIADO): {e2}")
-
-        run = execute_query(
-            "SELECT * FROM plan_smd_runs WHERE lot_no=%s", (lot_no,), fetch="one"
-        )
-        return jsonify({"success": True, "run": run})
-    except Exception as e:
-        print(f" Error en api_plan_run_start: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+# Limpieza 2026-05-27: api_plan_run_start eliminado (modulo Control de operacion de linea Main borrado)
 
 
-@app.route("/api/plan-run/end", methods=["POST"])
-def api_plan_run_end():
-    try:
-        data = request.get_json(force=True) or {}
-        run_id = int(data.get("run_id"))
-        plan_id_req = data.get("plan_id")
-        # Validar run existente y opcionalmente que corresponda al plan indicado
-        run = execute_query(
-            "SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch="one"
-        )
-        if not run:
-            return jsonify({"success": False, "error": "Run no encontrado"}), 404
-        if plan_id_req is not None and str(run.get("plan_id")) != str(plan_id_req):
-            return jsonify(
-                {"success": False, "error": "El run no corresponde al plan indicado"}
-            ), 400
-        # Cerrar el run si esto RUNNING
-        update = "UPDATE plan_smd_runs SET status='ENDED', end_time=NOW() WHERE id=%s AND status='RUNNING'"
-        execute_query(update, (run_id,))
-        run = execute_query(
-            "SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch="one"
-        )
-        # Calcular y guardar producido final basado en AOI (si hay baseline)
-        try:
-            if run:
-                aoi_model = (run.get("aoi_model") or "").upper()
-                aoi_line_no = run.get("aoi_line_no")
-                bl = int(run.get("aoi_baseline") or 0)
-                bl_date = run.get("aoi_baseline_shift_date")
-                bl_shift = (
-                    (run.get("aoi_baseline_shift") or "").strip()
-                    if run.get("aoi_baseline_shift")
-                    else ""
-                )
-                if aoi_model and aoi_line_no and bl_date and bl_shift:
-                    shift_order = {"DIA": 1, "TIEMPO_EXTRA": 2, "NOCHE": 3}
-                    agg_sql = """
-                        SELECT shift_date, shift, SUM(piece_w) AS total
-                        FROM aoi_file_log
-                        WHERE model=%s AND line_no=%s AND shift_date >= %s
-                        GROUP BY shift_date, shift
-                        ORDER BY shift_date ASC
-                    """
-                    agg_rows = (
-                        execute_query(
-                            agg_sql, (aoi_model, int(aoi_line_no), bl_date), fetch="all"
-                        )
-                        or []
-                    )
-                    total = 0
-                    for ar in agg_rows:
-                        sd = ar.get("shift_date")
-                        sh = (ar.get("shift") or "").strip()
-                        t = int(ar.get("total") or 0)
-                        if not sd or not sh:
-                            continue
-                        if str(sd) == str(bl_date) and sh == bl_shift:
-                            total += max(0, t - bl)
-                        else:
-                            if str(sd) == str(bl_date) and shift_order.get(
-                                sh, 0
-                            ) < shift_order.get(bl_shift, 0):
-                                continue
-                            total += t
-                    try:
-                        execute_query(
-                            "UPDATE plan_smd_runs SET aoi_produced_final=%s WHERE id=%s",
-                            (int(total), run_id),
-                        )
-                        run = execute_query(
-                            "SELECT * FROM plan_smd_runs WHERE id=%s",
-                            (run_id,),
-                            fetch="one",
-                        )
-                    except Exception as e3:
-                        print(f"?? Error guardando aoi_produced_final: {e3}")
-        except Exception as e2:
-            print(f"?? Error calculando producido final AOI: {e2}")
-        try:
-            if run and run.get("lot_no"):
-                # Intentar INSERT primero
-                try:
-                    execute_query(
-                        """
-                        INSERT INTO trazabilidad (lot_no, estado, updated_at)
-                        VALUES (%s, 'FINALIZADO', NOW())
-                    """,
-                        (run["lot_no"],),
-                    )
-                except Exception:
-                    # Si falla (probablemente duplicado), actualizar el mos reciente
-                    execute_query(
-                        """
-                        UPDATE trazabilidad SET estado='FINALIZADO', updated_at=NOW()
-                        WHERE lot_no=%s AND updated_at = (
-                            SELECT MAX(updated_at) FROM (SELECT updated_at FROM trazabilidad WHERE lot_no=%s) AS t
-                        )
-                    """,
-                        (run["lot_no"], run["lot_no"]),
-                    )
-        except Exception as e2:
-            print(f"⚠️ Error actualizando trazabilidad (FINALIZADO): {e2}")
-        return jsonify({"success": True, "run": run})
-    except Exception as e:
-        print(f" Error en api_plan_run_end: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+# Limpieza 2026-05-27: api_plan_run_end eliminado (modulo Control de operacion de linea Main borrado)
 
 
-@app.route("/api/plan-run/pause", methods=["POST"])
-def api_plan_run_pause():
-    try:
-        data = request.get_json(force=True) or {}
-        run_id = int(data.get("run_id"))
-        update = (
-            "UPDATE plan_smd_runs SET status='PAUSED' WHERE id=%s AND status='RUNNING'"
-        )
-        execute_query(update, (run_id,))
-        run = execute_query(
-            "SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch="one"
-        )
-        if run and run.get("lot_no"):
-            try:
-                # Intentar INSERT primero
-                try:
-                    execute_query(
-                        """
-                        INSERT INTO trazabilidad (lot_no, estado, updated_at)
-                        VALUES (%s, 'PAUSA', NOW())
-                    """,
-                        (run["lot_no"],),
-                    )
-                except Exception:
-                    # Si falla (probablemente duplicado), actualizar el mos reciente
-                    execute_query(
-                        """
-                        UPDATE trazabilidad SET estado='PAUSA', updated_at=NOW()
-                        WHERE lot_no=%s AND updated_at = (
-                            SELECT MAX(updated_at) FROM (SELECT updated_at FROM trazabilidad WHERE lot_no=%s) AS t
-                        )
-                    """,
-                        (run["lot_no"], run["lot_no"]),
-                    )
-            except Exception as e2:
-                print(f"?? Error actualizando trazabilidad (PAUSA): {e2}")
-        return jsonify({"success": True, "run": run})
-    except Exception as e:
-        print(f"? Error en api_plan_run_pause: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+# Limpieza 2026-05-27: api_plan_run_pause eliminado (modulo Control de operacion de linea Main borrado)
 
 
-@app.route("/api/plan-run/resume", methods=["POST"])
-def api_plan_run_resume():
-    try:
-        data = request.get_json(force=True) or {}
-        run_id = int(data.get("run_id"))
-        run = execute_query(
-            "SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch="one"
-        )
-        if not run:
-            return jsonify({"success": False, "error": "Run no encontrado"}), 404
-        linea = run.get("linea")
-        exists = execute_query(
-            "SELECT id FROM plan_smd_runs WHERE linea=%s AND status='RUNNING' AND id<>%s LIMIT 1",
-            (linea, run_id),
-            fetch="one",
-        )
-        if exists:
-            return jsonify(
-                {"success": False, "error": f"Ya existe un plan en progreso en {linea}"}
-            ), 400
-        execute_query(
-            "UPDATE plan_smd_runs SET status='RUNNING' WHERE id=%s AND status='PAUSED'",
-            (run_id,),
-        )
-        if run.get("lot_no"):
-            try:
-                execute_query(
-                    "UPDATE trazabilidad SET estado='INICIADO', updated_at=NOW() WHERE lot_no=%s",
-                    (run["lot_no"],),
-                )
-            except Exception as e2:
-                print(f"?? Error actualizando trazabilidad (INICIADO): {e2}")
-        run = execute_query(
-            "SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch="one"
-        )
-        return jsonify({"success": True, "run": run})
-    except Exception as e:
-        print(f"? Error en api_plan_run_resume: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+# Limpieza 2026-05-27: api_plan_run_resume eliminado (modulo Control de operacion de linea Main borrado)
 
 
-@app.route("/api/plan-run/status", methods=["GET"])
-def api_plan_run_status():
-    """Estado del run por linea o run_id.
-    Si está RUNNING, calcula progreso estimado usando UPH y tiempo transcurrido.
-    """
-    try:
-        run_id = request.args.get("run_id")
-        linea = request.args.get("linea")
-
-        if run_id:
-            row = execute_query(
-                "SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch="one"
-            )
-        elif linea and linea.strip():
-            row = execute_query(
-                "SELECT * FROM plan_smd_runs WHERE linea=%s AND status='RUNNING' ORDER BY start_time DESC LIMIT 1",
-                (linea.strip(),),
-                fetch="one",
-            )
-        else:
-            error_msg = "Parometros insuficientes. Se requiere run_id o linea."
-            if linea == "":
-                error_msg = "Parometro linea esto vacoo"
-            return jsonify({"success": False, "error": error_msg}), 400
-
-        if not row:
-            return jsonify({"success": True, "running": False})
-
-        # Calcular progreso estimado
-        from datetime import datetime
-
-        start = row.get("start_time")
-        end = row.get("end_time")
-        uph = float(row.get("uph") or 0)
-        qty_plan = int(row.get("qty_plan") or 0)
-        producido = 0
-        if start and not end and uph > 0:
-            # elapsed hours
-            now = datetime.utcnow()
-            # MySQL datetime naive; asumir UTC-agnóstico
-            elapsed_hours = max(0.0, (now - start).total_seconds() / 3600.0)
-            producido = int(min(qty_plan, uph * elapsed_hours))
-        return jsonify(
-            {
-                "success": True,
-                "running": row["status"] == "RUNNING",
-                "run": row,
-                "producido_est": producido,
-            }
-        )
-    except Exception as e:
-        print(f" Error en api_plan_run_status: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+# Limpieza 2026-05-27: api_plan_run_status eliminado (modulo Control de operacion de linea Main borrado)
 
 
 def crear_tabla_trazabilidad():
