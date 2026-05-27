@@ -71,11 +71,6 @@ const allDropdowns = [
     },
     {
         "pagina": "LISTA_CONTROL_DE_CALIDAD",
-        "seccion": "Historial de material",
-        "boton": "Historial de cambio de material por maquina"
-    },
-    {
-        "pagina": "LISTA_CONTROL_DE_CALIDAD",
         "seccion": "Historial de Sub Material",
         "boton": "Historial de uso de pegamento de soldadura"
     },

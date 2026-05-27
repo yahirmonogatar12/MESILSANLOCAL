@@ -750,23 +750,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
-  // Función para historial de cambio de material por máquina
-  window.mostrarHistorialMaterialMaquina = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    // Aquí puedes agregar la lógica específica para esta funcionalidad
-    const appContent = document.querySelector("main.app-content");
-    if (appContent) {
-      appContent.innerHTML = `
-                        <div class="container-fluid mt-4">
-                            <h2>Historial de cambio de material por máquina</h2>
-                            <p>Funcionalidad en desarrollo...</p>
-                        </div>
-                    `;
-    }
-  };
-
   // Función para control de resultado de reparación
   window.mostrarControlReparacion = function () {
     hideAllContent();
@@ -2760,13 +2743,6 @@ window.mostrarControlItemReparado = function () {
   _mostrarModuloCalidad(
     "control-item-reparado-unique-container",
     "/control-item-reparado-ajax",
-  );
-};
-
-window.mostrarHistorialCambioMaterialMaquina = function () {
-  _mostrarModuloCalidad(
-    "historial-cambio-material-maquina-unique-container",
-    "/historial-cambio-material-maquina-ajax",
   );
 };
 
