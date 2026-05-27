@@ -220,13 +220,14 @@ async function loadWorkOrders() {
     const hasta = document.getElementById("wo-filter-hasta")?.value || "";
     const estado = document.getElementById("wo-filter-estado")?.value || "";
 
-    // Construir URL con parometros
-    let url = "/api/work-orders";
-    const params = [];
+    // Construir URL con parametros. include_import_status=1 obliga al backend
+    // a devolver array plano con campos ya_importado/lot_no_existente.
+    let url = "/api/work_orders";
+    const params = ["include_import_status=1"];
     if (desde) params.push(`desde=${desde}`);
     if (hasta) params.push(`hasta=${hasta}`);
     if (estado) params.push(`estado=${estado}`);
-    if (params.length) url += "?" + params.join("&");
+    url += "?" + params.join("&");
 
     const response = await axios.get(url);
     const workOrders = response.data;
@@ -396,7 +397,7 @@ async function importSingleWO(woId, button) {
     showTableLoading('plan-main-table', 'Importando Work Order...');
     updateWOStatus("Importando Work Order...");
 
-    const response = await axios.post("/api/work-orders/import", {
+    const response = await axios.post("/api/work_orders/import", {
       wo_ids: [woId],
       import_date: importDate
     });
@@ -496,7 +497,7 @@ async function importAllSelectedWOs() {
     // Deshabilitar boton de importar
     setButtonLoading('wo-import-selected-btn', true, 'Importando...');
 
-    const response = await axios.post("/api/work-orders/import", {
+    const response = await axios.post("/api/work_orders/import", {
       wo_ids: woIds,
       import_date: importDate
     });

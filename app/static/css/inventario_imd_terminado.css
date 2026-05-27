@@ -1,0 +1,390 @@
+/* Inventario IMD Terminado - WF_004 CSS persistente.
+ * Extraido de inline en el template el 2026-05-27.
+ * Cargado desde MainTemplate.html con cache-busting ?v=20260527a.
+ * Fallback ensureModuleStyles() en inventario-imd-terminado-module.js. */
+
+/* CSS incrustado para Inventario IMD Terminado */
+    .inventario-imd-terminado-container * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    .inventario-imd-terminado-container {
+      font-family: 'LG regular', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #32323E;
+      color: lightgray;
+    }
+    
+    .inventario-imd-terminado-container .container-imd {
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .inventario-imd-terminado-container .header-imd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #20688C;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    
+    .inventario-imd-terminado-container .header-imd h1 {
+      color: #ecf0f1;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    
+    .inventario-imd-terminado-container .tabs-imd {
+      display: flex;
+      gap: 8px;
+      margin: 10px 0 14px;
+    }
+    
+    .inventario-imd-terminado-container .tab-imd {
+      border: 1px solid #20688C;
+      background: #3C3940;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .inventario-imd-terminado-container .tab-imd.active {
+      background: #20688C;
+    }
+    
+    .inventario-imd-terminado-container .panel-imd {
+      display: none;
+    }
+    
+    .inventario-imd-terminado-container .panel-imd.active {
+      display: block;
+    }
+
+    /* Controles */
+    .inventario-imd-terminado-container .controls-imd {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      background: #34334E;
+      border: 1px solid #20688C;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .inventario-imd-terminado-container .group-imd {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .inventario-imd-terminado-container .label-imd {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #ecf0f1;
+      letter-spacing: .3px;
+    }
+    
+    .inventario-imd-terminado-container .input-imd,
+    .inventario-imd-terminado-container .select-imd {
+      background: #2c3e50;
+      color: lightgray;
+      border: 1px solid #34495e;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    
+    .inventario-imd-terminado-container .btn-imd {
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid #20688C;
+      background: #3C3940;
+      color: #fff;
+      cursor: pointer;
+      font-size: 11px;
+      min-width: auto;
+    }
+    
+    .inventario-imd-terminado-container .btn-imd:hover {
+      background: #2980b9;
+    }
+    
+    .inventario-imd-terminado-container .status-imd {
+      margin-left: auto;
+      background: #40424F;
+      border: 1px solid #5F6375;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+
+    /* Tabla — sin scroll propio. El scroll lo lleva el area padre
+       (.control-proceso-content-area) para evitar barras anidadas. */
+    .inventario-imd-terminado-container .table-container-imd {
+      overflow-x: auto;
+      border-radius: 6px;
+      border: 1px solid #5F6375;
+      background: #40424F;
+      scrollbar-width: thin;
+      scrollbar-color: #20688C #40424F;
+    }
+
+    .inventario-imd-terminado-container .table-container-imd::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .inventario-imd-terminado-container .table-container-imd::-webkit-scrollbar-track {
+      background: #40424F;
+      border-radius: 4px;
+    }
+
+    .inventario-imd-terminado-container .table-container-imd::-webkit-scrollbar-thumb {
+      background: #20688C;
+      border-radius: 4px;
+    }
+
+    .inventario-imd-terminado-container .table-container-imd::-webkit-scrollbar-thumb:hover {
+      background: #3498db;
+    }
+
+    .inventario-imd-terminado-container .table-imd {
+      width: 100%;
+      border-collapse: collapse;
+      background: #40424F;
+      font-size: 11px;
+      table-layout: fixed;
+    }
+    
+    .inventario-imd-terminado-container .table-imd th {
+      background: #172A46;
+      color: #ecf0f1;
+      padding: 7px;
+      border: 1px solid #20688C;
+      position: sticky;
+      top: 0;
+    }
+    
+    .inventario-imd-terminado-container .table-imd td {
+      padding: 6px;
+      border: 1px solid #5F6375;
+      color: lightgray;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .inventario-imd-terminado-container .table-imd tbody tr:hover td {
+      background: #485563;
+    }
+    
+    /* Loader */
+    .inventario-imd-terminado-container .loading-imd {
+      display: none;
+      text-align: center;
+      background: #40424F;
+      border-radius: 6px;
+      padding: 18px;
+      margin: 8px 0;
+    }
+    
+    .inventario-imd-terminado-container .spinner-imd {
+      border: 3px solid #555;
+      border-top: 3px solid #00D4FF;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 8px;
+      animation: spin-imd 1s linear infinite;
+    }
+    
+    @keyframes spin-imd {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Chips */
+    .inventario-imd-terminado-container .ok-imd {
+      color: #27ae60;
+      background: rgba(39, 174, 96, .1);
+      border: 1px solid rgba(39, 174, 96, .35);
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    
+    .inventario-imd-terminado-container .ng-imd {
+      color: #e74c3c;
+      background: rgba(231, 76, 60, .1);
+      border: 1px solid rgba(231, 76, 60, .35);
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    
+    /* Scrollbar */
+    .inventario-imd-terminado-container ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    
+    .inventario-imd-terminado-container ::-webkit-scrollbar-thumb {
+      background: #20688C;
+      border-radius: 3px;
+    }
+    
+    .inventario-imd-terminado-container ::-webkit-scrollbar-track {
+      background: #40424F;
+    }
+    
+    /* Estilos para filtros de cabecera IMD */
+    .inventario-imd-terminado-container .filterable-header-imd {
+      position: relative;
+      vertical-align: top;
+      padding: 6px 8px !important;
+      min-width: 120px;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .header-content-imd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 32px;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .header-content-imd span {
+      font-size: 11px;
+      font-weight: 600;
+      color: #ecf0f1;
+      text-align: left;
+      line-height: 1.2;
+      flex: 1;
+      min-width: 0;
+      word-wrap: break-word;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-btn-imd {
+      background: #2c3e50;
+      border: 1px solid #20688C;
+      color: #3498db;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      font-size: 11px;
+      padding: 0;
+      margin-left: auto;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-btn-imd:hover {
+      background: #20688C;
+      color: #ecf0f1;
+      transform: scale(1.1);
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-btn-imd.active {
+      background: #3498db;
+      color: #fff;
+      border-color: #2980b9;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .header-filter-imd {
+      position: absolute;
+      top: 0%;
+      left: 0;
+      right: 0;
+      background: #2c3e50;
+      border: 1px solid #20688C;
+      border-radius: 4px;
+      box-shadow: 0 -4px 8px rgba(0,0,0,0.3);
+      z-index: 9999 !important;
+      padding: 5px;
+      margin-bottom: 2px;
+      min-width: 150px;
+      display: none;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-select-imd {
+      width: 100%;
+      background: #34495e !important;
+      border: 1px solid #20688C !important;
+      color: lightgray !important;
+      padding: 5px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      outline: none;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-input-imd {
+      width: 100%;
+      background: #34495e !important;
+      border: 1px solid #20688C !important;
+      color: lightgray !important;
+      padding: 5px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      outline: none;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-select-imd:focus,
+    .inventario-imd-terminado-container .filterable-header-imd .filter-input-imd:focus {
+      border-color: #3498db !important;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-select-imd option {
+      background: #2c3e50;
+      color: lightgray;
+      padding: 3px;
+    }
+
+    .inventario-imd-terminado-container .clear-all-filters-imd {
+      background: #e74c3c !important;
+      border: 1px solid #c0392b !important;
+      color: #fff !important;
+      padding: 4px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      transition: all 0.2s ease;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+    }
+
+    .inventario-imd-terminado-container .clear-all-filters-imd:hover {
+      background: #c0392b !important;
+      transform: scale(1.05);
+    }
+
+    .inventario-imd-terminado-container .clear-all-filters-imd i {
+      font-size: 10px;
+    }
+
+    /* Override para evitar conflictos con overflow */
+    .inventario-imd-terminado-container .table-imd th:not(.filterable-header-imd) {
+      overflow: hidden;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd {
+      overflow: visible !important;
+    }
+    
+    @media(max-width: 900px) {
+      .inventario-imd-terminado-container .status-imd {
+        width: 100%;
+        order: 99;
+      }
+    }

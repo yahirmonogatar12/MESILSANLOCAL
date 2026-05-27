@@ -10,7 +10,7 @@
     // ENDPOINTS (privados al mÃ³dulo)
     // ===============================
     const PLAN_SMD_API = {
-        workOrders: "/api/work-orders", // GET: q, estado, desde, hasta
+        workOrders: "/api/work_orders?include_import_status=1", // GET: q, estado, desde, hasta (shape array plano con flags ya_importado/lot_no_existente)
         inventarioPorModelo: (modelo) => `/api/inventario/modelo/${encodeURIComponent(modelo)}` , // GET
         guardarPlan: "/api/plan-smd" // POST [{...renglÃ³n...}]
     };

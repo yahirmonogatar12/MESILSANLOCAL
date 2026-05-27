@@ -5,7 +5,21 @@
  */
 (function() {
     'use strict';
-    
+
+    // WF_004: garantizar que el CSS persistente este cargado. MainTemplate.html
+    // ya lo declara, pero si el modulo se sirve fuera del template (test,
+    // standalone), inyectar el <link> de forma idempotente.
+    const STYLESHEET_ID = 'inventario-imd-terminado-css';
+    const STYLESHEET_HREF = '/static/css/inventario_imd_terminado.css?v=20260527a';
+    function ensureModuleStyles() {
+        if (document.getElementById(STYLESHEET_ID)) return;
+        const link = document.createElement('link');
+        link.id = STYLESHEET_ID;
+        link.rel = 'stylesheet';
+        link.href = STYLESHEET_HREF;
+        document.head.appendChild(link);
+    }
+
     // Variables privadas del modulo
     let datosOriginalesIMD = {
         'g': [], // Inventario general
@@ -718,6 +732,7 @@
     }
 
     function inicializarInventarioIMD() {
+        ensureModuleStyles();
         // Reset de estado del closure. El IIFE solo se ejecuta una vez en
         // la sesion, pero esta funcion se invoca cada vez que el HTML se
         // reinyecta via AJAX. Sin este reset, banderas como

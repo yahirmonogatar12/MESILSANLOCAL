@@ -69,7 +69,8 @@ def run_startup_init():
     log("Bootstrap de cuchillas de corte completado")
 
     log("Iniciando bootstrap de snapshot inventario")
-    _routes.crear_tablas_snapshot_inventario()
+    from .api.shared.snapshot_inventario import crear_tablas_snapshot_inventario
+    crear_tablas_snapshot_inventario()
     log("Bootstrap de snapshot inventario completado")
 
     log("Iniciando crear_tabla_plan_smt_v2()")
@@ -108,6 +109,7 @@ def _start_workers_only():
     except Exception as e:
         print(f"[startup-init] Error iniciando cuchillas worker: {e}")
     try:
-        _routes.iniciar_snapshot_inv_worker()
+        from .api.shared.snapshot_inventario import iniciar_snapshot_inv_worker
+        iniciar_snapshot_inv_worker()
     except Exception as e:
         print(f"[startup-init] Error iniciando snapshot worker: {e}")

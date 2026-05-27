@@ -172,7 +172,9 @@ def get_smt_stats():
             FROM historial_cambio_material_smt
             GROUP BY Result
         """)
-        por_resultado = dict(cursor.fetchall())
+        # Convertir None -> 'UNKNOWN' porque jsonify falla ordenando claves mixtas
+        # str/None ("'<' not supported between instances of 'NoneType' and 'str'").
+        por_resultado = {(k if k is not None else 'UNKNOWN'): v for k, v in cursor.fetchall()}
 
         cursor.close()
         conn.close()

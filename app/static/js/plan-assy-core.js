@@ -198,7 +198,7 @@ async function handleEditPlanSubmit(form) {
 
       if (woCode && woCode !== 'SIN-WO') {
         // Buscar el WO en la tabla work_orders
-        const woResponse = await axios.get(`/api/work-orders?q=${encodeURIComponent(woCode)}`);
+        const woResponse = await axios.get(`/api/work_orders?include_import_status=1&q=${encodeURIComponent(woCode)}`);
 
         if (woResponse.data && woResponse.data.length > 0) {
           // Filtrar exactamente el WO que coincide con wo_code

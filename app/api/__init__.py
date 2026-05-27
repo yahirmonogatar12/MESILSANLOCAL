@@ -11,7 +11,7 @@ Estructura espejo de `app/templates/`:
       control_resultados/      <- LISTA_DE_CONTROL_DE_RESULTADOS
       control_reporte/         <- LISTA_DE_CONTROL_DE_REPORTE
       configuracion/           <- LISTA_DE_CONFIGPG
-      shared/                  <- helpers comunes (auth, db, decoradores)
+      shared/                  <- helpers comunes Y servicios transversales
 
 Cada modulo define un Flask Blueprint y lo expone como atributo `bp`.
 `registrar_blueprints_api()` importa cada modulo y lo registra en la app.
@@ -26,6 +26,38 @@ Convencion de nuevos modulos:
     @login_requerido
     def algo():
         ...
+
+Regla de oro: `app/routes.py` SOLO contiene rutas Flask.
+================================================================
+
+Todo lo que NO sea una funcion decorada con `@app.route` debe vivir en
+otro lugar. Esto incluye:
+
+    - Endpoints HTTP de un modulo concreto del navbar
+        -> blueprint en `app/api/<seccion>/<modulo>.py`
+    - Workers daemon, schedulers, threads de background
+        -> `app/api/shared/<servicio>.py` (junto a sus endpoints si los tiene)
+    - DDL idempotente (CREATE TABLE IF NOT EXISTS ...) llamado al startup
+        -> mismo archivo que el servicio que lo usa; arrancado desde
+           `app/startup_init.py` con import tardio
+    - Funciones de captura/transformacion de datos consumidas por endpoints
+        -> mismo blueprint
+    - Constantes de modulo (timezone, target_hour, etc.)
+        -> mismo archivo que las usa
+    - Helpers de auth/decoradores reutilizables entre modulos
+        -> `app/api/shared/__init__.py` o `app/api/shared/<helper>.py`
+
+Cuando muevas un servicio compartido a `shared/`, recuerda:
+    1. Si tiene rutas HTTP: registrar en `_MODULOS_REGISTRADOS` mas abajo.
+    2. Si tiene DDL/workers: actualizar `app/startup_init.py` para importar
+       desde el nuevo lugar (con import tardio dentro de la funcion para
+       evitar ciclos al levantar la app).
+    3. Si otro modulo lo consumia desde routes.py, cambiar el import:
+       `from app.routes import x` -> `from app.api.shared.<servicio> import x`.
+
+Ejemplo real: `shared/snapshot_inventario.py` reune (constantes + DDL +
+captura + worker daemon + 4 endpoints HTTP) que antes estaban dispersos
+en routes.py.
 """
 
 # Lista de modulos a registrar (ruta de import relativa al paquete app.api).
@@ -45,6 +77,10 @@ _MODULOS_REGISTRADOS = [
     "control_calidad.smt_historial_simple",
     "control_calidad.smt_historial",
     "control_resultados.aoi",
+    # Migracion 2026-05-27: IMD-SMD TERMINADO a blueprint
+    "control_resultados.inventario_imd",
+    # Migracion 2026-05-27: snapshots de inventario (servicio compartido)
+    "shared.snapshot_inventario",
     "control_produccion.po_wo",
     "control_produccion.cuchillas_corte",
     "control_produccion.plan_smt",

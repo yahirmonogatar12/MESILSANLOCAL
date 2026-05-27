@@ -1613,9 +1613,16 @@
         function renderizarTabla(datos) {
             const tbody = document.getElementById('smt-table-body');
             tbody.innerHTML = '';
-            
+
+            // Filtrar filas sin fecha: ScanDate vacio produce celdas con texto
+            // basura ("undefined" / formateos rotos), no aportan informacion.
+            const datosConFecha = datos.filter(row => {
+                const fecha = row.fecha_formateada || row.ScanDate;
+                return fecha !== null && fecha !== undefined && String(fecha).trim() !== '';
+            });
+
             // Ordenar datos por hora de scan (más reciente primero)
-            const datosOrdenados = [...datos].sort((a, b) => {
+            const datosOrdenados = [...datosConFecha].sort((a, b) => {
                 const horaA = a.hora_formateada || a.ScanTime || '00:00:00';
                 const horaB = b.hora_formateada || b.ScanTime || '00:00:00';
                 
