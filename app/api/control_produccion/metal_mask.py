@@ -11,8 +11,9 @@ Rutas:
 NO mover aqui `/api/masks/info` (routes.py:17174): es compartida con el
 modulo "Control de operacion SMT" (`control-operacion-smt-ajax.js:1560`).
 
-NO mover aqui `init_metal_mask_tables` (routes.py:18810): es bootstrap de
-tablas llamado por `app/startup_init.py`; migracion pendiente.
+DDL `init_metal_mask_tables` migrado a este modulo el 2026-05-28; lo invoca
+`app/startup_init.py` para garantizar la existencia de las tablas `masks`
+y `storage_boxes` al arranque.
 """
 
 from functools import wraps
@@ -230,3 +231,75 @@ def api_metal_mask_test():
     except Exception as e:
         print(f"Error en api_metal_mask_test: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Bootstrap DDL (invocado desde app/startup_init.py al arranque)
+# ---------------------------------------------------------------------------
+
+
+def init_metal_mask_tables():
+    """Crea/ajusta tablas `masks` y `storage_boxes` si no existen.
+
+    Migrado desde `app/routes.py` el 2026-05-28. Sin cambios funcionales.
+    """
+    try:
+        # Tabla principal de masks (nombres de columna en ingles, usados por el frontend).
+        execute_query(
+            """
+            CREATE TABLE IF NOT EXISTS masks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                management_no VARCHAR(64) UNIQUE,
+                storage_box VARCHAR(64),
+                pcb_code VARCHAR(64),
+                side VARCHAR(16),
+                production_date DATE,
+                used_count INT DEFAULT 0,
+                max_count INT DEFAULT 0,
+                allowance INT DEFAULT 0,
+                model_name VARCHAR(255),
+                tension_min DECIMAL(6,2),
+                tension_max DECIMAL(6,2),
+                thickness DECIMAL(6,2),
+                supplier VARCHAR(128),
+                registration_date VARCHAR(64),
+                disuse ENUM('Uso','Desuso','Scrap') DEFAULT 'Uso',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """
+        )
+
+        # Asegurar valores del ENUM en caso de historiales previos (migracion suave).
+        try:
+            execute_query(
+                "ALTER TABLE masks MODIFY COLUMN disuse ENUM('Use','Disuse','Uso','Desuso','Scrap') DEFAULT 'Uso'"
+            )
+            execute_query("UPDATE masks SET disuse='Uso' WHERE disuse='Use'")
+            execute_query("UPDATE masks SET disuse='Desuso' WHERE disuse='Disuse'")
+            execute_query(
+                "ALTER TABLE masks MODIFY COLUMN disuse ENUM('Uso','Desuso','Scrap') DEFAULT 'Uso'"
+            )
+        except Exception:
+            # Si falla (p.ej. por no existir la tabla/columna aun), continuar.
+            pass
+
+        # Tabla de cajas de almacenamiento.
+        execute_query(
+            """
+            CREATE TABLE IF NOT EXISTS storage_boxes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                management_no VARCHAR(64) UNIQUE,
+                code VARCHAR(64),
+                name VARCHAR(64),
+                location VARCHAR(64),
+                storage_status ENUM('Disponible','Ocupado','Mantenimiento') DEFAULT 'Disponible',
+                used_status ENUM('Usado','No Usado') DEFAULT 'Usado',
+                note TEXT,
+                registration_date VARCHAR(64),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """
+        )
+        print(" Tablas Metal Mask creadas/verificadas")
+    except Exception as e:
+        print(f"Error creando/verificando tablas Metal Mask: {e}")

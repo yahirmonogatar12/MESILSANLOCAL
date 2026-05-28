@@ -1017,33 +1017,8 @@ def favicon():
     )
 
 
-@app.route("/sistemas")
-@login_requerido
-def sistemas():
-    """Redirige al hub de inicio"""
-    return redirect(url_for("inicio"))
-
-
-@app.route("/soporte")
-@login_requerido
-def soporte():
-    """Página de soporte técnico"""
-    return (
-        render_template("soporte.html")
-        if os.path.exists("app/templates/soporte.html")
-        else f"<h1>Soporte Técnico</h1><p>En construcción. <a href='/inicio'>Volver al inicio</a></p>"
-    )
-
-
-@app.route("/documentacion")
-@login_requerido
-def documentacion():
-    """Página de documentación"""
-    return (
-        render_template("documentacion.html")
-        if os.path.exists("app/templates/documentacion.html")
-        else f"<h1>Documentación</h1><p>En construcción. <a href='/inicio'>Volver al inicio</a></p>"
-    )
+# Fase 1 (2026-05-28): /sistemas, /soporte, /documentacion borradas —
+# sin consumidores en app/static + app/templates.
 
 
 @app.route("/ILSAN-ELECTRONICS")
@@ -1193,9 +1168,11 @@ def plan_main_smt_ajax():
 # =============================
 # Migrado a app/api/control_produccion/cuchillas_corte.py (2026-05-25).
 # Las 17 rutas se registran via blueprint en app/api/__init__.py.
-# Reexportamos los helpers y funciones de bootstrap aqui para preservar
-# `_routes.crear_tablas_cuchillas_corte()` (startup_init) y
-# `from app.routes import _cuchillas_rows_to_json` (app.api.shared).
+# 2026-05-28: `crear_tablas_cuchillas_corte` e `iniciar_cuchillas_hourly_sync_worker`
+# se importan directo desde el blueprint en `app/startup_init.py` (ya no via _routes).
+# Solo reexportamos los simbolos consumidos por `app.api.shared` ->
+# `material_admin.py` (`_cuchillas_rows_to_json`) y los que aun no tienen
+# otro lugar canonico para vivir.
 from app.api.control_produccion.cuchillas_corte import (  # noqa: E402, F401
     CUCHILLAS_PERMISO_PAGINA,
     CUCHILLAS_PERMISO_SECCION,
@@ -1206,11 +1183,8 @@ from app.api.control_produccion.cuchillas_corte import (  # noqa: E402, F401
     _cuchillas_row_to_json,
     _cuchillas_rows_to_json,
     _cuchillas_execute_raw,
-    crear_tablas_cuchillas_corte,
     crear_trigger_cuchillas_corte_plan_main,
-    iniciar_cuchillas_hourly_sync_worker,
 )
-# Bootstrap de cuchillas movido a app/startup_init.py
 
 
 # Migracion 2026-05-27: snapshot inventario (constantes, DDL, captura,
@@ -1377,10 +1351,8 @@ def api_raw_search():
 # ====== RUTAS API PARA PLAN SMT (tabla plan_smt) ======
 # Migrado a app/api/control_produccion/plan_smt.py (2026-05-25).
 # Las 9 rutas se registran via blueprint en app/api/__init__.py.
-# Reexportamos `crear_tabla_plan_smt_v2` para preservar `startup_init.py`.
-from app.api.control_produccion.plan_smt import (  # noqa: E402, F401
-    crear_tabla_plan_smt_v2,
-)
+# 2026-05-28: `crear_tabla_plan_smt_v2` ahora se importa directo desde el
+# blueprint en `app/startup_init.py` (re-export aqui eliminado).
 
 
 # Migracion 2026-05-26: api_plan_main_list movido a app/api/control_produccion/plan_assy.py
@@ -1425,45 +1397,9 @@ def cargar_template():
 # Función de conexión movida a db.py - usar get_db_connection() importada
 
 
-@app.route("/guardar_cliente_seleccionado", methods=["POST"])
-@login_requerido
-def guardar_cliente_seleccionado():
-    """Guardar la selección de cliente del usuario"""
-    try:
-        data = request.get_json()
-        if not data or "cliente" not in data:
-            return jsonify({"success": False, "error": "Cliente no proporcionado"}), 400
-
-        cliente = data["cliente"]
-        usuario = session.get("usuario", "default")
-
-        # Guardar la configuración
-        if guardar_configuracion_usuario(usuario, "cliente_seleccionado", cliente):
-            return jsonify(
-                {"success": True, "message": "Cliente guardado exitosamente"}
-            )
-        else:
-            return jsonify({"success": False, "error": "Error al guardar cliente"}), 500
-
-    except Exception as e:
-        print(f"Error en guardar_cliente_seleccionado: {str(e)}")
-        return jsonify({"success": False, "error": f"Error interno: {str(e)}"}), 500
-
-
-@app.route("/cargar_cliente_seleccionado", methods=["GET"])
-@login_requerido
-def cargar_cliente_seleccionado():
-    """Cargar la última selección de cliente del usuario"""
-    try:
-        usuario = session.get("usuario", "default")
-        config = cargar_configuracion_usuario(usuario)
-        cliente = config.get("cliente_seleccionado", "") if config else ""
-
-        return jsonify({"success": True, "cliente": cliente})
-
-    except Exception as e:
-        print(f"Error en cargar_cliente_seleccionado: {str(e)}")
-        return jsonify({"success": False, "error": f"Error interno: {str(e)}"}), 500
+# Fase 1 (2026-05-28): /guardar_cliente_seleccionado y /cargar_cliente_seleccionado
+# borradas — sin consumidores en app/static + app/templates. Sus helpers privados
+# `cargar_configuracion_usuario` y `guardar_configuracion_usuario` se eliminaron tambien.
 
 
 @app.route("/informacion_basica/control_de_material")
@@ -1525,11 +1461,9 @@ def lista_control_produccion():
 # ==========================================
 # Migrado a app/api/control_produccion/plan_smd.py (2026-05-25).
 # Las 4 rutas se registran via blueprint en app/api/__init__.py.
-# Reexportamos las funciones de bootstrap para preservar `startup_init.py`.
-from app.api.control_produccion.plan_smd import (  # noqa: E402, F401
-    crear_tabla_plan_smd,
-    crear_tabla_plan_smd_runs,
-)
+# 2026-05-28: `crear_tabla_plan_smd` y `crear_tabla_plan_smd_runs` se
+# importan directo desde el blueprint en `app/startup_init.py` (re-exports
+# eliminados).
 
 
 # Migracion 2026-05-27: GET /api/work-orders movido a
@@ -2392,17 +2326,8 @@ def obtener_permisos_usuario_actual():
         return jsonify({"permisos": [], "error": str(e)}), 500
 
 
-# ============== CSV VIEWER ROUTES ==============
-@app.route("/csv-viewer")
-@login_requerido
-def csv_viewer():
-    """Página principal del visor de CSV"""
-    try:
-        return render_template("csv-viewer.html")
-    except Exception as e:
-        print(f"Error al cargar CSV viewer: {e}")
-        return f"Error al cargar la página: {str(e)}", 500
-
+# Fase 1 (2026-05-28): CSV VIEWER ROUTES eliminadas — /csv-viewer (csv_viewer)
+# sin consumidores en app/static + app/templates.
 
 # Nueva ruta para historial de cambio de material de SMT
 @app.route("/historial-cambio-material-smt")
@@ -2429,524 +2354,11 @@ def historial_cambio_material_smt_ajax():
         return f"Error interno del servidor: {e}", 500
 
 
-@app.route("/api/csv_data")
-@login_requerido
-def get_csv_data():
-    """API para obtener datos SMT desde MySQL (no archivos CSV)"""
-    try:
-        folder = request.args.get("folder", "")
-        print(f" Solicitud recibida para carpeta: '{folder}'")
-
-        if not folder:
-            print(" No se proporcionó parámetro de carpeta")
-            return jsonify(
-                {"success": False, "error": "Folder parameter required"}
-            ), 400
-
-        # Conectar a MySQL directamente
-        import mysql.connector
-
-        mysql_config = {
-            "host": os.getenv("MYSQL_HOST"),
-            "port": int(os.getenv("MYSQL_PORT", 3306)),
-            "user": os.getenv("MYSQL_USER"),
-            "password": os.getenv("MYSQL_PASSWORD"),
-            "database": os.getenv("MYSQL_DATABASE"),
-            "charset": "utf8mb4",
-        }
-
-        conn = mysql.connector.connect(**mysql_config)
-        cursor = conn.cursor(dictionary=True)
-
-        print(f" Consultando datos SMT desde MySQL para carpeta: {folder}")
-
-        # Query para obtener datos de la tabla MySQL
-        query = """
-            SELECT
-            ScanDate,
-            ScanTime,
-            SlotNo,
-            Result,
-            PreviousBarcode,
-            Productdate,
-            PartName,
-            Quantity,
-            SEQ,
-            Vendor,
-            LOTNO,
-            Barcode,
-            FeederBase,
-            archivo,
-            linea,
-            maquina,
-            fecha_subida
-        FROM logs_maquina
-        WHERE archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s
-        ORDER BY ScanDate DESC, ScanTime DESC
-        LIMIT 1000
-        """
-
-        cursor.execute(query, (f"%{folder}%", f"%{folder}%", f"%{folder}%"))
-        resultados = cursor.fetchall()
-
-        print(f"✓ Encontrados {len(resultados)} registros en MySQL")
-
-        # Convertir datos para JSON
-        all_data = []
-        for resultado in resultados:
-            cleaned_record = {}
-            for key, value in resultado.items():
-                if hasattr(value, "isoformat"):  # Es una fecha/datetime
-                    cleaned_record[key] = value.isoformat()
-                elif value is None:
-                    cleaned_record[key] = None
-                else:
-                    cleaned_record[key] = str(value)
-
-            # Mapear nombres para compatibilidad con frontend (usar nombres de la nueva tabla)
-            cleaned_record["ScanDate"] = cleaned_record.get("ScanDate", "")
-            cleaned_record["ScanTime"] = cleaned_record.get("ScanTime", "")
-            cleaned_record["SlotNo"] = cleaned_record.get("SlotNo", "")
-            cleaned_record["Result"] = cleaned_record.get("Result", "")
-            cleaned_record["PartName"] = cleaned_record.get("PartName", "")
-            cleaned_record["SourceFile"] = cleaned_record.get(
-                "archivo", ""
-            )  # Mapear archivo a SourceFile
-            cleaned_record["LOTNO"] = cleaned_record.get("LOTNO", "")
-            cleaned_record["Barcode"] = cleaned_record.get("Barcode", "")
-            cleaned_record["Quantity"] = cleaned_record.get("Quantity", "")
-            cleaned_record["Vendor"] = cleaned_record.get("Vendor", "")
-            cleaned_record["FeederBase"] = cleaned_record.get("FeederBase", "")
-            cleaned_record["PreviousBarcode"] = cleaned_record.get(
-                "PreviousBarcode", ""
-            )
-
-            all_data.append(cleaned_record)
-
-        cursor.close()
-        conn.close()
-
-        return jsonify(
-            {
-                "success": True,
-                "data": all_data,
-                "message": f"Datos MySQL cargados para {folder}: {len(all_data)} registros",
-                "files_processed": len(
-                    set([d.get("SourceFile", "") for d in all_data])
-                ),
-                "source": "mysql_logs_maquina",
-            }
-        )
-
-    except Exception as e:
-        print(f" Error obteniendo datos desde MySQL: {e}")
-        print(f" Traceback: {traceback.format_exc()}")
-        return jsonify(
-            {
-                "success": False,
-                "error": f"Error al consultar base de datos MySQL: {str(e)}",
-            }
-        ), 500
-
-
-@app.route("/api/csv_stats")
-@login_requerido
-def get_csv_stats():
-    """API para obtener estadísticas SMT desde MySQL (no archivos CSV)"""
-    try:
-        folder = request.args.get("folder", "")
-        print(f" Solicitud recibida para estadísticas de carpeta: '{folder}'")
-
-        if not folder:
-            print(" No se proporcionó parámetro de carpeta")
-            return jsonify(
-                {"success": False, "error": "Folder parameter required"}
-            ), 400
-
-        # Conectar a MySQL directamente
-        import mysql.connector
-
-        mysql_config = {
-            "host": os.getenv("MYSQL_HOST"),
-            "port": int(os.getenv("MYSQL_PORT", 3306)),
-            "user": os.getenv("MYSQL_USER"),
-            "password": os.getenv("MYSQL_PASSWORD"),
-            "database": os.getenv("MYSQL_DATABASE"),
-            "charset": "utf8mb4",
-        }
-
-        conn = mysql.connector.connect(**mysql_config)
-        cursor = conn.cursor(dictionary=True)
-
-        print(f" Consultando estadísticas SMT desde MySQL para carpeta: {folder}")
-
-        # Query para obtener estadísticas de la tabla MySQL
-        query = """
-            SELECT
-            COUNT(*) as total_records,
-            COUNT(DISTINCT archivo) as total_files,
-            COUNT(DISTINCT ScanDate) as total_days,
-            COUNT(CASE WHEN Result = 'OK' THEN 1 END) as ok_count,
-            COUNT(CASE WHEN Result = 'NG' THEN 1 END) as ng_count,
-            MIN(ScanDate) as first_date,
-            MAX(ScanDate) as last_date
-        FROM logs_maquina
-        WHERE archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s
-        """
-
-        cursor.execute(query, (f"%{folder}%", f"%{folder}%", f"%{folder}%"))
-        stats = cursor.fetchone()
-
-        # Query para obtener archivos únicos
-        files_query = """
-        SELECT DISTINCT archivo, COUNT(*) as records
-        FROM logs_maquina
-        WHERE archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s
-        GROUP BY archivo
-        ORDER BY archivo
-        """
-
-        cursor.execute(files_query, (f"%{folder}%", f"%{folder}%", f"%{folder}%"))
-        files_info = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-        print(
-            f" Estadísticas obtenidas: {stats['total_records']} registros de {stats['total_files']} archivos"
-        )
-
-        return jsonify(
-            {
-                "success": True,
-                "stats": {
-                    "total_records": stats["total_records"] or 0,
-                    "total_files": stats["total_files"] or 0,
-                    "total_days": stats["total_days"] or 0,
-                    "ok_count": stats["ok_count"] or 0,
-                    "ng_count": stats["ng_count"] or 0,
-                    "first_date": stats["first_date"].isoformat()
-                    if stats["first_date"]
-                    else None,
-                    "last_date": stats["last_date"].isoformat()
-                    if stats["last_date"]
-                    else None,
-                },
-                "files": [
-                    {"name": f["source_file"], "records": f["records"]}
-                    for f in files_info
-                ],
-                "message": f"Estadísticas MySQL para {folder}",
-                "source": "mysql",
-            }
-        )
-
-    except Exception as e:
-        print(f" Error obteniendo estadísticas desde MySQL: {e}")
-        print(f" Traceback: {traceback.format_exc()}")
-        return jsonify(
-            {
-                "success": False,
-                "error": f"Error al consultar estadísticas MySQL: {str(e)}",
-            }
-        ), 500
-
-        print(f" Encontrados {len(csv_files)} archivos CSV")
-
-        # Leer y combinar todos los archivos CSV
-        all_data = []
-
-        for csv_file in csv_files:
-            try:
-                print(
-                    f" Leyendo archivo: {os.path.basename(csv_file)} (tamaño: {os.path.getsize(csv_file)} bytes)"
-                )
-
-                # Intentar lectura simple primero
-                try:
-                    df = pd.read_csv(csv_file, encoding="utf-8", on_bad_lines="skip")
-                    print(f" Lectura exitosa con pandas básico: {len(df)} filas")
-                except Exception as simple_error:
-                    print(f" Error con lectura simple: {str(simple_error)}")
-
-                    # Leer el archivo como texto primero para limpiar formato
-                    with open(csv_file, "r", encoding="utf-8", errors="ignore") as f:
-                        content = f.read()
-
-                    print(f" Contenido leído: {len(content)} caracteres")
-
-                    # Limpiar saltos de línea incorrectos en el contenido
-                    lines = content.strip().split("\n")
-                    cleaned_lines = []
-
-                    for line in lines:
-                        # Si la línea no termina con una coma y la siguiente no empieza con una fecha,
-                        # probablemente es una línea cortada
-                        if line and not line.endswith(","):
-                            cleaned_lines.append(line)
-                        elif line.endswith(","):
-                            # Línea que termina en coma, probablemente incompleta
-                            if cleaned_lines:
-                                cleaned_lines[-1] += line
-                            else:
-                                cleaned_lines.append(line)
-
-                    print(
-                        f"🧹 Líneas limpiadas: {len(cleaned_lines)} de {len(lines)} originales"
-                    )
-
-                    # Crear DataFrame desde el contenido limpio
-                    from io import StringIO
-
-                    cleaned_content = "\n".join(cleaned_lines)
-
-                    # Leer el archivo CSV con pandas usando el contenido limpio
-                    df = pd.read_csv(
-                        StringIO(cleaned_content), encoding="utf-8", on_bad_lines="skip"
-                    )
-
-                print(f" DataFrame creado: {len(df)} filas, {len(df.columns)} columnas")
-                print(f" Columnas: {list(df.columns)}")
-
-                # Verificar que el DataFrame tenga las columnas esperadas
-                expected_columns = [
-                    "ScanDate",
-                    "ScanTime",
-                    "SlotNo",
-                    "Result",
-                    "PartName",
-                ]
-                missing_columns = [
-                    col for col in expected_columns if col not in df.columns
-                ]
-
-                if missing_columns:
-                    print(f" Columnas faltantes en {csv_file}: {missing_columns}")
-                    # Intentar leer de forma más básica
-                    df = pd.read_csv(
-                        csv_file, encoding="utf-8", on_bad_lines="skip", sep=","
-                    )
-
-                # Convertir a diccionarios y agregar nombre del archivo fuente
-                file_data = df.to_dict("records")
-
-                # Limpiar valores NaN y convertir a tipos JSON válidos
-                cleaned_data = []
-                for record in file_data:
-                    cleaned_record = {}
-                    for key, value in record.items():
-                        # Convertir NaN y valores problemáticos a None (null en JSON)
-                        if pd.isna(value) or str(value).lower() == "nan":
-                            cleaned_record[key] = None
-                        elif isinstance(value, (int, float)) and (
-                            value != value
-                        ):  # Check for NaN
-                            cleaned_record[key] = None
-                        else:
-                            # Convertir a string para asegurar compatibilidad JSON
-                            cleaned_record[key] = (
-                                str(value) if value is not None else None
-                            )
-
-                    cleaned_record["SourceFile"] = os.path.basename(csv_file)
-                    cleaned_data.append(cleaned_record)
-
-                print(
-                    f" Datos procesados y limpiados: {len(cleaned_data)} registros del archivo {os.path.basename(csv_file)}"
-                )
-                all_data.extend(cleaned_data)
-
-            except Exception as file_error:
-                print(f" Error definitivo leyendo {csv_file}: {str(file_error)}")
-                print(f" Tipo de error: {type(file_error).__name__}")
-                import traceback
-
-                print(f" Traceback: {traceback.format_exc()}")
-                continue
-
-        if not all_data:
-            return jsonify(
-                {
-                    "success": False,
-                    "error": "No se pudieron leer datos de los archivos CSV",
-                    "files_found": len(csv_files),
-                }
-            ), 500
-
-        print(
-            f" Datos cargados: {len(all_data)} registros de {len(csv_files)} archivos"
-        )
-
-        return jsonify(
-            {
-                "success": True,
-                "data": all_data,
-                "message": f"Datos cargados para {folder}: {len(all_data)} registros",
-                "files_processed": len(csv_files),
-                "path": folder_path,
-            }
-        )
-
-    except Exception as e:
-        print(f" Error obteniendo datos CSV: {e}")
-        print(f" Traceback: {traceback.format_exc()}")
-        return jsonify(
-            {
-                "success": False,
-                "error": f"Error al acceder a los archivos CSV: {str(e)}",
-            }
-        ), 500
-
-
-@app.route("/api/filter_data", methods=["POST"])
-@login_requerido
-def filter_csv_data():
-    """API para filtrar datos SMT desde MySQL (no archivos CSV)"""
-    try:
-        filters = request.get_json()
-        folder = filters.get("folder", "")
-        part_name = filters.get("partName", "")
-        result = filters.get("result", "")
-        date_from = filters.get("dateFrom", "")
-        date_to = filters.get("dateTo", "")
-
-        if not folder:
-            return jsonify(
-                {"success": False, "error": "Folder parameter required"}
-            ), 400
-
-        print(f" Filtrando datos MySQL para carpeta: {folder}")
-        print(
-            f" Filtros: partName={part_name}, result={result}, dateFrom={date_from}, dateTo={date_to}"
-        )
-
-        # Conectar a MySQL directamente
-        import mysql.connector
-
-        mysql_config = {
-            "host": os.getenv("MYSQL_HOST"),
-            "port": int(os.getenv("MYSQL_PORT", 3306)),
-            "user": os.getenv("MYSQL_USER"),
-            "password": os.getenv("MYSQL_PASSWORD"),
-            "database": os.getenv("MYSQL_DATABASE"),
-            "charset": "utf8mb4",
-        }
-
-        conn = mysql.connector.connect(**mysql_config)
-        cursor = conn.cursor(dictionary=True)
-
-        # Construir query dinámicamente con filtros
-        where_conditions = ["source_file LIKE %s"]
-        params = [f"%{folder}%"]
-
-        if part_name:
-            where_conditions.append("part_name LIKE %s")
-            params.append(f"%{part_name}%")
-
-        if result:
-            where_conditions.append("result = %s")
-            params.append(result.upper())
-
-        if date_from:
-            where_conditions.append("ScanDate >= %s")
-            params.append(date_from.replace("-", ""))  # Convertir YYYY-MM-DD a YYYYMMDD
-
-        if date_to:
-            where_conditions.append("ScanDate <= %s")
-            params.append(date_to.replace("-", ""))  # Convertir YYYY-MM-DD a YYYYMMDD
-
-        where_clause = " AND ".join(where_conditions)
-
-        query = f"""
-            SELECT
-            scan_date,
-            scan_time,
-            slot_no,
-            result,
-            previous_barcode,
-            product_date,
-            part_name,
-            quantity,
-            seq,
-            vendor,
-            lot_no,
-            barcode,
-            feeder_base,
-            source_file,
-            created_at
-        FROM historial_cambio_material_smt
-        WHERE {where_clause}
-        ORDER BY ScanDate DESC, ScanTime DESC
-            LIMIT 5000
-        """
-
-        cursor.execute(query, params)
-        resultados = cursor.fetchall()
-
-        print(f" Encontrados {len(resultados)} registros con filtros aplicados")
-
-        # Convertir datos para JSON y mapear nombres para compatibilidad
-        filtered_data = []
-        for resultado in resultados:
-            cleaned_record = {}
-            for key, value in resultado.items():
-                if hasattr(value, "isoformat"):  # Es una fecha/datetime
-                    cleaned_record[key] = value.isoformat()
-                elif value is None:
-                    cleaned_record[key] = None
-                else:
-                    cleaned_record[key] = str(value)
-
-            # Mapear nombres para compatibilidad con frontend
-            cleaned_record["ScanDate"] = cleaned_record.get("ScanDate", "")
-            cleaned_record["ScanTime"] = cleaned_record.get("scan_time", "")
-            cleaned_record["SlotNo"] = cleaned_record.get("slot_no", "")
-            cleaned_record["Result"] = cleaned_record.get("result", "")
-            cleaned_record["PartName"] = cleaned_record.get("part_name", "")
-            cleaned_record["SourceFile"] = cleaned_record.get("source_file", "")
-            cleaned_record["LOTNO"] = cleaned_record.get("lot_no", "")
-            cleaned_record["Barcode"] = cleaned_record.get("barcode", "")
-            cleaned_record["Quantity"] = cleaned_record.get("quantity", "")
-            cleaned_record["Vendor"] = cleaned_record.get("vendor", "")
-            cleaned_record["FeederBase"] = cleaned_record.get("feeder_base", "")
-            cleaned_record["PreviousBarcode"] = cleaned_record.get(
-                "previous_barcode", ""
-            )
-
-            filtered_data.append(cleaned_record)
-
-        # Calcular estadísticas de los datos filtrados
-        stats = {
-            "total_records": len(filtered_data),
-            "ok_count": len(
-                [d for d in filtered_data if str(d.get("Result", "")).upper() == "OK"]
-            ),
-            "ng_count": len(
-                [d for d in filtered_data if str(d.get("Result", "")).upper() == "NG"]
-            ),
-        }
-
-        cursor.close()
-        conn.close()
-
-        print(f" Datos filtrados desde MySQL: {len(filtered_data)} registros")
-
-        return jsonify(
-            {
-                "success": True,
-                "data": filtered_data,
-                "stats": stats,
-                "source": "mysql",
-                "message": f"Datos filtrados desde MySQL para {folder}",
-            }
-        )
-
-    except Exception as e:
-        print(f" Error filtrando datos desde MySQL: {e}")
-        print(f" Traceback: {traceback.format_exc()}")
-        return jsonify(
-            {"success": False, "error": f"Error al filtrar datos MySQL: {str(e)}"}
-        ), 500
+# Fase 1 (2026-05-28): /api/csv_data (get_csv_data) borrada — sin consumidores.
+# Fase 1 (2026-05-28): /api/csv_stats (get_csv_stats) borrada — sin consumidores.
+# Tambien se elimino dead code (codigo huerfano dentro del except, jamas alcanzable).
+# Fase 1 (2026-05-28): /api/filter_data (filter_csv_data) borrada — sin consumidores
+# en app/static ni app/templates. Pertenecia al ecosistema CSV viewer ya retirado.
 
 
 def crear_patron_caracteres(
@@ -2984,77 +2396,9 @@ def crear_patron_caracteres(
     return "".join(patron)
 
 
-def cargar_configuracion_usuario(usuario):
-    """Cargar configuración específica del usuario"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+# Fase 1 (2026-05-28): cargar_configuracion_usuario / guardar_configuracion_usuario
+# borradas con guardar_cliente_seleccionado y cargar_cliente_seleccionado (eran sus unicos consumidores).
 
-        cursor.execute(
-            """
-            SELECT configuracion FROM usuarios_sistema
-            WHERE username = %s
-        """,
-            (usuario,),
-        )
-
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
-
-        if result and result[0]:  # Usar índice en lugar de clave de diccionario
-            import json
-
-            return json.loads(result[0])
-        else:
-            return {}
-
-    except Exception as e:
-        print(f"Error cargando configuración del usuario {usuario}: {e}")
-        return {}
-
-
-def guardar_configuracion_usuario(usuario, config, valor=None):
-    """Guardar configuración específica del usuario.
-
-    Acepta:
-    - guardar_configuracion_usuario(usuario, config_dict)
-    - guardar_configuracion_usuario(usuario, clave, valor)
-    """
-    try:
-        import json
-
-        if valor is not None:
-            config_actual = cargar_configuracion_usuario(usuario) or {}
-            config_actual[str(config)] = valor
-            config = config_actual
-        elif not isinstance(config, dict):
-            raise ValueError("config debe ser un diccionario o una clave con valor")
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        config_json = json.dumps(config)
-
-        cursor.execute(
-            """
-            UPDATE usuarios_sistema
-            SET configuracion = %s
-            WHERE username = %s
-        """,
-            (config_json, usuario),
-        )
-
-        success = cursor.rowcount > 0
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return success
-
-    except Exception as e:
-        print(f"Error guardando configuración del usuario {usuario}: {e}")
-        return False
 
 @app.route("/importar_excel_plan_produccion", methods=["POST"])
 @login_requerido
@@ -4250,104 +3594,10 @@ def generar_lot_no_secuencial(q, like, prefix, fecha):
 # Limpieza 2026-05-27: api_plan_run_status eliminado (modulo Control de operacion de linea Main borrado)
 
 
-def crear_tabla_trazabilidad():
-    """Crear tabla de trazabilidad (LOTE por WO/LINEA con estados)."""
-    try:
-        query = """
-        CREATE TABLE IF NOT EXISTS trazabilidad (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            linea VARCHAR(32) NOT NULL,
-            lot_no VARCHAR(32) NOT NULL,
-            plan_id INT NULL,
-            codigo_wo VARCHAR(32) NULL,
-            estado ENUM('PLANEADO','INICIADO','PAUSA','FINALIZADO') DEFAULT 'PLANEADO',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            usuario VARCHAR(64) DEFAULT 'sistema',
-            INDEX idx_linea (linea),
-            INDEX idx_lot (lot_no),
-            INDEX idx_estado (estado)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        """
-        execute_query(query)
-        print(" Tabla trazabilidad creada/verificada")
-    except Exception as e:
-        print(f" Error creando tabla trazabilidad: {e}")
+# Migracion 2026-05-28: crear_tabla_trazabilidad e init_metal_mask_tables
+# movidos a app/api/control_produccion/{trazabilidad,metal_mask}.py.
+# startup_init.py los importa directo desde sus blueprints (no via _routes).
 
-
-# crear_tabla_trazabilidad movido a app/startup_init.py
-
-
-###############################################
-# Metal Mask: poginas y API (integracion)
-###############################################
-
-
-def init_metal_mask_tables():
-    """Crea/ajusta tablas usadas por Metal Mask si no existen."""
-    try:
-        # Tabla principal de masks con nombres de columnas en inglos (usadas por el frontend)
-        execute_query(
-            """
-            CREATE TABLE IF NOT EXISTS masks (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                management_no VARCHAR(64) UNIQUE,
-                storage_box VARCHAR(64),
-                pcb_code VARCHAR(64),
-                side VARCHAR(16),
-                production_date DATE,
-                used_count INT DEFAULT 0,
-                max_count INT DEFAULT 0,
-                allowance INT DEFAULT 0,
-                model_name VARCHAR(255),
-                tension_min DECIMAL(6,2),
-                tension_max DECIMAL(6,2),
-                thickness DECIMAL(6,2),
-                supplier VARCHAR(128),
-                registration_date VARCHAR(64),
-                disuse ENUM('Uso','Desuso','Scrap') DEFAULT 'Uso',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """
-        )
-
-        # Asegurar valores del ENUM en caso de historiales previos (migracion suave)
-        try:
-            execute_query(
-                "ALTER TABLE masks MODIFY COLUMN disuse ENUM('Use','Disuse','Uso','Desuso','Scrap') DEFAULT 'Uso'"
-            )
-            execute_query("UPDATE masks SET disuse='Uso' WHERE disuse='Use'")
-            execute_query("UPDATE masks SET disuse='Desuso' WHERE disuse='Disuse'")
-            execute_query(
-                "ALTER TABLE masks MODIFY COLUMN disuse ENUM('Uso','Desuso','Scrap') DEFAULT 'Uso'"
-            )
-        except Exception as _:
-            # Si falla (p.ej. por no existir la tabla/columna aon), continuar
-            pass
-
-        # Tabla de cajas de almacenamiento
-        execute_query(
-            """
-            CREATE TABLE IF NOT EXISTS storage_boxes (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                management_no VARCHAR(64) UNIQUE,
-                code VARCHAR(64),
-                name VARCHAR(64),
-                location VARCHAR(64),
-                storage_status ENUM('Disponible','Ocupado','Mantenimiento') DEFAULT 'Disponible',
-                used_status ENUM('Usado','No Usado') DEFAULT 'Usado',
-                note TEXT,
-                registration_date VARCHAR(64),
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """
-        )
-        print(" Tablas Metal Mask creadas/verificadas")
-    except Exception as e:
-        print(f"Error creando/verificando tablas Metal Mask: {e}")
-
-
-# init_metal_mask_tables movido a app/startup_init.py
 
 
 # Migracion 2026-05-26: rutas alternas /control/metal-mask y
