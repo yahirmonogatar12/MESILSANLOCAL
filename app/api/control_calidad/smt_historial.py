@@ -29,7 +29,9 @@ import logging
 import os
 
 import mysql.connector
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
+
+from app.api.shared import login_requerido
 
 
 logger = logging.getLogger(__name__)
@@ -323,3 +325,35 @@ def get_smt_historial_data():
             cursor.close()
         if 'conn' in locals():
             conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Fase 3.3 (2026-05-28): rutas legacy /historial-cambio-material-smt[-ajax]
+# migradas desde routes.py. Renderizan el mismo template que /smt/historial
+# (definido arriba); las URLs distintas se preservan porque la sidebar
+# LISTA_CONTROL_DE_CALIDAD las usa.
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/historial-cambio-material-smt")
+@login_requerido
+def historial_cambio_material_smt():
+    """Página del historial de cambio de material de SMT"""
+    try:
+        return render_template("Control de calidad/historial_cambio_material_smt.html")
+    except Exception as e:
+        print(f"Error al cargar historial de cambio de material SMT: {e}")
+        return f"Error al cargar la página: {str(e)}", 500
+
+
+@bp.route("/historial-cambio-material-smt-ajax")
+def historial_cambio_material_smt_ajax():
+    if "usuario" not in session:
+        return redirect(url_for("login"))
+    try:
+        return render_template(
+            "Control de calidad/historial_cambio_material_smt_ajax.html"
+        )
+    except Exception as e:
+        print(f"Error en historial_cambio_material_smt_ajax: {e}")
+        return f"Error interno del servidor: {e}", 500

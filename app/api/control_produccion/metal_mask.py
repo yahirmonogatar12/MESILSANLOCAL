@@ -234,6 +234,41 @@ def api_metal_mask_test():
 
 
 # ---------------------------------------------------------------------------
+# Fase 3.2 (2026-05-28): render template del modulo migrado desde routes.py.
+# Vivia en routes.py como ruta independiente; pertenece naturalmente al
+# modulo Metal Mask (consume el mismo template hermano).
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/historial-tension-mask-metal-ajax")
+@login_requerido
+def historial_tension_mask_metal_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Historial de tension de mask de metal"""
+    try:
+        return render_template(
+            "Control de produccion/historial_tension_mask_metal_ajax.html"
+        )
+    except Exception as e:
+        print(
+            f"Error al cargar template Historial de tension de mask de metal AJAX: {e}"
+        )
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+# ---------------------------------------------------------------------------
+# Fase 3.3 (2026-05-28): render hermano "Historial de uso de mask de metal"
+# (vive bajo el sidebar Control de calidad pero pertenece a este modulo).
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/historial-uso-mask-metal-ajax")
+@login_requerido
+def historial_uso_mask_metal_ajax():
+    """Template para Historial de uso de mask de metal"""
+    return render_template("Control de calidad/historial_uso_mask_metal_ajax.html")
+
+
+# ---------------------------------------------------------------------------
 # Bootstrap DDL (invocado desde app/startup_init.py al arranque)
 # ---------------------------------------------------------------------------
 

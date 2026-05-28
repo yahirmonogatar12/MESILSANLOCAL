@@ -57,3 +57,16 @@ def control_squeegee_ajax():
     except Exception as e:
         print(f"Error al cargar template Control de squeegee AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
+
+
+# ---------------------------------------------------------------------------
+# Fase 3.3 (2026-05-28): render hermano "Historial de uso de squeegee" (vive
+# bajo el sidebar Control de calidad pero pertenece a este modulo).
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/historial-uso-squeegee-ajax")
+@login_requerido
+def historial_uso_squeegee_ajax():
+    """Template para Historial de uso de squeegee"""
+    return render_template("Control de calidad/historial_uso_squeegee_ajax.html")

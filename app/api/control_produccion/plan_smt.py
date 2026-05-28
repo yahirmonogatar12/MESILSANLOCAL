@@ -22,7 +22,7 @@ from datetime import date, datetime
 from functools import wraps
 
 import pandas as pd
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, render_template, request, send_file
 
 from app.db_mysql import execute_query
 from app.api.shared.plan_lot_no import _fp_safe_date
@@ -792,4 +792,18 @@ def api_plan_smt_import_excel():
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Fase 3.2 (2026-05-28): render template del modulo migrado desde routes.py.
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/plan-main-smt-ajax")
+@login_requerido
+def plan_main_smt_ajax():
+    try:
+        return render_template("Control de proceso/Control_produccion_smt_plan.html")
+    except Exception as e:
+        return f"Error al cargar el contenido: {str(e)}", 500
 

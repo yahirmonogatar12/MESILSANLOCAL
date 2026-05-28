@@ -78,6 +78,8 @@ _MODULOS_REGISTRADOS = [
     "control_calidad.smt_historial",
     # Migracion 2026-05-28: Historial de liberacion LQC
     "control_calidad.historial_liberacion_lqc",
+    # Fase 3.3 (2026-05-28): 6 renders cortos de Control de calidad
+    "control_calidad.renders",
     "control_resultados.aoi",
     # Migracion 2026-05-27: IMD-SMD TERMINADO a blueprint
     "control_resultados.inventario_imd",
@@ -95,6 +97,8 @@ _MODULOS_REGISTRADOS = [
     "control_produccion.plan_smt",
     "control_produccion.plan_smd",
     "control_produccion.views",
+    # Fase 3.2 (2026-05-28): 4 renders cortos de Control de produccion
+    "control_produccion.renders",
     # Migracion 2026-05-26: 3 modulos Control de SMT
     "control_produccion.metal_mask",
     "control_produccion.squeegee",
@@ -104,6 +108,9 @@ _MODULOS_REGISTRADOS = [
     "control_produccion.plan_imd",
     # Migracion 2026-05-27: Almacen de Embarques (6 modulos sidebar Control de proceso)
     "control_proceso.almacen_embarques",
+    # Fase 3.1 (2026-05-28): renders cortos + Control de salida de lineas
+    "control_proceso.renders",
+    "control_proceso.control_salida_lineas",
     "shared.raw_modelos",
     "portal.tickets",
     "pda.shipping",

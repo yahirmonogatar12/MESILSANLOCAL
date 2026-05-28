@@ -81,3 +81,6 @@ app/static/uploads/
 .graphify_uncached.txt
 app/api/graphify-out/
 app/graphify-out/
+-1/
+.codegraph/
+.cursor/

@@ -1,7 +1,7 @@
 # Plan: Adelgazar `app/routes.py`
 
 **Fecha del plan**: 2026-05-28
-**Estado actual**: `routes.py` tiene **3758 líneas** tras Fase 2 (baseline original: 4455 líneas, 105 defs top-level).
+**Estado actual**: `routes.py` tiene **3146 líneas** tras Fase 3 (baseline original: 4455 líneas, 105 defs top-level).
 **Meta**: reducir a **~2100 líneas** (-53%) moviendo o borrando lo que ya no debería vivir aquí.
 
 ## Progreso
@@ -11,7 +11,7 @@
 | Fase 0 (snapshot) | — | 4455 | — | 388 | — |
 | **Fase 1 (9 huérfanas)** | ✅ **2026-05-28** | **3804** | **-651** | **379** | ✅ `create_app()` OK |
 | **Fase 2 (re-exports zombies)** | ✅ **2026-05-28** | **3758** | **-46** | **379** | ✅ `create_app()` + imports lazy OK |
-| Fase 3 (renders) | pendiente | — | — | — | — |
+| **Fase 3 (renders + salida lineas)** | ✅ **2026-05-28** | **3146** | **-612** | **379** | ✅ 36 URLs migradas presentes |
 | Fase 4 (rutas gordas) | pendiente | — | — | — | — |
 | Fase 5 (helpers huérfanos) | pendiente | — | — | — | — |
 
@@ -159,11 +159,14 @@ consumidor externo (`material_admin.py:27` lo importa vía `app.api.shared`).
 
 ---
 
-### Fase 3 — Mover renders cortos (`return render_template`) a blueprints existentes
+### Fase 3 — Mover renders cortos (`return render_template`) a blueprints existentes ✅ COMPLETADA (2026-05-28)
 
-**Ganancia**: ~500 líneas de `routes.py` (las funciones tienen 3-8 l cada
-una). **Riesgo**: bajo si se hace 1:1 con el mismo URL (no requiere
-aliases). **Tiempo**: 2-3 horas.
+**Ganancia real**: -612 líneas (3758 → 3146). **Total rutas**: 379 (sin cambio).
+**URLs migradas**: 36 (16 control_proceso renders + 3 endpoints salida lineas + 6 control_produccion + 11 control_calidad).
+**Archivos nuevos**: `control_proceso/renders.py`, `control_proceso/control_salida_lineas.py`, `control_produccion/renders.py`, `control_calidad/renders.py`.
+**Archivos extendidos**: `control_produccion/plan_smt.py`, `control_produccion/metal_mask.py`, `control_produccion/squeegee.py`, `control_calidad/smt_historial.py`.
+**Bonus**: la migracion completa de "Control de salida de lineas" elimino el import directo de `_normalizar_*` y `_exportar_*` que quedaba en routes.py desde Fase 2 (cierra deuda).
+**3.4 (LISTAS) NO ejecutada**: las 9 rutas `/listas/*` se quedan en routes.py por ser transversales (sirven templates del sidebar para todas las secciones).
 
 Cada render se mueve al blueprint hermano de su sección. Como las URLs no
 cambian, **no se requieren aliases 301** y no hay cambios en `scriptMain.js`
@@ -353,9 +356,9 @@ Son el core que justifica que `routes.py` siga existiendo:
 | Estado original (Fase 0) | 4455 | — |
 | **Fase 1 (borrar 9 huérfanas) ✅** | **3804** | **-651** |
 | **Fase 2 (borrar 25 re-exports zombies) ✅** | **3758** | **-697** |
-| Fase 3 (mover 39 renders + 3 endpoints salida líneas) | ~3258 | -1197 |
-| Fase 4 (mover 11 rutas gordas) | ~2658 | -1797 |
-| Fase 5 (borrar 4 helpers huérfanos) | ~2608 | -1847 |
+| **Fase 3 (mover 36 renders + 3 endpoints salida líneas) ✅** | **3146** | **-1309** |
+| Fase 4 (mover 11 rutas gordas) | ~2546 | -1909 |
+| Fase 5 (borrar 4 helpers huérfanos) | ~2496 | -1959 |
 
 **Meta final**: `routes.py` con ~2100 líneas, ~30 endpoints (sólo
 auth + transversales + landing), 0 funciones DDL, 0 re-exports zombies.

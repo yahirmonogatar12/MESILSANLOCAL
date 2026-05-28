@@ -23,7 +23,7 @@ except ImportError:
     pymysql.install_as_MySQLdb()
     import MySQLdb
 
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from datetime import time as dt_time
 from decimal import Decimal
 from functools import wraps
@@ -135,13 +135,9 @@ from .services.ict_lgd_parser import (
 #   - ICT helpers (4)        : ya consumidos directo desde app.api.shared.ict_helpers
 #   - Vision helpers (15)    : idem desde app.api.shared.vision_helpers
 #   - Excel helpers (4)      : idem desde app.api.shared.excel_helpers
-# Solo se conservan los dos de almacen_embarques porque "Control de salida de
-# lineas" sigue viviendo en routes.py y los consume. Cuando ese modulo se
-# migre (Fase 3), este import desaparece tambien.
-from .api.control_proceso.almacen_embarques import (
-    _exportar_historial_embarques_excel,
-    _normalizar_texto_embarques_historial,
-)
+#   - Almacen embarques (2)  : Fase 3.1 termino la migracion ("Control de salida
+#                              de lineas" ya vive en su blueprint, los importa
+#                              directo). routes.py ya no consume nada de aqui.
 # tickets_portal migrado a app/api/portal/tickets.py
 # Se registra via registrar_blueprints_api() en app_factory.py
 # user_admin migrado a app/api/admin/usuarios.py
@@ -1120,13 +1116,8 @@ def front_plan_static(filename):
 # Migracion 2026-05-26: plan_main_imd_ajax movido a app/api/control_produccion/plan_imd.py
 
 
-@app.route("/plan-main-smt-ajax")
-@login_requerido
-def plan_main_smt_ajax():
-    try:
-        return render_template("Control de proceso/Control_produccion_smt_plan.html")
-    except Exception as e:
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Fase 3.2 (2026-05-28): /plan-main-smt-ajax movido a
+# app/api/control_produccion/plan_smt.py (modulo dueno del template).
 
 
 # Limpieza 2026-05-27: ctrl_operacion_linea_main_ajax eliminado (modulo Control de operacion de linea Main borrado)
@@ -1487,572 +1478,38 @@ def api_inventario_modelo(codigo_modelo):
 # Limpieza 2026-05-27: control_registro_identificacion_smt_ajax eliminado (modulo descartado)
 
 
-@app.route("/historial-operacion-proceso-ajax")
-@login_requerido
-def historial_operacion_proceso_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Historial de operación de proceso"""
-    try:
-        return render_template(
-            "Control de proceso/historial_operacion_proceso_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Historial de operación de proceso AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Fase 3.1 (2026-05-28): 10 renders cortos de Control de proceso movidos a
+# app/api/control_proceso/renders.py (sin cambios de URL).
 
 
-@app.route("/bom-management-process-ajax")
-@login_requerido
-def bom_management_process_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de BOM Management Process"""
-    try:
-        return render_template("Control de proceso/bom_management_process_ajax.html")
-    except Exception as e:
-        print(f"Error al cargar template BOM Management Process AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
 
+# Fase 3.1 (2026-05-28): "Control de salida de lineas" completo (3 helpers
+# + 3 endpoints) movido a app/api/control_proceso/control_salida_lineas.py.
+# Continua aqui solo el bloque _obtener_control_salida_lineas que se va junto.
 
-@app.route("/reporte-diario-inspeccion-smt-ajax")
-@login_requerido
-def reporte_diario_inspeccion_smt_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Reporte diario de inspección SMT"""
-    try:
-        return render_template(
-            "Control de proceso/reporte_diario_inspeccion_smt_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Reporte diario de inspección SMT AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/control-diario-inspeccion-smt-ajax")
-@login_requerido
-def control_diario_inspeccion_smt_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control diario de inspección SMT"""
-    try:
-        return render_template(
-            "Control de proceso/control_diario_inspeccion_smt_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Control diario de inspección SMT AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/reporte-diario-inspeccion-proceso-ajax")
-@login_requerido
-def reporte_diario_inspeccion_proceso_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Reporte diario de inspección de proceso"""
-    try:
-        return render_template(
-            "Control de proceso/reporte_diario_inspeccion_proceso_ajax.html"
-        )
-    except Exception as e:
-        print(
-            f"Error al cargar template Reporte diario de inspección de proceso AJAX: {e}"
-        )
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Fase 3.1 (2026-05-28): 5 renders restantes de Control de proceso movidos a
+# app/api/control_proceso/renders.py (sin cambios de URL):
+# /registro-movimiento-identificacion-ajax, /control-otras-identificaciones-ajax,
+# /control-movimiento-ns-producto-ajax, /model-sn-management-ajax, /control-scrap-ajax.
 
 
-@app.route("/control-unidad-empaque-modelo-ajax")
-@login_requerido
-def control_unidad_empaque_modelo_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de unidad de empaque modelo"""
-    try:
-        return render_template(
-            "Control de proceso/control_unidad_empaque_modelo_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Control de unidad de empaque modelo AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Fase 3.2 (2026-05-28): Renders de Control de produccion movidos a sus
+# blueprints (sin cambios de URL):
+#   /line-material-status-ajax       -> control_produccion/renders.py
+#   /estandares-soldadura-ajax       -> control_produccion/renders.py
+#   /registro-recibo-soldadura-ajax  -> control_produccion/renders.py
+#   /control-salida-soldadura-ajax   -> control_produccion/renders.py
+#   /historial-tension-mask-metal-ajax -> control_produccion/metal_mask.py
+# (Las 3 rutas template de Control de SMT — Metal Mask, Squeegee, Caja Metal Mask
+# — ya estaban en sus blueprints desde 2026-05-26.)
 
 
-@app.route("/packaging-register-management-ajax")
-@login_requerido
-def packaging_register_management_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Packaging Register Management"""
-    try:
-        return render_template(
-            "Control de proceso/packaging_register_management_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Packaging Register Management AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/search-packaging-history-ajax")
-@login_requerido
-def search_packaging_history_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Search Packaging History"""
-    try:
-        return render_template("Control de proceso/search_packaging_history_ajax.html")
-    except Exception as e:
-        print(f"Error al cargar template Search Packaging History AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/shipping-register-management-ajax")
-@login_requerido
-def shipping_register_management_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Shipping Register Management"""
-    try:
-        return render_template(
-            "Control de proceso/shipping_register_management_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Shipping Register Management AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/search-shipping-history-ajax")
-@login_requerido
-def search_shipping_history_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Search Shipping History"""
-    try:
-        return render_template("Control de proceso/search_shipping_history_ajax.html")
-    except Exception as e:
-        print(f"Error al cargar template Search Shipping History AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-
-def _parse_fecha_control_salida_lineas(value, fallback):
-    """Parsear fechas de filtros del modulo Control de salida de lineas."""
-    try:
-        return datetime.strptime(str(value or "").strip(), "%Y-%m-%d").date()
-    except Exception:
-        return fallback
-
-
-def _calcular_estado_control_salida_lineas(produccion, oqc, almacen):
-    if produccion == 0 and oqc == 0 and almacen > 0:
-        return "Solo almacen"
-    if oqc > produccion or almacen > oqc:
-        return "Revisar"
-    if produccion > 0 and oqc >= produccion and almacen >= oqc:
-        return "Completo"
-    if oqc < produccion:
-        return "Pendiente OQC"
-    if almacen < oqc:
-        return "Pendiente almacen"
-    return "Sin datos"
-
-
-def _obtener_control_salida_lineas(limit=500):
-    """Consultar produccion, liberacion OQC y entradas, acumuladas por parte en el rango."""
-    today = date.today()
-    default_from = today - timedelta(days=7)
-    fecha_desde = _parse_fecha_control_salida_lineas(
-        request.args.get("fecha_desde"),
-        default_from,
-    )
-    fecha_hasta = _parse_fecha_control_salida_lineas(
-        request.args.get("fecha_hasta"),
-        today,
-    )
-    if fecha_hasta < fecha_desde:
-        fecha_desde, fecha_hasta = fecha_hasta, fecha_desde
-
-    fecha_inicio_sql = fecha_desde.strftime("%Y-%m-%d")
-    fecha_fin_sql = (fecha_hasta + timedelta(days=1)).strftime("%Y-%m-%d")
-    part_number = (request.args.get("part_number", "") or "").strip()
-    part_like = f"%{part_number}%"
-    output_collation = "utf8mb4_0900_ai_ci"
-
-    production_part_expr = (
-        "COALESCE(NULLIF(p.part_no, ''), "
-        "NULLIF(LEFT(b.serial, GREATEST(CHAR_LENGTH(b.serial) - 12, 1)), ''), "
-        "'SIN PARTE')"
-    )
-    production_model_expr = "COALESCE(NULLIF(p.model_code, ''), '')"
-    oqc_part_expr = "COALESCE(NULLIF(pn.part_number, ''), CONCAT('ID-', er.part_number_id))"
-    oqc_model_expr = "COALESCE(NULLIF(pn.model, ''), '')"
-    entry_part_expr = "COALESCE(NULLIF(e.part_number, ''), 'SIN PARTE')"
-    entry_model_expr = "COALESCE(NULLIF(e.product_model, ''), '')"
-    production_part_select = f"({production_part_expr}) COLLATE {output_collation}"
-    production_model_select = f"({production_model_expr}) COLLATE {output_collation}"
-    oqc_part_select = f"({oqc_part_expr}) COLLATE {output_collation}"
-    oqc_model_select = f"({oqc_model_expr}) COLLATE {output_collation}"
-    entry_part_select = f"({entry_part_expr}) COLLATE {output_collation}"
-    entry_model_select = f"({entry_model_expr}) COLLATE {output_collation}"
-    empty_text_select = f"'' COLLATE {output_collation}"
-
-    production_where = ["b.last_scan >= %s", "b.last_scan < %s"]
-    production_params = [fecha_inicio_sql, fecha_fin_sql]
-    oqc_where = [
-        "COALESCE(er.exit_date, er.created_at, CAST(er.inspection_date AS DATETIME)) >= %s",
-        "COALESCE(er.exit_date, er.created_at, CAST(er.inspection_date AS DATETIME)) < %s",
-        "COALESCE(er.status, '') <> 'cancelled'",
-        "COALESCE(er.qc_passed, 1) = 1",
-    ]
-    oqc_params = [fecha_inicio_sql, fecha_fin_sql]
-    entry_where = [
-        "COALESCE(e.movement_at, e.created_at) >= %s",
-        "COALESCE(e.movement_at, e.created_at) < %s",
-        "COALESCE(e.is_fifo_layer_only, 0) = 0",
-    ]
-    entry_params = [fecha_inicio_sql, fecha_fin_sql]
-
-    if part_number:
-        production_where.append(f"{production_part_select} LIKE %s")
-        production_params.append(part_like)
-        oqc_where.append(f"COALESCE(pn.part_number, '') COLLATE {output_collation} LIKE %s")
-        oqc_params.append(part_like)
-        entry_where.append(f"e.part_number COLLATE {output_collation} LIKE %s")
-        entry_params.append(part_like)
-
-    sql = f"""
-        SELECT
-            MIN(fuente.fecha) AS fecha_inicio,
-            MAX(fuente.fecha) AS fecha_fin,
-            fuente.part_number,
-            MAX(NULLIF(fuente.product_model, '')) AS product_model,
-            SUM(fuente.produced_quantity) AS produced_quantity,
-            SUM(fuente.production_boxes) AS production_boxes,
-            SUM(fuente.oqc_quantity) AS oqc_quantity,
-            SUM(fuente.oqc_records) AS oqc_records,
-            SUM(fuente.warehouse_quantity) AS warehouse_quantity,
-            SUM(fuente.warehouse_records) AS warehouse_records,
-            GROUP_CONCAT(DISTINCT NULLIF(fuente.lineas, '') ORDER BY fuente.lineas SEPARATOR ', ') AS lineas,
-            GROUP_CONCAT(DISTINCT NULLIF(fuente.lotes, '') ORDER BY fuente.lotes SEPARATOR ', ') AS lotes,
-            GROUP_CONCAT(DISTINCT NULLIF(fuente.oqc_statuses, '') ORDER BY fuente.oqc_statuses SEPARATOR ', ') AS oqc_statuses
-        FROM (
-            SELECT
-                DATE(b.last_scan) AS fecha,
-                {production_part_select} AS part_number,
-                MAX({production_model_select}) AS product_model,
-                COUNT(*) AS produced_quantity,
-                COUNT(DISTINCT NULLIF(b.box_code, '')) AS production_boxes,
-                0 AS oqc_quantity,
-                0 AS oqc_records,
-                0 AS warehouse_quantity,
-                0 AS warehouse_records,
-                (GROUP_CONCAT(DISTINCT NULLIF(p.line, '') ORDER BY p.line SEPARATOR ', ')) COLLATE {output_collation} AS lineas,
-                (GROUP_CONCAT(DISTINCT NULLIF(b.lot_no, '') ORDER BY b.lot_no SEPARATOR ', ')) COLLATE {output_collation} AS lotes,
-                {empty_text_select} AS oqc_statuses
-            FROM box_scans b
-            LEFT JOIN plan_main p ON p.lot_no = b.lot_no
-            WHERE {" AND ".join(production_where)}
-            GROUP BY DATE(b.last_scan), {production_part_select}
-
-            UNION ALL
-
-            SELECT
-                DATE(COALESCE(er.exit_date, er.created_at, CAST(er.inspection_date AS DATETIME))) AS fecha,
-                {oqc_part_select} AS part_number,
-                MAX({oqc_model_select}) AS product_model,
-                0 AS produced_quantity,
-                0 AS production_boxes,
-                SUM(er.quantity) AS oqc_quantity,
-                COUNT(*) AS oqc_records,
-                0 AS warehouse_quantity,
-                0 AS warehouse_records,
-                {empty_text_select} AS lineas,
-                {empty_text_select} AS lotes,
-                (GROUP_CONCAT(DISTINCT COALESCE(er.status, 'pending') ORDER BY er.status SEPARATOR ', ')) COLLATE {output_collation} AS oqc_statuses
-            FROM exit_records er
-            LEFT JOIN part_numbers pn ON pn.id = er.part_number_id
-            WHERE {" AND ".join(oqc_where)}
-            GROUP BY DATE(COALESCE(er.exit_date, er.created_at, CAST(er.inspection_date AS DATETIME))), {oqc_part_select}
-
-            UNION ALL
-
-            SELECT
-                DATE(COALESCE(e.movement_at, e.created_at)) AS fecha,
-                {entry_part_select} AS part_number,
-                MAX({entry_model_select}) AS product_model,
-                0 AS produced_quantity,
-                0 AS production_boxes,
-                0 AS oqc_quantity,
-                0 AS oqc_records,
-                SUM(e.quantity) AS warehouse_quantity,
-                COUNT(*) AS warehouse_records,
-                {empty_text_select} AS lineas,
-                {empty_text_select} AS lotes,
-                {empty_text_select} AS oqc_statuses
-            FROM embarques_entrada_material e
-            WHERE {" AND ".join(entry_where)}
-            GROUP BY DATE(COALESCE(e.movement_at, e.created_at)), {entry_part_select}
-        ) fuente
-        WHERE COALESCE(fuente.part_number, '') <> ''
-        GROUP BY fuente.part_number
-        ORDER BY fecha_fin DESC, fuente.part_number
-        LIMIT %s
-    """
-    params = production_params + oqc_params + entry_params + [int(limit)]
-    rows = execute_query(sql, tuple(params), fetch="all") or []
-
-    result_rows = []
-    summary = {
-        "produced_quantity": 0,
-        "production_boxes": 0,
-        "oqc_quantity": 0,
-        "oqc_records": 0,
-        "warehouse_quantity": 0,
-        "warehouse_records": 0,
-        "pending_oqc": 0,
-        "pending_warehouse": 0,
-    }
-    for row in rows:
-        part = _normalizar_texto_embarques_historial(row.get("part_number"))
-        produced = int(row.get("produced_quantity") or 0)
-        production_boxes = int(row.get("production_boxes") or 0)
-        oqc = int(row.get("oqc_quantity") or 0)
-        oqc_records = int(row.get("oqc_records") or 0)
-        warehouse = int(row.get("warehouse_quantity") or 0)
-        warehouse_records = int(row.get("warehouse_records") or 0)
-        pending_oqc = max(produced - oqc, 0)
-        pending_warehouse = max(oqc - warehouse, 0)
-        if pending_oqc > 0:
-            estado = "Pendiente OQC"
-        elif pending_warehouse > 0:
-            estado = "Pendiente almacen"
-        else:
-            estado = _calcular_estado_control_salida_lineas(produced, oqc, warehouse)
-        fecha_inicio = _normalizar_texto_embarques_historial(row.get("fecha_inicio"))
-        fecha_fin = _normalizar_texto_embarques_historial(row.get("fecha_fin"))
-        fecha_periodo = (
-            fecha_inicio
-            if fecha_inicio == fecha_fin or not fecha_fin
-            else f"{fecha_inicio} a {fecha_fin}"
-        )
-
-        summary["produced_quantity"] += produced
-        summary["production_boxes"] += production_boxes
-        summary["oqc_quantity"] += oqc
-        summary["oqc_records"] += oqc_records
-        summary["warehouse_quantity"] += warehouse
-        summary["warehouse_records"] += warehouse_records
-        summary["pending_oqc"] += pending_oqc
-        summary["pending_warehouse"] += pending_warehouse
-
-        result_rows.append(
-            {
-                "fecha": fecha_periodo,
-                "fecha_inicio": fecha_inicio,
-                "fecha_fin": fecha_fin,
-                "part_number": part,
-                "product_model": _normalizar_texto_embarques_historial(row.get("product_model")),
-                "lineas": _normalizar_texto_embarques_historial(row.get("lineas")),
-                "lotes": _normalizar_texto_embarques_historial(row.get("lotes")),
-                "produced_quantity": produced,
-                "production_boxes": production_boxes,
-                "oqc_quantity": oqc,
-                "oqc_records": oqc_records,
-                "warehouse_quantity": warehouse,
-                "warehouse_records": warehouse_records,
-                "pending_oqc": pending_oqc,
-                "pending_warehouse": pending_warehouse,
-                "produced_cutoff": produced,
-                "oqc_cutoff": oqc,
-                "warehouse_cutoff": warehouse,
-                "oqc_statuses": _normalizar_texto_embarques_historial(row.get("oqc_statuses")),
-                "estado": estado,
-            }
-        )
-
-    return {
-        "rows": result_rows,
-        "summary": summary,
-        "filters": {
-            "fecha_desde": fecha_desde.isoformat(),
-            "fecha_hasta": fecha_hasta.isoformat(),
-            "part_number": part_number,
-        },
-    }
-
-
-
-@app.route("/control-salida-lineas-ajax")
-@login_requerido
-def control_salida_lineas_ajax():
-    """Ruta AJAX para consultar salida de lineas contra OQC y almacen de embarques."""
-    try:
-        return render_template("Control de proceso/control_salida_lineas_ajax.html")
-    except Exception as e:
-        print(f"Error al cargar template Control de salida de lineas AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-
-@app.route("/api/control-salida-lineas")
-@login_requerido
-def api_control_salida_lineas():
-    """Obtener produccion, liberacion OQC y entradas de almacen por parte/fecha."""
-    try:
-        payload = _obtener_control_salida_lineas()
-        payload["success"] = True
-        return jsonify(payload)
-    except Exception as e:
-        print(f"Error API Control de salida de lineas: {e}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "error": str(e), "rows": []}), 500
-
-
-@app.route("/api/control-salida-lineas/export")
-@login_requerido
-def export_control_salida_lineas():
-    """Exportar Control de salida de lineas a Excel."""
-    try:
-        payload = _obtener_control_salida_lineas(limit=5000)
-        return _exportar_historial_embarques_excel(
-            "Salida Lineas",
-            "control_salida_lineas.xlsx",
-            {
-                "Periodo": "fecha",
-                "No. Parte": "part_number",
-                "Produccion": "produced_quantity",
-                "Liberacion OQC": "oqc_quantity",
-                "Pendiente OQC": "pending_oqc",
-                "Entradas Almacen": "warehouse_quantity",
-                "Pendientes Almacen": "pending_warehouse",
-            },
-            payload["rows"],
-        )
-    except Exception as e:
-        print(f"Error exportando Control de salida de lineas: {e}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-
-@app.route("/registro-movimiento-identificacion-ajax")
-@login_requerido
-def registro_movimiento_identificacion_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Registro Movimiento Identificación"""
-    try:
-        return render_template(
-            "Control de proceso/registro_movimiento_identificacion_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Registro Movimiento Identificación AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/control-otras-identificaciones-ajax")
-@login_requerido
-def control_otras_identificaciones_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control Otras Identificaciones"""
-    try:
-        return render_template(
-            "Control de proceso/control_otras_identificaciones_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Control Otras Identificaciones AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/control-movimiento-ns-producto-ajax")
-@login_requerido
-def control_movimiento_ns_producto_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control Movimiento NS Producto"""
-    try:
-        return render_template(
-            "Control de proceso/control_movimiento_ns_producto_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Control Movimiento NS Producto AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/model-sn-management-ajax")
-@login_requerido
-def model_sn_management_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Model SN Management"""
-    try:
-        return render_template("Control de proceso/model_sn_management_ajax.html")
-    except Exception as e:
-        print(f"Error al cargar template Model SN Management AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/control-scrap-ajax")
-@login_requerido
-def control_scrap_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control Scrap"""
-    try:
-        return render_template("Control de proceso/control_scrap_ajax.html")
-    except Exception as e:
-        print(f"Error al cargar template Control Scrap AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-# Rutas AJAX para módulos de Control de Producción
-@app.route("/line-material-status-ajax")
-@login_requerido
-def line_material_status_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Line Material Status_es"""
-    try:
-        return render_template(
-            "Control de produccion/line_material_status_es_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Line Material Status_es AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-# Migracion 2026-05-26: 3 rutas template de Control de SMT (Metal Mask,
-# Squeegee, Caja Metal Mask) movidas a sus blueprints en
-# app/api/control_produccion/{metal_mask,squeegee,caja_metal_mask}.py
-
-
-@app.route("/estandares-soldadura-ajax")
-@login_requerido
-def estandares_soldadura_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Estandares sobre control de soldadura"""
-    try:
-        return render_template("Control de produccion/estandares_soldadura_ajax.html")
-    except Exception as e:
-        print(
-            f"Error al cargar template Estandares sobre control de soldadura AJAX: {e}"
-        )
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/registro-recibo-soldadura-ajax")
-@login_requerido
-def registro_recibo_soldadura_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Registro de recibo de soldadura"""
-    try:
-        return render_template(
-            "Control de produccion/registro_recibo_soldadura_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Registro de recibo de soldadura AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/control-salida-soldadura-ajax")
-@login_requerido
-def control_salida_soldadura_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de salida de soldadura"""
-    try:
-        return render_template(
-            "Control de produccion/control_salida_soldadura_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Control de salida de soldadura AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/historial-tension-mask-metal-ajax")
-@login_requerido
-def historial_tension_mask_metal_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Historial de tension de mask de metal"""
-    try:
-        return render_template(
-            "Control de produccion/historial_tension_mask_metal_ajax.html"
-        )
-    except Exception as e:
-        print(
-            f"Error al cargar template Historial de tension de mask de metal AJAX: {e}"
-        )
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-# Migracion 2026-05-27: ruta canonica movida a
-# app/api/control_resultados/inventario_imd.py
-# (/control_resultados/inventario_imd_terminado). Esta ruta legacy queda
-# como redirect 301 para no romper sidebars cacheados.
-@app.route("/control_proceso/inventario_imd_terminado")
-def inventario_imd_terminado_legacy_redirect():
-    return redirect("/control_resultados/inventario_imd_terminado", code=301)
+# Fase 3.1 (2026-05-28): alias 301 /control_proceso/inventario_imd_terminado
+# movido a app/api/control_proceso/renders.py.
 
 
 @app.route("/listas/control_proceso")
@@ -2283,29 +1740,9 @@ def obtener_permisos_usuario_actual():
 # Fase 1 (2026-05-28): CSV VIEWER ROUTES eliminadas — /csv-viewer (csv_viewer)
 # sin consumidores en app/static + app/templates.
 
-# Nueva ruta para historial de cambio de material de SMT
-@app.route("/historial-cambio-material-smt")
-@login_requerido
-def historial_cambio_material_smt():
-    """Página del historial de cambio de material de SMT"""
-    try:
-        return render_template("Control de calidad/historial_cambio_material_smt.html")
-    except Exception as e:
-        print(f"Error al cargar historial de cambio de material SMT: {e}")
-        return f"Error al cargar la página: {str(e)}", 500
-
-
-@app.route("/historial-cambio-material-smt-ajax")
-def historial_cambio_material_smt_ajax():
-    if "usuario" not in session:
-        return redirect(url_for("login"))
-    try:
-        return render_template(
-            "Control de calidad/historial_cambio_material_smt_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error en historial_cambio_material_smt_ajax: {e}")
-        return f"Error interno del servidor: {e}", 500
+# Fase 3.3 (2026-05-28): /historial-cambio-material-smt[-ajax] movidos a
+# app/api/control_calidad/smt_historial.py (blueprint smt_api, ya dueno de
+# /smt/historial que renderiza el mismo template).
 
 
 # Fase 1 (2026-05-28): /api/csv_data (get_csv_data) borrada — sin consumidores.
@@ -2787,18 +2224,8 @@ def api_inventario():
 # ============================================================================
 
 
-@app.route("/control-resultado-reparacion-ajax")
-@login_requerido
-def control_resultado_reparacion_ajax():
-    """Template para Control de resultado de reparación"""
-    return render_template("Control de calidad/control_resultado_reparacion_ajax.html")
-
-
-@app.route("/control-item-reparado-ajax")
-@login_requerido
-def control_item_reparado_ajax():
-    """Template para Control de item reparado"""
-    return render_template("Control de calidad/control_item_reparado_ajax.html")
+# Fase 3.3 (2026-05-28): /control-resultado-reparacion-ajax y
+# /control-item-reparado-ajax movidos a app/api/control_calidad/renders.py.
 
 
 # Eliminado 2026-05-27: "Historial de cambio de material por maquina" dado de baja
@@ -3085,13 +2512,8 @@ def api_masks_info():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/historial-uso-pegamento-soldadura-ajax")
-@login_requerido
-def historial_uso_pegamento_soldadura_ajax():
-    """Template para Historial de uso de pegamento de soldadura"""
-    return render_template(
-        "Control de calidad/historial_uso_pegamento_soldadura_ajax.html"
-    )
+# Fase 3.3 (2026-05-28): /historial-uso-pegamento-soldadura-ajax movido a
+# app/api/control_calidad/renders.py.
 
 
 # ==========================
@@ -3450,48 +2872,14 @@ def api_update_metal_mask_used_count():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/historial-uso-mask-metal-ajax")
-@login_requerido
-def historial_uso_mask_metal_ajax():
-    """Template para Historial de uso de mask de metal"""
-    return render_template("Control de calidad/historial_uso_mask_metal_ajax.html")
-
-
-@app.route("/historial-uso-squeegee-ajax")
-@login_requerido
-def historial_uso_squeegee_ajax():
-    """Template para Historial de uso de squeegee"""
-    return render_template("Control de calidad/historial_uso_squeegee_ajax.html")
-
-
-@app.route("/process-interlock-history-ajax")
-@login_requerido
-def process_interlock_history_ajax():
-    """Template para Process interlock History"""
-    return render_template("Control de calidad/process_interlock_history_ajax.html")
-
-
-@app.route("/control-master-sample-smt-ajax")
-@login_requerido
-def control_master_sample_smt_ajax():
-    """Template para Control de Master Sample de SMT"""
-    return render_template("Control de calidad/control_master_sample_smt_ajax.html")
-
-
-@app.route("/historial-inspeccion-master-sample-smt-ajax")
-@login_requerido
-def historial_inspeccion_master_sample_smt_ajax():
-    """Template para Historial de inspección de Master Sample de SMT"""
-    return render_template(
-        "Control de calidad/historial_inspeccion_master_sample_smt_ajax.html"
-    )
-
-
-@app.route("/control-inspeccion-oqc-ajax")
-@login_requerido
-def control_inspeccion_oqc_ajax():
-    """Template para Control de inspección de OQC"""
-    return render_template("Control de calidad/control_inspeccion_oqc_ajax.html")
+# Fase 3.3 (2026-05-28): 7 renders de Control de calidad movidos a sus blueprints
+# (sin cambios de URL):
+#   /historial-uso-mask-metal-ajax            -> control_produccion/metal_mask.py
+#   /historial-uso-squeegee-ajax              -> control_produccion/squeegee.py
+#   /process-interlock-history-ajax           -> control_calidad/renders.py
+#   /control-master-sample-smt-ajax           -> control_calidad/renders.py
+#   /historial-inspeccion-master-sample-smt-ajax -> control_calidad/renders.py
+#   /control-inspeccion-oqc-ajax              -> control_calidad/renders.py
 
 
 # Migracion 2026-05-28: /historial-liberacion-lqc-ajax, /api/smt-scanner/{lineas,datos}
