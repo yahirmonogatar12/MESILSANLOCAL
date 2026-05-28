@@ -351,7 +351,7 @@ def historial_cambio_material_smt():
 @bp.route("/historial-cambio-material-smt-ajax")
 def historial_cambio_material_smt_ajax():
     if "usuario" not in session:
-        return redirect(url_for("login"))
+        return redirect(url_for("auth_sesion.login"))
     try:
         return render_template(
             "Control de calidad/historial_cambio_material_smt_ajax.html"

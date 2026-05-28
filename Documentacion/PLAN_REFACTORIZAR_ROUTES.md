@@ -1,7 +1,7 @@
-# Plan: Adelgazar `app/routes.py`
+# Plan: Refactorizar `app/routes.py`
 
 **Fecha del plan**: 2026-05-28
-**Estado actual**: `routes.py` tiene **1823 líneas** tras Fase 4 + Fase 5 anticipada (baseline original: 4455 líneas, 105 defs top-level).
+**Estado actual**: `routes.py` tiene **1232 líneas** tras Fase 6 (baseline original: 4455 líneas, 105 defs top-level → ahora 33 defs core).
 **Meta**: reducir a **~2100 líneas** (-53%) moviendo o borrando lo que ya no debería vivir aquí.
 
 ## Progreso
@@ -13,7 +13,8 @@
 | **Fase 2 (re-exports zombies)** | ✅ **2026-05-28** | **3758** | **-46** | **379** | ✅ `create_app()` + imports lazy OK |
 | **Fase 3 (renders + salida lineas)** | ✅ **2026-05-28** | **3146** | **-612** | **379** | ✅ 36 URLs migradas presentes |
 | **Fase 4 (11 rutas gordas + 3 helpers huérfanos)** | ✅ **2026-05-28** | **1823** | **-1323** | **379** | ✅ 10 URLs verificadas |
-| Fase 5 (helpers huérfanos) | ✅ adelantada en Fase 4 | — | — | — | — |
+| **Fase 5 (limpieza imports muertos)** | ✅ **2026-05-28** | **1745** | **-78** | **379** | ✅ AST OK + lazy resolve OK |
+| **Fase 6 (auth blueprint: index/inicio/login/logout/api_mi_perfil)** | ✅ **2026-05-28** | **1232** | **-513** | **379** | ✅ 5 URLs migradas + url_for resuelve |
 
 ## Principio rector
 
@@ -320,16 +321,88 @@ en la UI.
 
 ---
 
-### Fase 5 — Borrar helpers huérfanos
+### Fase 5 — Borrar helpers huérfanos + limpiar imports muertos ✅ COMPLETADA (2026-05-28)
 
-**Ganancia**: ~50 líneas. **Riesgo**: bajísimo. **Tiempo**: 15 min.
+**Resultado en 2 pasos**:
 
-| Línea | Función | Estado |
-|---:|---|---|
-| 4418 | `convertir_linea_smt_reverso` | 0 consumidores en código vivo → borrar |
-| 2947 | `crear_patron_caracteres` | Borrar si no se llevó en Fase 4 |
-| 4220 | `generar_lot_no_secuencial` | Borrar si no se llevó en Fase 4 |
-| 4401 | `convertir_linea_smt` | Borrar si no se llevó en Fase 4 |
+**Paso A (adelantado en Fase 4)** — 4 helpers borrados:
+- `crear_patron_caracteres` — 0 consumidores en código vivo (borrado en Fase 4)
+- `generar_lot_no_secuencial` — 0 consumidores (borrado en Fase 4)
+- `convertir_linea_smt_reverso` — 0 consumidores (borrado en Fase 4)
+- `convertir_linea_smt` — MOVIDO a `smt_historial.py` junto con su único consumidor (`api_historial_smt_latest_v2`)
+
+**Paso B (este turno)** — 72 imports muertos eliminados:
+
+Tras mover ~3000 líneas de lógica a blueprints, el bloque de imports de
+`routes.py` quedó arrastrando símbolos sin consumidores. Análisis AST detectó
+**72 imports muertos** vs **21 imports realmente usados**.
+
+Eliminados:
+- Stdlib innecesarios: `csv`, `hashlib`, `io`, `threading`, `struct`, `zlib`, `socket`, `subprocess`, `tempfile`, `ThreadPoolExecutor`, `Decimal`, `Path`, `dt_time`
+- Flask no usados: `make_response`, `send_file`, `secure_filename`
+- Pandas: `pd` (ya no se importa Excel aquí)
+- `db_mysql`: 7 funciones de inventario/material no usadas
+- `db`: 4 funciones de migration/control no usadas
+- `po_wo_models`: 12 helpers PO/WO (todo el módulo movido a `po_wo.py`)
+- `api.pda.shipping_material`: 12 helpers (movido a su blueprint)
+- `api.pda.shipping`: `init_shipping_tables`
+- `services.ict_lgd_parser`: 5 símbolos
+- `config_mysql`: `get_pooled_connection`
+- `api.shared.bom_revisions`: 5 helpers (consumidos solo desde blueprints)
+- `api.shared.plan_lot_no`: 2 helpers
+
+**Verificación con grep**: confirmado que ningún módulo externo importa estos
+símbolos vía `from app.routes import X`. Todos los blueprints ya consumen los
+originales directo de sus módulos fuente o vía `app.api.shared`.
+
+**Bloque de imports final**: después de las limpiezas posteriores, `routes.py`
+ya no define utilidades de fecha/hora ni allowlists de APIs públicas; importa
+esas piezas desde `app.api.shared.*`.
+
+**Resultado final**: 1823 → 1745 (-78 líneas adicionales).
+
+---
+
+### Fase 6 — Extraer auth/sesión a su propio blueprint ✅ COMPLETADA (2026-05-28)
+
+**Decisión**: aunque el plan original listaba `login`/`logout`/`api_mi_perfil`
+como "deben quedarse en routes.py", el usuario observó (correctamente) que son
+lógica de auth pura y conceptualmente encajan en un blueprint. Se aprobó la
+migración.
+
+**Migración aplicada** — nuevo `app/api/auth/sesion.py`:
+
+| Funcion | Tipo | Endpoint efectivo |
+|---|---|---|
+| `index` | render | `auth_sesion.index` (`/`) |
+| `inicio` | render | `auth_sesion.inicio` (`/inicio`) |
+| `login` | POST + render | `auth_sesion.login` (`/login`) |
+| `logout` | render | `auth_sesion.logout` (`/logout`) |
+| `api_mi_perfil` | GET/POST | `auth_sesion.api_mi_perfil` (`/api/mi-perfil`) |
+| `render_landing_page` | helper | privado (solo consumido por index/inicio/login) |
+| `cargar_usuarios` | helper | privado (fallback legacy usuarios.json solo para login) |
+
+**Cambios colaterales**:
+1. `PUBLIC_ROUTE_ENDPOINTS` en routes.py actualizado: `"login"`, `"index"`,
+   `"inicio"` → `"auth_sesion.login"`, etc.
+2. Refactor de **5 referencias `url_for()` en código Python**
+   (routes.py:2, smt_historial.py:1, portal/tickets.py:1, sesion.py:5
+   self-references) y **3 en templates** (landing.html:1, login.html:2).
+3. 2 re-exports zombies adicionales eliminados de routes.py:
+   `from app.api.shared.plan_lot_no import _fp_*` y `from app.api.shared.bom_revisions import _ks_*` (0 consumidores externos).
+4. 2 imports muertos limpiados (`json`, `re`) — solo `login`/`api_mi_perfil`
+   los usaban.
+
+**Aprendizaje técnico**: Flask **siempre** prefija el endpoint con `<bp.name>.`
+sin importar el `endpoint=` que pongas — éste solo controla el nombre dentro
+del blueprint. Por eso fue necesario el rename masivo (12 ubicaciones) en
+lugar de pretender preservar nombres sin namespace.
+
+**Smoke test**: `create_app()` OK, 379 rutas (sin cambio), 5 URLs migradas
+verificadas en `app.url_map`, `url_for("auth_sesion.X")` resuelve a las URLs
+originales (`/inicio`, `/login`, etc.).
+
+**Resultado**: 1745 → 1232 líneas (-513).
 
 ---
 
@@ -341,7 +414,6 @@ Son el core que justifica que `routes.py` siga existiendo:
 
 | Línea | Función | Razón |
 |---:|---|---|
-| 33 | `obtener_fecha_hora_mexico` | Helper de tz consumido por ~15 blueprints |
 | 185 | `_env_flag` | Util de configuración |
 | 192 | `should_run_startup_init` | Configuración de arranque |
 | 211 | `_startup_log` | Logger de arranque |
@@ -352,7 +424,6 @@ Son el core que justifica que `routes.py` siga existiendo:
 | 389 | `cargar_usuarios` | Helper de auth |
 | 402 | `login_requerido` | **Decorador clave** — usado por **todos** los blueprints vía proxy `from app import routes as _r; _r.login_requerido(...)` |
 | 438 | `_request_expects_json` | Util de auth |
-| 449 | `_is_public_api_route` | Util de auth |
 | 480 | `require_login_by_default` | Middleware `before_request` |
 | 506 | `render_landing_page` | Helper de render |
 | 541 | `index`, 546 `login`, 689 `inicio`, 695 `api_mi_perfil`, 1129 `logout` | Endpoints de auth/sesión |
@@ -369,6 +440,14 @@ Son el core que justifica que `routes.py` siga existiendo:
 | 2344 | `obtener_permisos_usuario_actual` | Endpoint AJAX transversal |
 | 227 | `auth_system = AuthSystem()` (línea ~227) | Instancia global usada por decoradores |
 
+**Movido a shared (2026-05-28)**:
+- `obtener_fecha_hora_mexico()` vive en `app/api/shared/datetime_helpers.py`.
+- La allowlist de APIs públicas PDA vive en `app/api/shared/public_routes.py`
+  como `is_public_api_route(path)`.
+
+`routes.py` solo conserva el middleware `require_login_by_default()` que invoca
+esos helpers.
+
 ---
 
 ## Estado proyectado por fase
@@ -380,12 +459,23 @@ Son el core que justifica que `routes.py` siga existiendo:
 | **Fase 2 (borrar 25 re-exports zombies) ✅** | **3758** | **-697** |
 | **Fase 3 (mover 36 renders + 3 endpoints salida líneas) ✅** | **3146** | **-1309** |
 | **Fase 4 (mover 11 rutas gordas + Fase 5 anticipada) ✅** | **1823** | **-2632** |
+| **Fase 5 (limpiar 72 imports muertos) ✅** | **1745** | **-2710** |
+| **Fase 6 (auth blueprint) ✅** | **1232** | **-3223** |
 
-**Meta superada**: `routes.py` está en **1823 líneas** (objetivo era ~2100 / -53%).
-Reducción real: **-2632 líneas (-59.1%)** desde el baseline.
+**Meta destruida**: `routes.py` está en **1232 líneas** (objetivo era ~2100 / -53%).
+Reducción real: **-3223 líneas (-72.3%)** desde el baseline.
 
-**Meta final**: `routes.py` con ~2100 líneas, ~30 endpoints (sólo
-auth + transversales + landing), 0 funciones DDL, 0 re-exports zombies.
+**Verificación final del contenido**: AST analysis confirma que las **40 funciones
+top-level** que quedan en `routes.py` corresponden 1:1 con la lista de
+"debe quedarse" del plan (24 core + 8 LISTAS + 1 serve_list_template + 7 más).
+**0 funciones faltantes, 0 funciones extra** (los 3 closures internos
+`decorated_function`/`decorator`/`decorada` son parte legítima de la
+implementación de `login_requerido` y `requiere_permiso_dropdown`).
+
+**Refactor COMPLETO**: `routes.py` con **1232 líneas**, **33 defs top-level**
+(decoradores, middleware, helpers de auth, landing/dashboard, renders
+transversales y LISTAS), **0 funciones DDL**, **0 re-exports zombies**,
+**0 imports muertos**.
 
 ---
 
@@ -414,10 +504,11 @@ Cualquier cambio en el conteo total que no sea esperado = regresión.
 
 ## Riesgos cruzados y mitigación
 
-1. **`login_requerido` y `obtener_fecha_hora_mexico` son críticos**: viven
-   en `routes.py` como decoradores/helpers. **No tocar**. Los blueprints
-   los importan vía proxy `from app import routes as _r` + `_r.login_requerido(f)`
-   exactamente para evitar el ciclo de import.
+1. **`login_requerido` es crítico**: vive en `routes.py` como decorador core.
+   **No tocar** sin revisar todos los blueprints. Los módulos que lo necesitan
+   lo importan vía proxy `from app import routes as _r` + `_r.login_requerido(f)`
+   exactamente para evitar el ciclo de import. `obtener_fecha_hora_mexico()`
+   ya vive en `app/api/shared/datetime_helpers.py`.
 
 2. **`auth_system` global** (línea ~227): instancia única consumida por
    decoradores en `routes.py`. **No tocar**.

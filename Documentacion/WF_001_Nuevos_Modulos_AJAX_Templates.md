@@ -1,8 +1,8 @@
 # WF_001 — Flujo para Agregar Nuevos Templates y Botones al Sidebar
 
-> **Versión:** 1.0  
-> **Fecha:** 2026-03-23  
-> **Estado:** Documentación inicial / Descubrimiento
+> **Versión:** 1.1
+> **Fecha:** 2026-05-28
+> **Estado:** Actualizado tras refactor de `app/routes.py`
 
 ---
 
@@ -14,6 +14,12 @@ La app utiliza un sistema de **carga dinámica de contenido** donde:
 2. Los **botones de navegación** en la navbar cargan archivos **LISTA_*.html** dentro del sidebar.
 3. Cada **LISTA** contiene un sidebar con elementos `<li>` que cargan templates específicos al área de contenido principal.
 4. Un sistema de **permisos granulares** (`data-permiso-*`) controla qué botones ve cada usuario según su rol.
+
+> **Actualización 2026-05-28:** `app/routes.py` ya no es destino para módulos
+> nuevos. Tras las fases de refactorización, el backend de módulos vive en
+> `app/api/<seccion>/<modulo>.py` y se registra desde `app/api/__init__.py`.
+> `routes.py` queda como núcleo transversal: decoradores/helpers compartidos,
+> health, dashboard/material, rutas LISTAS actuales y pocos renders legacy.
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -57,8 +63,11 @@ Ubicación: `app/templates/LISTAS/`
 
 | Archivo | Responsabilidad |
 |---|---|
-| `app/api/<seccion>/<modulo>.py` | Blueprint con rutas de template/API del módulo nuevo |
-| `app/routes.py` | Rutas legacy que se migran cuando se toque su módulo; no recibe backend nuevo |
+| `app/api/<seccion>/<modulo>.py` | Blueprint dueño de rutas de template/API del módulo nuevo |
+| `app/api/__init__.py` | Orquestador central: `_MODULOS_REGISTRADOS` + `registrar_blueprints_api(app)` |
+| `app/api/shared/__init__.py` | Re-exports lazy de helpers transversales (`login_requerido`, `execute_query`, `auth_system`, `obtener_fecha_hora_mexico`) |
+| `app/api/auth/sesion.py` | Login, logout, inicio, perfil y helper privado de landing |
+| `app/routes.py` | Núcleo transversal y rutas LISTAS actuales; no recibe backend nuevo de módulos |
 | `app/auth_system.py` | Sistema de permisos: roles, botones, verificación |
 | `app/user_admin.py` | CRUD de permisos, sincronización HTML→BD |
 
@@ -199,6 +208,10 @@ def mi_template_ajax():
 
 Registrar el Blueprint en `app/api/__init__.py` como indica [WF_003](./WF_003_Integracion_API_JS_Template.md). Si el módulo requiere API, permisos o consultas propias, ese backend también queda en el paquete Blueprint.
 
+No agregar esta ruta a `app/routes.py`. Si se está migrando un módulo existente,
+mover junto lo coherente: render AJAX, APIs JSON/Excel, validaciones y helpers
+privados del módulo.
+
 ### Paso 4: Crear el archivo HTML del template
 
 Crear `app/templates/MI_MODULO/MI_TEMPLATE.html` con el contenido deseado.
@@ -268,7 +281,11 @@ Crear `app/templates/LISTAS/LISTA_MI_SECCION.html`:
 
 ### Paso 2: Crear la ruta Flask para la lista
 
-En un Blueprint de la sección nueva bajo `app/api/`:
+Las ocho rutas `/listas/*` actuales siguen en `app/routes.py` porque son
+transversales al layout. Para una sección nueva, crear la ruta de lista en un
+Blueprint registrado desde `app/api/__init__.py` (por ejemplo en un módulo
+compartido de listas o en el paquete de la nueva sección), sin meter lógica de
+módulo en `routes.py`:
 
 ```python
 from flask import Blueprint, render_template
@@ -399,11 +416,32 @@ Es un archivo legacy que **NO** tiene `data-permiso-*` y **NO** está cubierto p
 ### Sincronización automática
 `sincronizar_permisos_dropdowns` excluye `menu_sidebar.html` del escaneo. Cualquier nuevo archivo `LISTA_*.html` será incluido automáticamente.
 
+### Estado actual de `routes.py`
+Después de la Fase 6 del plan de refactorización, `routes.py` quedó reducido al
+core transversal. Las rutas de auth/sesión están en `app/api/auth/sesion.py` y
+los `url_for()` nuevos deben apuntar a `auth_sesion.inicio`,
+`auth_sesion.login` o `auth_sesion.logout` cuando se necesite resolver esos
+endpoints desde Python/Jinja.
+
 ---
 
-## 9. Puntos Pendientes de Investigar
+## 9. Changelog
+
+### 2026-05-28 — Alineado con refactorización de routes.py
+- Los módulos nuevos quedan documentados como Blueprints bajo `app/api/`, con
+  registro central en `app/api/__init__.py`.
+- `routes.py` queda descrito como core transversal/listas actuales, no como
+  destino para backend nuevo.
+- Se agrega la ubicación actual de auth/sesión en `app/api/auth/sesion.py` y el
+  uso de endpoints `auth_sesion.*`.
+- Para secciones nuevas, la ruta `/listas/mi_seccion` debe vivir en un
+  Blueprint registrado, no como lógica de módulo dentro de `routes.py`.
+
+---
+
+## 10. Puntos Pendientes de Investigar
 
 - [ ] ¿Cómo se manejan los permisos por defecto para nuevos roles? (`_crear_permisos_botones_default` en `auth_system.py`)
-- [ ] ¿Existe un mecanismo de migración automática al agregar nuevos permisos?
+- [x] ¿Existe un mecanismo de migración automática al agregar nuevos permisos? Sí: `POST /admin/sincronizar_permisos_dropdowns` escanea `LISTA_*.html`.
 - [ ] ¿Cómo funcionan los templates de contenido internos (ej: `INFORMACION BASICA/CONTROL_DE_MATERIAL.html`)? → Patrón de carpetas
 - [ ] Documentar las funciones de cleanup (`cleanupControlAlmacen`, etc.) para cada módulo

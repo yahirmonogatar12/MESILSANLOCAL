@@ -16,6 +16,8 @@ from functools import wraps
 
 from flask import Blueprint, render_template, session
 
+from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
+
 
 def login_requerido(f):
     """Proxy del decorador real definido en `app.routes`."""
@@ -25,12 +27,6 @@ def login_requerido(f):
         return _r.login_requerido(f)(*args, **kwargs)
 
     return decorated_function
-
-
-def obtener_fecha_hora_mexico():
-    """Proxy del helper definido en `app.routes`."""
-    from app import routes as _r
-    return _r.obtener_fecha_hora_mexico()
 
 
 bp = Blueprint("control_produccion_views", __name__)

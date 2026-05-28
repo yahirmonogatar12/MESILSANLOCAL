@@ -16,10 +16,8 @@ from app.db_mysql import execute_query
 
 def _ks_current_bom_revision(part_no):
     """Devuelve la `bom_rev` actual (vigente hoy) para un `part_no` en KS."""
-    # Late import para evitar ciclo shared -> routes -> shared.
-    # NOTA: usamos la version de app.routes que devuelve `datetime`, no la
-    # de app.db_mysql que devuelve `str` (no soportaria .strftime aqui).
-    from app.routes import obtener_fecha_hora_mexico
+    from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
+
     plant_date = obtener_fecha_hora_mexico().strftime("%Y-%m-%d")
     row = execute_query(
         """

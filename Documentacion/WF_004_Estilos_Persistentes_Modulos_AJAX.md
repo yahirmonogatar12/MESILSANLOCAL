@@ -1,7 +1,7 @@
 # WF_004 — Persistencia de Estilos CSS en Módulos AJAX del Portal
 
-> **Versión:** 1.0  
-> **Fecha:** 2026-04-10  
+> **Versión:** 1.1
+> **Fecha:** 2026-05-28
 > **Prerequisitos:** [WF_001](./WF_001_Nuevos_Modulos_AJAX_Templates.md), [WF_002](./WF_002_Crear_Template_Completo.md), [WF_003](./WF_003_Integracion_API_JS_Template.md)  
 > **Caso real:** Módulo **Almacén de Embarques** en `Control de proceso`
 
@@ -10,6 +10,12 @@
 ## Resumen
 
 Este documento describe un problema real detectado al implementar los módulos AJAX de **Entradas almacén embarques**, **Salidas almacén embarques** y **Retorno almacén embarques** dentro del portal corporativo de `MESILSANLOCAL`.
+
+> **Actualización 2026-05-28:** las rutas/backend de módulos ya no deben
+> depender de `app/routes.py`. Almacén de Embarques y otros módulos migrados se
+> registran desde `app/api/__init__.py`, pero la regla de estilos no cambia:
+> los CSS compartidos por fragments AJAX deben cargarse de forma persistente
+> desde el layout o asegurarse desde el JS del módulo.
 
 El síntoma fue que los estilos personalizados inspirados en `ict-Pass-Fail.css`:
 
@@ -143,6 +149,7 @@ function initializeModule(config) {
 | `app/templates/MainTemplate.html` | Layout persistente; carga global del stylesheet |
 | `app/static/js/almacen_embarques_history.js` | Garantiza la presencia y versión del CSS en `head` |
 | `app/static/css/almacen_embarques_history.css` | Hoja compartida de Entradas/Salidas/Retorno |
+| `app/api/control_proceso/almacen_embarques.py` | Blueprint dueño de rutas/API de Almacén de Embarques |
 | `app/templates/Control de proceso/almacen_embarques_entradas_ajax.html` | Template AJAX del historial de entradas |
 | `app/templates/Control de proceso/almacen_embarques_salidas_ajax.html` | Template AJAX del historial de salidas |
 | `app/templates/Control de proceso/almacen_embarques_retorno_ajax.html` | Template AJAX del historial de retorno |
@@ -158,6 +165,9 @@ Cuando se cree un nuevo módulo con CSS propio dentro del portal:
 3. Agregar **cache-busting** (`?v=...`) cada vez que cambie el CSS.
 4. Si el módulo es crítico o compartido, agregar una función JS tipo `ensureModuleStyles()` que inserte el `<link>` en `head`.
 5. Evitar mezclar múltiples versiones del mismo stylesheet bajo URLs distintas.
+6. Registrar rutas y APIs del módulo en su Blueprint (`app/api/<seccion>/...`);
+   la persistencia de estilos se resuelve en `MainTemplate.html`/JS, no moviendo
+   assets o rutas a `app/routes.py`.
 
 ---
 
@@ -204,3 +214,15 @@ Después de modificar CSS, templates o carga de assets en el portal:
 3. y, si es necesario, reiniciar el servicio de `MESILSANLOCAL`.
 
 Sin esos pasos, puede parecer que el cambio “no se aplicó”, aunque el código ya esté correcto.
+
+---
+
+## Changelog
+
+### 2026-05-28 — Alineado con blueprints post-refactor
+- Se documenta que la ubicación del backend en `app/api/` no cambia la regla de
+  carga persistente de CSS para fragments AJAX.
+- Se agrega `app/api/control_proceso/almacen_embarques.py` como archivo dueño de
+  rutas/API del caso real.
+- Se explicita que `app/routes.py` no debe usarse para resolver persistencia de
+  estilos ni para registrar backend nuevo de módulos.

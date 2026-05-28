@@ -65,6 +65,11 @@ en routes.py.
 # Formato: "seccion.modulo" -> se importa como `app.api.<seccion>.<modulo>`
 # y se espera que exponga un atributo `bp` (Flask Blueprint).
 _MODULOS_REGISTRADOS = [
+    # Fase 6 (2026-05-28): index/inicio/login/logout/api_mi_perfil
+    # + helpers cargar_usuarios/render_landing_page extraidos de routes.py.
+    # Los endpoints preservan los nombres legacy SIN prefijo (endpoint="login",
+    # endpoint="inicio", etc.) para no romper url_for() en templates y JS.
+    "auth.sesion",
     "admin.permisos",
     "admin.usuarios",
     "informacion_basica.control_bom",

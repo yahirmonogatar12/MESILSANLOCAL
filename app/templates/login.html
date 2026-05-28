@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url={{ url_for('inicio') }}">
+    <meta http-equiv="refresh" content="0; url={{ url_for('auth_sesion.inicio') }}">
     <title>Redirigiendo…</title>
     <style>
         body {
@@ -36,7 +36,7 @@
     <div class="message">
         <h1>Portal actualizado</h1>
         <p>El formulario de acceso ahora vive dentro de la página principal. En unos segundos serás redirigido automáticamente.</p>
-        <p>Si la redirección no sucede, haz clic <a href="{{ url_for('inicio') }}">aquí</a>.</p>
+        <p>Si la redirección no sucede, haz clic <a href="{{ url_for('auth_sesion.inicio') }}">aquí</a>.</p>
     </div>
 </body>
 </html>

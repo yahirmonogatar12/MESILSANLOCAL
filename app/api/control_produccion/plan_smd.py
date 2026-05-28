@@ -18,6 +18,7 @@ from functools import wraps
 
 from flask import Blueprint, jsonify, request, session
 
+from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
 from app.db_mysql import execute_query
 
 
@@ -29,12 +30,6 @@ def login_requerido(f):
         return _r.login_requerido(f)(*args, **kwargs)
 
     return decorated_function
-
-
-def obtener_fecha_hora_mexico():
-    """Proxy del helper definido en `app.routes`."""
-    from app import routes as _r
-    return _r.obtener_fecha_hora_mexico()
 
 
 bp = Blueprint("control_produccion_plan_smd", __name__)
@@ -815,4 +810,3 @@ def api_plan_smd_list():
     except Exception as e:
         print(f"? Error en api_plan_smd_list: {e}")
         return jsonify({"success": False, "error": str(e)})
-

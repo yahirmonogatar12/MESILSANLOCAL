@@ -389,7 +389,7 @@ def _require_ticket_login(api=False):
     if api:
         return jsonify({"success": False, "message": "Sesion expirada"}), None
 
-    return redirect(url_for("inicio")), None
+    return redirect(url_for("auth_sesion.inicio")), None
 
 
 def _ticket_user_context():

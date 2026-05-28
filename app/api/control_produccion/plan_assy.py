@@ -49,6 +49,9 @@ from app.api.shared.bom_revisions import (
     _plan_has_ks_snapshot,  # noqa: F401  - reexportado por compatibilidad
     _validate_plan_bom_assignment,
 )
+from app.api.shared.datetime_helpers import (
+    obtener_fecha_hora_mexico as _obtener_fecha_hora_mexico,
+)
 from app.api.shared.plan_lot_no import _fp_generate_lot_no, _fp_safe_date
 
 
@@ -96,12 +99,6 @@ ASSY_PERMISO_BOTON = "Control de produccion ASSY"
 # app/api/shared/plan_lot_no.py (importados arriba).
 # _ensure_plan_bom_assignment_columns, _validate_plan_bom_assignment,
 # _plan_has_ks_snapshot movidos a app/api/shared/bom_revisions.py.
-
-def _obtener_fecha_hora_mexico():
-    """Reexport de obtener_fecha_hora_mexico desde routes (anti-circular)."""
-    from app import routes as _r
-    return _r.obtener_fecha_hora_mexico()
-
 
 # =============================
 # RUTAS RENDER

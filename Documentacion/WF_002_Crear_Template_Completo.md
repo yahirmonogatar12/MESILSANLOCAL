@@ -1,7 +1,7 @@
 # WF_002 — Flujo Completo para Crear un Nuevo Template (HTML + CSS + JS)
 
-> **Versión:** 1.0  
-> **Fecha:** 2026-03-23  
+> **Versión:** 1.1
+> **Fecha:** 2026-05-28
 > **Prerequisito:** [WF_001 — Flujo para Agregar Nuevos Templates y Botones al Sidebar](./WF_001_Nuevos_Modulos_AJAX_Templates.md)
 > **Ejemplo de referencia:** Módulo "Historial ICT % Pass/Fail"
 
@@ -10,6 +10,12 @@
 ## Resumen
 
 Este documento detalla el flujo completo para crear un **nuevo módulo con template HTML, CSS propio y JS propio**, asegurando que no colisione con módulos existentes. Usa como ejemplo real el módulo **ICT % Pass/Fail** que agregamos sobre el ya existente **ICT**.
+
+> **Actualización 2026-05-28:** después de la refactorización de `app/routes.py`,
+> todo backend nuevo o migrado debe quedar bajo `app/api/<seccion>/` y
+> registrarse en `app/api/__init__.py`. `routes.py` solo conserva core
+> transversal, LISTAS actuales y rutas legacy puntuales; no se usa para agregar
+> módulos nuevos.
 
 ---
 
@@ -21,10 +27,11 @@ Este documento detalla el flujo completo para crear un **nuevo módulo con templ
 | ✨ CREAR | `app/static/css/<nombre>.css` | Estilos propios del módulo |
 | ✨ CREAR | `app/static/js/<nombre>.js` | Lógica JS propia del módulo |
 | ✨ CREAR / MODIFICAR | `app/api/<seccion>/<modulo>.py` | Blueprint con ruta Flask para servir el template |
+| ✏️ MODIFICAR | `app/api/__init__.py` | Agregar `"<seccion>.<modulo>"` a `_MODULOS_REGISTRADOS` |
 | ✏️ MODIFICAR | `app/templates/LISTAS/LISTA_<SECCION>.html` | Botón `<li>` en el sidebar |
 | ✏️ MODIFICAR | `app/static/js/scriptMain.js` | Función `mostrar*()` + contenedor en lista de ocultar |
 | ✏️ MODIFICAR | `app/templates/MainTemplate.html` | Div contenedor para carga dinámica |
-| ✏️ MODIFICAR | `app/static/permisos_dropdowns.js` | Registro del permiso del nuevo botón |
+| 🔁 SINCRONIZAR | `/admin/sincronizar_permisos_dropdowns` | Escanea los `data-permiso-*` de LISTAS y actualiza permisos |
 
 ---
 
@@ -172,6 +179,9 @@ def mi_modulo():
 - Decorar con `@login_requerido`
 - Registrar el Blueprint en `app/api/__init__.py`
 - El backend propio del módulo debe quedar en ese paquete Blueprint; si crece, crear módulos hermanos como `<modulo>_data.py` según [WF_003](./WF_003_Integracion_API_JS_Template.md)
+- No agregar renders, APIs ni helpers privados del módulo a `app/routes.py`.
+  Si el módulo toca auth/sesión, las rutas actuales viven en
+  `app/api/auth/sesion.py` y sus endpoints se resuelven como `auth_sesion.*`.
 
 ---
 
@@ -350,11 +360,18 @@ Con los helpers:
 
 ---
 
-## Paso 9 — Registrar el Permiso en permisos_dropdowns.js
+## Paso 9 — Registrar el Permiso
 
-**Archivo:** `app/static/permisos_dropdowns.js`
+El flujo normal ya no requiere editar a mano `app/static/permisos_dropdowns.js`.
+El backend de administración escanea los `data-permiso-*` de los archivos
+`LISTA_*.html` desde:
 
-Agregar una entrada al array de permisos:
+```
+POST /admin/sincronizar_permisos_dropdowns
+```
+
+Si por compatibilidad se mantiene una lista estática legacy, los valores deben
+coincidir exactamente con los atributos del `<li>`:
 
 ```javascript
 {
@@ -364,7 +381,9 @@ Agregar una entrada al array de permisos:
 },
 ```
 
-> Los valores deben coincidir EXACTAMENTE con los `data-permiso-*` del `<li>` del paso anterior.
+> Fuente de verdad operativa: los `data-permiso-*` del HTML + la sincronización
+> de administración. No duplicar registros manuales salvo que un flujo legacy
+> específico todavía lo consuma.
 
 ---
 
@@ -389,8 +408,8 @@ Luego, asignar el permiso del nuevo botón a los roles correspondientes.
 [ ] mostrar*() usa prepararPanelSeccion() (NO copia bloque manual de ocultar)
 [ ] Contenedor agregado en AMBAS listas de ocultar en scriptMain.js
 [ ] Botón <li> agregado en LISTA_*.html con data-permiso-*
-[ ] Permiso registrado en permisos_dropdowns.js
-[ ] Permisos sincronizados y asignados a roles
+[ ] Permisos sincronizados desde /admin/sincronizar_permisos_dropdowns
+[ ] Permiso asignado a los roles correspondientes
 [ ] Probado: el botón aparece en el sidebar
 [ ] Probado: el template carga correctamente
 [ ] Probado: JS funciona (filtros, tablas, modales)
@@ -439,13 +458,22 @@ MainTemplate.html
   │     └── <li onclick="mostrarMiModulo()">
   │           └── data-permiso-pagina / seccion / boton
   │
-  └── permisos_dropdowns.js
-        └── { pagina, seccion, boton }
+  └── /admin/sincronizar_permisos_dropdowns
+        └── escanea data-permiso-* en LISTA_*.html
 ```
 
 ---
 
 ## Changelog
+
+### 2026-05-28 — Alineado con refactorización de routes.py
+- `app/routes.py` deja de ser destino para módulos nuevos; el backend nuevo vive
+  en `app/api/<seccion>/` y se registra desde `app/api/__init__.py`.
+- El registro de permisos queda documentado como sincronización desde los
+  `data-permiso-*` de LISTAS, no como edición manual obligatoria de
+  `app/static/permisos_dropdowns.js`.
+- Se documenta que auth/sesión vive en `app/api/auth/sesion.py` y se referencia
+  con endpoints `auth_sesion.*`.
 
 ### 2026-05-21 — Refactor de helpers de panel
 - Eliminado el bloque manual repetido de "ocultar otras secciones + mostrar padres" que aparecía en ~25 funciones `mostrar*()`.

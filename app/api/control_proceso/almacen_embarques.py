@@ -55,6 +55,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from app.auth_system import auth_system
+from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
 from app.config_mysql import get_pooled_connection
 from app.db import get_db_connection
 from app.db_mysql import execute_query
@@ -77,16 +78,6 @@ from app.api.pda.shipping_material import (
     rebuild_part_inventory_state,
     to_sql_datetime,
 )
-
-
-def obtener_fecha_hora_mexico():
-    """Hora Mexico Central (GMT-6). Copia local del helper para evitar
-    importacion circular con `app.routes`."""
-    try:
-        return datetime.utcnow() - timedelta(hours=6)
-    except Exception:
-        return datetime.now()
-
 
 # `login_requerido` vive en `app.routes`. Se importa dentro del wrapper
 # (tarde) para evitar circular: shared -> routes -> control_proceso -> shared.
