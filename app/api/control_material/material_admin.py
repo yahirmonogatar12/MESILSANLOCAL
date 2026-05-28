@@ -24,12 +24,14 @@ from functools import wraps
 from flask import Blueprint, jsonify, make_response, render_template, request, session
 
 from app.api.shared import (
-    _cuchillas_rows_to_json,
     auth_system,
     execute_query,
     login_requerido,
     obtener_fecha_hora_mexico,
 )
+# Fase 2 (2026-05-28): import directo del blueprint dueno; antes resolvia
+# via app.api.shared.__getattr__ -> app.routes (re-export zombie).
+from app.api.control_produccion.cuchillas_corte import _cuchillas_rows_to_json
 
 
 bp = Blueprint("material_admin", __name__)

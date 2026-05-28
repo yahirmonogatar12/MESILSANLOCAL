@@ -1,7 +1,7 @@
 # Plan: Adelgazar `app/routes.py`
 
 **Fecha del plan**: 2026-05-28
-**Estado actual**: `routes.py` tiene **3804 líneas** tras Fase 1 (baseline original: 4455 líneas, 105 defs top-level).
+**Estado actual**: `routes.py` tiene **3758 líneas** tras Fase 2 (baseline original: 4455 líneas, 105 defs top-level).
 **Meta**: reducir a **~2100 líneas** (-53%) moviendo o borrando lo que ya no debería vivir aquí.
 
 ## Progreso
@@ -10,7 +10,7 @@
 |---|---|---:|---:|---:|---|
 | Fase 0 (snapshot) | — | 4455 | — | 388 | — |
 | **Fase 1 (9 huérfanas)** | ✅ **2026-05-28** | **3804** | **-651** | **379** | ✅ `create_app()` OK |
-| Fase 2 (re-exports zombies) | pendiente | — | — | — | — |
+| **Fase 2 (re-exports zombies)** | ✅ **2026-05-28** | **3758** | **-46** | **379** | ✅ `create_app()` + imports lazy OK |
 | Fase 3 (renders) | pendiente | — | — | — | — |
 | Fase 4 (rutas gordas) | pendiente | — | — | — | — |
 | Fase 5 (helpers huérfanos) | pendiente | — | — | — | — |
@@ -80,10 +80,22 @@ la propia ruta, borrar.
 
 ---
 
-### Fase 2 — Limpiar 25 re-exports zombies
+### Fase 2 — Limpiar 25 re-exports zombies ✅ COMPLETADA (2026-05-28)
 
-**Ganancia**: ~50 líneas + simplifica `app/api/shared/__init__.py`.
-**Riesgo**: bajo (0 consumidores confirmados). **Tiempo**: 30 min.
+**Ganancia real**: -46 líneas (3804 → 3758). **Total rutas**: 379 (sin cambio).
+**Smoke test**: `create_app()` OK; lazy proxy (`login_requerido`, `execute_query`,
+`auth_system`, `obtener_fecha_hora_mexico`) sigue resolviendo;
+`material_admin._cuchillas_rows_to_json` ahora viene directo de su blueprint dueño
+(`app.api.control_produccion.cuchillas_corte`).
+
+**Cambios aplicados**:
+1. `routes.py`: borrados 4 bloques de re-exports (ICT 4, Vision 15, Excel 4,
+   Cuchillas 10). Almacen embarques se conserva como import local porque
+   "Control de salida de líneas" sigue viviendo en `routes.py` (Fase 3 lo migra).
+2. `material_admin.py:26-32`: cambiado a importar `_cuchillas_rows_to_json`
+   directo del blueprint en lugar de via `app.api.shared`.
+3. `shared/__init__.py`: removido `_cuchillas_rows_to_json` de `__all__` y
+   `_LAZY_FROM_ROUTES`. El proxy lazy ahora solo expone los 4 símbolos core.
 
 #### 2.1 Re-exports en `routes.py:138-174` (ICT + Vision + Excel + Almacen embarques)
 
@@ -340,10 +352,10 @@ Son el core que justifica que `routes.py` siga existiendo:
 |---|---:|---:|
 | Estado original (Fase 0) | 4455 | — |
 | **Fase 1 (borrar 9 huérfanas) ✅** | **3804** | **-651** |
-| Fase 2 (borrar 25 re-exports zombies) | ~3754 | -701 |
-| Fase 3 (mover 39 renders + 3 endpoints salida líneas) | ~3254 | -1201 |
-| Fase 4 (mover 11 rutas gordas) | ~2654 | -1801 |
-| Fase 5 (borrar 4 helpers huérfanos) | ~2604 | -1851 |
+| **Fase 2 (borrar 25 re-exports zombies) ✅** | **3758** | **-697** |
+| Fase 3 (mover 39 renders + 3 endpoints salida líneas) | ~3258 | -1197 |
+| Fase 4 (mover 11 rutas gordas) | ~2658 | -1797 |
+| Fase 5 (borrar 4 helpers huérfanos) | ~2608 | -1847 |
 
 **Meta final**: `routes.py` con ~2100 líneas, ~30 endpoints (sólo
 auth + transversales + landing), 0 funciones DDL, 0 re-exports zombies.

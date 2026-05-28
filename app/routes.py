@@ -131,46 +131,16 @@ from .services.ict_lgd_parser import (
     resolve_lgd_path,
 )
 
-# Migracion 2026-05-27: Helpers movidos a app/api/control_proceso/almacen_embarques.py
-# Reexportados aqui porque "Control de salida de lineas" los consume:
-#   - _normalizar_texto_embarques_historial (usado por _obtener_control_salida_lineas)
-#   - _exportar_historial_embarques_excel  (usado por export_control_salida_lineas)
+# Fase 2 (2026-05-28): Re-exports zombies eliminados.
+#   - ICT helpers (4)        : ya consumidos directo desde app.api.shared.ict_helpers
+#   - Vision helpers (15)    : idem desde app.api.shared.vision_helpers
+#   - Excel helpers (4)      : idem desde app.api.shared.excel_helpers
+# Solo se conservan los dos de almacen_embarques porque "Control de salida de
+# lineas" sigue viviendo en routes.py y los consume. Cuando ese modulo se
+# migre (Fase 3), este import desaparece tambien.
 from .api.control_proceso.almacen_embarques import (
     _exportar_historial_embarques_excel,
     _normalizar_texto_embarques_historial,
-)
-# Migracion 2026-05-27: helpers ICT compartidos por los 3 modulos ICT.
-# Reexportados para no romper consumidores legacy fuera del scope ICT.
-from .api.shared.ict_helpers import (  # noqa: F401
-    _append_indexable_text_filter,
-    _ict_find_history_record,
-    _ict_format_row,
-    _ict_load_local_parameters,
-)
-# Migracion 2026-05-27: helpers Vision compartidos por los 2 modulos Vision.
-from .api.shared.vision_helpers import (  # noqa: F401
-    _build_history_vision_pass_fail_summary_query,
-    _build_history_vision_query,
-    _get_history_vision_record,
-    _resolve_history_vision_image,
-    _vision_candidate_hour_directories,
-    _vision_candidate_share_roots,
-    _vision_extract_host_from_source_file,
-    _vision_format_value,
-    _vision_is_safe_path,
-    _vision_parse_date,
-    _vision_parse_datetime,
-    _vision_parse_time,
-    _vision_reference_datetime,
-    _vision_share_name,
-    _vision_unique_values,
-)
-# Helpers de exportacion Excel compartidos por blueprints ICT + Vision.
-from .api.shared.excel_helpers import (  # noqa: F401
-    VISION_PASS_FAIL_EXCEL_IMAGE_HEIGHT,
-    VISION_PASS_FAIL_EXCEL_IMAGE_WIDTH,
-    _create_vision_pass_fail_excel_image,
-    _send_excel_download,
 )
 # tickets_portal migrado a app/api/portal/tickets.py
 # Se registra via registrar_blueprints_api() en app_factory.py
@@ -1163,28 +1133,12 @@ def plan_main_smt_ajax():
 
 
 
-# =============================
-# CONTROL DE CUCHILLAS DE CORTE (ASSY)
-# =============================
-# Migrado a app/api/control_produccion/cuchillas_corte.py (2026-05-25).
-# Las 17 rutas se registran via blueprint en app/api/__init__.py.
-# 2026-05-28: `crear_tablas_cuchillas_corte` e `iniciar_cuchillas_hourly_sync_worker`
-# se importan directo desde el blueprint en `app/startup_init.py` (ya no via _routes).
-# Solo reexportamos los simbolos consumidos por `app.api.shared` ->
-# `material_admin.py` (`_cuchillas_rows_to_json`) y los que aun no tienen
-# otro lugar canonico para vivir.
-from app.api.control_produccion.cuchillas_corte import (  # noqa: E402, F401
-    CUCHILLAS_PERMISO_PAGINA,
-    CUCHILLAS_PERMISO_SECCION,
-    CUCHILLAS_PERMISO_BOTON,
-    CUCHILLAS_SOURCE_DEFAULT,
-    CUCHILLAS_SOURCE_ALLOWED,
-    CUCHILLAS_HOURLY_SYNC_SECONDS,
-    _cuchillas_row_to_json,
-    _cuchillas_rows_to_json,
-    _cuchillas_execute_raw,
-    crear_trigger_cuchillas_corte_plan_main,
-)
+# Fase 2 (2026-05-28): Re-export zombie de Cuchillas de corte eliminado.
+# Las 10 constantes/helpers (CUCHILLAS_*, _cuchillas_*, crear_trigger_*)
+# vivian aqui solo por inercia. Tras Fase 2:
+#   - `_cuchillas_rows_to_json`: material_admin.py importa directo del blueprint.
+#   - Las 9 restantes no tenian consumidor externo.
+# El modulo entero vive en app/api/control_produccion/cuchillas_corte.py.
 
 
 # Migracion 2026-05-27: snapshot inventario (constantes, DDL, captura,
