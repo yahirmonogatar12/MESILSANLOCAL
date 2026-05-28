@@ -3,7 +3,7 @@
   const sheets = [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
     { id: "ict-css", href: "/static/css/ict.css?v=20260522a" },
-    { id: "ict-pass-fail-css", href: "/static/css/ict-Pass-Fail.css?v=20260429e" },
+    { id: "ict-pass-fail-css", href: "/static/css/ict-Pass-Fail.css?v=20260528e" },
   ];
   sheets.forEach(({ id, href }) => {
     let link = document.getElementById(id);
@@ -25,8 +25,11 @@
 let ictPassFailModuleData = [];
 let ictPassFailDetailContext = null;
 let ictPassFailDetailSearchTimer = null;
+let ictPassFailDetailRows = [];
+let ictPassFailDetailSummaryData = {};
 const ICT_PASS_FAIL_FILTERS_STORAGE_KEY = "historialIctPassFailFilters";
-const ICT_PASS_FAIL_LISTENER_VERSION = "20260429e";
+const ICT_PASS_FAIL_MODE_STORAGE_KEY = "historialIctPassFailMode";
+const ICT_PASS_FAIL_LISTENER_VERSION = "20260528f";
 
 function getIctPassFailToday() {
   return new Date().toISOString().split("T")[0];
@@ -114,6 +117,150 @@ function resolveIctPassFailFilters() {
 
   saveIctPassFailFilters(resolvedFilters);
   return resolvedFilters;
+}
+
+function normalizeIctPassFailMode(value) {
+  return String(value || "").toLowerCase() === "detallado" ? "detallado" : "normal";
+}
+
+function getIctPassFailMode() {
+  try {
+    if (!window.__ictPassFailUrlModeApplied) {
+      const queryMode = new URLSearchParams(window.location.search).get("modo");
+      if (queryMode) {
+        window.sessionStorage.setItem(
+          ICT_PASS_FAIL_MODE_STORAGE_KEY,
+          normalizeIctPassFailMode(queryMode),
+        );
+      }
+      window.__ictPassFailUrlModeApplied = true;
+    }
+
+    return normalizeIctPassFailMode(
+      window.sessionStorage.getItem(ICT_PASS_FAIL_MODE_STORAGE_KEY),
+    );
+  } catch (error) {
+    return "normal";
+  }
+}
+
+function setIctPassFailMode(mode) {
+  const nextMode = normalizeIctPassFailMode(mode);
+
+  try {
+    window.sessionStorage.setItem(ICT_PASS_FAIL_MODE_STORAGE_KEY, nextMode);
+  } catch (error) {
+    console.warn("No se pudo guardar el modo de ICT Pass/Fail", error);
+  }
+
+  updateIctPassFailModeToggle();
+  renderHistorialIctPassFailTable(ictPassFailModuleData);
+
+  const modal = getIctPassFailDetailModal();
+  if (modal?.classList.contains("is-open")) {
+    setIctPassFailDetailSummary(ictPassFailDetailSummaryData);
+    renderIctPassFailDetailRows(ictPassFailDetailRows);
+  }
+}
+
+function updateIctPassFailModeToggle() {
+  const mode = getIctPassFailMode();
+  document
+    .querySelectorAll("[data-ict-pass-fail-mode]")
+    .forEach((button) => {
+      const isActive = normalizeIctPassFailMode(button.dataset.ictPassFailMode) === mode;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+}
+
+function renderIctPassFailHeader(tableId, headers) {
+  const headerRow = document.querySelector(`#${tableId} thead tr`);
+  if (!headerRow) {
+    return;
+  }
+
+  headerRow.innerHTML = headers
+    .map((header) => `<th>${escapeIctPassFailHtml(header)}</th>`)
+    .join("");
+}
+
+function renderHistorialIctPassFailHeader(mode) {
+  const headers =
+    mode === "detallado"
+      ? [
+          "Fecha",
+          "Linea",
+          "ICT",
+          "Turno",
+          "No. parte",
+          "Total real",
+          "OK real",
+          "Detect.",
+          "F. neg.",
+          "F. fail",
+          "% Correct.",
+          "% Det.",
+          "% F. neg.",
+          "% F. fail",
+        ]
+      : [
+          "Fecha",
+          "Linea",
+          "ICT",
+          "Turno",
+          "No. parte",
+          "Total",
+          "OK",
+          "NG",
+          "% Pass",
+          "% Fail",
+          "Porcentaje",
+        ];
+
+  const table = document.getElementById("ict-pass-fail-table");
+  if (table) {
+    table.dataset.mode = mode;
+  }
+  renderIctPassFailHeader("ict-pass-fail-table", headers);
+}
+
+function renderIctPassFailDetailHeader(mode) {
+  const headers =
+    mode === "detallado"
+      ? [
+          "Barcode",
+          "Primer test",
+          "Ultimo test",
+          "Intentos",
+          "OK",
+          "NG",
+          "OK real",
+          "Detect.",
+          "F. neg.",
+          "F. fail",
+          "Clase",
+          "Primero",
+          "Final",
+          "Defecto / Ubic.",
+        ]
+      : [
+          "Barcode",
+          "Primer test",
+          "Ultimo test",
+          "Intentos",
+          "OK",
+          "NG",
+          "Primero",
+          "Final",
+          "Defecto / Ubic.",
+        ];
+
+  const table = document.getElementById("ict-pass-fail-detail-table");
+  if (table) {
+    table.dataset.mode = mode;
+  }
+  renderIctPassFailHeader("ict-pass-fail-detail-table", headers);
 }
 
 function showIctPassFailLoading() {
@@ -234,27 +381,59 @@ function renderHistorialIctPassFailTable(data) {
     return;
   }
 
+  const mode = getIctPassFailMode();
+  const emptyColspan = mode === "detallado" ? 14 : 11;
+  renderHistorialIctPassFailHeader(mode);
+
   if (!Array.isArray(data) || data.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="11" class="ict-pass-fail-table-empty">No se encontraron registros.</td></tr>';
+      `<tr><td colspan="${emptyColspan}" class="ict-pass-fail-table-empty">No se encontraron registros.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = data
     .map((row, index) => {
-      const passRate = Number(row.porcentaje_ok || 0);
-      const failRate = Number(row.porcentaje_ng || 0);
-
-      return `
-        <tr class="ict-pass-fail-summary-row" data-ict-pass-fail-row-index="${index}" title="Doble click para ver detalle por barcode">
+      const commonCells = `
           <td>${escapeIctPassFailHtml(row.fecha ?? "")}</td>
           <td>${escapeIctPassFailHtml(row.linea ?? "")}</td>
           <td>${escapeIctPassFailHtml(row.ict ?? "")}</td>
           <td>${escapeIctPassFailHtml(row.turno ?? "")}</td>
-          <td>${escapeIctPassFailHtml(row.numero_parte ?? "")}</td>
-          <td>${escapeIctPassFailHtml(row.total ?? 0)}</td>
-          <td>${escapeIctPassFailHtml(row.ok_count ?? 0)}</td>
-          <td>${escapeIctPassFailHtml(row.ng_count ?? 0)}</td>
+          <td>${escapeIctPassFailHtml(row.numero_parte ?? "")}</td>`;
+
+      if (mode === "detallado") {
+        const correctRate = Number(row.porcentaje_ok || 0);
+        const detectionRate = Number(row.porcentaje_deteccion || 0);
+        const falseNegativeRate = Number(row.porcentaje_falso_negativo || 0);
+        const falseFailRate = Number(row.porcentaje_falso_fail || 0);
+
+        return `
+          <tr class="ict-pass-fail-summary-row" data-ict-pass-fail-row-index="${index}" title="Doble click para ver detalle por barcode">
+            ${commonCells}
+            <td>${escapeIctPassFailHtml(row.total ?? 0)}</td>
+            <td>${escapeIctPassFailHtml(row.ok_real ?? 0)}</td>
+            <td>${escapeIctPassFailHtml(row.defectos_detectados ?? 0)}</td>
+            <td>${escapeIctPassFailHtml(row.falsos_negativos ?? 0)}</td>
+            <td>${escapeIctPassFailHtml(row.falsos_fail ?? 0)}</td>
+            <td class="${correctRate >= 90 ? "ict-pass-fail-rate-good" : "ict-pass-fail-rate-neutral"}">${escapeIctPassFailHtml(formatIctPassFailPercent(correctRate))}</td>
+            <td class="${detectionRate >= 90 ? "ict-pass-fail-rate-good" : "ict-pass-fail-rate-neutral"}">${escapeIctPassFailHtml(formatIctPassFailPercent(detectionRate))}</td>
+            <td class="${falseNegativeRate > 0 ? "ict-pass-fail-rate-bad" : "ict-pass-fail-rate-neutral"}">${escapeIctPassFailHtml(formatIctPassFailPercent(falseNegativeRate))}</td>
+            <td class="${falseFailRate > 10 ? "ict-pass-fail-rate-bad" : "ict-pass-fail-rate-neutral"}">${escapeIctPassFailHtml(formatIctPassFailPercent(falseFailRate))}</td>
+          </tr>
+        `;
+      }
+
+      const totalIntentos = Number(row.total_intentos ?? row.total ?? 0);
+      const okCount = Number(row.ok_count_raw ?? row.ok_count ?? 0);
+      const ngCount = Number(row.ng_count_raw ?? row.ng_count ?? 0);
+      const passRate = totalIntentos > 0 ? (okCount / totalIntentos) * 100 : 0;
+      const failRate = totalIntentos > 0 ? (ngCount / totalIntentos) * 100 : 0;
+
+      return `
+        <tr class="ict-pass-fail-summary-row" data-ict-pass-fail-row-index="${index}" title="Doble click para ver detalle por barcode">
+          ${commonCells}
+          <td>${escapeIctPassFailHtml(totalIntentos)}</td>
+          <td>${escapeIctPassFailHtml(okCount)}</td>
+          <td>${escapeIctPassFailHtml(ngCount)}</td>
           <td class="${passRate >= 90 ? "ict-pass-fail-rate-good" : "ict-pass-fail-rate-neutral"}">${escapeIctPassFailHtml(formatIctPassFailPercent(passRate))}</td>
           <td class="${failRate > 10 ? "ict-pass-fail-rate-bad" : "ict-pass-fail-rate-neutral"}">${escapeIctPassFailHtml(formatIctPassFailPercent(failRate))}</td>
           <td>${buildIctPassFailBar(passRate, failRate)}</td>
@@ -338,23 +517,103 @@ function setIctPassFailDetailLoading(isLoading) {
 }
 
 function setIctPassFailDetailSummary(summary = {}) {
-  const values = {
-    "ict-pass-fail-detail-total-intentos": formatIctPassFailNumber(summary.total_intentos),
-    "ict-pass-fail-detail-ok-total": formatIctPassFailNumber(summary.ok_total),
-    "ict-pass-fail-detail-ng-total": formatIctPassFailNumber(summary.ng_total),
-    "ict-pass-fail-detail-piezas-unicas": formatIctPassFailNumber(summary.piezas_unicas),
-    "ict-pass-fail-detail-repetidas": formatIctPassFailNumber(summary.piezas_repetidas),
-    "ict-pass-fail-detail-reparacion": formatIctPassFailNumber(summary.piezas_reparacion),
-    "ict-pass-fail-detail-pass-real": formatIctPassFailNumber(summary.pass_real),
-    "ict-pass-fail-detail-pass-rate": formatIctPassFailPercent(summary.porcentaje_pass_real),
+  const container = document.querySelector(".ict-pass-fail-detail-summary");
+  if (!container) {
+    return;
+  }
+
+  const mode = getIctPassFailMode();
+  const totalIntentos = Number(summary.total_intentos || 0);
+  const okTotal = Number(summary.ok_total || 0);
+  const ngTotal = Number(summary.ng_total || 0);
+  const passRate = totalIntentos > 0 ? (okTotal / totalIntentos) * 100 : 0;
+  const failRate = totalIntentos > 0 ? (ngTotal / totalIntentos) * 100 : 0;
+  const correctoReal = Number(summary.correcto_real ?? summary.pass_real ?? 0);
+  const totalReal = Number(summary.total_real || 0);
+  const realRate = summary.porcentaje_pass_real ?? (
+    totalReal > 0 ? (correctoReal / totalReal) * 100 : 0
+  );
+
+  const cards =
+    mode === "detallado"
+      ? [
+          ["Total real", formatIctPassFailNumber(totalReal)],
+          ["Correctos", formatIctPassFailNumber(correctoReal), "good"],
+          ["OK real", formatIctPassFailNumber(summary.ok_real), "good"],
+          ["Detectados", formatIctPassFailNumber(summary.defectos_detectados), "good"],
+          ["F. negativos", formatIctPassFailNumber(summary.falsos_negativos), "bad"],
+          ["F. fail", formatIctPassFailNumber(summary.falsos_fail), "bad"],
+          ["% Correcto", formatIctPassFailPercent(realRate), realRate >= 90 ? "good" : ""],
+          [
+            "% Deteccion",
+            formatIctPassFailPercent(summary.porcentaje_deteccion),
+            Number(summary.porcentaje_deteccion || 0) >= 90 ? "good" : "",
+          ],
+          [
+            "% F. negativo",
+            formatIctPassFailPercent(summary.porcentaje_falso_negativo),
+            Number(summary.porcentaje_falso_negativo || 0) > 0 ? "bad" : "",
+          ],
+          [
+            "% F. fail",
+            formatIctPassFailPercent(summary.porcentaje_falso_fail),
+            Number(summary.porcentaje_falso_fail || 0) > 10 ? "bad" : "",
+          ],
+        ]
+      : [
+          ["Intentos", formatIctPassFailNumber(totalIntentos)],
+          ["OK total", formatIctPassFailNumber(okTotal), "good"],
+          ["NG total", formatIctPassFailNumber(ngTotal), "bad"],
+          ["Piezas unicas", formatIctPassFailNumber(summary.piezas_unicas)],
+          ["Repetidas", formatIctPassFailNumber(summary.piezas_repetidas)],
+          ["Reparacion", formatIctPassFailNumber(summary.piezas_reparacion)],
+          ["% Pass", formatIctPassFailPercent(passRate), passRate >= 90 ? "good" : ""],
+          ["% Fail", formatIctPassFailPercent(failRate), failRate > 10 ? "bad" : ""],
+        ];
+
+  container.innerHTML = cards
+    .map(([label, value, status]) => {
+      const statusClass =
+        status === "good"
+          ? " ict-pass-fail-detail-stat-good"
+          : status === "bad"
+            ? " ict-pass-fail-detail-stat-bad"
+            : "";
+      return `
+        <div class="ict-pass-fail-detail-stat${statusClass}">
+          <span>${escapeIctPassFailHtml(label)}</span>
+          <strong>${escapeIctPassFailHtml(value)}</strong>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function getIctPassFailCriterion(value) {
+  const criterion = String(value || "").toUpperCase();
+  const labels = {
+    DEFECTO_DETECTADO: {
+      label: "Detectado",
+      className: "ict-pass-fail-detail-badge-ok",
+    },
+    FALSO_NEGATIVO: {
+      label: "F. negativo",
+      className: "ict-pass-fail-detail-badge-ng",
+    },
+    FALSO_FAIL: {
+      label: "F. fail",
+      className: "ict-pass-fail-detail-badge-warn",
+    },
+    OK_REAL: {
+      label: "OK real",
+      className: "ict-pass-fail-detail-badge-ok",
+    },
   };
 
-  Object.entries(values).forEach(([id, value]) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.textContent = value;
-    }
-  });
+  return labels[criterion] || {
+    label: criterion || "-",
+    className: "ict-pass-fail-detail-badge",
+  };
 }
 
 function renderIctPassFailDetailRows(rows) {
@@ -363,9 +622,13 @@ function renderIctPassFailDetailRows(rows) {
     return;
   }
 
+  const mode = getIctPassFailMode();
+  const emptyColspan = mode === "detallado" ? 14 : 9;
+  renderIctPassFailDetailHeader(mode);
+
   if (!Array.isArray(rows) || rows.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="13" class="ict-pass-fail-table-empty">No se encontraron barcodes para este detalle.</td></tr>';
+      `<tr><td colspan="${emptyColspan}" class="ict-pass-fail-table-empty">No se encontraron barcodes para este detalle.</td></tr>`;
     return;
   }
 
@@ -375,6 +638,11 @@ function renderIctPassFailDetailRows(rows) {
       const fueReparacion = Boolean(row.fue_reparacion);
       const resultadoPrimer = String(row.resultado_primer || "").toUpperCase();
       const resultadoFinal = String(row.resultado_final || "").toUpperCase();
+      const okReal = Number(row.ok_real || 0);
+      const detectado = Number(row.defectos_detectados || 0);
+      const falsoNegativo = Number(row.falsos_negativos || 0);
+      const falsoFail = Number(row.falsos_fail || 0);
+      const criterio = getIctPassFailCriterion(row.criterio_real);
       const defectText = row.defectos || (fueReparacion ? "SIN DEFECTO CAPTURADO" : "NO");
       const rowClasses = [
         intentos > 1 ? "ict-pass-fail-detail-repeated-row" : "",
@@ -383,13 +651,30 @@ function renderIctPassFailDetailRows(rows) {
         .filter(Boolean)
         .join(" ");
 
+      if (mode === "detallado") {
+        return `
+          <tr class="${rowClasses}">
+            <td class="ict-pass-fail-detail-barcode-cell" title="${escapeIctPassFailHtml(row.barcode ?? "")}">${escapeIctPassFailHtml(row.barcode ?? "")}</td>
+            <td>${escapeIctPassFailHtml(row.primer_test ?? "")}</td>
+            <td>${escapeIctPassFailHtml(row.ultimo_test ?? "")}</td>
+            <td><span class="${intentos > 1 ? "ict-pass-fail-detail-badge-warn" : "ict-pass-fail-detail-badge"}">${escapeIctPassFailHtml(intentos)}</span></td>
+            <td>${escapeIctPassFailHtml(row.ok_count ?? 0)}</td>
+            <td>${escapeIctPassFailHtml(row.ng_count ?? 0)}</td>
+            <td><span class="${okReal > 0 ? "ict-pass-fail-detail-badge-ok" : "ict-pass-fail-detail-badge"}">${escapeIctPassFailHtml(okReal)}</span></td>
+            <td><span class="${detectado > 0 ? "ict-pass-fail-detail-badge-ok" : "ict-pass-fail-detail-badge"}">${escapeIctPassFailHtml(detectado)}</span></td>
+            <td><span class="${falsoNegativo > 0 ? "ict-pass-fail-detail-badge-ng" : "ict-pass-fail-detail-badge"}">${escapeIctPassFailHtml(falsoNegativo)}</span></td>
+            <td><span class="${falsoFail > 0 ? "ict-pass-fail-detail-badge-warn" : "ict-pass-fail-detail-badge"}">${escapeIctPassFailHtml(falsoFail)}</span></td>
+            <td><span class="${criterio.className}">${escapeIctPassFailHtml(criterio.label)}</span></td>
+            <td><span class="${resultadoPrimer === "OK" ? "ict-pass-fail-detail-badge-ok" : "ict-pass-fail-detail-badge-ng"}">${escapeIctPassFailHtml(resultadoPrimer || "-")}</span></td>
+            <td><span class="${resultadoFinal === "OK" ? "ict-pass-fail-detail-badge-ok" : "ict-pass-fail-detail-badge-ng"}">${escapeIctPassFailHtml(resultadoFinal || "-")}</span></td>
+            <td class="ict-pass-fail-detail-defect-cell" title="${escapeIctPassFailHtml(defectText)}">${escapeIctPassFailHtml(defectText)}</td>
+          </tr>
+        `;
+      }
+
       return `
         <tr class="${rowClasses}">
-          <td>${escapeIctPassFailHtml(row.barcode ?? "")}</td>
-          <td>${escapeIctPassFailHtml(row.numero_parte ?? "")}</td>
-          <td>${escapeIctPassFailHtml(row.linea ?? "")}</td>
-          <td>${escapeIctPassFailHtml(row.ict ?? "")}</td>
-          <td>${escapeIctPassFailHtml(row.turno ?? "")}</td>
+          <td class="ict-pass-fail-detail-barcode-cell" title="${escapeIctPassFailHtml(row.barcode ?? "")}">${escapeIctPassFailHtml(row.barcode ?? "")}</td>
           <td>${escapeIctPassFailHtml(row.primer_test ?? "")}</td>
           <td>${escapeIctPassFailHtml(row.ultimo_test ?? "")}</td>
           <td><span class="${intentos > 1 ? "ict-pass-fail-detail-badge-warn" : "ict-pass-fail-detail-badge"}">${escapeIctPassFailHtml(intentos)}</span></td>
@@ -445,6 +730,8 @@ function openIctPassFailDetailModal(row) {
     detailIntentosFilter.value = "1";
   }
 
+  ictPassFailDetailSummaryData = {};
+  ictPassFailDetailRows = [];
   setIctPassFailDetailSummary({});
   renderIctPassFailDetailRows([]);
   modal.classList.add("is-open");
@@ -463,6 +750,8 @@ function closeIctPassFailDetailModal(options = {}) {
   modal.setAttribute("aria-hidden", "true");
   document.body.classList.remove("ict-pass-fail-detail-open");
   ictPassFailDetailContext = null;
+  ictPassFailDetailSummaryData = {};
+  ictPassFailDetailRows = [];
   setIctPassFailDetailLoading(false);
 
   if (ictPassFailDetailSearchTimer) {
@@ -522,12 +811,16 @@ async function loadIctPassFailDetailData() {
       throw new Error(data?.error || "Error al consultar detalle ICT Pass/Fail");
     }
 
-    setIctPassFailDetailSummary(data.summary || {});
-    renderIctPassFailDetailRows(Array.isArray(data.rows) ? data.rows : []);
+    ictPassFailDetailSummaryData = data.summary || {};
+    ictPassFailDetailRows = Array.isArray(data.rows) ? data.rows : [];
+    setIctPassFailDetailSummary(ictPassFailDetailSummaryData);
+    renderIctPassFailDetailRows(ictPassFailDetailRows);
   } catch (error) {
     console.error(error);
-    setIctPassFailDetailSummary({});
-    renderIctPassFailDetailRows([]);
+    ictPassFailDetailSummaryData = {};
+    ictPassFailDetailRows = [];
+    setIctPassFailDetailSummary(ictPassFailDetailSummaryData);
+    renderIctPassFailDetailRows(ictPassFailDetailRows);
     showIctPassFailNotification("Error al cargar detalle", "error");
   } finally {
     setIctPassFailDetailLoading(false);
@@ -537,17 +830,19 @@ async function loadIctPassFailDetailData() {
 async function exportHistorialIctPassFailToExcel() {
   const { fechaDesde, fechaHasta, numeroParte, turno, barcode } =
     resolveIctPassFailFilters();
+  const mode = getIctPassFailMode();
 
   const url =
     `/api/ict/pass-fail/export?fecha_desde=${encodeURIComponent(fechaDesde)}` +
     `&fecha_hasta=${encodeURIComponent(fechaHasta)}` +
     `&numero_parte=${encodeURIComponent(numeroParte)}` +
     `&turno=${encodeURIComponent(turno)}` +
-    `&barcode=${encodeURIComponent(barcode)}`;
+    `&barcode=${encodeURIComponent(barcode)}` +
+    `&modo=${encodeURIComponent(mode)}`;
 
   await downloadIctPassFailFile(
     url,
-    `historial_ict_pass_fail_${Date.now()}.xlsx`,
+    `historial_ict_pass_fail_${mode}_${Date.now()}.xlsx`,
     "Exportacion completada",
   );
 }
@@ -571,6 +866,13 @@ function initializeHistorialIctPassFailEventListeners() {
 
   document.body.addEventListener("click", function (e) {
     const target = e.target;
+    const modeButton = target.closest("[data-ict-pass-fail-mode]");
+
+    if (modeButton) {
+      e.preventDefault();
+      setIctPassFailMode(modeButton.dataset.ictPassFailMode);
+      return;
+    }
 
     if (
       target.id === "ict-pass-fail-btn-consultar" ||
@@ -729,11 +1031,17 @@ window.loadIctPassFailData = loadHistorialIctPassFailData;
 document.addEventListener("DOMContentLoaded", function () {
   setIctPassFailDefaultDate();
   initializeHistorialIctPassFailEventListeners();
+  updateIctPassFailModeToggle();
+  renderHistorialIctPassFailHeader(getIctPassFailMode());
+  renderIctPassFailDetailHeader(getIctPassFailMode());
   loadHistorialIctPassFailData();
 });
 
 if (document.readyState === "interactive" || document.readyState === "complete") {
   setIctPassFailDefaultDate();
   initializeHistorialIctPassFailEventListeners();
+  updateIctPassFailModeToggle();
+  renderHistorialIctPassFailHeader(getIctPassFailMode());
+  renderIctPassFailDetailHeader(getIctPassFailMode());
   setTimeout(() => loadHistorialIctPassFailData(), 100);
 }

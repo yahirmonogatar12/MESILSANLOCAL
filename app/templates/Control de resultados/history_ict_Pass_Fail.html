@@ -1,7 +1,7 @@
 <!-- Historial ICT Pass/Fail - Fragmento AJAX. WF_004 CSS en MainTemplate.html.
      JS: ict-Pass-Fail.js cargado al final del fragmento. -->
 <div id="ict-pass-fail-container" class="ict-pass-fail-container">
-<div id="historial-ict-pass-fail-root" class="ict-page">
+  <div id="historial-ict-pass-fail-root" class="ict-page">
     <div class="filters-card">
       <div class="card-header">
         <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -93,6 +93,10 @@
           <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
         </svg>
         <h3>Historial de maquina ICT % Pass/Fail</h3>
+        <div class="ict-pass-fail-mode-toggle" role="group" aria-label="Modo de resumen ICT">
+          <button type="button" class="is-active" data-ict-pass-fail-mode="normal">Normal</button>
+          <button type="button" data-ict-pass-fail-mode="detallado">Detallado</button>
+        </div>
         <span id="ict-pass-fail-record-count" class="record-count">0 registros</span>
         <button id="ict-pass-fail-btn-export-excel" class="btn-export" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -102,7 +106,7 @@
         </button>
       </div>
       <div class="ict-pass-fail-results-hint">
-        Resumen agrupado por fecha de jornada, linea, ICT, turno y numero de parte. Doble click en una fila para ver barcodes, reintentos y reparacion.
+        Normal muestra el pass/fail historico por intento. Detallado separa OK real, defectos detectados, falsos negativos y falsos fail.
       </div>
       <div class="table-wrap">
         <div class="table-loading" id="ict-pass-fail-table-loading">
@@ -111,121 +115,68 @@
         </div>
         <table id="ict-pass-fail-table">
           <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Linea</th>
-              <th>ICT</th>
-              <th>Turno</th>
-              <th>Numero de parte</th>
-              <th>Total</th>
-              <th>OK</th>
-              <th>NG</th>
-              <th>% Pass</th>
-              <th>% Fail</th>
-              <th>Porcentaje</th>
-            </tr>
+            <tr></tr>
           </thead>
           <tbody id="ict-pass-fail-body"></tbody>
         </table>
       </div>
     </div>
-  </div>
 
-  <div id="ict-pass-fail-detail-modal" class="ict-pass-fail-detail-modal" aria-hidden="true">
-    <div class="ict-pass-fail-detail-backdrop" data-ict-pass-fail-detail-close></div>
-    <div class="ict-pass-fail-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ict-pass-fail-detail-title">
-      <div class="ict-pass-fail-detail-header">
-        <div>
-          <h3 id="ict-pass-fail-detail-title">Detalle ICT Pass/Fail</h3>
-          <p id="ict-pass-fail-detail-subtitle">Selecciona una fila del resumen.</p>
-        </div>
-        <button type="button" class="ict-pass-fail-detail-close" data-ict-pass-fail-detail-close aria-label="Cerrar">X</button>
-      </div>
-
-      <div class="ict-pass-fail-detail-body">
-        <div class="ict-pass-fail-detail-summary">
-          <div class="ict-pass-fail-detail-stat">
-            <span>Intentos</span>
-            <strong id="ict-pass-fail-detail-total-intentos">0</strong>
+    <div id="ict-pass-fail-detail-modal" class="ict-pass-fail-detail-modal" aria-hidden="true">
+      <div class="ict-pass-fail-detail-backdrop" data-ict-pass-fail-detail-close></div>
+      <div class="ict-pass-fail-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ict-pass-fail-detail-title">
+        <div class="ict-pass-fail-detail-header">
+          <div>
+            <h3 id="ict-pass-fail-detail-title">Detalle ICT Pass/Fail</h3>
+            <p id="ict-pass-fail-detail-subtitle">Selecciona una fila del resumen.</p>
           </div>
-          <div class="ict-pass-fail-detail-stat ict-pass-fail-detail-stat-good">
-            <span>OK total</span>
-            <strong id="ict-pass-fail-detail-ok-total">0</strong>
-          </div>
-          <div class="ict-pass-fail-detail-stat ict-pass-fail-detail-stat-bad">
-            <span>NG total</span>
-            <strong id="ict-pass-fail-detail-ng-total">0</strong>
-          </div>
-          <div class="ict-pass-fail-detail-stat">
-            <span>Piezas unicas</span>
-            <strong id="ict-pass-fail-detail-piezas-unicas">0</strong>
-          </div>
-          <div class="ict-pass-fail-detail-stat">
-            <span>Repetidas</span>
-            <strong id="ict-pass-fail-detail-repetidas">0</strong>
-          </div>
-          <div class="ict-pass-fail-detail-stat">
-            <span>Reparacion</span>
-            <strong id="ict-pass-fail-detail-reparacion">0</strong>
-          </div>
-          <div class="ict-pass-fail-detail-stat ict-pass-fail-detail-stat-good">
-            <span>Pass real</span>
-            <strong id="ict-pass-fail-detail-pass-real">0</strong>
-          </div>
-          <div class="ict-pass-fail-detail-stat ict-pass-fail-detail-stat-wide">
-            <span>% Pass real</span>
-            <strong id="ict-pass-fail-detail-pass-rate">0.00%</strong>
+          <div class="ict-pass-fail-detail-header-actions">
+            <div class="ict-pass-fail-mode-toggle" role="group" aria-label="Modo de detalle ICT">
+              <button type="button" class="is-active" data-ict-pass-fail-mode="normal">Normal</button>
+              <button type="button" data-ict-pass-fail-mode="detallado">Detallado</button>
+            </div>
+            <button type="button" class="ict-pass-fail-detail-close" data-ict-pass-fail-detail-close aria-label="Cerrar">X</button>
           </div>
         </div>
 
-        <div class="ict-pass-fail-detail-controls">
-          <div class="filter-group">
-            <label for="ict-pass-fail-detail-filter-barcode">Barcode</label>
-            <input type="text" id="ict-pass-fail-detail-filter-barcode" placeholder="Filtrar barcode del detalle">
-          </div>
-          <div class="filter-group">
-            <label for="ict-pass-fail-detail-filter-intentos">Repetidas</label>
-            <select id="ict-pass-fail-detail-filter-intentos">
-              <option value="1">Todos</option>
-              <option value="2">2+</option>
-              <option value="3">3+</option>
-            </select>
-          </div>
-        </div>
+        <div class="ict-pass-fail-detail-body">
+          <div class="ict-pass-fail-detail-summary"></div>
 
-        <div class="ict-pass-fail-detail-table-wrap">
-          <div class="table-loading" id="ict-pass-fail-detail-loading">
-            <div class="spinner"></div>
-            <span>Cargando detalle...</span>
+          <div class="ict-pass-fail-detail-controls">
+            <div class="filter-group">
+              <label for="ict-pass-fail-detail-filter-barcode">Barcode</label>
+              <input type="text" id="ict-pass-fail-detail-filter-barcode" placeholder="Filtrar barcode del detalle">
+            </div>
+            <div class="filter-group">
+              <label for="ict-pass-fail-detail-filter-intentos">Repetidas</label>
+              <select id="ict-pass-fail-detail-filter-intentos">
+                <option value="1">Todos</option>
+                <option value="2">2+</option>
+                <option value="3">3+</option>
+              </select>
+            </div>
           </div>
-          <table id="ict-pass-fail-detail-table">
-            <thead>
-              <tr>
-                <th>Barcode</th>
-                <th>No. parte</th>
-                <th>Linea</th>
-                <th>ICT</th>
-                <th>Turno</th>
-                <th>Primer test</th>
-                <th>Ultimo test</th>
-                <th>Intentos</th>
-                <th>OK</th>
-                <th>NG</th>
-                <th>Primero</th>
-                <th>Final</th>
-                <th>Defecto</th>
-              </tr>
-            </thead>
-            <tbody id="ict-pass-fail-detail-body">
-              <tr>
-                <td colspan="13" class="ict-pass-fail-table-empty">Sin detalle cargado.</td>
-              </tr>
-            </tbody>
-          </table>
+
+          <div class="ict-pass-fail-detail-table-wrap">
+            <div class="table-loading" id="ict-pass-fail-detail-loading">
+              <div class="spinner"></div>
+              <span>Cargando detalle...</span>
+            </div>
+            <table id="ict-pass-fail-detail-table">
+              <thead>
+                <tr></tr>
+              </thead>
+              <tbody id="ict-pass-fail-detail-body">
+                <tr>
+                  <td colspan="9" class="ict-pass-fail-table-empty">Sin detalle cargado.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/ict-Pass-Fail.js', v='20260527a') }}"></script>
+<script src="{{ url_for('static', filename='js/ict-Pass-Fail.js', v='20260528f') }}"></script>

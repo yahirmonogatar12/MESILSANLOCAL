@@ -44,8 +44,49 @@
     font-size: 0.82rem;
 }
 
+#historial-ict-pass-fail-root .results-card .card-header {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ict-pass-fail-mode-toggle {
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid rgba(52, 152, 219, 0.38);
+    border-radius: 7px;
+    background: rgba(15, 30, 48, 0.58);
+}
+
+.ict-pass-fail-mode-toggle button {
+    min-width: 78px;
+    height: 30px;
+    border: 0;
+    border-right: 1px solid rgba(52, 152, 219, 0.24);
+    background: transparent;
+    color: var(--ilsan-text-gray);
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.ict-pass-fail-mode-toggle button:last-child {
+    border-right: 0;
+}
+
+.ict-pass-fail-mode-toggle button.is-active {
+    background: #2e78a6;
+    color: #ffffff;
+}
+
+.ict-pass-fail-mode-toggle button:hover {
+    color: #ffffff;
+}
+
 #ict-pass-fail-table {
     width: 100%;
+    min-width: 0;
+    table-layout: fixed;
     border-collapse: collapse;
     background-color: var(--ilsan-dark-secondary);
 }
@@ -53,9 +94,11 @@
 #ict-pass-fail-table th,
 #ict-pass-fail-table td {
     border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 8px 6px;
+    padding: 7px 4px;
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
 }
 
 #ict-pass-fail-table thead th {
@@ -65,10 +108,10 @@
     top: 0;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.7rem;
+    font-size: 0.62rem;
     letter-spacing: 0.3px;
     z-index: 10;
-    white-space: nowrap;
+    white-space: normal;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -92,6 +135,101 @@
     padding: 24px 12px;
 }
 
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(1),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(1) {
+    width: 8%;
+}
+
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(2),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(2) {
+    width: 5%;
+}
+
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(3),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(3) {
+    width: 4%;
+}
+
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(4),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(4) {
+    width: 7%;
+}
+
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(5),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(5) {
+    width: 14%;
+}
+
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(6),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(6),
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(7),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(7),
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(8),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(8) {
+    width: 6%;
+}
+
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(9),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(9),
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(10),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(10) {
+    width: 7%;
+}
+
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(11),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(11) {
+    width: 30%;
+}
+
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(1),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(1) {
+    width: 7.5%;
+}
+
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(2),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(2) {
+    width: 4.5%;
+}
+
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(3),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(3) {
+    width: 3.5%;
+}
+
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(4),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(4) {
+    width: 6%;
+}
+
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(5),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(5) {
+    width: 14%;
+}
+
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(6),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(6),
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(7),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(7),
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(8),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(8),
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(9),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(9),
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(10),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(10) {
+    width: 6%;
+}
+
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(11),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(11),
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(12),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(12),
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(13),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(13),
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(14),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(14) {
+    width: 7%;
+}
+
 .ict-pass-fail-rate-good {
     color: #c8e6c9 !important;
     font-weight: 700;
@@ -105,10 +243,6 @@
 .ict-pass-fail-rate-neutral {
     color: #d7ecff !important;
     font-weight: 600;
-}
-
-#ict-pass-fail-table td:last-child {
-    min-width: 260px;
 }
 
 .ict-pass-fail-bar-row {
@@ -228,6 +362,13 @@ body.ict-pass-fail-detail-open {
     font-size: 0.82rem;
 }
 
+.ict-pass-fail-detail-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
 .ict-pass-fail-detail-close {
     width: 34px;
     height: 34px;
@@ -254,7 +395,7 @@ body.ict-pass-fail-detail-open {
 
 .ict-pass-fail-detail-summary {
     display: grid;
-    grid-template-columns: repeat(8, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
     gap: 10px;
 }
 
@@ -317,7 +458,8 @@ body.ict-pass-fail-detail-open {
 
 #ict-pass-fail-detail-table {
     width: 100%;
-    min-width: 1380px;
+    min-width: 0;
+    table-layout: fixed;
     border-collapse: collapse;
     background: var(--ilsan-dark-secondary);
 }
@@ -325,9 +467,13 @@ body.ict-pass-fail-detail-open {
 #ict-pass-fail-detail-table th,
 #ict-pass-fail-detail-table td {
     border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 8px 7px;
+    padding: 6px 4px;
     text-align: center;
-    font-size: 0.78rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #ict-pass-fail-detail-table thead th {
@@ -337,7 +483,7 @@ body.ict-pass-fail-detail-open {
     background: linear-gradient(135deg, #102844 0%, #223047 100%);
     color: var(--ilsan-text-light);
     text-transform: uppercase;
-    font-size: 0.68rem;
+    font-size: 0.6rem;
     white-space: nowrap;
 }
 
@@ -355,11 +501,96 @@ body.ict-pass-fail-detail-open {
 }
 
 .ict-pass-fail-detail-defect-cell {
-    max-width: 260px;
     text-align: left !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.ict-pass-fail-detail-barcode-cell {
+    text-align: left !important;
+}
+
+#ict-pass-fail-detail-table[data-mode="normal"] th:nth-child(1),
+#ict-pass-fail-detail-table[data-mode="normal"] td:nth-child(1) {
+    width: 20%;
+}
+
+#ict-pass-fail-detail-table[data-mode="normal"] th:nth-child(2),
+#ict-pass-fail-detail-table[data-mode="normal"] td:nth-child(2),
+#ict-pass-fail-detail-table[data-mode="normal"] th:nth-child(3),
+#ict-pass-fail-detail-table[data-mode="normal"] td:nth-child(3) {
+    width: 15%;
+}
+
+#ict-pass-fail-detail-table[data-mode="normal"] th:nth-child(4),
+#ict-pass-fail-detail-table[data-mode="normal"] td:nth-child(4),
+#ict-pass-fail-detail-table[data-mode="normal"] th:nth-child(5),
+#ict-pass-fail-detail-table[data-mode="normal"] td:nth-child(5),
+#ict-pass-fail-detail-table[data-mode="normal"] th:nth-child(6),
+#ict-pass-fail-detail-table[data-mode="normal"] td:nth-child(6),
+#ict-pass-fail-detail-table[data-mode="normal"] th:nth-child(7),
+#ict-pass-fail-detail-table[data-mode="normal"] td:nth-child(7),
+#ict-pass-fail-detail-table[data-mode="normal"] th:nth-child(8),
+#ict-pass-fail-detail-table[data-mode="normal"] td:nth-child(8) {
+    width: 7%;
+}
+
+#ict-pass-fail-detail-table[data-mode="normal"] th:nth-child(9),
+#ict-pass-fail-detail-table[data-mode="normal"] td:nth-child(9) {
+    width: 15%;
+}
+
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(1),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(1) {
+    width: 16%;
+}
+
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(2),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(2),
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(3),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(3) {
+    width: 9%;
+}
+
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(4),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(4) {
+    width: 5%;
+}
+
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(5),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(5),
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(6),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(6) {
+    width: 4.5%;
+}
+
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(7),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(7),
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(8),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(8),
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(9),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(9),
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(10),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(10) {
+    width: 5.5%;
+}
+
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(11),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(11) {
+    width: 8%;
+}
+
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(12),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(12),
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(13),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(13) {
+    width: 5%;
+}
+
+#ict-pass-fail-detail-table[data-mode="detallado"] th:nth-child(14),
+#ict-pass-fail-detail-table[data-mode="detallado"] td:nth-child(14) {
+    width: 11%;
 }
 
 .ict-pass-fail-detail-badge,
@@ -368,12 +599,12 @@ body.ict-pass-fail-detail-open {
 .ict-pass-fail-detail-badge-warn,
 .ict-pass-fail-detail-badge-repair {
     display: inline-flex;
-    min-width: 34px;
+    min-width: 26px;
     align-items: center;
     justify-content: center;
-    padding: 3px 8px;
+    padding: 3px 6px;
     border-radius: 999px;
-    font-size: 0.72rem;
+    font-size: 0.66rem;
     font-weight: 800;
 }
 
@@ -429,10 +660,6 @@ body.ict-pass-fail-detail-open {
         padding: 6px 4px;
     }
 
-    #ict-pass-fail-table td:last-child {
-        min-width: 200px;
-    }
-
     .ict-pass-fail-bar {
         height: 24px;
     }
@@ -449,6 +676,15 @@ body.ict-pass-fail-detail-open {
     .ict-pass-fail-detail-dialog {
         width: 100%;
         max-height: 95vh;
+    }
+
+    .ict-pass-fail-detail-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ict-pass-fail-detail-header-actions {
+        justify-content: space-between;
     }
 
     .ict-pass-fail-detail-summary {
