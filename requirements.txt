@@ -16,8 +16,6 @@ gunicorn==21.2.0
 waitress==2.1.2
 pillow>=10.0.0
 
-
-
 # Configuración
 python-dotenv>=1.0.0
 
@@ -36,14 +34,6 @@ requests>=2.30.0
 # Utilidades básicas
 psutil>=5.9.0
 pytz>=2023.3
-
-
-
-# SMT Monitor dependencies
-mysql-connector-python==8.0.33
-watchdog==3.0.0
-
-
 
 # SMT Monitor dependencies
 mysql-connector-python==8.0.33

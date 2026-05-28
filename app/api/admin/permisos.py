@@ -243,7 +243,11 @@ def toggle_permission():
             """, (rol_id, permiso_id))
             message = f"Permiso {pagina}>{seccion}>{boton} removido de {role}"
         else:
-            message = f"Accion {action} no valida"
+            conn.close()
+            return jsonify({
+                "success": False,
+                "error": f"Accion {action} no valida"
+            }), 400
 
         conn.commit()
         conn.close()

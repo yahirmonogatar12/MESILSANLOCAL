@@ -213,7 +213,8 @@ def _startup_log(msg):
     print(f"[startup {elapsed}s] {msg}")
 
 
-# smd_inventory ahora se registra via app/api/__init__.py
+# smd_inventory: modulo borrado (commit c9a312b). Mantener como nota historica
+# para evitar que reaparezca como "TODO migrar" en futuros audits.
 
 # shipping y shipping_material (apps moviles PDA) registrados
 # via registrar_blueprints_api() en app_factory.py

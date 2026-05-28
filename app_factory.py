@@ -46,7 +46,6 @@ def create_app():
         #   - informacion_basica.control_modelos_smt   (ex app/py/control_modelos_smt.py)
         #   - informacion_basica.control_modelos_visor (ex routes.py /visor-mysql + /api/mysql/*)
         #   - control_material.material_admin         (ex Almacen_api.py)
-        #   - control_material.smd_inventory          (ex smd_inventory_api.py)
         #   - control_calidad.smt_historial_simple    (ex smt_routes_date_fixed.py)
         #   - control_calidad.smt_historial           (ex smt_routes_clean.py)
         #   - control_resultados.aoi                  (ex aoi_api.py)
