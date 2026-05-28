@@ -76,6 +76,8 @@ _MODULOS_REGISTRADOS = [
     # registrado (preserva comportamiento legacy de smt_routes_date_fixed.py).
     "control_calidad.smt_historial_simple",
     "control_calidad.smt_historial",
+    # Migracion 2026-05-28: Historial de liberacion LQC
+    "control_calidad.historial_liberacion_lqc",
     "control_resultados.aoi",
     # Migracion 2026-05-27: IMD-SMD TERMINADO a blueprint
     "control_resultados.inventario_imd",

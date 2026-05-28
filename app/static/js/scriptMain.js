@@ -2798,7 +2798,7 @@ window.mostrarControlInspeccionOQC = function () {
 window.mostrarHistorialLiberacionLQC = function () {
   _mostrarModuloCalidad(
     "historial-liberacion-lqc-unique-container",
-    "/historial-liberacion-lqc-ajax",
+    "/historial_liberacion_lqc/ajax",
     () => {
       if (typeof window.inicializarHistorialLiberacionLQC === "function") {
         window.inicializarHistorialLiberacionLQC();

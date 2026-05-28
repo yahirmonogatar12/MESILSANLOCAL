@@ -527,7 +527,9 @@ class AuthSystem:
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección final', 'Acceso a inspección final'),
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Control de calibracion', 'Acceso al control de calibración'),
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Reportes de calidad', 'Acceso a reportes de calidad'),
-            
+            # WF_001 (2026-05-28): seed modulo Historial de liberacion LQC en Inspeccion de calidad.
+            ('LISTA_CONTROL_DE_CALIDAD', 'Inspeccion de calidad', 'Historial de liberacion LQC', 'Acceso al historial de liberacion LQC'),
+
             # LISTA DE CONTROL DE RESULTADOS
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Análisis de resultados', 'Acceso al análisis de resultados'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Reportes estadísticos', 'Acceso a reportes estadísticos'),
