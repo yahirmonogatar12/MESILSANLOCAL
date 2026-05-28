@@ -16,13 +16,14 @@ DDL `init_metal_mask_tables` migrado a este modulo el 2026-05-28; lo invoca
 y `storage_boxes` al arranque.
 """
 
+import traceback
 from functools import wraps
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request, session
 
 # Importar directo desde modulos fuente (NO desde app.api.shared) para
 # evitar import circular: shared -> routes -> metal_mask -> shared.
-from app.db_mysql import execute_query
+from app.db_mysql import execute_query, get_connection
 
 
 # `login_requerido` y `requiere_permiso_dropdown` viven en `app.routes`.
@@ -266,6 +267,429 @@ def historial_tension_mask_metal_ajax():
 def historial_uso_mask_metal_ajax():
     """Template para Historial de uso de mask de metal"""
     return render_template("Control de calidad/historial_uso_mask_metal_ajax.html")
+
+
+# ---------------------------------------------------------------------------
+# Fase 4 (2026-05-28): 4 endpoints API gordos migrados desde routes.py.
+#   /api/masks/info                  - lookup de mask por management_no
+#   POST /api/metal-mask/history     - registrar uso en metal_mask_history
+#   GET  /api/metal-mask/history     - listar historial con filtros
+#   POST /api/metal-mask/update-used-count - actualizar used_count al fin de plan
+# El comentario L11 ("NO mover aqui /api/masks/info") esta obsoleto: los
+# blueprints Flask son namespaces de codigo, no aislan rutas — Control de
+# operacion SMT sigue consumiendolas via su URL canonica sin cambios.
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/masks/info", methods=["GET"])
+@login_requerido
+def api_masks_info():
+    try:
+        code = request.args.get("code", "").strip()
+        if not code:
+            return jsonify({"success": False, "error": "code requerido"}), 400
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        q = """
+            SELECT management_no, storage_box, pcb_code, side, production_date,
+                   used_count, max_count, allowance, model_name, tension_min,
+                   tension_max, thickness, supplier, registration_date, disuse
+            FROM masks
+            WHERE management_no = %s
+            LIMIT 1
+        """
+        cursor.execute(q, [code])
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not row:
+            return jsonify(
+                {"success": False, "found": False, "message": "No encontrado"}
+            )
+
+        fields = [
+            "management_no",
+            "storage_box",
+            "pcb_code",
+            "side",
+            "production_date",
+            "used_count",
+            "max_count",
+            "allowance",
+            "model_name",
+            "tension_min",
+            "tension_max",
+            "thickness",
+            "supplier",
+            "registration_date",
+            "disuse",
+        ]
+        data = {
+            fields[i]: (row[i] if i < len(row) else None) for i in range(len(fields))
+        }
+
+        def to_int(v):
+            try:
+                return int(v)
+            except Exception:
+                try:
+                    return int(float(v))
+                except Exception:
+                    return 0
+
+        data["used_count"] = to_int(data.get("used_count"))
+        data["max_count"] = to_int(data.get("max_count"))
+        data["allowance"] = to_int(data.get("allowance"))
+
+        return jsonify({"success": True, "found": True, "data": data})
+    except Exception as e:
+        print("Error en api_masks_info:", e)
+        print(traceback.format_exc())
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/metal-mask/history", methods=["POST"])
+@login_requerido
+def api_save_metal_mask_history():
+    """Guardar historial de uso de Metal Mask"""
+    try:
+        data = request.get_json()
+
+        # Validar datos requeridos
+        required_fields = ["mask_code", "model_code", "linea", "quantity_used"]
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify(
+                    {"success": False, "error": f"{field} es requerido"}
+                ), 400
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # Crear tabla si no existe
+        create_table_query = """
+            CREATE TABLE IF NOT EXISTS metal_mask_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                mask_code VARCHAR(50) NOT NULL,
+                model_code VARCHAR(50) NOT NULL,
+                linea VARCHAR(20) NOT NULL,
+                quantity_used INT NOT NULL DEFAULT 0,
+                scan_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                usuario VARCHAR(50),
+                plan_id INT,
+                run_id INT,
+                available_uses INT DEFAULT 0,
+                total_uses INT DEFAULT 0,
+                status ENUM('OK', 'NG', 'WARNING') DEFAULT 'OK',
+                notes TEXT,
+                INDEX idx_mask_code (mask_code),
+                INDEX idx_model_code (model_code),
+                INDEX idx_linea (linea),
+                INDEX idx_scan_date (scan_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+        cursor.execute(create_table_query)
+        conn.commit()
+
+        # Insertar registro de historial
+        insert_query = """
+            INSERT INTO metal_mask_history
+            (mask_code, model_code, linea, quantity_used, usuario, plan_id, run_id,
+             available_uses, total_uses, status, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+
+        usuario = session.get("usuario_logueado", "Sistema")
+        plan_id = data.get("plan_id")
+        run_id = data.get("run_id")
+        available_uses = data.get("available_uses", 0)
+        total_uses = data.get("total_uses", 0)
+        status = data.get("status", "OK")
+        notes = data.get("notes", "")
+
+        cursor.execute(
+            insert_query,
+            [
+                data["mask_code"],
+                data["model_code"],
+                data["linea"],
+                data["quantity_used"],
+                usuario,
+                plan_id,
+                run_id,
+                available_uses,
+                total_uses,
+                status,
+                notes,
+            ],
+        )
+
+        history_id = cursor.lastrowid
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify(
+            {
+                "success": True,
+                "history_id": history_id,
+                "message": "Historial de Metal Mask guardado correctamente",
+            }
+        )
+
+    except Exception as e:
+        print("Error en api_save_metal_mask_history:", e)
+        print(traceback.format_exc())
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/metal-mask/history", methods=["GET"])
+@login_requerido
+def api_get_metal_mask_history():
+    """Obtener historial de uso de Metal Mask"""
+    try:
+        # Parametros de filtro
+        mask_code = request.args.get("mask_code", "").strip()
+        model_code = request.args.get("model_code", "").strip()
+        linea = request.args.get("linea", "").strip()
+        date_from = request.args.get("date_from", "").strip()
+        date_to = request.args.get("date_to", "").strip()
+        limit = int(request.args.get("limit", 100))
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # Construir consulta con filtros
+        where_conditions = []
+        params = []
+
+        if mask_code:
+            where_conditions.append("mask_code = %s")
+            params.append(mask_code)
+
+        if model_code:
+            where_conditions.append("model_code = %s")
+            params.append(model_code)
+
+        if linea:
+            where_conditions.append("linea = %s")
+            params.append(linea)
+
+        if date_from:
+            where_conditions.append("scan_date >= %s")
+            params.append(date_from)
+
+        if date_to:
+            where_conditions.append("scan_date <= %s")
+            params.append(date_to + " 23:59:59")
+
+        where_clause = (
+            "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+        )
+
+        query = f"""
+            SELECT id, mask_code, model_code, linea, quantity_used,
+                   DATE_FORMAT(scan_date, '%%Y-%%m-%%d %%H:%%i:%%s') as scan_date,
+                   usuario, plan_id, run_id, available_uses, total_uses,
+                   status, notes
+            FROM metal_mask_history
+            {where_clause}
+            ORDER BY scan_date DESC
+            LIMIT %s
+        """
+
+        params.append(limit)
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        columns = [
+            "id",
+            "mask_code",
+            "model_code",
+            "linea",
+            "quantity_used",
+            "scan_date",
+            "usuario",
+            "plan_id",
+            "run_id",
+            "available_uses",
+            "total_uses",
+            "status",
+            "notes",
+        ]
+
+        data = [dict(zip(columns, row)) for row in rows]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({"success": True, "data": data, "count": len(data)})
+
+    except Exception as e:
+        print(" Error en api_get_metal_mask_history:", e)
+        print(" Traceback completo:")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/metal-mask/update-used-count", methods=["POST"])
+@login_requerido
+def api_update_metal_mask_used_count():
+    """Actualizar used_count de Metal Mask al finalizar plan"""
+    try:
+        data = request.get_json()
+        plan_id = data.get("plan_id")
+        cantidad_producida = int(data.get("cantidad_producida", 0))
+
+        if not plan_id or cantidad_producida <= 0:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "plan_id y cantidad_producida son requeridos",
+                }
+            )
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # 1. Obtener informacion del plan para saber el modelo y linea
+        cursor.execute(
+            """
+            SELECT modelo, linea, nparte
+            FROM plan_smd
+            WHERE id = %s
+        """,
+            (plan_id,),
+        )
+        plan_info = cursor.fetchone()
+
+        if not plan_info:
+            return jsonify({"success": False, "error": "Plan no encontrado"})
+
+        modelo, linea, nparte = plan_info
+
+        # 2. Buscar Metal Masks que se usaron para este modelo/linea
+        # Prioridad 1: Buscar por plan_id especifico
+        cursor.execute(
+            """
+            SELECT DISTINCT mask_code, COUNT(*) as usage_count
+            FROM metal_mask_history
+            WHERE plan_id = %s
+            GROUP BY mask_code
+            ORDER BY usage_count DESC, scan_date DESC
+        """,
+            (plan_id,),
+        )
+
+        mask_codes = [row[0] for row in cursor.fetchall()]
+
+        # Prioridad 2: Si no hay historial del plan, buscar por modelo/linea reciente
+        if not mask_codes:
+            cursor.execute(
+                """
+                SELECT DISTINCT mask_code, COUNT(*) as usage_count
+                FROM metal_mask_history
+                WHERE model_code = %s AND linea = %s
+                AND scan_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                GROUP BY mask_code
+                ORDER BY usage_count DESC, scan_date DESC
+                LIMIT 3
+            """,
+                (modelo, linea),
+            )
+            mask_codes = [row[0] for row in cursor.fetchall()]
+
+        # Prioridad 3: Buscar cualquier mask para el modelo (ultimo recurso)
+        if not mask_codes:
+            cursor.execute(
+                """
+                SELECT DISTINCT mask_code
+                FROM metal_mask_history
+                WHERE model_code = %s
+                ORDER BY scan_date DESC
+                LIMIT 1
+            """,
+                (modelo,),
+            )
+            mask_codes = [row[0] for row in cursor.fetchall()]
+
+        updated_count = 0
+
+        # 3. Actualizar used_count en la tabla masks para cada mask_code encontrada
+        for mask_code in mask_codes:
+            cursor.execute(
+                """
+                UPDATE masks
+                SET used_count = used_count + %s
+                WHERE management_no = %s
+            """,
+                (cantidad_producida, mask_code),
+            )
+
+            if cursor.rowcount > 0:
+                updated_count += cursor.rowcount
+                print(
+                    f" Metal Mask {mask_code} - used_count incrementado en {cantidad_producida}"
+                )
+
+        # 4. Registrar el update en el historial para cada mask actualizada
+        for mask_code in mask_codes:
+            cursor.execute(
+                """
+                SELECT used_count, max_count, allowance
+                FROM masks
+                WHERE management_no = %s
+            """,
+                (mask_code,),
+            )
+
+            mask_info = cursor.fetchone()
+            if mask_info:
+                used_count, max_count, allowance = mask_info
+                available_uses = max(0, (max_count + allowance) - used_count)
+
+                cursor.execute(
+                    """
+                    INSERT INTO metal_mask_history
+                    (mask_code, model_code, linea, quantity_used, plan_id,
+                     available_uses, total_uses, status, notes, usuario, scan_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                """,
+                    (
+                        mask_code,
+                        modelo,
+                        linea,
+                        cantidad_producida,
+                        plan_id,
+                        available_uses,
+                        used_count,
+                        "END_PLAN",
+                        f"Finalizacion de plan {plan_id} - Producido: {cantidad_producida}",
+                        session.get("usuario", "sistema"),
+                    ),
+                )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify(
+            {
+                "success": True,
+                "updated_masks": updated_count,
+                "cantidad_producida": cantidad_producida,
+                "plan_id": plan_id,
+                "masks_actualizadas": mask_codes,
+            }
+        )
+
+    except Exception as e:
+        print(" Error actualizando used_count:", e)
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ---------------------------------------------------------------------------

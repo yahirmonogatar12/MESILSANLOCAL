@@ -29,13 +29,17 @@ NO movido aqui:
 """
 
 import io
+import os
 from datetime import date, datetime, timedelta
 from functools import wraps
 
+import pandas as pd
 from flask import Blueprint, jsonify, render_template, request, send_file, session
+from werkzeug.utils import secure_filename
 
 # Importar directo desde modulos fuente (NO desde app.api.shared) para
 # evitar import circular: shared -> routes -> plan_assy -> shared.
+from app.db import get_db_connection
 from app.db_mysql import execute_query
 from app.config_mysql import get_pooled_connection
 from app.api.pda.shipping_material import get_dict_cursor
@@ -1459,3 +1463,342 @@ def api_plan_main_list():
         return jsonify(out)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Fase 4 (2026-05-28): /importar_excel_plan_produccion migrado desde routes.py.
+# Importa work orders desde un Excel con columnas (linea, modelo, numero_parte,
+# cantidad, fecha_operacion, codigo_po). Crea registros en work_orders con
+# codigo_wo auto-generado por dia (WO-YYMMDD-NNNN).
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/importar_excel_plan_produccion", methods=["POST"])
+@login_requerido
+def importar_excel_plan_produccion():
+    """Importar plan de produccion desde Excel"""
+    conn = None
+    cursor = None
+    temp_path = None
+
+    try:
+        if "file" not in request.files:
+            return jsonify(
+                {"success": False, "error": "No se proporciono archivo"}
+            ), 400
+
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"success": False, "error": "No se selecciono archivo"}), 400
+
+        if (
+            not file
+            or not file.filename
+            or not file.filename.lower().endswith((".xlsx", ".xls"))
+        ):
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Formato de archivo no valido. Use .xlsx o .xls",
+                }
+            ), 400
+
+        # Guardar el archivo temporalmente (junto al modulo, como en el legacy)
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), "temp_" + filename)
+        file.save(temp_path)
+
+        # Leer el archivo Excel
+        try:
+            df = pd.read_excel(
+                temp_path, engine="openpyxl" if filename.endswith(".xlsx") else "xlrd"
+            )
+
+            # Si las primeras filas contienen datos directamente (sin encabezados claros)
+            # y las columnas tienen nombres genericos como 0, 1, 2, etc.
+            if all(isinstance(col, int) for col in df.columns):
+                df = pd.read_excel(
+                    temp_path,
+                    header=None,
+                    engine="openpyxl" if filename.endswith(".xlsx") else "xlrd",
+                )
+                if len(df.columns) >= 3:
+                    df.columns = ["Modelo", "Numero_Parte", "Cantidad"] + [
+                        f"Col_{i}" for i in range(3, len(df.columns))
+                    ]
+                elif len(df.columns) == 2:
+                    df.columns = ["Modelo", "Cantidad"]
+                else:
+                    df.columns = ["Modelo"]
+        except Exception as e:
+            try:
+                df = pd.read_excel(temp_path, header=None)
+                if len(df.columns) >= 3:
+                    df.columns = ["Modelo", "Numero_Parte", "Cantidad"] + [
+                        f"Col_{i}" for i in range(3, len(df.columns))
+                    ]
+                elif len(df.columns) == 2:
+                    df.columns = ["Modelo", "Cantidad"]
+                else:
+                    df.columns = ["Modelo"]
+            except Exception as e2:
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": f"Error al leer el archivo Excel: {str(e2)}",
+                    }
+                ), 500
+
+        if df.empty:
+            return jsonify(
+                {"success": False, "error": "El archivo Excel esta vacio"}
+            ), 400
+
+        usuario_actual = session.get("usuario", "USUARIO_EXCEL")
+
+        fecha_operacion_usuario = request.form.get("fecha_operacion", "").strip()
+        if fecha_operacion_usuario:
+            print(
+                f" Fecha de operacion personalizada seleccionada: {fecha_operacion_usuario}"
+            )
+        else:
+            print(" Usando fechas del Excel o fecha actual como respaldo")
+
+        def obtener_nombre_modelo(codigo_modelo):
+            """Obtener nombre (project) desde raw por part_no"""
+            try:
+                if not codigo_modelo:
+                    return ""
+                cursor.execute(
+                    "SELECT project FROM raw WHERE TRIM(part_no)=TRIM(%s) ORDER BY id DESC LIMIT 1",
+                    (codigo_modelo,),
+                )
+                row = cursor.fetchone()
+                return (row.get("project") if row else "") or ""
+            except Exception as e:
+                print(f"Error obteniendo nombre modelo para {codigo_modelo}: {e}")
+                return ""
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Asegurar que la tabla work_orders tenga la columna linea
+        try:
+            cursor.execute("SHOW COLUMNS FROM work_orders LIKE 'linea'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE work_orders ADD COLUMN linea VARCHAR(32)")
+                print(" Columna 'linea' agregada a work_orders")
+        except Exception as e:
+            print(f"Error agregando columna linea: {e}")
+
+        registros_insertados = 0
+        registros_actualizados = 0
+        errores = []
+
+        # Mapeo de columnas (flexible para diferentes nombres)
+        mapeo_columnas = {
+            "linea": ["Linea", "linea", "Line", "LINEA", "Linea"],
+            "modelo": ["Modelo", "modelo", "Model", "MODELO"],
+            "numero_parte": [
+                "Numero de parte",
+                "Numero de parte",
+                "numero_parte",
+                "Part Number",
+                "NUMERO_PARTE",
+                "Numero_Parte",
+            ],
+            "cantidad": ["Cantidad", "cantidad", "Quantity", "CANTIDAD"],
+            "fecha_operacion": [
+                "Fecha",
+                "fecha_operacion",
+                "Fecha de operacion",
+                "Date",
+                "FECHA",
+            ],
+            "codigo_po": [
+                "PO",
+                "codigo_po",
+                "Codigo PO",
+                "Purchase Order",
+                "CODIGO_PO",
+            ],
+        }
+
+        print(f"Columnas en el DataFrame: {list(df.columns)}")
+        print(f"Primeras 3 filas del DataFrame:")
+        print(df.head(3))
+
+        columnas_detectadas = {}
+        for campo, posibles_nombres in mapeo_columnas.items():
+            for nombre in posibles_nombres:
+                if nombre in df.columns:
+                    columnas_detectadas[campo] = nombre
+                    break
+
+        print(f"Columnas detectadas: {columnas_detectadas}")
+
+        if "modelo" not in columnas_detectadas or "cantidad" not in columnas_detectadas:
+            error_msg = (
+                f"El archivo debe contener al menos las columnas: Modelo y Cantidad. "
+            )
+            error_msg += f"Columnas encontradas: {list(df.columns)}. "
+            error_msg += f"Mapeo detectado: {columnas_detectadas}"
+
+            return jsonify({"success": False, "error": error_msg}), 400
+
+        for index, row in df.iterrows():
+            try:
+                modelo = str(row.get(columnas_detectadas["modelo"], "")).strip()
+                cantidad = row.get(columnas_detectadas["cantidad"], 0)
+
+                if not modelo or modelo == "nan":
+                    errores.append(f"Fila {index + 2}: Modelo vacio")
+                    continue
+
+                try:
+                    cantidad = (
+                        int(float(cantidad))
+                        if cantidad and str(cantidad) != "nan"
+                        else 0
+                    )
+                except (ValueError, TypeError):
+                    cantidad = 0
+
+                if cantidad <= 0:
+                    errores.append(f"Fila {index + 2}: Cantidad invalida ({cantidad})")
+                    continue
+
+                linea = str(row.get(columnas_detectadas.get("linea", ""), "")).strip()
+                if linea == "nan":
+                    linea = ""
+
+                numero_parte = str(
+                    row.get(columnas_detectadas.get("numero_parte", ""), "")
+                ).strip()
+                if numero_parte == "nan":
+                    numero_parte = ""
+
+                codigo_po = str(
+                    row.get(columnas_detectadas.get("codigo_po", ""), "SIN-PO")
+                ).strip()
+                if codigo_po == "nan" or not codigo_po:
+                    codigo_po = "SIN-PO"
+
+                fecha_operacion_usuario = request.form.get(
+                    "fecha_operacion", ""
+                ).strip()
+
+                if fecha_operacion_usuario:
+                    fecha_operacion = fecha_operacion_usuario
+                else:
+                    fecha_operacion = row.get(
+                        columnas_detectadas.get("fecha_operacion", ""), ""
+                    )
+                    if pd.isna(fecha_operacion) or fecha_operacion == "nan":
+                        fecha_operacion = datetime.now().strftime("%Y-%m-%d")
+                    else:
+                        try:
+                            if isinstance(fecha_operacion, str):
+                                from dateutil import parser
+
+                                fecha_operacion = parser.parse(
+                                    fecha_operacion
+                                ).strftime("%Y-%m-%d")
+                            else:
+                                fecha_operacion = fecha_operacion.strftime("%Y-%m-%d")
+                        except:
+                            fecha_operacion = datetime.now().strftime("%Y-%m-%d")
+
+                fecha_codigo = datetime.now().strftime("%y%m%d")
+
+                cursor.execute(
+                    """
+                    SELECT codigo_wo FROM work_orders
+                    WHERE codigo_wo LIKE %s
+                    ORDER BY codigo_wo DESC LIMIT 1
+                """,
+                    (f"WO-{fecha_codigo}-%",),
+                )
+
+                ultimo_wo = cursor.fetchone()
+                if ultimo_wo:
+                    try:
+                        ultimo_numero = int(ultimo_wo["codigo_wo"].split("-")[-1])
+                        nuevo_numero = ultimo_numero + 1
+                    except:
+                        nuevo_numero = 1
+                else:
+                    nuevo_numero = 1
+
+                codigo_wo = f"WO-{fecha_codigo}-{nuevo_numero:04d}"
+
+                codigo_modelo = modelo
+                nombre_modelo = obtener_nombre_modelo(codigo_modelo)
+
+                cursor.execute(
+                    """
+                    INSERT INTO work_orders
+                    (codigo_wo, codigo_po, modelo, codigo_modelo, nombre_modelo, linea,
+                     cantidad_planeada, fecha_operacion, usuario_creacion, modificador, estado)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'CREADA')
+                """,
+                    (
+                        codigo_wo,
+                        codigo_po,
+                        modelo
+                        if modelo
+                        else numero_parte,
+                        codigo_modelo,
+                        nombre_modelo,
+                        linea,
+                        cantidad,
+                        fecha_operacion,
+                        usuario_actual,
+                        usuario_actual,
+                    ),
+                )
+
+                registros_insertados += 1
+
+            except Exception as e:
+                errores.append(f"Fila {index + 2}: {str(e)}")
+                continue
+
+        conn.commit()
+
+        mensaje = f"Importacion completada. {registros_insertados} WOs creadas."
+        if fecha_operacion_usuario:
+            mensaje += f" Fecha de operacion aplicada: {fecha_operacion_usuario}."
+        if errores:
+            mensaje += f" {len(errores)} errores encontrados."
+
+        return jsonify(
+            {
+                "success": True,
+                "message": mensaje,
+                "registros_procesados": registros_insertados,
+                "errores": len(errores),
+                "fecha_aplicada": fecha_operacion_usuario or "Fechas del Excel/Actual",
+                "detalles": {
+                    "insertados": registros_insertados,
+                    "errores": errores[:10]
+                    if errores
+                    else [],
+                },
+            }
+        )
+
+    except Exception as e:
+        print(f"Error general en importar_excel_plan_produccion: {str(e)}")
+        return jsonify({"success": False, "error": f"Error interno: {str(e)}"}), 500
+
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
+        except Exception as e:
+            print(f"Error en cleanup: {str(e)}")

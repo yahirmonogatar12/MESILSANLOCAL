@@ -1,7 +1,7 @@
 # Plan: Adelgazar `app/routes.py`
 
 **Fecha del plan**: 2026-05-28
-**Estado actual**: `routes.py` tiene **3146 líneas** tras Fase 3 (baseline original: 4455 líneas, 105 defs top-level).
+**Estado actual**: `routes.py` tiene **1823 líneas** tras Fase 4 + Fase 5 anticipada (baseline original: 4455 líneas, 105 defs top-level).
 **Meta**: reducir a **~2100 líneas** (-53%) moviendo o borrando lo que ya no debería vivir aquí.
 
 ## Progreso
@@ -12,8 +12,8 @@
 | **Fase 1 (9 huérfanas)** | ✅ **2026-05-28** | **3804** | **-651** | **379** | ✅ `create_app()` OK |
 | **Fase 2 (re-exports zombies)** | ✅ **2026-05-28** | **3758** | **-46** | **379** | ✅ `create_app()` + imports lazy OK |
 | **Fase 3 (renders + salida lineas)** | ✅ **2026-05-28** | **3146** | **-612** | **379** | ✅ 36 URLs migradas presentes |
-| Fase 4 (rutas gordas) | pendiente | — | — | — | — |
-| Fase 5 (helpers huérfanos) | pendiente | — | — | — | — |
+| **Fase 4 (11 rutas gordas + 3 helpers huérfanos)** | ✅ **2026-05-28** | **1823** | **-1323** | **379** | ✅ 10 URLs verificadas |
+| Fase 5 (helpers huérfanos) | ✅ adelantada en Fase 4 | — | — | — | — |
 
 ## Principio rector
 
@@ -263,10 +263,32 @@ from app.api.control_proceso.almacen_embarques import (
 
 ---
 
-### Fase 4 — Mover rutas gordas a blueprints existentes
+### Fase 4 — Mover rutas gordas a blueprints existentes ✅ COMPLETADA (2026-05-28)
 
-**Ganancia**: ~600 líneas. **Riesgo**: medio (incluye lógica de negocio,
-no sólo render). **Tiempo**: 3-4 horas.
+**Ganancia real**: -1323 líneas (3146 → 1823, **más del doble** de lo previsto).
+**Total rutas**: 379 (sin cambio). **10 URLs migradas verificadas en `url_map`**.
+**Bonus**: los 3 helpers huérfanos previstos para Fase 5 se borraron en este
+mismo paso (0 consumidores en código vivo).
+
+**Migración aplicada**:
+| Funcion | Destino |
+|---|---|
+| `api_raw_search` (GET /api/raw/search) | `shared/raw_modelos.py` (mismo url_prefix /api/raw + /search) |
+| `api_inventario_modelo`, `api_inventario` | `control_resultados/inventario_imd.py` |
+| `api_historial_smt_latest`, `api_historial_smt_latest_v2` + `convertir_linea_smt` | `control_calidad/smt_historial.py` |
+| `api_masks_info`, `api_save_metal_mask_history`, `api_get_metal_mask_history`, `api_update_metal_mask_used_count` | `control_produccion/metal_mask.py` |
+| `api_bom_smt_data` | `informacion_basica/control_bom.py` |
+| `importar_excel_plan_produccion` (POST) | `control_produccion/plan_assy.py` |
+
+**Helpers borrados (Fase 5 anticipada)**:
+- `crear_patron_caracteres` (0 consumidores)
+- `generar_lot_no_secuencial` (0 consumidores)
+- `convertir_linea_smt_reverso` (0 consumidores)
+
+**Nota técnica**: el comentario obsoleto "NO mover aqui /api/masks/info" en
+`metal_mask.py` (L11) se eliminó — los blueprints Flask son namespaces de
+código, no aíslan rutas; Control de operacion SMT sigue consumiéndola sin
+cambios via la URL canónica.
 
 | Línea | Función | URL | Tamaño | Blueprint destino |
 |---:|---|---|---:|---|
@@ -357,8 +379,10 @@ Son el core que justifica que `routes.py` siga existiendo:
 | **Fase 1 (borrar 9 huérfanas) ✅** | **3804** | **-651** |
 | **Fase 2 (borrar 25 re-exports zombies) ✅** | **3758** | **-697** |
 | **Fase 3 (mover 36 renders + 3 endpoints salida líneas) ✅** | **3146** | **-1309** |
-| Fase 4 (mover 11 rutas gordas) | ~2546 | -1909 |
-| Fase 5 (borrar 4 helpers huérfanos) | ~2496 | -1959 |
+| **Fase 4 (mover 11 rutas gordas + Fase 5 anticipada) ✅** | **1823** | **-2632** |
+
+**Meta superada**: `routes.py` está en **1823 líneas** (objetivo era ~2100 / -53%).
+Reducción real: **-2632 líneas (-59.1%)** desde el baseline.
 
 **Meta final**: `routes.py` con ~2100 líneas, ~30 endpoints (sólo
 auth + transversales + landing), 0 funciones DDL, 0 re-exports zombies.

@@ -27,11 +27,13 @@ queda pendiente para una pasada futura.
 
 import logging
 import os
+import traceback
 
 import mysql.connector
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 from app.api.shared import login_requerido
+from app.db_mysql import get_connection
 
 
 logger = logging.getLogger(__name__)
@@ -357,3 +359,214 @@ def historial_cambio_material_smt_ajax():
     except Exception as e:
         print(f"Error en historial_cambio_material_smt_ajax: {e}")
         return f"Error interno del servidor: {e}", 500
+
+
+# ---------------------------------------------------------------------------
+# Fase 4 (2026-05-28): 2 endpoints "latest" migrados desde routes.py.
+# Consumidos por el panel "Control de Operacion SMT" para hacer match contra
+# BOM con el ultimo material escaneado por (linea, maquina, SlotNo).
+# `convertir_linea_smt` se trae junto porque solo lo usa la variante v2.
+# ---------------------------------------------------------------------------
+
+
+def convertir_linea_smt(linea_nombre):
+    """Convierte nombres de linea SMT a formato de BD (SMT A -> 1line, etc.)"""
+    conversion = {
+        "SMT A": "1line",
+        "SMT B": "2line",
+        "SMT C": "3line",
+        "SMT D": "4line",
+    }
+    return conversion.get(linea_nombre, linea_nombre)
+
+
+@bp.route("/api/historial_smt_latest", methods=["GET"])
+@login_requerido
+def api_historial_smt_latest():
+    """Devuelve el ultimo escaneo por (linea, maquina, SlotNo) desde la tabla
+    historial_cambio_material_smt. Pensado para el panel de Control de Operacion SMT
+    que requiere el ultimo material escaneado para hacer match con el BOM.
+
+    Parametros:
+      - linea: opcional. Ej: 'SMT B'. Si se omite, devuelve para todas las lineas.
+    """
+    try:
+        linea = request.args.get("linea", "").strip()
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        where_sub = ""
+        params = []
+        if linea:
+            where_sub = "WHERE linea = %s"
+            params.append(linea)
+
+        # Seleccionar el ultimo registro por grupo usando fecha_subida
+        query = f"""
+            SELECT h.id, h.linea, h.maquina, h.archivo, h.ScanDate, h.ScanTime,
+                   h.SlotNo, h.Result, h.PreviousBarcode, h.Productdate,
+                   h.PartName, h.Quantity, h.SEQ, h.Vendor, h.LOTNO,
+                   h.Barcode, h.FeederBase, h.fecha_subida,
+                   CASE WHEN UPPER(h.FeederBase) LIKE '%%F%%' THEN 'FRONT'
+                        WHEN UPPER(h.FeederBase) LIKE '%%R%%' THEN 'REAR'
+                        ELSE 'UNKNOWN' END AS side_norm
+            FROM historial_cambio_material_smt h
+            INNER JOIN (
+                SELECT linea, maquina, SlotNo,
+                       CASE WHEN UPPER(FeederBase) LIKE '%%F%%' THEN 'FRONT'
+                            WHEN UPPER(FeederBase) LIKE '%%R%%' THEN 'REAR'
+                            ELSE 'UNKNOWN' END AS side_norm,
+                       MAX(fecha_subida) AS max_fecha
+                FROM historial_cambio_material_smt
+                {where_sub}
+                GROUP BY linea, maquina, SlotNo, side_norm
+            ) m
+            ON h.linea = m.linea AND h.maquina = m.maquina
+               AND h.SlotNo = m.SlotNo AND h.fecha_subida = m.max_fecha
+               AND (
+                    (CASE WHEN UPPER(h.FeederBase) LIKE '%%F%%' THEN 'FRONT'
+                          WHEN UPPER(h.FeederBase) LIKE '%%R%%' THEN 'REAR'
+                          ELSE 'UNKNOWN' END) = m.side_norm
+               )
+            {("WHERE h.linea = %s" if linea else "")}
+            ORDER BY h.linea, h.maquina, h.SlotNo, side_norm
+        """
+
+        if linea:
+            cursor.execute(query, params + params)
+        else:
+            cursor.execute(query)
+
+        rows = cursor.fetchall()
+
+        data = []
+        for r in rows:
+            linea_v = r[1] if len(r) > 1 else ""
+            maquina_v = r[2] if len(r) > 2 else ""
+            scan_date = r[4] if len(r) > 4 else ""
+            scan_time = r[5] if len(r) > 5 else ""
+            slot_no = r[6] if len(r) > 6 else ""
+            part_name = r[10] if len(r) > 10 else ""
+            quantity = r[11] if len(r) > 11 else 0
+            vendor = r[13] if len(r) > 13 else ""
+            feeder_base = r[16] if len(r) > 16 else ""
+
+            formatted = {
+                "linea": linea_v,
+                "maquina": maquina_v,
+                "Equipment": maquina_v,
+                "SlotNo": slot_no,
+                "FeederBase": feeder_base,
+                "RegistDate": scan_date,
+                "fecha_formateada": scan_date,
+                "PartName": part_name,
+                "Quantity": quantity,
+                "Vendor": vendor,
+                "ScanDate": scan_date,
+                "ScanTime": scan_time,
+            }
+            data.append(formatted)
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({"success": True, "data": data, "total": len(data)})
+    except Exception as e:
+        print(f"Error en api_historial_smt_latest: {e}")
+        print(traceback.format_exc())
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# Variante robusta con lado FRONT/REAR agrupado explicitamente
+@bp.route("/api/historial_smt_latest_v2", methods=["GET"])
+@login_requerido
+def api_historial_smt_latest_v2():
+    try:
+        linea_input = request.args.get("linea", "").strip()
+        linea = convertir_linea_smt(linea_input)
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        where_sub = ""
+        params = []
+        if linea:
+            where_sub = "WHERE linea = %s"
+            params.append(linea)
+
+        query = f"""
+            SELECT h.id, h.linea, h.maquina, h.archivo, h.ScanDate, h.ScanTime,
+                   h.SlotNo, h.Result, h.PreviousBarcode, h.Productdate,
+                   h.PartName, h.Quantity, h.SEQ, h.Vendor, h.LOTNO,
+                   h.Barcode, h.FeederBase, h.fecha_subida,
+                   CASE WHEN UPPER(h.FeederBase) LIKE '%%F%%' THEN 'FRONT'
+                        WHEN UPPER(h.FeederBase) LIKE '%%R%%' THEN 'REAR'
+                        ELSE 'UNKNOWN' END AS side_norm
+            FROM historial_cambio_material_smt h
+            INNER JOIN (
+                SELECT linea, maquina, SlotNo,
+                       (CASE WHEN UPPER(FeederBase) LIKE '%%F%%' THEN 'FRONT'
+                             WHEN UPPER(FeederBase) LIKE '%%R%%' THEN 'REAR'
+                             ELSE 'UNKNOWN' END) AS side_norm,
+                       MAX(fecha_subida) AS max_fecha
+                FROM historial_cambio_material_smt
+                {where_sub}
+                GROUP BY linea, maquina, SlotNo,
+                         (CASE WHEN UPPER(FeederBase) LIKE '%%F%%' THEN 'FRONT'
+                               WHEN UPPER(FeederBase) LIKE '%%R%%' THEN 'REAR'
+                               ELSE 'UNKNOWN' END)
+            ) m
+              ON h.linea = m.linea AND h.maquina = m.maquina
+             AND h.SlotNo = m.SlotNo AND h.fecha_subida = m.max_fecha
+             AND (
+                 (CASE WHEN UPPER(h.FeederBase) LIKE '%%F%%' THEN 'FRONT'
+                       WHEN UPPER(h.FeederBase) LIKE '%%R%%' THEN 'REAR'
+                       ELSE 'UNKNOWN' END) = m.side_norm
+             )
+            {("WHERE h.linea = %s" if linea else "")}
+            ORDER BY h.linea, h.maquina, h.SlotNo, m.side_norm
+        """
+
+        if linea:
+            cursor.execute(query, params + params)
+        else:
+            cursor.execute(query)
+
+        rows = cursor.fetchall()
+        data = []
+        for r in rows:
+            linea_v = r[1] if len(r) > 1 else ""
+            maquina_v = r[2] if len(r) > 2 else ""
+            scan_date = r[4] if len(r) > 4 else ""
+            scan_time = r[5] if len(r) > 5 else ""
+            slot_no = r[6] if len(r) > 6 else ""
+            part_name = r[10] if len(r) > 10 else ""
+            quantity = r[11] if len(r) > 11 else 0
+            vendor = r[13] if len(r) > 13 else ""
+            feeder_base = r[16] if len(r) > 16 else ""
+
+            formatted = {
+                "linea": linea_v,
+                "maquina": maquina_v,
+                "Equipment": maquina_v,
+                "SlotNo": slot_no,
+                "FeederBase": feeder_base,
+                "RegistDate": scan_date,
+                "fecha_formateada": scan_date,
+                "PartName": part_name,
+                "Quantity": quantity,
+                "Vendor": vendor,
+                "ScanDate": scan_date,
+                "ScanTime": scan_time,
+            }
+            data.append(formatted)
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({"success": True, "data": data, "total": len(data)})
+    except Exception as e:
+        print("Error en api_historial_smt_latest_v2:", e)
+        print(traceback.format_exc())
+        return jsonify({"success": False, "error": str(e)}), 500

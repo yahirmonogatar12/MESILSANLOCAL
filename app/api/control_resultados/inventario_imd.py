@@ -275,3 +275,106 @@ def api_movimientos():
     except Exception as e:
         print(f"Error en api_movimientos: {e}")
         return jsonify({"status": "error", "message": str(e), "items": []}), 500
+
+
+# ---------------------------------------------------------------------------
+# Fase 4 (2026-05-28): 2 endpoints de consulta de inventario migrados desde
+# routes.py. Operan sobre inv_resumen_modelo (mismo dominio que las APIs ya
+# residentes aqui sobre inv_resumen_modelo / ubicacionimdinv / movimientosimd_smd).
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/inventario/modelo/<codigo_modelo>", methods=["GET"])
+@login_requerido
+def api_inventario_modelo(codigo_modelo):
+    """API para obtener inventario por codigo de modelo"""
+    try:
+        query = """
+        SELECT modelo, nparte, stock_total, ubicaciones,
+               ultima_entrada, ultima_salida, updated_at
+        FROM inv_resumen_modelo
+        WHERE nparte = %s
+        """
+
+        inventario = execute_query(query, (codigo_modelo,), fetch="all")
+
+        resultado = []
+        for item in inventario:
+            resultado.append(
+                {
+                    "modelo": item["modelo"],
+                    "nparte": item["nparte"],
+                    "stock_total": item["stock_total"] or 0,
+                    "ubicaciones": item["ubicaciones"] or "",
+                    "ultima_entrada": item["ultima_entrada"].strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                    if item["ultima_entrada"]
+                    else "",
+                    "ultima_salida": item["ultima_salida"].strftime("%Y-%m-%d %H:%M:%S")
+                    if item["ultima_salida"]
+                    else "",
+                    "updated_at": item["updated_at"].strftime("%Y-%m-%d %H:%M:%S")
+                    if item["updated_at"]
+                    else "",
+                }
+            )
+
+        return jsonify(resultado)
+
+    except Exception as e:
+        print(f" Error en API inventario modelo {codigo_modelo}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/inventario", methods=["GET"])
+@login_requerido
+def api_inventario():
+    """API para consultar inventario por modelo y/o nparte"""
+    try:
+        modelo = request.args.get("modelo", "").strip()
+        nparte = request.args.get("nparte", "").strip()
+
+        if not modelo:
+            return jsonify({"error": "Parametro modelo es requerido"}), 400
+
+        if nparte:
+            query = """
+            SELECT modelo, nparte, stock_total, ubicaciones, ultima_entrada, ultima_salida, updated_at
+            FROM inv_resumen_modelo
+            WHERE modelo = %s AND nparte = %s
+            """
+            result = execute_query(query, (modelo, nparte), fetch="one")
+
+            if result:
+                return jsonify(
+                    {
+                        "modelo": result["modelo"],
+                        "nparte": result["nparte"],
+                        "stock_total": result["stock_total"] or 0,
+                    }
+                )
+            else:
+                return jsonify({"modelo": modelo, "nparte": nparte, "stock_total": 0})
+        else:
+            query = """
+            SELECT modelo, SUM(stock_total) as stock_total
+            FROM inv_resumen_modelo
+            WHERE modelo = %s
+            GROUP BY modelo
+            """
+            result = execute_query(query, (modelo,), fetch="one")
+
+            if result:
+                return jsonify(
+                    {
+                        "modelo": result["modelo"],
+                        "stock_total": result["stock_total"] or 0,
+                    }
+                )
+            else:
+                return jsonify({"modelo": modelo, "stock_total": 0})
+
+    except Exception as e:
+        print(f" Error consultando inventario: {e}")
+        return jsonify({"error": str(e)}), 500
