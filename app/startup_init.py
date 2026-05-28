@@ -82,9 +82,13 @@ def run_startup_init():
     log("crear_tabla_plan_smd() completado")
 
     log("Asegurando indice idx_history_ict_audit")
-    _routes.crear_indice_history_ict_audit()
+    from .api.control_resultados.historial_cambios_parametros_ict import (
+        crear_indice_history_ict_audit,
+        crear_indice_history_ict_ts_nopart,
+    )
+    crear_indice_history_ict_audit()
     log("Asegurando indice idx_history_ict_ts_nopart")
-    _routes.crear_indice_history_ict_ts_nopart()
+    crear_indice_history_ict_ts_nopart()
 
     log("Iniciando crear_tabla_plan_smd_runs()")
     _routes.crear_tabla_plan_smd_runs()

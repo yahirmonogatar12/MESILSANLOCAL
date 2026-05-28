@@ -1,15 +1,7 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Historial ICT % Pass/Fail - ILSAN</title>
-  <!-- WF_004: ilsan-theme.css e ict.css se cargan globalmente en MainTemplate.html.
-       ict-Pass-Fail.css lo garantiza ensureModuleStyles() en el JS del modulo. -->
-  <script defer src="{{ url_for('static', filename='js/ict-Pass-Fail.js', v='20260429e') }}"></script>
-</head>
-<body id="ict-pass-fail-container">
-  <div id="historial-ict-pass-fail-root" class="ict-page">
+<!-- Historial ICT Pass/Fail - Fragmento AJAX. WF_004 CSS en MainTemplate.html.
+     JS: ict-Pass-Fail.js cargado al final del fragmento. -->
+<div id="ict-pass-fail-container" class="ict-pass-fail-container">
+<div id="historial-ict-pass-fail-root" class="ict-page">
     <div class="filters-card">
       <div class="card-header">
         <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -234,5 +226,6 @@
       </div>
     </div>
   </div>
-</body>
-</html>
+</div>
+
+<script src="{{ url_for('static', filename='js/ict-Pass-Fail.js', v='20260527a') }}"></script>

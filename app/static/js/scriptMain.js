@@ -2979,7 +2979,7 @@ window.mostrarHistorialICT = function () {
     if (typeof window.cargarContenidoDinamico === "function") {
       window.cargarContenidoDinamico(
         "historial-ict-unique-container",
-        "/historial-ict-ajax",
+        "/historial_ict/ajax",
         () => {
           const intentarInicializarICT = () => {
             if (typeof window.initializeIctEventListeners === "function") {
@@ -3204,7 +3204,7 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
     if (typeof window.cargarContenidoDinamico === "function") {
       window.cargarContenidoDinamico(
         "historial-maquina-ict-pass-fail-unique-container",
-        "/historial-maquina-ict-pass-fail",
+        "/historial_ict_pass_fail/ajax",
         () => {
           // Ejecutar inicialización del módulo si existe
           const intentarInicializarIctPassFail = () => {
@@ -3430,7 +3430,7 @@ window.mostrarHistorialCambiosParametrosICT = function () {
     if (typeof window.cargarContenidoDinamico === "function") {
       window.cargarContenidoDinamico(
         "historial-cambios-parametros-ict-unique-container",
-        "/historial-cambios-parametros-ict-ajax",
+        "/historial_cambios_parametros_ict/ajax",
         () => {
           const intentarInicializar = () => {
             if (typeof window.initializeCambiosParametrosICT === "function") {

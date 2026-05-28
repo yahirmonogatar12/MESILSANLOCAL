@@ -1,15 +1,7 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Historial ICT - ILSAN</title>
-  <!-- WF_004: ilsan-theme.css e ict.css se cargan globalmente en MainTemplate.html
-       y el JS del modulo tiene ensureModuleStyles() como seguro. -->
-  <script defer src="{{ url_for('static', filename='js/ict.js') }}"></script>
-</head>
-<body id="ict-container">
-  <div class="ict-page">
+<!-- Historial ICT - Fragmento AJAX. WF_004: ict.css en MainTemplate.html.
+     JS: ict.js cargado al final del fragmento. -->
+<div id="ict-container" class="ict-container">
+<div class="ict-page">
 
   <!-- Tarjeta de filtros -->
   <div class="filters-card">
@@ -350,5 +342,6 @@
   </div>
 
 </div>
-</body>
-</html>
+</div>
+
+<script src="{{ url_for('static', filename='js/ict.js', v='20260527a') }}"></script>

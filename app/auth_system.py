@@ -513,6 +513,10 @@ class AuthSystem:
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de inventario', 'IMD-SMD TERMINADO', 'Acceso al inventario de productos IMD terminados'),
             # WF_001 (2026-05-27): seed para Historial de maquinas SMT.
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas SMT', 'Historial de maquina AOI', 'Acceso al historial de la maquina AOI'),
+            # WF_001 (2026-05-27): seed para los 3 modulos ICT en Historial de maquinas calidad.
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina ICT', 'Acceso al historial de la maquina ICT'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina ICT % Pass/Fail', 'Acceso al historial ICT % Pass/Fail'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de cambios de parametros ICT', 'Acceso a historial de cambios de parametros ICT'),
             
             # LISTA CONTROL DE CALIDAD - Control de calidad  
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección de entrada', 'Acceso a inspección de entrada'),

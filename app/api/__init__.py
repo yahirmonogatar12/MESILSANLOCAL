@@ -79,6 +79,10 @@ _MODULOS_REGISTRADOS = [
     "control_resultados.aoi",
     # Migracion 2026-05-27: IMD-SMD TERMINADO a blueprint
     "control_resultados.inventario_imd",
+    # Migracion 2026-05-27: 3 modulos ICT (Control de resultados)
+    "control_resultados.historial_ict",
+    "control_resultados.historial_ict_pass_fail",
+    "control_resultados.historial_cambios_parametros_ict",
     # Migracion 2026-05-27: snapshots de inventario (servicio compartido)
     "shared.snapshot_inventario",
     "control_produccion.po_wo",

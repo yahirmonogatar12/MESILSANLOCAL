@@ -1,0 +1,296 @@
+/* Historial de Cambios de Parametros ICT - WF_004 CSS persistente.
+ * Extraido del <style> inline de
+ * historial_cambios_parametros_ict_ajax.html el 2026-05-27.
+ * Cargado desde MainTemplate.html con cache-busting ?v=20260527a.
+ * Fallback ensureModuleStyles() en historial_cambios_parametros_ict.js. */
+
+/* ===== ESTILOS ADICIONALES ESPECÍFICOS PARA ESTA TABLA ===== */
+    #cp-params-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: var(--ilsan-dark-secondary);
+    }
+
+    #cp-params-table th,
+    #cp-params-table td {
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 8px 6px;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    #cp-params-table thead th {
+      background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
+      color: var(--ilsan-text-light);
+      position: sticky;
+      top: 0;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.3px;
+      z-index: 10;
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #cp-params-table tbody td {
+      color: var(--ilsan-text-secondary);
+      background-color: var(--ilsan-dark-secondary);
+      transition: background-color 0.2s ease;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #cp-params-table tbody tr:nth-child(even) td {
+      background-color: #44475A;
+    }
+
+    #cp-params-table tbody tr {
+      transition: all 0.2s ease;
+    }
+
+    #cp-params-table tbody tr:hover td {
+      background-color: var(--ilsan-hover);
+    }
+
+    /* Badge valor anterior (rojo) */
+    .cp-val-old {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: rgba(142, 35, 35, 0.25);
+      color: #ffb3b3;
+      border: 1px solid rgba(142, 35, 35, 0.45);
+    }
+
+    /* Badge valor nuevo (verde) */
+    .cp-val-new {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: rgba(69, 102, 54, 0.3);
+      color: #c8e6c9;
+      border: 1px solid rgba(69, 102, 54, 0.45);
+    }
+
+    /* Número de fila */
+    .cp-row-num {
+      color: var(--ilsan-text-gray);
+      font-size: 0.7rem;
+    }
+
+    /* Columna parametro */
+    .cp-col-param {
+      color: #82b4e8;
+    }
+
+    /* Columna ICT bold */
+    .cp-col-ict {
+      font-weight: 700;
+      color: var(--ilsan-text-light);
+    }
+
+    /* Sin datos */
+    .cp-no-data {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--ilsan-text-gray);
+      font-size: 0.9rem;
+    }
+
+    .cp-no-data svg {
+      width: 42px;
+      height: 42px;
+      margin-bottom: 12px;
+      opacity: 0.35;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cp-warning-box,
+    .cp-meta-line {
+      margin: 0 18px 12px;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      display: none;
+    }
+
+    .cp-warning-box {
+      background: rgba(180, 120, 30, 0.16);
+      border: 1px solid rgba(230, 170, 70, 0.35);
+      color: #ffd48a;
+      text-align: left;
+    }
+
+    .cp-meta-line {
+      background: rgba(52, 152, 219, 0.12);
+      border: 1px solid rgba(52, 152, 219, 0.28);
+      color: #9fd0f2;
+    }
+
+    /* Forzar que el #ict-filters de este módulo use su propio ID */
+    #cp-ict-filters {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 10px;
+      row-gap: 10px;
+      padding: 12px 18px 16px;
+      align-items: flex-end;
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    #cp-ict-filters .filter-group input,
+    #cp-ict-filters .filter-group select {
+      width: 148px;
+    }
+
+    /* Animación entrada igual que ICT */
+    .filters-card,
+    .results-card {
+      animation: fadeInUp 0.5s ease;
+    }
+
+    /* ===== BARRA DE PROGRESO ===== */
+    .cp-progress {
+      margin-top: 12px;
+      width: 320px;
+      max-width: 80vw;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .cp-progress-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .cp-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3498db 0%, #2ecc71 100%);
+      transition: width 0.25s ease;
+      border-radius: 4px;
+    }
+
+    .cp-progress-label {
+      font-size: 0.72rem;
+      color: var(--ilsan-text-gray);
+      text-align: center;
+      font-family: 'Consolas', 'Courier New', monospace;
+      letter-spacing: 0.3px;
+    }
+
+    /* Hint click-to-detail */
+    .cp-click-hint {
+      margin: 0 18px 8px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      color: var(--ilsan-text-gray);
+      font-style: italic;
+    }
+
+    /* Filas clickeables */
+    #cp-params-table tbody tr {
+      cursor: pointer;
+    }
+
+    /* Celda hora-cambio */
+    .cp-col-hora-cambio {
+      color: #ffd48a;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-weight: 600;
+    }
+
+    /* ===== MODAL DETALLE ===== */
+    .cp-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    .cp-modal-overlay.active { display: flex; }
+    .cp-modal-card {
+      background: var(--ilsan-dark-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      width: 480px;
+      max-width: 90vw;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      animation: fadeInUp 0.25s ease;
+    }
+    .cp-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .cp-modal-title {
+      color: var(--ilsan-text-light);
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    .cp-modal-close {
+      background: transparent;
+      border: none;
+      color: var(--ilsan-text-gray);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .cp-modal-close:hover { color: var(--ilsan-text-light); }
+    .cp-modal-body { padding: 14px 16px; font-size: 0.82rem; }
+    .cp-modal-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    }
+    .cp-modal-row:last-child { border-bottom: none; }
+    .cp-modal-key { color: var(--ilsan-text-gray); }
+    .cp-modal-val {
+      color: var(--ilsan-text-light);
+      font-family: 'Consolas', 'Courier New', monospace;
+      text-align: right;
+      max-width: 280px;
+      overflow-wrap: anywhere;
+    }
+    .cp-modal-spinner {
+      text-align: center;
+      padding: 24px 0;
+      color: var(--ilsan-text-gray);
+    }
+    .cp-modal-error {
+      padding: 12px;
+      color: #ffb3b3;
+      background: rgba(142, 35, 35, 0.18);
+      border: 1px solid rgba(142, 35, 35, 0.35);
+      border-radius: 4px;
+      font-size: 0.78rem;
+    }
