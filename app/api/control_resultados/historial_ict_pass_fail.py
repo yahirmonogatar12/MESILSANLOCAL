@@ -326,9 +326,10 @@ def ict_pass_fail_detail_api():
 @login_requerido
 def ict_pass_fail_export():
     """Exportar resumen Pass/Fail de ICT a un archivo de Excel."""
-    # Imports tardios para evitar circularidad: _create_vision_pass_fail_excel_image
-    # y _send_excel_download viven aun en routes.py (helpers compartidos con Vision).
-    from app.routes import _create_vision_pass_fail_excel_image, _send_excel_download
+    from app.api.shared.excel_helpers import (
+        _create_vision_pass_fail_excel_image,
+        _send_excel_download,
+    )
 
     try:
         sql, params = _build_history_ict_pass_fail_summary_query()

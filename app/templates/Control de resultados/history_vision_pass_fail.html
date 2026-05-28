@@ -1,15 +1,7 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Historial Vision % Pass/Fail - ILSAN</title>
-  <!-- WF_004: ilsan-theme.css e ict.css se cargan globalmente en MainTemplate.html.
-       history_vision_pass_fail.css lo garantiza ensureModuleStyles() en el JS del modulo. -->
-  <script defer src="{{ url_for('static', filename='js/history_vision_pass_fail.js') }}"></script>
-</head>
-<body id="vision-pass-fail-container">
-  <div id="historial-vision-pass-fail-root" class="ict-page">
+<!-- Historial Vision Pass/Fail - Fragmento AJAX. WF_004: history_vision_pass_fail.css en MainTemplate.html.
+     JS: history_vision_pass_fail.js cargado al final del fragmento. -->
+<div id="vision-pass-fail-container" class="vision-pass-fail-container">
+<div id="historial-vision-pass-fail-root" class="ict-page">
     <div class="filters-card">
       <div class="card-header">
         <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -103,5 +95,6 @@
       </div>
     </div>
   </div>
-</body>
-</html>
+</div>
+
+<script src="{{ url_for('static', filename='js/history_vision_pass_fail.js', v='20260527b') }}"></script>

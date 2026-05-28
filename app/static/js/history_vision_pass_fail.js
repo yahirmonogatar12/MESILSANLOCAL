@@ -3,7 +3,7 @@
   const sheets = [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
     { id: "ict-css", href: "/static/css/ict.css?v=20260522a" },
-    { id: "history-vision-pass-fail-css", href: "/static/css/history_vision_pass_fail.css?v=20260522a" },
+    { id: "history-vision-pass-fail-css", href: "/static/css/history_vision_pass_fail.css?v=20260527b" },
   ];
   sheets.forEach(({ id, href }) => {
     let link = document.getElementById(id);

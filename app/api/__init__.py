@@ -83,6 +83,9 @@ _MODULOS_REGISTRADOS = [
     "control_resultados.historial_ict",
     "control_resultados.historial_ict_pass_fail",
     "control_resultados.historial_cambios_parametros_ict",
+    # Migracion 2026-05-27: 2 modulos Vision (Control de resultados)
+    "control_resultados.historial_vision",
+    "control_resultados.historial_vision_pass_fail",
     # Migracion 2026-05-27: snapshots de inventario (servicio compartido)
     "shared.snapshot_inventario",
     "control_produccion.po_wo",

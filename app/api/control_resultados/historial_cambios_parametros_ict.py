@@ -661,8 +661,7 @@ def ict_param_changes_api():
 @login_requerido
 def ict_param_changes_export():
     """Exportar cambios de parametros ICT calculados desde LGD locales."""
-    # Import tardio: _send_excel_download vive en routes.py (compartido con Vision).
-    from app.routes import _send_excel_download
+    from app.api.shared.excel_helpers import _send_excel_download
 
     try:
         fecha = request.args.get("fecha", "").strip()

@@ -3088,7 +3088,7 @@ window.mostrarHistorialVision = function () {
     if (typeof window.cargarContenidoDinamico === "function") {
       window.cargarContenidoDinamico(
         "historial-vision-unique-container",
-        "/historial-vision-ajax",
+        "/historial_vision/ajax",
         () => {
           const intentarInicializarVision = () => {
             if (
@@ -3323,7 +3323,7 @@ window.mostrarHistorialVisionPassFail = function () {
     if (typeof window.cargarContenidoDinamico === "function") {
       window.cargarContenidoDinamico(
         "historial-vision-pass-fail-unique-container",
-        "/historial-vision-pass-fail-ajax",
+        "/historial_vision_pass_fail/ajax",
         () => {
           const intentarInicializarVisionPassFail = () => {
             if (
