@@ -216,10 +216,19 @@
             // Event delegation para change en file input
             document.body.addEventListener('change', function(e) {
                 if (e.target.id === 'ecoExcelInput') {
-                    importarExcelEcoActual();
+                    const fileName = e.target.files?.[0]?.name || '';
+                    const box = document.getElementById('ecoValidationBox');
+                    if (box && fileName) {
+                        box.style.display = 'block';
+                        box.innerHTML = `<span style="color:#b8c7d9;">Archivo seleccionado: ${escapeHtml(fileName)}</span>`;
+                    }
+                    if (ecoScopeKind === 'NEW_BOM') {
+                        inferPartNoFromSelectedFile();
+                    }
+                    return;
                 }
 
-                if (e.target.id === 'ecoPartNoInput' && ecoScopeKind === 'SINGLE') {
+                if (e.target.id === 'ecoPartNoInput' && ecoScopeKind !== 'FAMILY') {
                     cargarRevisionEcoAutomatica({
                         partNo: (e.target.value || '').trim().toUpperCase()
                     });
@@ -262,7 +271,7 @@
     const puedeAprobarEco = controlBomRoot?.dataset.puedeAprobarEco === 'true';
     let bomDataCache = [];
     let ecoActualId = null;
-    let ecoScopeKind = 'SINGLE'; // 'SINGLE' o 'FAMILY'
+    let ecoScopeKind = 'SINGLE'; // 'SINGLE', 'FAMILY' o 'NEW_BOM'
     let ecoScopeParts = []; // part_no resueltos cuando FAMILY
     let ecoListPage = 1;
     let ecoListMeta = { total: 0, page: 1, page_size: 500, filters_active: false };
@@ -280,11 +289,40 @@
         if (box) box.innerHTML = message;
     }
 
+    function syncEcoModeText() {
+        const isNewBom = ecoScopeKind === 'NEW_BOM';
+        const step1 = document.getElementById('ecoStepIndicator1');
+        const step2 = document.getElementById('ecoStepIndicator2');
+        const downloadBtn = document.getElementById('btnDescargarBomExcel');
+        const uploadHelp = document.getElementById('ecoStep2Help');
+        if (step1) step1.textContent = isNewBom ? '1. Plantilla nuevo BOM' : '1. Descargar BOM';
+        if (step2) step2.textContent = isNewBom ? '2. Subir nuevo BOM' : '2. Subir Excel modificado';
+        if (downloadBtn) downloadBtn.textContent = isNewBom ? 'Descargar plantilla BOM' : 'Descargar BOM como Excel';
+        if (uploadHelp) {
+            uploadHelp.textContent = isNewBom
+                ? 'Suba el Excel del BOM nuevo. El sistema validara que el modelo no tenga BOM vigente y creara el borrador con todos los renglones como anadidos.'
+                : 'Suba el Excel modificado. El sistema validara y mostrara los cambios detectados (anadidos, eliminados, modificados).';
+        }
+    }
+
     function setRevisionEcoAutomatica(value, title = '') {
         const input = document.getElementById('ecoRevisionInput');
         if (!input) return;
         input.value = value || 'Automatica';
         input.title = title || 'MES asigna la siguiente revision disponible';
+    }
+
+    function inferPartNoFromSelectedFile() {
+        const partInput = document.getElementById('ecoPartNoInput');
+        const fileInput = document.getElementById('ecoExcelInput');
+        if (!partInput || !fileInput || String(partInput.value || '').trim()) return '';
+        const fileName = fileInput.files?.[0]?.name || '';
+        const match = fileName.toUpperCase().match(/[A-Z]{2,}\d{5,}/);
+        if (!match) return '';
+        partInput.value = match[0];
+        cargarRevisionEcoAutomatica({ partNo: match[0] });
+        setEcoStatus(`Modelo ${match[0]} detectado desde el nombre del archivo.`);
+        return match[0];
     }
 
     async function cargarRevisionEcoAutomatica({ partNo = '', scopeParts = [] } = {}) {
@@ -359,6 +397,38 @@
         return `${fecha} ${hora.slice(0, 5)}`;
     }
 
+    function asegurarMetadatosEcoParaImportar() {
+        const ecoNoInput = document.getElementById('ecoNoInput');
+        const effectiveAtInput = document.getElementById('ecoEffectiveAtInput');
+        if (!ecoNoInput || !effectiveAtInput) return { ecoNo: '', effectiveAt: '' };
+
+        let ecoNo = (ecoNoInput.value || '').trim().toUpperCase();
+        let effectiveAt = (effectiveAtInput.value || '').trim();
+        const ajustes = [];
+
+        if (!ecoNo) {
+            const now = new Date();
+            const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+            ecoNo = `AUTO-${stamp}`;
+            ecoNoInput.value = ecoNo;
+            ajustes.push(`ECO ${ecoNo}`);
+        }
+
+        if (!effectiveAt) {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            effectiveAt = now.toISOString().slice(0, 16);
+            effectiveAtInput.value = effectiveAt;
+            ajustes.push(`fecha efectiva ${effectiveAt.replace('T', ' ')}`);
+        }
+
+        if (ajustes.length) {
+            setEcoStatus(`Se completaron automaticamente ${ajustes.join(' y ')} para importar el BOM como ECO.`);
+        }
+
+        return { ecoNo, effectiveAt };
+    }
+
     function abrirModalECO() {
         if (!requierePermisoCrearEco()) return;
         const modal = document.getElementById('ecoModal');
@@ -372,6 +442,8 @@
         ecoScopeParts = [];
         document.getElementById('ecoScopeSingle').checked = true;
         document.getElementById('ecoScopeFamily').checked = false;
+        const newBomRadio = document.getElementById('ecoScopeNewBom');
+        if (newBomRadio) newBomRadio.checked = false;
         document.getElementById('ecoFamilyFields').style.display = 'none';
         document.getElementById('ecoFamilyResolveBox').style.display = 'none';
         document.getElementById('ecoFamilyInput').value = '';
@@ -389,6 +461,7 @@
         document.getElementById('ecoValidationBox').style.display = 'none';
         document.getElementById('ecoValidationBox').innerHTML = '';
         setEcoStatus('Llene los datos y descargue el BOM actual. Modifique el Excel y suba el archivo en el paso 2.');
+        syncEcoModeText();
         irPasoEco(1);
         cargarRevisionEcoAutomatica({ partNo: selectedModel });
 
@@ -437,13 +510,22 @@
     function onEcoScopeChange() {
         ecoScopeKind = document.querySelector('input[name="ecoScopeKind"]:checked')?.value || 'SINGLE';
         const isFamily = ecoScopeKind === 'FAMILY';
+        const isNewBom = ecoScopeKind === 'NEW_BOM';
         document.getElementById('ecoFamilyFields').style.display = isFamily ? 'block' : 'none';
         document.getElementById('ecoPartNoLabel').style.display = isFamily ? 'none' : '';
+        syncEcoModeText();
         // En FAMILY el part_no representa la familia, no se llena manualmente.
         if (isFamily) {
             ecoScopeParts = [];
             setRevisionEcoAutomatica('Resuelva familia', 'La revision se calcula con los modelos del scope');
+            setEcoStatus('Resuelva la familia, descargue el BOM multi-modelo, modifiquelo y suba el Excel en el paso 2.');
             return;
+        }
+        if (isNewBom) {
+            ecoScopeParts = [];
+            setEcoStatus('Modo Nuevo BOM: descargue la plantilla o suba un Excel con las columnas BOM. Al validar, todos los renglones se marcaran como anadidos.');
+        } else {
+            setEcoStatus('Llene los datos y descargue el BOM actual. Modifique el Excel y suba el archivo en el paso 2.');
         }
         cargarRevisionEcoAutomatica({
             partNo: (document.getElementById('ecoPartNoInput')?.value || '').trim().toUpperCase()
@@ -520,7 +602,9 @@
             return;
         }
         cargarRevisionEcoAutomatica({ partNo });
+        const isNewBom = ecoScopeKind === 'NEW_BOM';
         const params = new URLSearchParams({ part_no: partNo });
+        if (isNewBom) params.set('mode', 'new_bom');
         const link = document.createElement('a');
         link.href = `/api/bom/download-excel?${params.toString()}`;
         link.target = '_blank';
@@ -528,13 +612,18 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        setEcoStatus(`Descargando BOM de ${partNo}. Modifique el Excel y avance al paso 2.`);
+        setEcoStatus(
+            isNewBom
+                ? `Descargando plantilla para nuevo BOM de ${partNo}. Capture los renglones y avance al paso 2.`
+                : `Descargando BOM de ${partNo}. Modifique el Excel y avance al paso 2.`
+        );
     }
 
     async function validarExcelEco() {
         if (!requierePermisoCrearEco()) return;
-        const ecoNo = (document.getElementById('ecoNoInput')?.value || '').trim().toUpperCase();
-        const effectiveAt = (document.getElementById('ecoEffectiveAtInput')?.value || '').trim();
+        const ecoMeta = asegurarMetadatosEcoParaImportar();
+        const ecoNo = ecoMeta.ecoNo;
+        const effectiveAt = ecoMeta.effectiveAt;
         const itemName = (document.getElementById('ecoItemNameInput')?.value || '').trim();
         const notes = (document.getElementById('ecoNotesInput')?.value || '').trim();
         const fileInput = document.getElementById('ecoExcelInput');
@@ -559,6 +648,9 @@
         fd.append('effective_at', effectiveAt);
         fd.append('item_name', itemName);
         fd.append('notes', notes);
+        if (ecoScopeKind === 'NEW_BOM') {
+            fd.append('bom_mode', 'NEW_BOM');
+        }
 
         let endpoint;
         if (ecoScopeKind === 'FAMILY') {
@@ -575,7 +667,8 @@
             fd.append('scope_parts', ecoScopeParts.join(','));
             endpoint = '/api/ecos/from-excel-family';
         } else {
-            const partNo = (document.getElementById('ecoPartNoInput')?.value || '').trim().toUpperCase();
+            const inferredPartNo = ecoScopeKind === 'NEW_BOM' ? inferPartNoFromSelectedFile() : '';
+            const partNo = ((document.getElementById('ecoPartNoInput')?.value || inferredPartNo || '')).trim().toUpperCase();
             if (!partNo) {
                 box.innerHTML = `<span style="color:#e74c3c;">Numero de parte requerido.</span>`;
                 return;
@@ -641,16 +734,51 @@
                 ${perPartHtml}
             `;
             const showPart = perPartKeys.length > 1;
+            const previewValue = value => {
+                const text = String(value ?? '').trim();
+                return text || '-';
+            };
+            const previewCell = (value, extraStyle = '') =>
+                `<td style="padding:6px 10px; border-bottom:1px solid #283747; ${extraStyle}">${escapeHtml(previewValue(value))}</td>`;
+            const headerCell = label =>
+                `<th style="padding:6px 10px; border-bottom:1px solid #34495e; color:#9fb3c8; font-size:11px; text-align:left; font-weight:700;">${escapeHtml(label)}</th>`;
             const renderSection = (title, rows, color, accion) => {
                 if (!rows || !rows.length) return '';
+                const tableMinWidth = accion === 'ADD' ? '1080px' : '760px';
+                const partHeader = showPart ? headerCell('Modelo') : '';
+                const headers = accion === 'ADD'
+                    ? `${partHeader}${headerCell('Nivel')}${headerCell('Item')}${headerCell('Nombre')}${headerCell('Qty')}${headerCell('Ubicacion')}${headerCell('Maker / proveedor')}`
+                    : accion === 'MODIFY'
+                        ? `${partHeader}${headerCell('Nivel')}${headerCell('Item')}${headerCell('Campo')}${headerCell('Antes')}${headerCell('Despues')}`
+                        : `${partHeader}${headerCell('Nivel')}${headerCell('Item')}`;
                 return `
                     <div style="padding:10px 14px; background:#2c3e50; color:${color}; font-weight:700; font-size:12px; border-top:1px solid #1a1b26;">${escapeHtml(title)} (${rows.length})</div>
-                    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <table style="width:100%; min-width:${tableMinWidth}; border-collapse:collapse; font-size:12px;">
+                        <thead><tr>${headers}</tr></thead>
                         <tbody>
                             ${rows.map(r => {
                                 const partCell = showPart
                                     ? `<td style="padding:6px 10px; border-bottom:1px solid #283747; color:#5dade2; font-weight:700;">${escapeHtml(r.part_no || '-')}</td>`
                                     : '';
+                                if (accion === 'ADD') {
+                                    const qtyUnit = [
+                                        previewValue(r.eco_qty),
+                                        previewValue(r.eco_unit)
+                                    ].filter(v => v !== '-').join(' ') || '-';
+                                    const makerSupplier = [
+                                        previewValue(r.eco_maker),
+                                        previewValue(r.eco_supplier)
+                                    ].filter(v => v !== '-').join(' / ') || '-';
+                                    return `<tr>
+                                        ${partCell}
+                                        ${previewCell(r.bom_level, 'color:#8b98a8;')}
+                                        ${previewCell(r.item_no, 'font-weight:700; color:#ffffff;')}
+                                        ${previewCell(r.eco_item_name, 'color:#d7dde5; min-width:150px;')}
+                                        ${previewCell(qtyUnit, 'color:#52be80; font-weight:700; white-space:nowrap;')}
+                                        ${previewCell(r.eco_location_text, 'color:#d7dde5; min-width:220px; white-space:normal;')}
+                                        ${previewCell(makerSupplier, 'color:#d7dde5; min-width:160px;')}
+                                    </tr>`;
+                                }
                                 if (accion === 'MODIFY') {
                                     return `<tr>
                                         ${partCell}
@@ -664,7 +792,7 @@
                                 return `<tr>
                                     ${partCell}
                                     <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#8b98a8;">${escapeHtml(r.bom_level || '-')}</td>
-                                    <td style="padding:6px 10px; border-bottom:1px solid #283747; font-weight:700;" colspan="${showPart ? 4 : 4}">${escapeHtml(r.item_no || '-')}</td>
+                                    <td style="padding:6px 10px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(r.item_no || '-')}</td>
                                 </tr>`;
                             }).join('')}
                         </tbody>
@@ -1061,7 +1189,7 @@
                 throw new Error(diffData.error || 'No se pudo cargar el diff');
             }
 
-            const eco = data.data;
+            const eco = data.data || {};
             const diff = diffData.data || {};
             const cambios = []
                 .concat((diff.added || []).map(row => Object.assign({}, row, { action: 'ADD' })))
@@ -1069,7 +1197,13 @@
                 .concat((diff.removed || []).map(row => Object.assign({}, row, { action: 'REMOVE' })));
             const counts = diff.counts || { added: 0, modified: 0, removed: 0 };
             const totalCambios = cambios.length;
-            title.innerHTML = `ECO ${escapeHtml(eco.eco_no)} - ${escapeHtml(eco.part_no)} - ${statusBadge(eco.status)} - ${totalCambios} cambios`;
+            const scopeParts = String(eco.scope_parts || '').trim();
+            const scopeList = Array.isArray(eco.scope)
+                ? eco.scope.map(row => row.part_no).filter(Boolean)
+                : [];
+            const modelScope = scopeParts || scopeList.join(', ') || eco.part_no || '-';
+            const isFamily = String(eco.scope_kind || '').toUpperCase() === 'FAMILY' || scopeList.length > 1;
+            title.innerHTML = `ECO MES ${escapeHtml(eco.eco_no || eco.id || '')} - ${statusBadge(eco.status)} - ${totalCambios} cambios`;
 
             const actionBadge = function(action) {
                 const value = String(action || '').toUpperCase();
@@ -1081,59 +1215,113 @@
                 return `<span style="${styles[value] || 'background:#2c3e50;color:#bdc3c7;border:1px solid #34495e;'} padding:2px 7px; border-radius:10px; font-size:10px; font-weight:700;">${escapeHtml(value || '-')}</span>`;
             };
 
-            const renderDiffRows = function(rows) {
+            const detailValue = value => {
+                const text = String(value ?? '').trim();
+                return text || '-';
+            };
+            const detailCell = (value, style = '') =>
+                `<td style="padding:7px; border-bottom:1px solid #283747; ${style}">${escapeHtml(detailValue(value))}</td>`;
+            const detailHeader = label =>
+                `<th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left; color:#9fb3c8;">${escapeHtml(label)}</th>`;
+
+            const renderChangeSection = function(label, rows, action) {
+                const color = action === 'ADD' ? '#58d68d' : action === 'MODIFY' ? '#f5c542' : '#ff7675';
                 if (!rows.length) {
-                    return `
-                        <tr>
-                            <td colspan="7" style="padding:14px; text-align:center; color:#8b98a8; border-bottom:1px solid #283747;">
-                                Este ECO no tiene cambios registrados en el diff.
-                            </td>
-                        </tr>
-                    `;
+                    return '';
                 }
-                return rows.map(function(row) {
-                    return `
-                        <tr>
-                            <td style="padding:7px; border-bottom:1px solid #283747;">${actionBadge(row.action)}</td>
-                            <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.part_no || eco.part_no || '-')}</td>
-                            <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.bom_level || '-')}</td>
-                            <td style="padding:7px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(row.item_no || '-')}</td>
-                            <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.field_changed || '-')}</td>
-                            <td style="padding:7px; border-bottom:1px solid #283747; color:#ffb4b4;">${escapeHtml(row.old_value || '-')}</td>
-                            <td style="padding:7px; border-bottom:1px solid #283747; color:#b7f7c8;">${escapeHtml(row.new_value || '-')}</td>
-                        </tr>
-                    `;
+                const header = action === 'ADD'
+                    ? `${detailHeader('Modelo')}${detailHeader('Nivel')}${detailHeader('Item')}${detailHeader('Nombre')}${detailHeader('Qty')}${detailHeader('Ubicacion')}${detailHeader('Maker / proveedor')}`
+                    : action === 'MODIFY'
+                        ? `${detailHeader('Modelo')}${detailHeader('Nivel')}${detailHeader('Item')}${detailHeader('Campo')}${detailHeader('Antes')}${detailHeader('Despues')}`
+                        : `${detailHeader('Modelo')}${detailHeader('Nivel')}${detailHeader('Item')}`;
+                const body = rows.map(function(row) {
+                    if (action === 'ADD') {
+                        const qtyUnit = [
+                            detailValue(row.eco_qty),
+                            detailValue(row.eco_unit)
+                        ].filter(v => v !== '-').join(' ') || '-';
+                        const makerSupplier = [
+                            detailValue(row.eco_maker),
+                            detailValue(row.eco_supplier)
+                        ].filter(v => v !== '-').join(' / ') || '-';
+                        return `<tr>
+                            ${detailCell(row.part_no || eco.part_no, 'color:#5dade2; font-weight:700;')}
+                            ${detailCell(row.bom_level, 'color:#8b98a8;')}
+                            ${detailCell(row.item_no, 'font-weight:700; color:#ffffff;')}
+                            ${detailCell(row.eco_item_name, 'min-width:150px;')}
+                            ${detailCell(qtyUnit, 'color:#58d68d; font-weight:700; white-space:nowrap;')}
+                            ${detailCell(row.eco_location_text, 'min-width:220px; white-space:normal;')}
+                            ${detailCell(makerSupplier, 'min-width:160px;')}
+                        </tr>`;
+                    }
+                    if (action === 'MODIFY') {
+                        return `<tr>
+                            ${detailCell(row.part_no || eco.part_no, 'color:#5dade2; font-weight:700;')}
+                            ${detailCell(row.bom_level, 'color:#8b98a8;')}
+                            ${detailCell(row.item_no, 'font-weight:700; color:#ffffff;')}
+                            ${detailCell(row.field_changed, 'color:#f5c542;')}
+                            ${detailCell(row.old_value, 'color:#ffb4b4; text-decoration:line-through; min-width:180px;')}
+                            ${detailCell(row.new_value, 'color:#b7f7c8; min-width:180px;')}
+                        </tr>`;
+                    }
+                    return `<tr>
+                        ${detailCell(row.part_no || eco.part_no, 'color:#5dade2; font-weight:700;')}
+                        ${detailCell(row.bom_level, 'color:#8b98a8;')}
+                        ${detailCell(row.item_no, 'font-weight:700; color:#ffffff;')}
+                    </tr>`;
                 }).join('');
+                return `
+                    <div style="margin-top:12px; border:1px solid #34495e; border-radius:6px; overflow:auto;">
+                        <div style="padding:9px 12px; background:#2c3e50; color:${color}; font-weight:700; font-size:12px;">${escapeHtml(label)} (${rows.length})</div>
+                        <table style="width:100%; min-width:${action === 'ADD' ? '1080px' : '820px'}; border-collapse:collapse; font-size:12px;">
+                            <thead><tr style="background:#111827;">${header}</tr></thead>
+                            <tbody>${body}</tbody>
+                        </table>
+                    </div>
+                `;
             };
 
-            content.innerHTML = `
-                <div style="padding:10px; color:#b8c7d9; font-size:12px;">
-                    Revision: <b>${escapeHtml(eco.bom_revision)}</b> &nbsp; | &nbsp;
-                    Fecha efectiva: <b>${escapeHtml(eco.effective_at || '-')}</b> &nbsp; | &nbsp;
-                    Aprobado por: <b>${escapeHtml(eco.approved_by || '-')}</b>
-                    <div style="margin-top:7px; display:flex; gap:8px; flex-wrap:wrap;">
-                        <span style="background:#123d2a; color:#58d68d; padding:3px 8px; border-radius:10px;">ADD: ${escapeHtml(counts.added || 0)}</span>
-                        <span style="background:#3d3212; color:#f5c542; padding:3px 8px; border-radius:10px;">MODIFY: ${escapeHtml(counts.modified || 0)}</span>
-                        <span style="background:#4a1717; color:#ff7675; padding:3px 8px; border-radius:10px;">REMOVE: ${escapeHtml(counts.removed || 0)}</span>
-                    </div>
-                    ${eco.notes ? `<div style="margin-top:6px;">Notas: ${escapeHtml(eco.notes)}</div>` : ''}
+            const actionButtons = `
+                <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:14px;">
+                    ${String(eco.status || '').toUpperCase() === 'DRAFT' && puedeAprobarEco
+                        ? `<button type="button" class="bom-btn registrar" data-eco-approve-id="${escapeHtml(eco.id)}" data-eco-no="${escapeHtml(eco.eco_no || '')}" data-permiso-pagina="LISTA_INFORMACIONBASICA" data-permiso-seccion="Control de produccion" data-permiso-boton="Aprobar ECO">Aprobar ECO</button>`
+                        : ''}
+                    ${String(eco.status || '').toUpperCase() !== 'APPROVED'
+                        ? `<button type="button" class="bom-btn eliminar" data-eco-delete-id="${escapeHtml(eco.id)}" data-eco-no="${escapeHtml(eco.eco_no || '')}">Borrar borrador</button>`
+                        : ''}
                 </div>
-                <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                    <thead>
-                        <tr style="background:#111827;">
-                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Accion</th>
-                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Modelo</th>
-                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">BOM level</th>
-                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Material</th>
-                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Campo</th>
-                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Antes</th>
-                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Despues</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${renderDiffRows(cambios)}
-                    </tbody>
-                </table>
+            `;
+
+            content.innerHTML = `
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px 18px; margin-bottom:14px;">
+                    ${renderEcnKsField('Origen', 'MES')}
+                    ${renderEcnKsField('ECO', eco.eco_no || eco.id)}
+                    ${renderEcnKsField(isFamily ? 'Familia' : 'Modelo', isFamily ? (eco.family_prefix || modelScope) : (eco.part_no || modelScope))}
+                    ${renderEcnKsField('Scope / Modelos', modelScope)}
+                    ${renderEcnKsField('Revision BOM', eco.bom_revision)}
+                    ${renderEcnKsField('Estatus', eco.status)}
+                    ${renderEcnKsField('Fecha efectiva', formatFechaEfectiva(eco.effective_at))}
+                    ${renderEcnKsField('Creado por', eco.created_by)}
+                    ${renderEcnKsField('Aprobado por', eco.approved_by)}
+                    ${renderEcnKsField('Creado', eco.created_at)}
+                    ${renderEcnKsField('Aprobado', eco.approved_at)}
+                    ${renderEcnKsField('Actualizado', eco.updated_at)}
+                </div>
+                ${renderEcnKsField('Notas', eco.notes, { pre: true })}
+                <div style="margin-top:12px; padding:10px; background:#111827; border:1px solid #34495e; border-radius:6px;">
+                    <div style="color:#8b98a8; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:7px;">Resumen de cambios</div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <span style="background:#123d2a; color:#58d68d; padding:4px 9px; border-radius:10px;">${actionBadge('ADD')} ${escapeHtml(counts.added || 0)}</span>
+                        <span style="background:#3d3212; color:#f5c542; padding:4px 9px; border-radius:10px;">${actionBadge('MODIFY')} ${escapeHtml(counts.modified || 0)}</span>
+                        <span style="background:#4a1717; color:#ff7675; padding:4px 9px; border-radius:10px;">${actionBadge('REMOVE')} ${escapeHtml(counts.removed || 0)}</span>
+                    </div>
+                </div>
+                ${totalCambios
+                    ? renderChangeSection('Anadidos', diff.added || [], 'ADD') +
+                      renderChangeSection('Modificados', diff.modified || [], 'MODIFY') +
+                      renderChangeSection('Eliminados', diff.removed || [], 'REMOVE')
+                    : renderEcnKsField('Cambios registrados', 'Este ECO no tiene cambios registrados en el diff.')}
+                ${actionButtons}
             `;
         } catch (error) {
             console.error('Error detalle ECO:', error);

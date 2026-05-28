@@ -125,7 +125,7 @@
         <!-- Paso 1: metadatos + descargar -->
         <div id="ecoStep1" style="padding:18px;">
             <!-- Toggle alcance -->
-            <div style="display:flex; gap:10px; margin-bottom:14px;">
+            <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
                 <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px;">
                     <input type="radio" name="ecoScopeKind" value="SINGLE" id="ecoScopeSingle" checked>
                     <span><b>ECO individual</b><br><span style="color:#8b98a8; font-size:11px;">Un solo modelo</span></span>
@@ -133,6 +133,10 @@
                 <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px;">
                     <input type="radio" name="ecoScopeKind" value="FAMILY" id="ecoScopeFamily">
                     <span><b>ECO de familia</b><br><span style="color:#8b98a8; font-size:11px;">Aplicar a varios modelos de una familia</span></span>
+                </label>
+                <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px; min-width:210px;">
+                    <input type="radio" name="ecoScopeKind" value="NEW_BOM" id="ecoScopeNewBom">
+                    <span><b>Nuevo BOM</b><br><span style="color:#8b98a8; font-size:11px;">Primera carga para un modelo</span></span>
                 </label>
             </div>
 
@@ -182,7 +186,7 @@
 
         <!-- Paso 2: upload + validacion -->
         <div id="ecoStep2" style="display:none; padding:18px;">
-            <div style="padding:12px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:14px;">
+            <div id="ecoStep2Help" style="padding:12px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:14px;">
                 Suba el Excel modificado. El sistema validara y mostrara los cambios detectados (anadidos, eliminados, modificados).
             </div>
             <input type="file" id="ecoExcelInput" accept=".xlsx,.xls" style="display:block; padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; width:100%;">
@@ -279,7 +283,7 @@
 
 <!-- Modal detalle ECO MES -->
 <div id="ecoDetailBox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10004; align-items:center; justify-content:center;">
-    <div style="background:#1a1b26; border:1px solid #5dade2; border-radius:8px; width:min(980px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
+    <div style="background:#1a1b26; border:1px solid #5dade2; border-radius:8px; width:min(1120px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
         <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
             <h3 id="ecoDetailTitle" style="margin:0; color:#5dade2; font-size:16px;">Detalle ECO</h3>
             <button id="btnCerrarEcoDetailModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
@@ -305,4 +309,4 @@
 
 <!-- Fin del módulo Control de BOM -->
 
-<script defer src="{{ url_for('static', filename='js/control_bom.js', v='20260522a') }}"></script>
+<script defer src="{{ url_for('static', filename='js/control_bom.js', v='20260527d') }}"></script>

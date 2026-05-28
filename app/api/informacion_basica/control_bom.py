@@ -5,8 +5,10 @@ registra como Blueprint conforme a WF_003.
 """
 
 from datetime import datetime
+from decimal import Decimal
 from functools import wraps
 import io
+import re
 import tempfile
 import traceback
 
@@ -263,6 +265,8 @@ def consultar_bom():
 def _json_safe_datetime(value):
     if value is None:
         return None
+    if isinstance(value, Decimal):
+        return float(value)
     if hasattr(value, "strftime"):
         return value.strftime("%Y-%m-%d %H:%M:%S")
     return value
@@ -272,11 +276,14 @@ def _serialize_eco_row(row):
     if not row:
         return row
     data = dict(row)
-    for key in (
-        "effective_at", "created_at", "approved_at", "updated_at",
-        "source_updated_at", "synced_at", "sb_date",
-    ):
-        if key in data:
+    for key in data:
+        if (
+            key in (
+                "effective_at", "created_at", "approved_at", "updated_at",
+                "source_updated_at", "synced_at", "sb_date",
+            )
+            or isinstance(data.get(key), Decimal)
+        ):
             data[key] = _json_safe_datetime(data[key])
     return data
 
@@ -440,6 +447,7 @@ def api_ecos_detail(eco_id):
             return jsonify({"success": False, "error": "ECO no encontrado"}), 404
         eco = _serialize_eco_row(eco)
         eco["items"] = [_serialize_eco_row(i) for i in eco.get("items", [])]
+        eco["scope"] = [_serialize_eco_row(i) for i in eco.get("scope", [])]
         return jsonify({"success": True, "data": eco})
     except Exception as e:
         print(f"Error obteniendo ECO: {e}")
@@ -511,6 +519,84 @@ BOM_EXCEL_COLUMNS = [
 ]
 
 
+BOM_KS_TEMPLATE_HEADERS = [
+    "BOM level", "Matrl No.", "Matrl Name", "Matrl Spec",
+    "Total Request AMT", "Location", "Maker", "세부공정",
+    "대체자재번호", "품목공정", "Matrl Abbr", "Matrl Eng Name",
+    "Matrl Eng Abbr", "Matrl Remark", "Unit", "Item Asset Category",
+    "Remark", "Appl Start Date", "Closing Date of Appl",
+    "PurchaseUnit Price", "Purchase AMT", "Customer", "Currency",
+    "Current stock", "대체자재명", "대체자재규격", "자재대분류",
+    "대체자재Maker", "IC(PIN)", "품목상태", "대표단가",
+]
+
+
+BOM_EXCEL_HEADER_ALIASES = {
+    "__row_id": ["row_id", "id", "__row_key", "row key"],
+    "item_no": ["matrl no.", "matrl no", "material no.", "material no", "material", "part no", "part_no"],
+    "item_name": ["matrl name", "material name", "name"],
+    "spec": ["matrl spec", "material spec", "specification"],
+    "qty": ["total request amt", "total request amount", "request amt", "qty", "quantity", "cantidad"],
+    "unit": ["unit", "uom"],
+    "location_text": ["location", "ubicacion", "ubicación"],
+    "maker": ["maker", "manufacturer", "fabricante"],
+    "supplier": ["supplier", "customer", "vendor", "proveedor"],
+    "item_class": ["item asset category", "asset category", "item class", "classification", "자재대분류"],
+    "item_process": ["품목공정", "item process", "process"],
+    "process_name": ["세부공정", "process name", "detail process"],
+    "valid_from": ["appl start date", "valid from", "start date"],
+    "valid_to": ["closing date of appl", "valid to", "end date"],
+    "is_alternate": ["is alternate", "alternate", "alt"],
+    "alt_item_no": ["대체자재번호", "alt item no", "alternate item no"],
+    "alt_item_name": ["대체자재명", "alt item name", "alternate item name"],
+    "alt_spec": ["대체자재규격", "alt spec", "alternate spec"],
+    "alt_maker": ["대체자재maker", "대체자재 maker", "alt maker", "alternate maker"],
+    "remark": ["remark", "matrl remark", "material remark"],
+    "bom_level": ["bom level", "bom_level", "level"],
+    "item_seq": ["item seq", "item_seq", "seq"],
+}
+
+
+def _excel_header_token(value):
+    return "".join(
+        char
+        for char in str(value or "").strip().lower()
+        if char.isalnum()
+    )
+
+
+def _build_bom_excel_idx_map(headers):
+    normalized = {}
+    for idx, header in enumerate(headers):
+        token = _excel_header_token(header)
+        if token and token not in normalized:
+            normalized[token] = idx
+
+    idx_map = {}
+    for label, _key in BOM_EXCEL_COLUMNS:
+        candidates = [label] + BOM_EXCEL_HEADER_ALIASES.get(label, [])
+        for candidate in candidates:
+            token = _excel_header_token(candidate)
+            if token in normalized:
+                idx_map[label] = normalized[token]
+                break
+    return idx_map
+
+
+def _normalize_bom_excel_row(obj):
+    process_name = str(obj.get("process_name") or "").strip()
+    if not obj.get("item_process") and process_name and not process_name.replace("/", "").isdigit():
+        obj["item_process"] = process_name
+    if not obj.get("process_name") and obj.get("item_process"):
+        obj["process_name"] = obj.get("item_process")
+    return obj
+
+
+def _infer_part_no_from_filename(filename):
+    match = re.search(r"([A-Z]{2,}\d{5,})", str(filename or "").upper())
+    return match.group(1) if match else ""
+
+
 @bp.route("/api/bom/download-excel", methods=["GET"])
 @login_requerido
 @requiere_permiso_crear_eco
@@ -521,17 +607,19 @@ def api_bom_download_excel():
 
     part_no = (request.args.get("part_no") or "").strip().upper()
     bom_rev = (request.args.get("bom_rev") or "").strip().upper() or None
+    mode = (request.args.get("mode") or "").strip().upper()
+    new_bom_template = mode in ("NEW", "NEW_BOM", "NUEVO", "NUEVO_BOM")
     if not part_no:
         return jsonify({"success": False, "error": "part_no requerido"}), 400
 
     try:
-        rows = _ks_fetch_current_bom_items(part_no, bom_rev) or []
+        rows = [] if new_bom_template else (_ks_fetch_current_bom_items(part_no, bom_rev) or [])
 
         wb = Workbook()
         ws = wb.active
         ws.title = "BOM"
 
-        headers = [label for label, _key in BOM_EXCEL_COLUMNS]
+        headers = BOM_KS_TEMPLATE_HEADERS if new_bom_template else [label for label, _key in BOM_EXCEL_COLUMNS]
         ws.append(headers)
         header_fill = PatternFill(start_color="34495E", end_color="34495E", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF")
@@ -541,20 +629,25 @@ def api_bom_download_excel():
             cell.font = header_font
             cell.alignment = Alignment(horizontal="center")
 
-        for row in rows:
-            ws.append([
-                _eco_excel_row_ref(row) if label == "__row_id" else row.get(key)
-                for label, key in BOM_EXCEL_COLUMNS
-            ])
+        if not new_bom_template:
+            for row in rows:
+                ws.append([
+                    _eco_excel_row_ref(row) if label == "__row_id" else row.get(key)
+                    for label, key in BOM_EXCEL_COLUMNS
+                ])
 
-        ws.freeze_panes = "B2"
-        ws.column_dimensions["A"].hidden = True
-        for col_idx in range(2, len(headers) + 1):
-            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 18
+        ws.freeze_panes = "A2" if new_bom_template else "B2"
+        if not new_bom_template:
+            ws.column_dimensions["A"].hidden = True
+        start_width_col = 1 if new_bom_template else 2
+        for col_idx in range(start_width_col, len(headers) + 1):
+            header = str(ws.cell(row=1, column=col_idx).value or "")
+            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = max(14, min(len(header) + 4, 24))
 
         ws_meta = wb.create_sheet("_meta")
         ws_meta.append(["part_no", part_no])
         ws_meta.append(["bom_rev", rows[0].get("bom_rev") if rows else (bom_rev or "")])
+        ws_meta.append(["mode", "NEW_BOM" if new_bom_template else "ECO"])
         ws_meta.append(["exported_at", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")])
         ws_meta.sheet_state = "hidden"
 
@@ -562,10 +655,15 @@ def api_bom_download_excel():
         wb.save(bio)
         bio.seek(0)
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
+        download_name = (
+            f"PLANTILLA_BOM_NUEVO_{part_no}_{ts}.xlsx"
+            if new_bom_template
+            else f"BOM_{part_no}_{ts}.xlsx"
+        )
         return send_file(
             bio,
             as_attachment=True,
-            download_name=f"BOM_{part_no}_{ts}.xlsx",
+            download_name=download_name,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     except Exception as e:
@@ -771,10 +869,11 @@ def api_ecos_from_excel():
 
     metadata = {
         "eco_no": request.form.get("eco_no"),
-        "part_no": request.form.get("part_no"),
+        "part_no": request.form.get("part_no") or _infer_part_no_from_filename(file.filename),
         "effective_at": request.form.get("effective_at"),
         "item_name": request.form.get("item_name"),
         "notes": request.form.get("notes"),
+        "bom_mode": request.form.get("bom_mode"),
     }
 
     try:
@@ -789,23 +888,28 @@ def api_ecos_from_excel():
             return jsonify({"success": False, "errors": ["El Excel no tiene encabezados"]}), 400
         headers = [str(h).strip() if h is not None else "" for h in header_row]
         expected = [label for label, _ in BOM_EXCEL_COLUMNS]
-        missing = [col for col in expected if col not in headers]
+        idx_map = _build_bom_excel_idx_map(headers)
+        required = ["item_no", "qty", "bom_level"]
+        missing = [col for col in required if col not in idx_map]
         if missing:
             return jsonify({
                 "success": False,
-                "errors": [f"Faltan columnas en el Excel: {', '.join(missing)}"],
+                "errors": [
+                    "Faltan columnas requeridas en el Excel: "
+                    f"{', '.join(missing)}. Tambien se aceptan encabezados KS como "
+                    "Matrl No., Total Request AMT y BOM level."
+                ],
             }), 400
 
-        idx_map = {col: headers.index(col) for col in expected}
         excel_rows = []
         for row in ws.iter_rows(min_row=2, values_only=True):
             if row is None or all(v in (None, "") for v in row):
                 continue
             obj = {}
             for col in expected:
-                i = idx_map[col]
-                obj[col] = row[i] if i < len(row) else None
-            excel_rows.append(obj)
+                i = idx_map.get(col)
+                obj[col] = row[i] if i is not None and i < len(row) else None
+            excel_rows.append(_normalize_bom_excel_row(obj))
 
         usuario = session.get("usuario", "desconocido")
         result = crear_eco_desde_excel(metadata, excel_rows, usuario)
