@@ -178,8 +178,15 @@ def api_plan_smt_create():
         fecha = _fp_safe_date(working_date) or datetime.utcnow().date()
 
         lot_prefix = f"SMT-{fecha.strftime('%y%m%d')}"
-        count_query = "SELECT COUNT(*) as cnt FROM plan_smt WHERE lot_no LIKE %s"
-        count_result = execute_query(count_query, (f"{lot_prefix}%",), fetch="one")
+        count_query = (
+            "SELECT COUNT(*) as cnt FROM plan_smt "
+            "WHERE lot_no REGEXP %s"
+        )
+        count_result = execute_query(
+            count_query,
+            (f"^{lot_prefix}-[0-9]{{1,3}}$",),
+            fetch="one",
+        )
         count = count_result.get("cnt", 0) if count_result else 0
         lot_no = f"{lot_prefix}-{int(count) + 1:03d}"
 
@@ -715,8 +722,9 @@ def api_plan_smt_import_excel():
         # Obtener base de lotes una sola vez
         lot_prefix = f"SMT-{fecha_default.strftime('%y%m%d')}"
         count_result = execute_query(
-            "SELECT COUNT(*) as cnt FROM plan_smt WHERE lot_no LIKE %s",
-            (f"{lot_prefix}%",),
+            "SELECT COUNT(*) as cnt FROM plan_smt "
+            "WHERE lot_no REGEXP %s",
+            (f"^{lot_prefix}-[0-9]{{1,3}}$",),
             fetch="one",
         )
         base_count = int((count_result or {}).get("cnt", 0) or 0)
