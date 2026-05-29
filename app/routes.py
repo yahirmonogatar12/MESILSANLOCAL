@@ -30,6 +30,7 @@ from werkzeug.exceptions import HTTPException
 
 # Importar sistema de autenticacion mejorado
 from .auth_system import AuthSystem
+from .api.shared import permisos
 from .api.shared.datetime_helpers import obtener_fecha_hora_mexico
 from .api.shared.public_routes import is_public_api_route
 from .db import get_db_connection
@@ -197,118 +198,19 @@ def api_health():
 # tickets_portal: registro movido a app/api/__init__.py
 
 
-def requiere_permiso_dropdown(pagina, seccion, boton):
-    """Decorador para verificar permisos específicos de dropdowns"""
-
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if "usuario" not in session:
-                return jsonify(
-                    {"error": "Usuario no autenticado", "redirect": "/login"}
-                ), 401
-
-            try:
-                username = session["usuario"]
-                logger.info(
-                    f" Verificando permisos para usuario: {username}, página: {pagina}, sección: {seccion}, botón: {boton}"
-                )
-
-                rol_nombre = auth_system.obtener_rol_principal_usuario(username)
-                if not rol_nombre:
-                    logger.info(" Usuario sin roles asignados")
-                    return jsonify({"error": "Usuario sin roles asignados"}), 403
-
-                logger.info(f" Rol del usuario: {rol_nombre}")
-                if rol_nombre == "superadmin":
-                    logger.info(" Superadmin: permiso concedido")
-                    return f(*args, **kwargs)
-
-                tiene_permiso = auth_system.verificar_permiso_boton(
-                    username, pagina, seccion, boton
-                )
-                logger.info(f" Tiene permiso: {tiene_permiso}")
-
-                if not tiene_permiso:
-                    logger.info(f" Sin permisos para: {pagina} > {seccion} > {boton}")
-                    # Respuesta diferente para AJAX vs navegación directa
-                    if (
-                        request.headers.get("Content-Type") == "application/json"
-                        or request.is_json
-                    ):
-                        return jsonify(
-                            {
-                                "error": f"No tienes permisos para acceder a: {boton}",
-                                "permiso_requerido": f"{pagina} > {seccion} > {boton}",
-                            }
-                        ), 403
-                    else:
-                        # Para carga AJAX de HTML, devolver mensaje de error
-                        return (
-                            f"""
-                        <div style="
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            justify-content: center;
-                            height: 400px;
-                            background: #2c2c2c;
-                            color: #e0e0e0;
-                            border-radius: 10px;
-                            margin: 20px;
-                            text-align: center;
-                        ">
-                            <i class="fas fa-lock" style="font-size: 3rem; color: #dc3545; margin-bottom: 20px;"></i>
-                            <h3>Acceso Denegado</h3>
-                            <p>No tienes permisos para acceder a: <strong>{boton}</strong></p>
-                            <p style="font-size: 0.9rem; opacity: 0.7;">Permiso requerido: {pagina} > {seccion} > {boton}</p>
-                        </div>
-                        """,
-                            403,
-                        )
-
-                logger.info(f" Permisos verificados correctamente, ejecutando función...")
-                return f(*args, **kwargs)
-
-            except Exception as e:
-                logger.error(f" Error verificando permisos: {e}")
-                import traceback
-
-                traceback.print_exc()
-                return jsonify({"error": "Error interno del servidor"}), 500
-
-        return decorated_function
-
-    return decorator
+# `requiere_permiso_dropdown` se centralizo en app/api/shared/permisos.py.
+# Se reexporta aqui para no romper referencias heredadas a
+# `routes.requiere_permiso_dropdown`.
+requiere_permiso_dropdown = permisos.requiere_permiso_dropdown
 
 
-# Filtros de Jinja2 para permisos de botones
+# Filtros de Jinja2 para permisos de botones (delegan en la fachada permisos).
 @app.template_filter("tiene_permiso_boton")
 def tiene_permiso_boton(nombre_boton):
     """Filtro para verificar si el usuario actual tiene permiso para un botón específico"""
-    try:
-        # Obtener el usuario de la sesión actual
-        if "usuario" not in session:
-            return False
-
-        username = session["usuario"]
-        if auth_system.obtener_rol_principal_usuario(username) == "superadmin":
-            return True
-
-        permisos_botones = auth_system.obtener_permisos_botones_usuario(username)
-        for secciones in permisos_botones.values():
-            for botones in secciones.values():
-                for item in botones:
-                    if isinstance(item, dict) and item.get("boton") == nombre_boton:
-                        return True
-                    if item == nombre_boton:
-                        return True
-
+    if "usuario" not in session:
         return False
-
-    except Exception as e:
-        logger.error(f"Error verificando permiso de botón '{nombre_boton}': {e}")
-        return False
+    return permisos.puede_boton_por_nombre(session["usuario"], nombre_boton)
 
 
 @app.template_filter("permisos_botones_pagina")
@@ -316,7 +218,7 @@ def permisos_botones_pagina(usuario, pagina):
     """Filtro para obtener todos los permisos de botones de una página"""
     if not usuario:
         return {}
-    return auth_system.obtener_permisos_botones_usuario(usuario, pagina)
+    return permisos.permisos_botones(usuario, pagina)
 
 
 # Fase 6 (2026-05-28): cargar_usuarios (legacy fallback usuarios.json) movido
@@ -1008,9 +910,7 @@ def verificar_permiso_dropdown():
                 {"tiene_permiso": False, "error": "Usuario no encontrado o sin roles"}
             ), 404
 
-        tiene_permiso = auth_system.verificar_permiso_boton(
-            username, pagina, seccion, boton
-        )
+        tiene_permiso = permisos.puede_boton(username, pagina, seccion, boton)
 
         return jsonify(
             {
@@ -1043,18 +943,18 @@ def obtener_permisos_usuario_actual():
                 {"permisos": {}, "error": "Usuario no encontrado o sin roles"}
             ), 404
 
-        permisos = auth_system.obtener_permisos_botones_usuario(username)
+        permisos_usuario = permisos.permisos_botones(username)
 
         # Formatear permisos para JavaScript en estructura jerárquica
         permisos_jerarquicos = {}
         total_permisos = 0
 
-        for pagina, secciones in permisos.items():
+        for pagina, secciones in permisos_usuario.items():
             permisos_jerarquicos[pagina] = {}
             for seccion, botones in secciones.items():
                 permisos_jerarquicos[pagina][seccion] = []
-                for item in botones:
-                    boton = item.get("boton") if isinstance(item, dict) else item
+                for item in botones:  # ya normalizados a dict por la fachada
+                    boton = item.get("boton")
                     if not boton:
                         continue
                     permisos_jerarquicos[pagina][seccion].append(boton)

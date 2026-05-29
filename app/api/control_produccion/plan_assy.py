@@ -64,18 +64,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def requiere_permiso_dropdown(pagina, seccion, boton):
-    """Proxy del decorador real definido en `app.routes`."""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            from app import routes as _r
-            real_decorator = _r.requiere_permiso_dropdown(pagina, seccion, boton)
-            return real_decorator(f)(*args, **kwargs)
-
-        return decorated_function
-
-    return decorator
+# requiere_permiso_dropdown centralizado en app/api/shared/permisos.py
+# (antes era un proxy duplicado en cada modulo).
+from app.api.shared import requiere_permiso_dropdown
 
 
 bp = Blueprint("control_produccion_plan_assy", __name__)

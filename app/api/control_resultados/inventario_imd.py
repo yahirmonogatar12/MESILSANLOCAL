@@ -25,7 +25,12 @@ otro modulo con esos IDs hoy. Refactorizar a prefijo unico queda pendiente.
 
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
-from app.api.shared import execute_query, login_requerido, obtener_fecha_hora_mexico
+from app.api.shared import (
+    execute_query,
+    login_requerido,
+    obtener_fecha_hora_mexico,
+    requiere_permiso_dropdown,
+)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -39,20 +44,12 @@ IMD_PERMISO_SECCION = "Control de inventario"
 IMD_PERMISO_BOTON = "IMD-SMD TERMINADO"
 
 
-def _requiere_permiso_imd(f):
-    """Wrapper anti-circular para @requiere_permiso_dropdown del modulo legacy."""
-    from functools import wraps
-
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        from app import routes as _r
-
-        decorado = _r.requiere_permiso_dropdown(
-            IMD_PERMISO_PAGINA, IMD_PERMISO_SECCION, IMD_PERMISO_BOTON
-        )(f)
-        return decorado(*args, **kwargs)
-
-    return wrapper
+# Decorador con el permiso fijo del modulo, construido sobre el canonico de
+# app/api/shared/permisos.py (la fachada accede a auth_system de forma lazy en
+# el request, asi que no hay import circular al cargar este modulo).
+_requiere_permiso_imd = requiere_permiso_dropdown(
+    IMD_PERMISO_PAGINA, IMD_PERMISO_SECCION, IMD_PERMISO_BOTON
+)
 
 
 # ---------------------------------------------------------------------------
