@@ -178,17 +178,14 @@ def api_plan_smt_create():
         fecha = _fp_safe_date(working_date) or datetime.utcnow().date()
 
         lot_prefix = f"SMT-{fecha.strftime('%y%m%d')}"
-        count_query = (
-            "SELECT COUNT(*) as cnt FROM plan_smt "
-            "WHERE lot_no REGEXP %s"
-        )
-        count_result = execute_query(
-            count_query,
+        max_result = execute_query(
+            "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(lot_no, '-', -1) AS UNSIGNED)), 0) AS max_seq "
+            "FROM plan_smt WHERE lot_no REGEXP %s",
             (f"^{lot_prefix}-[0-9]{{1,3}}$",),
             fetch="one",
         )
-        count = count_result.get("cnt", 0) if count_result else 0
-        lot_no = f"{lot_prefix}-{int(count) + 1:03d}"
+        next_seq = int((max_result or {}).get("max_seq") or 0) + 1
+        lot_no = f"{lot_prefix}-{next_seq:03d}"
 
         raw_data = execute_query(
             "SELECT part_no, model, ct, uph FROM raw_smd WHERE part_no = %s LIMIT 1",
@@ -721,13 +718,13 @@ def api_plan_smt_import_excel():
 
         # Obtener base de lotes una sola vez
         lot_prefix = f"SMT-{fecha_default.strftime('%y%m%d')}"
-        count_result = execute_query(
-            "SELECT COUNT(*) as cnt FROM plan_smt "
-            "WHERE lot_no REGEXP %s",
+        max_result = execute_query(
+            "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(lot_no, '-', -1) AS UNSIGNED)), 0) AS max_seq "
+            "FROM plan_smt WHERE lot_no REGEXP %s",
             (f"^{lot_prefix}-[0-9]{{1,3}}$",),
             fetch="one",
         )
-        base_count = int((count_result or {}).get("cnt", 0) or 0)
+        base_count = int((max_result or {}).get("max_seq") or 0)
 
         # Preparar filas para insercion masiva
         records = []
