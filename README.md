@@ -50,10 +50,7 @@ Notas:
 
 2. **Método recomendado (runner local):**
    - Ejecuta `run.py` en la carpeta `MESILSANLOCAL`.
-   - Este archivo registra todas las rutas/blueprints necesarios y expone endpoints de health/debug.
-
-3. **Entrypoint alternativo (Vercel):**
-   - `api/index.py` expone la app para despliegue serverless.
+   - Este archivo registra todas las rutas/blueprints necesarios y expone el endpoint de health.
 
 La app por defecto inicia en `http://127.0.0.1:5000/` (o 0.0.0.0:5000):
 - `/login` — página de inicio de sesión.
@@ -152,13 +149,11 @@ Los endpoints clave viven principalmente en `app/routes.py` y blueprints adicion
 - Flask app principal en `app/routes.py` (crea `app` y registra módulos).
 - Autenticación/permisos en `app/auth_system.py` (roles, permisos por botón, auditoría).
 - Capa de datos MySQL en `app/config_mysql.py` (con `execute_query`) y `app/db_mysql.py` (inicialización de tablas y lógica de negocio para materiales/inventario/BOM/plan).
-- Entrypoints:
-  - Local: `run.py`
-  - Serverless: `api/index.py` (ver `vercel.json`)
+- Entrypoint: `run.py` (server local con waitress).
 
 ## Troubleshooting rápido
 
-- Si no conecta a MySQL, verifica variables de entorno con `GET /debug/env` (solo en `api/index.py`).
+- Si no conecta a MySQL, revisa las variables de entorno (`MYSQL_*`) en `.env` y el log de arranque (`app.config_mysql` imprime host/puerto/db/user).
 - Errores de importación de Excel: asegúrate de tener `pandas`, `openpyxl`, `xlrd` instalados.
 
 ## Licencia
