@@ -29,6 +29,11 @@ def create_app():
     if _cached_app is not None:
         return _cached_app
 
+    # Configurar logging lo antes posible (idempotente; si run.py ya lo hizo
+    # no duplica handlers).
+    from app.api.shared.logging_config import configure_logging
+    configure_logging()
+
     # Importes diferidos para evitar side-effects pesados antes de configurar entorno.
     from app.routes import app
     from app.startup_init import run_startup_init

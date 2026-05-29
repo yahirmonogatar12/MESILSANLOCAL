@@ -6,6 +6,9 @@ import unicodedata
 
 from app.db_mysql import execute_query, get_connection
 
+import logging
+logger = logging.getLogger(__name__)
+
 # === FUNCIONES DE ECOs / CAMBIOS DE INGENIERIA ===
 
 def crear_tablas_ecos():
@@ -338,10 +341,10 @@ def crear_tablas_ecos():
             FROM ks_engineering_changes ke
         """)
 
-        print(" Tablas/vista de ECOs listas")
+        logger.info(" Tablas/vista de ECOs listas")
         return True
     except Exception as e:
-        print(f" Error creando tablas/vista de ECOs: {e}")
+        logger.error(f" Error creando tablas/vista de ECOs: {e}")
         return False
 
 
@@ -432,7 +435,7 @@ def _eco_add_column_if_missing(table_name, column_name, column_definition):
         if not existing:
             execute_query(f"ALTER TABLE {table_name} ADD COLUMN {column_definition}")
     except Exception as e:
-        print(f"Error asegurando columna {table_name}.{column_name}: {e}")
+        logger.error(f"Error asegurando columna {table_name}.{column_name}: {e}")
 
 
 def _eco_modify_column_if_needed(table_name, column_name, column_definition, allowed_types):
@@ -454,7 +457,7 @@ def _eco_modify_column_if_needed(table_name, column_name, column_definition, all
         if not any(column_type.startswith(t) for t in allowed_types):
             execute_query(f"ALTER TABLE {table_name} MODIFY COLUMN {column_definition}")
     except Exception as e:
-        print(f"Error ajustando columna {table_name}.{column_name}: {e}")
+        logger.error(f"Error ajustando columna {table_name}.{column_name}: {e}")
 
 
 def _eco_add_index_if_missing(table_name, index_name, index_definition):
@@ -467,14 +470,14 @@ def _eco_add_index_if_missing(table_name, index_name, index_definition):
         if not existing:
             execute_query(f"ALTER TABLE {table_name} ADD KEY {index_name} {index_definition}")
     except Exception as e:
-        print(f"Error asegurando indice {table_name}.{index_name}: {e}")
+        logger.error(f"Error asegurando indice {table_name}.{index_name}: {e}")
 
 
 def _eco_drop_view_if_exists(view_name):
     try:
         execute_query(f"DROP VIEW IF EXISTS {view_name}")
     except Exception as e:
-        print(f"Error eliminando vista legacy {view_name}: {e}")
+        logger.error(f"Error eliminando vista legacy {view_name}: {e}")
 
 
 def _eco_rename_column_if_exists(table_name, old_column, new_column, new_definition):
@@ -504,7 +507,7 @@ def _eco_rename_column_if_exists(table_name, old_column, new_column, new_definit
             )
             execute_query(f"ALTER TABLE {table_name} DROP COLUMN {old_column}")
     except Exception as e:
-        print(f"Error migrando columna {table_name}.{old_column} a {new_column}: {e}")
+        logger.error(f"Error migrando columna {table_name}.{old_column} a {new_column}: {e}")
 
 
 def _eco_rename_index_if_exists(table_name, old_index, new_index):
@@ -524,7 +527,7 @@ def _eco_rename_index_if_exists(table_name, old_index, new_index):
         elif old_existing and new_existing:
             execute_query(f"ALTER TABLE {table_name} DROP INDEX {old_index}")
     except Exception as e:
-        print(f"Error migrando indice {table_name}.{old_index} a {new_index}: {e}")
+        logger.error(f"Error migrando indice {table_name}.{old_index} a {new_index}: {e}")
 
 
 def _ks_family_prefix(part_no):
@@ -555,7 +558,7 @@ def _ks_part_catalog_lookup(part_no):
         )
         return row or None
     except Exception as e:
-        print(f"Error consultando ks_part_catalog para {part_no}: {e}")
+        logger.error(f"Error consultando ks_part_catalog para {part_no}: {e}")
         return None
 
 
@@ -616,7 +619,7 @@ def resolver_familia(family_prefix, suffixes):
             if pn.startswith(family):
                 found_suffixes.add(pn[len(family):])
     except Exception as e:
-        print(f"Error resolviendo familia {family}: {e}")
+        logger.error(f"Error resolviendo familia {family}: {e}")
 
     missing = [s for s in suf_list if s not in found_suffixes]
     return {
@@ -700,7 +703,7 @@ def _ks_fetch_current_bom_items(part_no, bom_revision=None):
             fetch='all'
         ) or []
     except Exception as e:
-        print(f"Error leyendo v_ecos_bom_current para {part_no}: {e}")
+        logger.error(f"Error leyendo v_ecos_bom_current para {part_no}: {e}")
         return []
 
 
@@ -763,7 +766,7 @@ def _eco_revision_rows(part_numbers):
             fetch='all'
         ) or [])
     except Exception as e:
-        print(f"Error leyendo revisiones ECO reservadas para {part_numbers}: {e}")
+        logger.error(f"Error leyendo revisiones ECO reservadas para {part_numbers}: {e}")
     return rows
 
 
@@ -876,7 +879,7 @@ def contar_ecos(status=None, part_no=None, origen=None, eco_no=None, date_from=N
         ) or {}
         return int(row.get('total') or 0)
     except Exception as e:
-        print(f"Error contando ECOs: {e}")
+        logger.error(f"Error contando ECOs: {e}")
         return 0
 
 
@@ -917,7 +920,7 @@ def listar_ecos(status=None, part_no=None, limit=100, origen=None, eco_no=None, 
         """
         return execute_query(query, tuple(params), fetch='all') or []
     except Exception as e:
-        print(f"Error listando ECOs: {e}")
+        logger.error(f"Error listando ECOs: {e}")
         return []
 
 
@@ -953,7 +956,7 @@ def obtener_eco_detalle(eco_id):
         eco['item_count'] = len(items)
         return eco
     except Exception as e:
-        print(f"Error obteniendo ECO: {e}")
+        logger.error(f"Error obteniendo ECO: {e}")
         return None
 
 
@@ -977,7 +980,7 @@ def obtener_ecn_ks(hist_seq):
         )
         return row
     except Exception as e:
-        print(f"Error obteniendo ECN KS {hist_seq}: {e}")
+        logger.error(f"Error obteniendo ECN KS {hist_seq}: {e}")
         return None
 
 
@@ -1548,7 +1551,7 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
             conn.rollback()
         except Exception:
             pass
-        print(f"Error creando ECO desde Excel: {e}")
+        logger.error(f"Error creando ECO desde Excel: {e}")
         return {"success": False, "errors": [str(e)]}
     finally:
         try:
@@ -1591,7 +1594,7 @@ def obtener_diff_eco(eco_id):
         ) or []
         return rows
     except Exception as e:
-        print(f"Error obteniendo diff ECO {eco_id}: {e}")
+        logger.error(f"Error obteniendo diff ECO {eco_id}: {e}")
         return []
 
 
@@ -1610,7 +1613,7 @@ def obtener_scope_eco(eco_id):
         ) or []
         return rows
     except Exception as e:
-        print(f"Error obteniendo scope ECO {eco_id}: {e}")
+        logger.error(f"Error obteniendo scope ECO {eco_id}: {e}")
         return []
 
 
@@ -1954,7 +1957,7 @@ def crear_eco_familia_desde_excel(metadata, excel_rows, scope_parts, created_by=
             conn.rollback()
         except Exception:
             pass
-        print(f"Error creando ECO familia: {e}")
+        logger.error(f"Error creando ECO familia: {e}")
         return {"success": False, "errors": [str(e)]}
     finally:
         try:
@@ -2442,7 +2445,7 @@ def _aprobar_eco_familia(eco_id, approved_by, eco):
             conn.rollback()
         except Exception:
             pass
-        print(f"Error aprobando ECO familia {eco_id}: {e}")
+        logger.error(f"Error aprobando ECO familia {eco_id}: {e}")
         return {"success": False, "errors": [str(e)]}
     finally:
         try:
@@ -2691,7 +2694,7 @@ def obtener_bom_por_modelo(modelo):
 
 def guardar_bom_item(data):
     """La edicion directa de bom quedo deshabilitada; usar Crear ECO."""
-    print("guardar_bom_item bloqueado: use Crear ECO para publicar en KS")
+    logger.info("guardar_bom_item bloqueado: use Crear ECO para publicar en KS")
     return False
 
 def obtener_modelos_bom():
@@ -2709,7 +2712,7 @@ def obtener_modelos_bom():
         result = execute_query(query, (plant_date, plant_date), fetch='all') or []
         return [{'modelo': row['modelo']} for row in result]
     except Exception as e:
-        print(f"Error obteniendo modelos BOM desde v_ecos_bom_current: {e}")
+        logger.error(f"Error obteniendo modelos BOM desde v_ecos_bom_current: {e}")
         return []
 
 
@@ -2799,14 +2802,14 @@ def listar_bom_por_modelo(modelo, classification=None, bom_revision=None):
             ORDER BY bom_part_no, header_synced_at DESC, bom_rev DESC, item_seq, item_no
         """
         result = execute_query(query, tuple(params), fetch='all') or []
-        print(
+        logger.info(
             " Query BOM KS: "
             f"modelo={modelo}, classification={classification}, bom_revision={selected_revision or 'vigente'}, "
             f"resultados={len(result)}"
         )
         return [_map_ks_bom_row(row) for row in result]
     except Exception as e:
-        print(f"Error listando BOM por modelo: {e}")
+        logger.error(f"Error listando BOM por modelo: {e}")
         return []
 
 def insertar_bom_desde_dataframe(df, registrador):

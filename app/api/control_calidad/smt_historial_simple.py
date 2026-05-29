@@ -24,6 +24,9 @@ from datetime import datetime, timedelta
 import mysql.connector
 from flask import Blueprint, jsonify, request
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 DB_CONFIG = {
     'host': os.getenv('MYSQL_HOST'),
@@ -109,8 +112,8 @@ def get_historial_smt_data():
 
         query += f" ORDER BY ScanDate DESC, ScanTime DESC LIMIT {limit}"
 
-        print(f"Query: {query}")
-        print(f"Params: {params}")
+        logger.info(f"Query: {query}")
+        logger.info(f"Params: {params}")
 
         cursor.execute(query, params)
         records = cursor.fetchall()
@@ -121,7 +124,7 @@ def get_historial_smt_data():
             if 'ScanTime' in record:
                 record['hora_formateada'] = format_scan_time(record['ScanTime'])
 
-        print(f"Registros encontrados: {len(records)}")
+        logger.info(f"Registros encontrados: {len(records)}")
 
         cursor.close()
         conn.close()
@@ -138,7 +141,7 @@ def get_historial_smt_data():
         })
 
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
         import traceback
         traceback.print_exc()
 
@@ -189,7 +192,7 @@ def get_smt_stats():
         })
 
     except Exception as e:
-        print(f"Error stats: {e}")
+        logger.error(f"Error stats: {e}")
         return jsonify({
             'status': 'error',
             'stats': {}

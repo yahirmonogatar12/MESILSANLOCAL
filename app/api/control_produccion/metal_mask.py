@@ -29,14 +29,12 @@ from app.db_mysql import execute_query, get_connection
 # `login_requerido` y `requiere_permiso_dropdown` viven en `app.routes`.
 # Se importan dentro de las funciones que los necesitan (tarde) para evitar
 # que metal_mask arrastre app.routes al ser importado por shared.
-def login_requerido(f):
-    """Proxy del decorador real definido en `app.routes`."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from app import routes as _r
-        return _r.login_requerido(f)(*args, **kwargs)
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
-    return decorated_function
+import logging
+logger = logging.getLogger(__name__)
 
 
 def requiere_permiso_dropdown(pagina, seccion, boton):
@@ -75,7 +73,7 @@ def control_mask_metal_ajax():
     try:
         return render_template("Control de produccion/control_mask_metal_ajax.html")
     except Exception as e:
-        print(f"Error al cargar template Control de mask de metal AJAX: {e}")
+        logger.error(f"Error al cargar template Control de mask de metal AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -116,7 +114,7 @@ def api_list_masks():
             out.append(r)
         return jsonify(out)
     except Exception as e:
-        print(f"Error en api_list_masks: {e}")
+        logger.error(f"Error en api_list_masks: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -162,7 +160,7 @@ def api_create_mask():
         msg = str(e)
         if "Duplicate entry" in msg:
             return jsonify({"error": "El Nomero de Gestion ya existe"}), 400
-        print(f"Error en api_create_mask: {e}")
+        logger.error(f"Error en api_create_mask: {e}")
         return jsonify({"error": msg}), 500
 
 
@@ -207,7 +205,7 @@ def api_update_mask(mask_id: int):
         msg = str(e)
         if "Duplicate entry" in msg:
             return jsonify({"error": "El Nomero de Gestion ya existe"}), 400
-        print(f"Error en api_update_mask: {e}")
+        logger.error(f"Error en api_update_mask: {e}")
         return jsonify({"error": msg}), 500
 
 
@@ -230,7 +228,7 @@ def api_metal_mask_test():
             count = row.get("c") if isinstance(row, dict) else row[0]
         return jsonify({"success": True, "count": int(count or 0)})
     except Exception as e:
-        print(f"Error en api_metal_mask_test: {e}")
+        logger.error(f"Error en api_metal_mask_test: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -250,7 +248,7 @@ def historial_tension_mask_metal_ajax():
             "Control de produccion/historial_tension_mask_metal_ajax.html"
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error al cargar template Historial de tension de mask de metal AJAX: {e}"
         )
         return f"Error al cargar el contenido: {str(e)}", 500
@@ -346,8 +344,8 @@ def api_masks_info():
 
         return jsonify({"success": True, "found": True, "data": data})
     except Exception as e:
-        print("Error en api_masks_info:", e)
-        print(traceback.format_exc())
+        logger.error("Error en api_masks_info: %s", e)
+        logger.info(traceback.format_exc())
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -441,8 +439,8 @@ def api_save_metal_mask_history():
         )
 
     except Exception as e:
-        print("Error en api_save_metal_mask_history:", e)
-        print(traceback.format_exc())
+        logger.error("Error en api_save_metal_mask_history: %s", e)
+        logger.info(traceback.format_exc())
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -529,8 +527,8 @@ def api_get_metal_mask_history():
         return jsonify({"success": True, "data": data, "count": len(data)})
 
     except Exception as e:
-        print(" Error en api_get_metal_mask_history:", e)
-        print(" Traceback completo:")
+        logger.error("Error en api_get_metal_mask_history: %s", e)
+        logger.error(" Traceback completo:")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -631,7 +629,7 @@ def api_update_metal_mask_used_count():
 
             if cursor.rowcount > 0:
                 updated_count += cursor.rowcount
-                print(
+                logger.info(
                     f" Metal Mask {mask_code} - used_count incrementado en {cantidad_producida}"
                 )
 
@@ -687,7 +685,7 @@ def api_update_metal_mask_used_count():
         )
 
     except Exception as e:
-        print(" Error actualizando used_count:", e)
+        logger.error("Error actualizando used_count: %s", e)
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -759,6 +757,6 @@ def init_metal_mask_tables():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             """
         )
-        print(" Tablas Metal Mask creadas/verificadas")
+        logger.info(" Tablas Metal Mask creadas/verificadas")
     except Exception as e:
-        print(f"Error creando/verificando tablas Metal Mask: {e}")
+        logger.error(f"Error creando/verificando tablas Metal Mask: {e}")

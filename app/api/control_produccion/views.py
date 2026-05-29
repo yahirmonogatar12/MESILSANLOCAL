@@ -19,14 +19,12 @@ from flask import Blueprint, render_template, session
 from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
 
 
-def login_requerido(f):
-    """Proxy del decorador real definido en `app.routes`."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from app import routes as _r
-        return _r.login_requerido(f)(*args, **kwargs)
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
-    return decorated_function
+import logging
+logger = logging.getLogger(__name__)
 
 
 bp = Blueprint("control_produccion_views", __name__)
@@ -39,7 +37,7 @@ def control_embarque():
     try:
         return render_template("Control de produccion/Control de embarque.html")
     except Exception as e:
-        print(f"Error al cargar Control de embarque: {e}")
+        logger.error(f"Error al cargar Control de embarque: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -50,7 +48,7 @@ def control_embarque_ajax():
     try:
         return render_template("Control de produccion/Control de embarque.html")
     except Exception as e:
-        print(f"Error al cargar template Control de embarque AJAX: {e}")
+        logger.error(f"Error al cargar template Control de embarque AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -67,7 +65,7 @@ def crear_plan_produccion():
             usuario_logueado=usuario_logueado,
         )
     except Exception as e:
-        print(f"Error al cargar Crear Plan de Produccion: {e}")
+        logger.error(f"Error al cargar Crear Plan de Produccion: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -78,5 +76,5 @@ def plan_smt_ajax():
     try:
         return render_template("Control de produccion/plan_smd_interfaz.html")
     except Exception as e:
-        print(f"Error al cargar template PLAN SMT AJAX: {e}")
+        logger.error(f"Error al cargar template PLAN SMT AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500

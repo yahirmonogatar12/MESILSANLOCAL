@@ -36,6 +36,9 @@ from flask import Blueprint, jsonify, request
 
 from app.api.shared import execute_query, login_requerido
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint("shared_snapshot_inventario", __name__)
 
@@ -82,9 +85,9 @@ def crear_tablas_snapshot_inventario():
                 INDEX idx_snap_ig_fecha_nparte (fecha_snapshot, nparte)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
-        print("[snapshot-inv] Tabla snapshot_inventario_general OK")
+        logger.info("[snapshot-inv] Tabla snapshot_inventario_general OK")
     except Exception as e:
-        print(f"[snapshot-inv] Error creando snapshot_inventario_general: {e}")
+        logger.error(f"[snapshot-inv] Error creando snapshot_inventario_general: {e}")
 
     try:
         execute_query("""
@@ -104,9 +107,9 @@ def crear_tablas_snapshot_inventario():
                 INDEX idx_snap_ub_fecha_modelo (fecha_snapshot, modelo)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """)
-        print("[snapshot-inv] Tabla snapshot_ubicacion OK")
+        logger.info("[snapshot-inv] Tabla snapshot_ubicacion OK")
     except Exception as e:
-        print(f"[snapshot-inv] Error creando snapshot_ubicacion: {e}")
+        logger.error(f"[snapshot-inv] Error creando snapshot_ubicacion: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +129,7 @@ def _snapshot_inv_tomar(fecha_override=None):
         [fecha_str], fetch="one"
     )
     if existing and existing.get("cnt", 0) > 0:
-        print(f"[snapshot-inv] Ya existe snapshot para {fecha_str}, omitiendo")
+        logger.info(f"[snapshot-inv] Ya existe snapshot para {fecha_str}, omitiendo")
         return {"fecha": fecha_str, "inventario_general": 0, "ubicacion": 0, "skipped": True}
 
     # Snapshot de inventario general (inv_resumen_modelo)
@@ -153,7 +156,7 @@ def _snapshot_inv_tomar(fecha_override=None):
         "ubicacion": rows_ub if isinstance(rows_ub, int) else 0,
         "skipped": False
     }
-    print(f"[snapshot-inv] Snapshot completado: {result}")
+    logger.info(f"[snapshot-inv] Snapshot completado: {result}")
     return result
 
 
@@ -178,13 +181,13 @@ def _snapshot_inv_daily_loop():
                 target = target_today
 
             sleep_seconds = max(60, (target - now).total_seconds())
-            print(f"[snapshot-inv] Durmiendo {sleep_seconds:.0f}s hasta {target.strftime('%Y-%m-%d %H:%M')}")
+            logger.info(f"[snapshot-inv] Durmiendo {sleep_seconds:.0f}s hasta {target.strftime('%Y-%m-%d %H:%M')}")
             time.sleep(sleep_seconds)
 
             result = _snapshot_inv_tomar()
-            print(f"[snapshot-inv] Resultado: {result}")
+            logger.info(f"[snapshot-inv] Resultado: {result}")
         except Exception as e:
-            print(f"[snapshot-inv] Error: {e}")
+            logger.error(f"[snapshot-inv] Error: {e}")
             time.sleep(300)
 
 
@@ -192,7 +195,7 @@ def iniciar_snapshot_inv_worker():
     """Iniciar thread daemon para snapshot diario de inventario"""
     global _snapshot_inv_thread
     if _env_flag("SNAPSHOT_INV_DISABLE", False):
-        print("[snapshot-inv] Deshabilitado por SNAPSHOT_INV_DISABLE")
+        logger.info("[snapshot-inv] Deshabilitado por SNAPSHOT_INV_DISABLE")
         return
 
     with _snapshot_inv_lock:
@@ -204,7 +207,7 @@ def iniciar_snapshot_inv_worker():
             daemon=True,
         )
         _snapshot_inv_thread.start()
-        print("[snapshot-inv] Worker iniciado (target 07:30 America/Monterrey)")
+        logger.info("[snapshot-inv] Worker iniciado (target 07:30 America/Monterrey)")
 
 
 # ---------------------------------------------------------------------------
@@ -234,7 +237,7 @@ def api_snapshot_inv_fechas():
             })
         return jsonify({"status": "success", "fechas": fechas})
     except Exception as e:
-        print(f"Error en api_snapshot_inv_fechas: {e}")
+        logger.error(f"Error en api_snapshot_inv_fechas: {e}")
         return jsonify({"status": "error", "message": str(e), "fechas": []}), 500
 
 
@@ -270,7 +273,7 @@ def api_snapshot_inv_general():
         return jsonify({"status": "success", "fecha": fecha, "items": results or []})
 
     except Exception as e:
-        print(f"Error en api_snapshot_inv_general: {e}")
+        logger.error(f"Error en api_snapshot_inv_general: {e}")
         return jsonify({"status": "error", "message": str(e), "items": []}), 500
 
 
@@ -303,7 +306,7 @@ def api_snapshot_inv_ubicacion():
         return jsonify({"status": "success", "fecha": fecha, "items": results or []})
 
     except Exception as e:
-        print(f"Error en api_snapshot_inv_ubicacion: {e}")
+        logger.error(f"Error en api_snapshot_inv_ubicacion: {e}")
         return jsonify({"status": "error", "message": str(e), "items": []}), 500
 
 
@@ -325,5 +328,5 @@ def api_snapshot_inv_trigger():
         result = _snapshot_inv_tomar(fecha_override=fecha_override)
         return jsonify({"status": "success", "result": result})
     except Exception as e:
-        print(f"Error en api_snapshot_inv_trigger: {e}")
+        logger.error(f"Error en api_snapshot_inv_trigger: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500

@@ -55,6 +55,9 @@ from app.api.pda.shipping import (
     manejo_errores,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 SHIPPING_TABLES = {
     "catalog": "embarques_catalogo_partes",
@@ -694,7 +697,7 @@ def serialize_oqc_box_batch(boxes):
 
 def init_shipping_material_tables():
     if not MYSQL_AVAILABLE:
-        print("MySQL no disponible, no se pueden crear tablas compartidas de embarques")
+        logger.warning("MySQL no disponible, no se pueden crear tablas compartidas de embarques")
         return False
 
     conn = None
@@ -1163,12 +1166,12 @@ def init_shipping_material_tables():
             "INT NULL AFTER `difference_quantity`",
         )
         conn.commit()
-        print("Tablas compartidas de embarques creadas/verificadas correctamente")
+        logger.info("Tablas compartidas de embarques creadas/verificadas correctamente")
         return True
     except Exception as exc:
         if conn:
             conn.rollback()
-        print(f"Error creando tablas compartidas de embarques: {exc}")
+        logger.error(f"Error creando tablas compartidas de embarques: {exc}")
         return False
     finally:
         if cursor:

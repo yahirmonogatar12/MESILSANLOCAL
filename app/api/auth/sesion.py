@@ -43,6 +43,9 @@ from flask import (
 from app.auth_system import auth_system
 from app.db import get_db_connection
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint("auth_sesion", __name__)
 
@@ -65,7 +68,7 @@ def cargar_usuarios():
         with open(ruta, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        print(" usuarios.json no encontrado, usando solo sistema de BD")
+        logger.info(" usuarios.json no encontrado, usando solo sistema de BD")
         return {}
 
 
@@ -135,7 +138,7 @@ def login():
 
     user = request.form.get("username", "").strip()
     pw = request.form.get("password", "")
-    print(f" Intento de login: {user}")
+    logger.info(f" Intento de login: {user}")
 
     # PRIORIDAD 1: Intentar con el nuevo sistema de BD
     resultado_auth = auth_system.verificar_usuario(user, pw)
@@ -155,7 +158,7 @@ def login():
         )
 
     if auth_success:
-        print(f" Login exitoso con sistema BD: {user}")
+        logger.info(f" Login exitoso con sistema BD: {user}")
         session["usuario"] = user
 
         info_usuario = auth_system.obtener_informacion_usuario(user)
@@ -163,13 +166,13 @@ def login():
             session["nombre_completo"] = info_usuario["nombre_completo"]
             session["email"] = info_usuario["email"]
             session["departamento"] = info_usuario["departamento"]
-            print(f" Informacion completa cargada para {user}:")
-            print(f"  - Nombre completo: {info_usuario['nombre_completo']}")
-            print(f"  - Email: {info_usuario['email']}")
-            print(f"  - Departamento: {info_usuario['departamento']}")
+            logger.info(f" Informacion completa cargada para {user}:")
+            logger.info(f"  - Nombre completo: {info_usuario['nombre_completo']}")
+            logger.info(f"  - Email: {info_usuario['email']}")
+            logger.info(f"  - Departamento: {info_usuario['departamento']}")
         else:
             session["nombre_completo"] = user
-            print(
+            logger.error(
                 f" No se pudo cargar informacion completa para {user}, usando username como fallback"
             )
 
@@ -192,9 +195,9 @@ def login():
         session["roles"] = auth_system.obtener_roles_usuario(user)
         session["rol_principal"] = session["roles"][0] if session["roles"] else None
         session.modified = True
-        print(f" Permisos establecidos en sesion para {user}: {permisos}")
+        logger.info(f" Permisos establecidos en sesion para {user}: {permisos}")
 
-        print(f" Login exitoso para {user}, redirigiendo al hub de aplicaciones")
+        logger.info(f" Login exitoso para {user}, redirigiendo al hub de aplicaciones")
         redirect_url = url_for("auth_sesion.inicio")
         if is_ajax:
             return jsonify({"success": True, "redirect": redirect_url})
@@ -204,12 +207,12 @@ def login():
     try:
         usuarios_json = cargar_usuarios()
         if user in usuarios_json and usuarios_json[user] == pw:
-            print(f" Login exitoso con sistema JSON (fallback): {user}")
+            logger.warning(f" Login exitoso con sistema JSON (fallback): {user}")
             session["usuario"] = user
             session["nombre_completo"] = user
             session["email"] = ""
             session["departamento"] = ""
-            print(f" Usuario del sistema JSON (fallback): {user}")
+            logger.warning(f" Usuario del sistema JSON (fallback): {user}")
 
             auth_system.registrar_auditoria(
                 usuario=user,
@@ -231,9 +234,9 @@ def login():
                 return jsonify({"success": True, "redirect": redirect_url})
             return redirect(redirect_url)
     except Exception as e:
-        print(f" Error en fallback JSON: {e}")
+        logger.error(f" Error en fallback JSON: {e}")
 
-    print(f" Login fallo: {user} ({auth_message})")
+    logger.error(f" Login fallo: {user} ({auth_message})")
     auth_system.registrar_auditoria(
         usuario=user,
         modulo="sistema",
@@ -262,7 +265,7 @@ def logout():
             descripcion="Cierre de sesion",
             resultado="EXITOSO",
         )
-        print(f" Logout exitoso: {usuario}")
+        logger.info(f" Logout exitoso: {usuario}")
 
     session.clear()
     return redirect(url_for("auth_sesion.inicio"))
@@ -512,7 +515,7 @@ def api_mi_perfil():
     except Exception as exc:
         if conn:
             conn.rollback()
-        print(f"Error actualizando perfil de {usuario}: {exc}")
+        logger.error(f"Error actualizando perfil de {usuario}: {exc}")
         return (
             jsonify(
                 {

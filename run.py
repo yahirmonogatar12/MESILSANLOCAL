@@ -1,6 +1,11 @@
 import os
 from waitress import serve
+
+from app.api.shared.logging_config import configure_logging
 from app_factory import create_app
+
+# Configurar logging antes de crear la app (reemplaza los print()).
+configure_logging()
 
 os.environ.setdefault("MES_USE_RELOADER", "0")
 # Saltar inicializaciones de BD por defecto: las tablas ya existen.

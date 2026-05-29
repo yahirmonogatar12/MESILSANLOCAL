@@ -44,6 +44,9 @@ from werkzeug.utils import secure_filename
 from app.api.shared import auth_system
 from app.db import get_db_connection
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 TICKET_ALLOWED_TYPES = {"normal", "superticket"}
 TICKET_ALLOWED_PRIORITIES = {"baja", "media", "alta", "critica"}
@@ -121,7 +124,7 @@ def api_ticket_detail(ticket_id):
         messages = _load_ticket_messages(cursor, ticket_id, user_context)
         return jsonify({"success": True, "ticket": ticket_payload, "messages": messages})
     except Exception as exc:
-        print(f"Error cargando detalle de ticket {ticket_id}: {exc}")
+        logger.error(f"Error cargando detalle de ticket {ticket_id}: {exc}")
         return jsonify({"success": False, "message": "No fue posible cargar el ticket"}), 500
     finally:
         if cursor:
@@ -266,7 +269,7 @@ def api_ticket_reply(ticket_id):
                 os.remove(attachment["path"])
             except OSError:
                 pass
-        print(f"Error respondiendo ticket {ticket_id}: {exc}")
+        logger.error(f"Error respondiendo ticket {ticket_id}: {exc}")
         return jsonify({"success": False, "message": "No fue posible guardar la respuesta"}), 500
     finally:
         if cursor:
@@ -368,7 +371,7 @@ def api_ticket_status(ticket_id):
     except Exception as exc:
         if conn:
             conn.rollback()
-        print(f"Error actualizando estado de ticket {ticket_id}: {exc}")
+        logger.error(f"Error actualizando estado de ticket {ticket_id}: {exc}")
         return jsonify({"success": False, "message": "No fue posible actualizar el ticket"}), 500
     finally:
         if cursor:
@@ -755,7 +758,7 @@ def _handle_list_tickets(user_context):
             }
         )
     except Exception as exc:
-        print(f"Error listando tickets: {exc}")
+        logger.error(f"Error listando tickets: {exc}")
         return jsonify({"success": False, "message": "No fue posible cargar tickets"}), 500
     finally:
         if cursor:
@@ -896,7 +899,7 @@ def _handle_create_ticket(user_context):
                 os.remove(attachment["path"])
             except OSError:
                 pass
-        print(f"Error creando ticket: {exc}")
+        logger.error(f"Error creando ticket: {exc}")
         return jsonify({"success": False, "message": "No fue posible crear el ticket"}), 500
     finally:
         if cursor:
@@ -986,7 +989,7 @@ def _ensure_ticket_tables():
         except Exception as exc:
             if conn:
                 conn.rollback()
-            print(f"Error asegurando esquema de tickets: {exc}")
+            logger.error(f"Error asegurando esquema de tickets: {exc}")
             raise
         finally:
             if cursor:

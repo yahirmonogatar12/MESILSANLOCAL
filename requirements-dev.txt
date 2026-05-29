@@ -1,0 +1,4 @@
+# Dependencias solo para desarrollo / CI (no se instalan en el server local).
+-r requirements.txt
+
+pytest>=8.0.0

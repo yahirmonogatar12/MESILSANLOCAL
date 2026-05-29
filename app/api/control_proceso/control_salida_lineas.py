@@ -30,6 +30,9 @@ from app.api.control_proceso.almacen_embarques import (
     _normalizar_texto_embarques_historial,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 bp = Blueprint("control_proceso_control_salida_lineas", __name__)
 
 
@@ -286,7 +289,7 @@ def control_salida_lineas_ajax():
     try:
         return render_template("Control de proceso/control_salida_lineas_ajax.html")
     except Exception as e:
-        print(f"Error al cargar template Control de salida de lineas AJAX: {e}")
+        logger.error(f"Error al cargar template Control de salida de lineas AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -299,7 +302,7 @@ def api_control_salida_lineas():
         payload["success"] = True
         return jsonify(payload)
     except Exception as e:
-        print(f"Error API Control de salida de lineas: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error API Control de salida de lineas: {e}\n{traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e), "rows": []}), 500
 
 
@@ -324,5 +327,5 @@ def export_control_salida_lineas():
             payload["rows"],
         )
     except Exception as e:
-        print(f"Error exportando Control de salida de lineas: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error exportando Control de salida de lineas: {e}\n{traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500

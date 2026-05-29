@@ -48,7 +48,7 @@ try:
     MYSQL_AVAILABLE = True
 except ImportError:
     MYSQL_AVAILABLE = False
-    print("MySQLdb no disponible para shipping_api")
+    logger.warning("MySQLdb no disponible para shipping_api")
 
 
 logger = logging.getLogger(__name__)
@@ -1115,7 +1115,7 @@ def get_stats_summary():
 def init_shipping_tables():
     """Crear las tablas necesarias para el módulo de embarques si no existen."""
     if not MYSQL_AVAILABLE:
-        print("MySQL no disponible, no se pueden crear tablas de shipping")
+        logger.warning("MySQL no disponible, no se pueden crear tablas de shipping")
         return False
 
     try:
@@ -1131,7 +1131,7 @@ def init_shipping_tables():
         table_exists = cursor.fetchone() is not None
 
         if not table_exists:
-            print("Creando tabla operators_shipping...")
+            logger.info("Creando tabla operators_shipping...")
             try:
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS operators_shipping (
@@ -1147,9 +1147,9 @@ def init_shipping_tables():
                         INDEX idx_is_active (is_active)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """)
-                print("Tabla operators_shipping creada")
+                logger.info("Tabla operators_shipping creada")
             except Exception as e:
-                print(f"Error creando tabla operators_shipping: {e}")
+                logger.error(f"Error creando tabla operators_shipping: {e}")
                 traceback.print_exc()
 
             try:
@@ -1184,9 +1184,9 @@ def init_shipping_tables():
                             LEFT JOIN operators_shipping os ON os.id = o.id
                             WHERE os.id IS NULL
                         """)
-                        print("Operadores legacy migrados")
+                        logger.info("Operadores legacy migrados")
             except Exception as e:
-                print(f"No se pudo migrar operadores legacy: {e}, continuando...")
+                logger.error(f"No se pudo migrar operadores legacy: {e}, continuando...")
 
             cursor.execute("""
                 SELECT COUNT(*) FROM operators_shipping WHERE id = %s
@@ -1206,11 +1206,11 @@ def init_shipping_tables():
                         'admin',
                         hash_shipping_password('admin123'),
                     ))
-                    print("Admin de shipping creado")
+                    logger.info("Admin de shipping creado")
                 except Exception as e:
-                    print(f"No se pudo insertar admin: {e}")
+                    logger.error(f"No se pudo insertar admin: {e}")
         else:
-            print("Tabla operators_shipping ya existe, se omite creacion")
+            logger.info("Tabla operators_shipping ya existe, se omite creacion")
 
         try:
             cursor.execute("""
@@ -1230,7 +1230,7 @@ def init_shipping_tables():
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """)
         except Exception as e:
-            print(f"Tabla quality_validations: {e}")
+            logger.info(f"Tabla quality_validations: {e}")
 
         try:
             cursor.execute("""
@@ -1245,7 +1245,7 @@ def init_shipping_tables():
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """)
         except Exception as e:
-            print(f"Tabla user_permissions_materiales: {e}")
+            logger.info(f"Tabla user_permissions_materiales: {e}")
 
         try:
             cursor.execute("""
@@ -1270,16 +1270,16 @@ def init_shipping_tables():
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """)
         except Exception as e:
-            print(f"Tabla shipping_entries: {e}")
+            logger.info(f"Tabla shipping_entries: {e}")
 
         conn.commit()
         cursor.close()
         conn.close()
 
-        print("Tablas de shipping creadas/verificadas correctamente")
+        logger.info("Tablas de shipping creadas/verificadas correctamente")
         return True
 
     except Exception as e:
-        print(f"Error creando tablas de shipping: {e}")
+        logger.error(f"Error creando tablas de shipping: {e}")
         traceback.print_exc()
         return False

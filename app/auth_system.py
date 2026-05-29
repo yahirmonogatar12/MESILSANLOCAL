@@ -6,6 +6,7 @@ Complemento para el sistema ILSAN MES
 import hashlib
 import secrets
 import json
+import logging
 import os
 import threading
 import time
@@ -16,6 +17,8 @@ import traceback
 from .db_mysql import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 
+logger = logging.getLogger(__name__)
+
 # Importar MySQLdb para cursores de diccionario
 try:
     import pymysql
@@ -24,7 +27,7 @@ try:
     MYSQLDB_AVAILABLE = True
 except ImportError:
     MYSQLDB_AVAILABLE = False
-    print("MySQLdb no disponible para auth_system")
+    logger.warning("MySQLdb no disponible para auth_system")
 
 _BUTTON_PERMISSIONS_CACHE = {}
 _BUTTON_PERMISSIONS_CACHE_LOCK = threading.Lock()
@@ -87,13 +90,13 @@ class AuthSystem:
         
         if MYSQL_AVAILABLE:
             # Usar MySQL - las tablas se crean automáticamente
-            print(" Sistema de autenticación usando MySQL")
+            logger.info(" Sistema de autenticación usando MySQL")
             return
         
         # Fallback a SQLite
         conn = get_db_connection()
         if conn is None:
-            print(" Error: No se pudo obtener conexión a la base de datos")
+            logger.error(" Error: No se pudo obtener conexión a la base de datos")
             return
             
         cursor = conn.cursor()
@@ -244,10 +247,10 @@ class AuthSystem:
             self._asignar_permisos_botones_roles(cursor)
             
             conn.commit()
-            print(" Sistema de usuarios inicializado correctamente")
+            logger.info(" Sistema de usuarios inicializado correctamente")
             
         except Exception as e:
-            print(f" Error inicializando base de datos: {e}")
+            logger.error(f" Error inicializando base de datos: {e}")
             conn.rollback()
         finally:
             conn.close()
@@ -635,30 +638,43 @@ class AuthSystem:
                 ''', (rol_id[0], permiso[0]))
     
     def create_default_admin(self):
-        """Crear usuario administrador por defecto"""
+        """Crear usuario administrador por defecto.
+
+        La contrasena inicial NO es un valor hardcodeado. Se toma de la
+        variable de entorno MES_ADMIN_PASSWORD; si no esta definida, se
+        genera una aleatoria y se registra UNA vez en el log para que el
+        operador la capture y la cambie. El admin solo se crea si aun no
+        existe (no afecta instalaciones ya inicializadas).
+        """
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             # Verificar si ya existe un superadmin
             cursor.execute('SELECT COUNT(*) FROM usuarios_sistema WHERE username = %s', ('admin',))
             existe = cursor.fetchone()[0]
-            
+
             if existe == 0:
-                # Crear usuario admin por defecto
-                password_hash = self.hash_password('admin123')
+                # Password inicial: env var o aleatoria (nunca un default conocido).
+                admin_password = os.getenv("MES_ADMIN_PASSWORD", "").strip()
+                password_generada = False
+                if not admin_password:
+                    admin_password = secrets.token_urlsafe(12)
+                    password_generada = True
+
+                password_hash = self.hash_password(admin_password)
                 cursor.execute('''
                     INSERT INTO usuarios_sistema (
-                        username, password_hash, nombre_completo, 
+                        username, password_hash, nombre_completo,
                         departamento, cargo, creado_por
                     ) VALUES (%s, %s, %s, %s, %s, %s)
                 ''', (
                     'admin', password_hash, 'Administrador Sistema',
                     'Sistemas', 'Administrador', 'sistema'
                 ))
-                
+
                 admin_id = cursor.lastrowid
-                
+
                 # Asignar rol de superadmin
                 cursor.execute('SELECT id FROM roles WHERE nombre = %s', ('superadmin',))
                 rol_superadmin = cursor.fetchone()
@@ -667,13 +683,23 @@ class AuthSystem:
                         INSERT INTO usuario_roles (usuario_id, rol_id, asignado_por)
                         VALUES (%s, %s, %s)
                     ''', (admin_id, rol_superadmin[0], 'sistema'))
-                
+
                 conn.commit()
-                print(" Usuario administrador creado: admin/admin123")
-            
+                if password_generada:
+                    logger.warning(
+                        "Usuario 'admin' creado con password TEMPORAL aleatoria: %s "
+                        "-> CAMBIALA al primer inicio de sesion. (Define "
+                        "MES_ADMIN_PASSWORD para fijarla.)",
+                        admin_password,
+                    )
+                else:
+                    logger.info(
+                        "Usuario 'admin' creado con la password de MES_ADMIN_PASSWORD."
+                    )
+
             conn.close()
         except Exception as e:
-            print(f" Error creando admin por defecto: {e}")
+            logger.error("Error creando admin por defecto: %s", e)
     
     @staticmethod
     def hash_password(password):
@@ -766,7 +792,7 @@ class AuthSystem:
                 return False, mensaje
                 
         except Exception as e:
-            print(f"Error en verificación de usuario: {e}")
+            logger.error(f"Error en verificación de usuario: {e}")
             return False, "Error interno del sistema"
         finally:
             conn.close()
@@ -798,7 +824,7 @@ class AuthSystem:
                 return None
                 
         except Exception as e:
-            print(f"Error obteniendo información del usuario: {e}")
+            logger.error(f"Error obteniendo información del usuario: {e}")
             return None
         finally:
             conn.close()
@@ -842,7 +868,7 @@ class AuthSystem:
 
             return roles
         except Exception as e:
-            print(f"Error obteniendo roles: {e}")
+            logger.error(f"Error obteniendo roles: {e}")
             return []
         finally:
             if conn is not None:
@@ -925,7 +951,7 @@ class AuthSystem:
 
             return permisos_botones
         except Exception as e:
-            print(f"Error consultando permisos de botones: {e}")
+            logger.error(f"Error consultando permisos de botones: {e}")
             return {}
         finally:
             if conn is not None:
@@ -968,7 +994,7 @@ class AuthSystem:
             return permisos_dict, max_nivel
             
         except Exception as e:
-            print(f"Error obteniendo permisos: {e}")
+            logger.error(f"Error obteniendo permisos: {e}")
             return {}, 0
         finally:
             conn.close()
@@ -1003,7 +1029,7 @@ class AuthSystem:
                     return True
             return False
         except Exception as e:
-            print(f"Error verificando permiso de botón: {e}")
+            logger.error(f"Error verificando permiso de botón: {e}")
             return False
     
     def registrar_auditoria(self, usuario, modulo, accion, descripcion='', 
@@ -1043,7 +1069,7 @@ class AuthSystem:
             conn.close()
             
         except Exception as e:
-            print(f"Error registrando auditoría: {e}")
+            logger.error(f"Error registrando auditoría: {e}")
     
     def requiere_permiso(self, modulo, accion):
         """Decorador para verificar permisos en endpoints"""
@@ -1058,8 +1084,8 @@ class AuthSystem:
                 usuario = session.get('usuario')
                 permisos = session.get('permisos', {})
                 
-                print(f" Verificando permisos para {usuario}: {modulo}.{accion}")
-                print(f" Permisos en sesión: {permisos}")
+                logger.info(f" Verificando permisos para {usuario}: {modulo}.{accion}")
+                logger.info(f" Permisos en sesión: {permisos}")
                 
                 # Verificar si el usuario tiene el permiso requerido
                 # FORMATO ESPERADO: permisos = {'sistema': ['usuarios', 'auditoria'], 'material': ['ver', 'crear']}
@@ -1068,14 +1094,14 @@ class AuthSystem:
                 if isinstance(permisos, dict):
                     if modulo in permisos and accion in permisos[modulo]:
                         tiene_permiso = True
-                        print(f" Permiso encontrado: {modulo}.{accion}")
+                        logger.info(f" Permiso encontrado: {modulo}.{accion}")
                     else:
-                        print(f" Permiso no encontrado: {modulo}.{accion} en {permisos.get(modulo, 'módulo no encontrado')}")
+                        logger.info(f" Permiso no encontrado: {modulo}.{accion} en {permisos.get(modulo, 'módulo no encontrado')}")
                 else:
-                    print(f" Formato de permisos incorrecto: {type(permisos)}")
+                    logger.info(f" Formato de permisos incorrecto: {type(permisos)}")
                 
                 if not tiene_permiso:
-                    print(f" Permiso denegado: {modulo}.{accion}")
+                    logger.info(f" Permiso denegado: {modulo}.{accion}")
                     # Registrar intento no autorizado
                     self.registrar_auditoria(
                         usuario=usuario,
@@ -1094,7 +1120,7 @@ class AuthSystem:
                     
                     return redirect('/login')
                 
-                print(f" Permiso concedido: {modulo}.{accion}")
+                logger.info(f" Permiso concedido: {modulo}.{accion}")
                 
                 # Registrar inicio de acción
                 inicio = datetime.now()
@@ -1141,7 +1167,7 @@ class AuthSystem:
             if 'usuario' not in session:
                 # Solo loguear si NO es una petición AJAX esperada de permisos
                 if not (request.is_json or '/obtener_permisos' in request.path):
-                    print(f" No hay usuario en sesión para acceder a {request.endpoint}")
+                    logger.info(f" No hay usuario en sesión para acceder a {request.endpoint}")
                 if request.is_json:
                     return jsonify({'error': 'No autenticado'}), 401
                 return redirect('/login')  # Usar ruta absoluta en lugar de url_for
@@ -1176,7 +1202,7 @@ class AuthSystem:
             conn.commit()
             conn.close()
         except Exception as e:
-            print(f"Error actualizando actividad: {e}")
+            logger.error(f"Error actualizando actividad: {e}")
             
     def agregar_permiso_boton(self, nombre_boton, descripcion, pagina, seccion="Botones"):
         """Agregar un permiso de botón individual"""
@@ -1194,7 +1220,7 @@ class AuthSystem:
             conn.close()
             return True
         except Exception as e:
-            print(f"Error agregando permiso de botón: {e}")
+            logger.error(f"Error agregando permiso de botón: {e}")
             return False
     
     def asignar_permiso_boton_a_rol(self, rol_nombre, nombre_boton):
@@ -1225,7 +1251,7 @@ class AuthSystem:
             conn.close()
             return True
         except Exception as e:
-            print(f"Error asignando permiso de botón a rol: {e}")
+            logger.error(f"Error asignando permiso de botón a rol: {e}")
             return False
 
 # Instancia global del sistema de autenticación

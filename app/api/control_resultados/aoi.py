@@ -34,6 +34,9 @@ from flask import Blueprint, jsonify, redirect, render_template, request
 from app.api.shared import execute_query, login_requerido
 from app.auth_system import AuthSystem
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint("aoi_api", __name__)
 
@@ -50,7 +53,7 @@ def historial_aoi_ajax():
     try:
         return render_template("Control de resultados/Historial AOI.html")
     except Exception as e:
-        print(f"Error al cargar template de Historial AOI: {e}")
+        logger.error(f"Error al cargar template de Historial AOI: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 

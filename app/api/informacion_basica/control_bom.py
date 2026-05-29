@@ -119,7 +119,7 @@ def control_de_bom_ajax():
     try:
         return _render_control_bom_template()
     except Exception as e:
-        print(f"Error al cargar template Control de BOM: {e}")
+        logger.error(f"Error al cargar template Control de BOM: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -130,7 +130,7 @@ def control_bom_ajax():
     try:
         return _render_control_bom_template()
     except Exception as e:
-        print(f"Error al cargar template Control BOM AJAX: {e}")
+        logger.error(f"Error al cargar template Control BOM AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -142,6 +142,9 @@ from app.api.shared.bom_revisions import (  # noqa: E402, F401
     _eco_for_part_revision,
     _bom_revision_catalog,
 )
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 @bp.route("/importar_excel_bom", methods=["POST"])
@@ -155,11 +158,11 @@ def importar_excel_bom():
         return jsonify({"success": False, "error": "No se seleccionó ningún archivo"})
 
     try:
-        print("--- Iniciando importación de BOM ---")
+        logger.info("--- Iniciando importación de BOM ---")
         df = pd.read_excel(file)
 
         # Imprime las columnas detectadas para depuración
-        print(f"Columnas detectadas en el Excel: {df.columns.tolist()}")
+        logger.info(f"Columnas detectadas en el Excel: {df.columns.tolist()}")
 
         registrador = session.get("usuario", "desconocido")
 
@@ -173,7 +176,7 @@ def importar_excel_bom():
         if omitidos > 0:
             mensaje += f" Se omitieron {omitidos} filas por no tener 'Modelo' o 'Número de parte'."
 
-        print(f"--- Finalizando importación: {mensaje} ---")
+        logger.info(f"--- Finalizando importación: {mensaje} ---")
 
         return jsonify({"success": True, "message": mensaje})
 
@@ -192,7 +195,7 @@ def listar_modelos_bom():
         modelos = obtener_modelos_bom()
         return jsonify(modelos)
     except Exception as e:
-        print(f"Error al obtener modelos BOM: {e}")
+        logger.error(f"Error al obtener modelos BOM: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -212,7 +215,7 @@ def listar_bom():
         return jsonify(bom_data)
 
     except Exception as e:
-        print(f"Error al listar BOM: {e}")
+        logger.error(f"Error al listar BOM: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -226,7 +229,7 @@ def api_bom_revisions():
             return jsonify({"error": "modelo requerido"}), 400
         return jsonify({"success": True, "data": _bom_revision_catalog(modelo)})
     except Exception as e:
-        print(f"Error al listar revisiones BOM KS: {e}")
+        logger.error(f"Error al listar revisiones BOM KS: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -259,7 +262,7 @@ def consultar_bom():
         return jsonify(bom_data)
 
     except Exception as e:
-        print(f"Error al consultar BOM: {e}")
+        logger.error(f"Error al consultar BOM: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -342,7 +345,7 @@ def api_ecos_list():
             },
         })
     except Exception as e:
-        print(f"Error listando ECOs: {e}")
+        logger.error(f"Error listando ECOs: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -433,7 +436,7 @@ def api_ecos_export():
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     except Exception as e:
-        print(f"Error exportando ECOs: {e}")
+        logger.error(f"Error exportando ECOs: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -451,7 +454,7 @@ def api_ecos_detail(eco_id):
         eco["scope"] = [_serialize_eco_row(i) for i in eco.get("scope", [])]
         return jsonify({"success": True, "data": eco})
     except Exception as e:
-        print(f"Error obteniendo ECO: {e}")
+        logger.error(f"Error obteniendo ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -467,7 +470,7 @@ def api_ecn_ks_detail(hist_seq):
         ecn = _serialize_eco_row(ecn)
         return jsonify({"success": True, "data": ecn})
     except Exception as e:
-        print(f"Error obteniendo ECN KS {hist_seq}: {e}")
+        logger.error(f"Error obteniendo ECN KS {hist_seq}: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -489,7 +492,7 @@ def api_ecos_create():
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
-        print(f"Error creando ECO: {e}")
+        logger.error(f"Error creando ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -668,7 +671,7 @@ def api_bom_download_excel():
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     except Exception as e:
-        print(f"Error descargando BOM Excel: {e}")
+        logger.error(f"Error descargando BOM Excel: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -699,7 +702,7 @@ def api_bom_next_eco_revision():
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
-        print(f"Error calculando siguiente revision ECO: {e}")
+        logger.error(f"Error calculando siguiente revision ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -717,7 +720,7 @@ def api_bom_resolve_family():
         result = resolver_familia(family, suffixes)
         return jsonify({"success": True, "data": result})
     except Exception as e:
-        print(f"Error resolviendo familia: {e}")
+        logger.error(f"Error resolviendo familia: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -850,7 +853,7 @@ def api_bom_download_excel_family():
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     except Exception as e:
-        print(f"Error descargando BOM familia: {e}")
+        logger.error(f"Error descargando BOM familia: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -917,7 +920,7 @@ def api_ecos_from_excel():
         status_code = 201 if result.get("success") else 400
         return jsonify(result), status_code
     except Exception as e:
-        print(f"Error creando ECO desde Excel: {e}")
+        logger.error(f"Error creando ECO desde Excel: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "errors": [str(e)]}), 500
 
@@ -1042,7 +1045,7 @@ def api_ecos_from_excel_family():
         status_code = 201 if result.get("success") else 400
         return jsonify(result), status_code
     except Exception as e:
-        print(f"Error creando ECO familia desde Excel: {e}")
+        logger.error(f"Error creando ECO familia desde Excel: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "errors": [str(e)]}), 500
 
@@ -1055,7 +1058,7 @@ def api_ecos_scope(eco_id):
         rows = obtener_scope_eco(eco_id)
         return jsonify({"success": True, "data": rows})
     except Exception as e:
-        print(f"Error obteniendo scope ECO {eco_id}: {e}")
+        logger.error(f"Error obteniendo scope ECO {eco_id}: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1098,7 +1101,7 @@ def api_ecos_diff(eco_id):
             },
         })
     except Exception as e:
-        print(f"Error obteniendo diff ECO {eco_id}: {e}")
+        logger.error(f"Error obteniendo diff ECO {eco_id}: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1121,7 +1124,7 @@ def api_ecos_import_items(eco_id):
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
-        print(f"Error importando items ECO: {e}")
+        logger.error(f"Error importando items ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1141,7 +1144,7 @@ def api_ecos_approve(eco_id):
         eco["items"] = [_serialize_eco_row(i) for i in eco.get("items", [])]
         return jsonify({"success": True, "data": eco})
     except Exception as e:
-        print(f"Error aprobando ECO: {e}")
+        logger.error(f"Error aprobando ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1158,7 +1161,7 @@ def api_ecos_cancel(eco_id):
             return jsonify({"success": False, "error": result.get("error", "No se pudo cancelar")}), 400
         return jsonify({"success": True})
     except Exception as e:
-        print(f"Error cancelando ECO: {e}")
+        logger.error(f"Error cancelando ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1174,7 +1177,7 @@ def api_ecos_delete(eco_id):
             return jsonify({"success": False, "error": result.get("error", "No se pudo borrar")}), 400
         return jsonify({"success": True})
     except Exception as e:
-        print(f"Error borrando ECO: {e}")
+        logger.error(f"Error borrando ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1189,7 +1192,7 @@ def exportar_bom_a_excel(modelo=None, classification=None, bom_revision=None):
         result = listar_bom_por_modelo(modelo or "todos", classification, bom_revision)
 
         if not result:
-            print(
+            logger.info(
                 "No se encontraron datos de BOM para exportar "
                 f"(modelo={modelo}, classification={classification}, bom_revision={bom_revision})"
             )
@@ -1249,7 +1252,7 @@ def exportar_bom_a_excel(modelo=None, classification=None, bom_revision=None):
         return temp_file.name
 
     except Exception as e:
-        print(f"Error en exportar_bom_a_excel: {e}")
+        logger.error(f"Error en exportar_bom_a_excel: {e}")
         traceback.print_exc()
         return None
 
@@ -1300,7 +1303,7 @@ def exportar_excel_bom():
             return jsonify({"error": "Error al generar el archivo Excel"}), 500
 
     except Exception as e:
-        print(f"Error al exportar BOM: {e}")
+        logger.error(f"Error al exportar BOM: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1344,9 +1347,9 @@ def api_bom_smt_data():
                 {"success": False, "error": "Linea y modelo son requeridos"}
             ), 400
 
-        print(f"API BOM SMT - Filtros:")
-        print(f"  Linea: {linea}")
-        print(f"  Modelo: {model_code}")
+        logger.info(f"API BOM SMT - Filtros:")
+        logger.info(f"  Linea: {linea}")
+        logger.info(f"  Modelo: {model_code}")
 
         conn = get_connection()
         cursor = conn.cursor()
@@ -1397,10 +1400,10 @@ def api_bom_smt_data():
 
         todos_resultados = list(resultados_f) + list(resultados_r)
 
-        print(
+        logger.info(
             f"Encontrados {len(todos_resultados)} registros BOM ({len(resultados_f)} F + {len(resultados_r)} R)"
         )
-        print(
+        logger.info(
             f"Parametros de busqueda - Linea numero: {linea_numero}, Patron modelo: {model_pattern}"
         )
 
@@ -1432,13 +1435,13 @@ def api_bom_smt_data():
                 formatted_data.append(formatted_row)
 
             except Exception as row_error:
-                print(f"Error procesando fila BOM: {row_error}")
+                logger.error(f"Error procesando fila BOM: {row_error}")
                 continue
 
         cursor.close()
         conn.close()
 
-        print(f"BOM filtrado: {len(formatted_data)} elementos con qty > 0")
+        logger.info(f"BOM filtrado: {len(formatted_data)} elementos con qty > 0")
 
         return jsonify(
             {
@@ -1453,5 +1456,5 @@ def api_bom_smt_data():
         )
 
     except Exception as e:
-        print(f"Error en api_bom_smt_data: {e}")
+        logger.error(f"Error en api_bom_smt_data: {e}")
         return jsonify({"success": False, "error": str(e)}), 500

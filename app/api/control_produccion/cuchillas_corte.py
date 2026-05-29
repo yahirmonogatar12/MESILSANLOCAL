@@ -50,14 +50,12 @@ from app.db_mysql import execute_query, get_db_connection
 # `login_requerido` y `requiere_permiso_dropdown` viven en `app.routes`.
 # Se importan dentro de las funciones que los necesitan (tarde) para evitar
 # que cuchillas_corte arrastre app.routes al ser importado por shared.
-def login_requerido(f):
-    """Proxy del decorador real definido en `app.routes`."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from app import routes as _r
-        return _r.login_requerido(f)(*args, **kwargs)
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
-    return decorated_function
+import logging
+logger = logging.getLogger(__name__)
 
 
 def requiere_permiso_dropdown(pagina, seccion, boton):
@@ -860,9 +858,9 @@ def _cuchillas_hourly_sync_loop():
         started = time.time()
         try:
             results = _cuchillas_sync_all_active_lines(force=False, reason="hourly")
-            print(f"[cuchillas-hourly] sync completado: {len(results)} lineas")
+            logger.info(f"[cuchillas-hourly] sync completado: {len(results)} lineas")
         except Exception as e:
-            print(f"[cuchillas-hourly] error: {e}")
+            logger.error(f"[cuchillas-hourly] error: {e}")
 
         elapsed = time.time() - started
         sleep_seconds = max(5, CUCHILLAS_HOURLY_SYNC_SECONDS - int(elapsed))
@@ -872,7 +870,7 @@ def _cuchillas_hourly_sync_loop():
 def iniciar_cuchillas_hourly_sync_worker():
     global _cuchillas_sync_thread
     if _env_flag("CUCHILLAS_DISABLE_HOURLY_SYNC", False):
-        print("[cuchillas-hourly] deshabilitado por CUCHILLAS_DISABLE_HOURLY_SYNC")
+        logger.info("[cuchillas-hourly] deshabilitado por CUCHILLAS_DISABLE_HOURLY_SYNC")
         return
 
     with _cuchillas_sync_lock:
@@ -884,7 +882,7 @@ def iniciar_cuchillas_hourly_sync_worker():
             daemon=True,
         )
         _cuchillas_sync_thread.start()
-        print(f"[cuchillas-hourly] worker iniciado ({CUCHILLAS_HOURLY_SYNC_SECONDS}s)")
+        logger.info(f"[cuchillas-hourly] worker iniciado ({CUCHILLAS_HOURLY_SYNC_SECONDS}s)")
 
 
 def _cuchillas_build_diagnostico(linea, plan_activo=None, config=None, sesion=None):
@@ -988,7 +986,7 @@ def crear_tablas_cuchillas_corte():
                 AFTER prealert_pct
             """)
         except Exception as alter_error:
-            print(f"(info) columna source_metric ya existe o no aplica: {alter_error}")
+            logger.info(f"(info) columna source_metric ya existe o no aplica: {alter_error}")
 
         _cuchillas_execute_raw("""
             CREATE TABLE IF NOT EXISTS cuchillas_corte_sesiones (
@@ -1018,7 +1016,7 @@ def crear_tablas_cuchillas_corte():
                 AFTER ended_at
             """)
         except Exception as alter_sesion_error:
-            print(
+            logger.info(
                 f"(info) columna last_hourly_sync_at ya existe o no aplica: {alter_sesion_error}"
             )
 
@@ -1053,7 +1051,7 @@ def crear_tablas_cuchillas_corte():
                    OR source_metric NOT IN ('PRODUCED_COUNT', 'PLAN_COUNT')
             """)
         except Exception as source_fix_error:
-            print(f"(info) no fue posible normalizar source_metric: {source_fix_error}")
+            logger.info(f"(info) no fue posible normalizar source_metric: {source_fix_error}")
 
         _cuchillas_execute_raw("""
             CREATE TABLE IF NOT EXISTS cuchillas_corte_config_modelo (
@@ -1078,11 +1076,11 @@ def crear_tablas_cuchillas_corte():
             try:
                 _cuchillas_execute_raw(q)
             except Exception as index_error:
-                print(f"(info) indice cuchillas ya existe o no aplica: {index_error}")
+                logger.info(f"(info) indice cuchillas ya existe o no aplica: {index_error}")
 
-        print("Tablas de cuchillas de corte creadas/verificadas")
+        logger.info("Tablas de cuchillas de corte creadas/verificadas")
     except Exception as e:
-        print(f"Error creando tablas de cuchillas de corte: {e}")
+        logger.error(f"Error creando tablas de cuchillas de corte: {e}")
 
 
 def crear_trigger_cuchillas_corte_plan_main():
@@ -1311,9 +1309,9 @@ def crear_trigger_cuchillas_corte_plan_main():
         END
         """
         _cuchillas_execute_raw(trigger_sql)
-        print("Trigger de cuchillas de corte creado/actualizado")
+        logger.info("Trigger de cuchillas de corte creado/actualizado")
     except Exception as e:
-        print(f"Error creando trigger de cuchillas de corte: {e}")
+        logger.error(f"Error creando trigger de cuchillas de corte: {e}")
 
 @bp.route("/control-cuchillas-corte-ajax")
 @login_requerido
@@ -1324,7 +1322,7 @@ def control_cuchillas_corte_ajax():
     try:
         return render_template("Control de produccion/control_cuchillas_corte_ajax.html")
     except Exception as e:
-        print(f"Error al cargar control_cuchillas_corte_ajax: {e}")
+        logger.error(f"Error al cargar control_cuchillas_corte_ajax: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 

@@ -33,6 +33,9 @@ from app.api.shared import (
 # via app.api.shared.__getattr__ -> app.routes (re-export zombie).
 from app.api.control_produccion.cuchillas_corte import _cuchillas_rows_to_json
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint("material_admin", __name__)
 
@@ -97,7 +100,7 @@ def requiere_permiso_material_admin(boton_resolver):
                     return fn(*args, **kwargs)
                 return _material_admin_permission_denied(boton)
             except Exception as exc:
-                print(f"Error verificando permiso material admin: {exc}")
+                logger.error(f"Error verificando permiso material admin: {exc}")
                 traceback.print_exc()
                 return jsonify({"error": "Error interno verificando permisos"}), 500
 
@@ -114,7 +117,7 @@ def material_inventario_actual_admin():
     try:
         return render_template("Control de material/material_admin_inventory_ajax.html")
     except Exception as e:
-        print(f"Error al cargar Inventario actual administrativo: {e}")
+        logger.error(f"Error al cargar Inventario actual administrativo: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -137,7 +140,7 @@ def material_historial_admin(tipo):
             titulo=titulos[tipo],
         )
     except Exception as e:
-        print(f"Error al cargar {tipo}: {e}")
+        logger.error(f"Error al cargar {tipo}: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -721,7 +724,7 @@ def api_material_admin_inventory_summary():
     try:
         return jsonify(_material_admin_inventory_summary_rows(request.args))
     except Exception as e:
-        print(f"Error en summary inventario admin: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error en summary inventario admin: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -732,7 +735,7 @@ def api_material_admin_inventory_lots():
     try:
         return jsonify(_material_admin_inventory_lots_result(request.args))
     except Exception as e:
-        print(f"Error en lots inventario admin: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error en lots inventario admin: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -782,7 +785,7 @@ def api_material_admin_inventory_export():
         ])
         return _material_admin_excel_response(_material_admin_export_filename("Inventory_Summary"), "Sheet1", headers, rows)
     except Exception as e:
-        print(f"Error exportando inventario admin: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error exportando inventario admin: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -795,7 +798,7 @@ def api_material_admin_history(tipo):
     try:
         return jsonify(_material_admin_history_rows(tipo, request.args))
     except Exception as e:
-        print(f"Error en historial admin {tipo}: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error en historial admin {tipo}: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -863,7 +866,7 @@ def api_material_admin_history_export(tipo):
         rows = _material_admin_history_rows(tipo, request.args, export=True)
         return _material_admin_excel_response(filename_map[tipo], sheet_map[tipo], headers_map[tipo], rows)
     except Exception as e:
-        print(f"Error exportando historial admin {tipo}: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error exportando historial admin {tipo}: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -929,5 +932,5 @@ def guardar_material_route():
 
         return jsonify({"success": True, "message": "Material registrado correctamente"})
     except Exception as exc:
-        print(f"Error en guardar_material_route: {exc}\n{traceback.format_exc()}")
+        logger.error(f"Error en guardar_material_route: {exc}\n{traceback.format_exc()}")
         return jsonify({"success": False, "error": str(exc)}), 500

@@ -28,14 +28,12 @@ from app.db_mysql import execute_query
 from app.api.shared.plan_lot_no import _fp_safe_date
 
 
-def login_requerido(f):
-    """Proxy del decorador real definido en `app.routes`."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from app import routes as _r
-        return _r.login_requerido(f)(*args, **kwargs)
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
-    return decorated_function
+import logging
+logger = logging.getLogger(__name__)
 
 
 bp = Blueprint("control_produccion_plan_smt", __name__)
@@ -82,9 +80,9 @@ def crear_tabla_plan_smt_v2():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
         execute_query(query)
-        print("Tabla plan_smt creada/verificada")
+        logger.info("Tabla plan_smt creada/verificada")
     except Exception as e:
-        print(f"Error creando tabla plan_smt: {e}")
+        logger.error(f"Error creando tabla plan_smt: {e}")
 
 
 # crear_tabla_plan_smt_v2 movido a app/startup_init.py

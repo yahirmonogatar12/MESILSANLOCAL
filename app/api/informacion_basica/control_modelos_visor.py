@@ -37,6 +37,9 @@ from flask import Blueprint, jsonify, render_template, request, session
 
 from app.api.shared import execute_query, login_requerido
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint('control_modelos_visor', __name__)
 
@@ -73,7 +76,7 @@ def control_modelos_visor_ajax():
             usuario=usuario_actual,
         )
     except Exception as e:
-        print(f"Error al cargar template de visor MySQL: {e}")
+        logger.error(f"Error al cargar template de visor MySQL: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -102,9 +105,9 @@ def api_mysql_simple():
 
         if not sql_query:
             sql_query = "SELECT COUNT(*) as total_materiales FROM materiales"
-            print(f"No se proporciono SQL, usando consulta por defecto: {sql_query}")
+            logger.info(f"No se proporciono SQL, usando consulta por defecto: {sql_query}")
 
-        print(f"Ejecutando consulta API simple: {sql_query}")
+        logger.info(f"Ejecutando consulta API simple: {sql_query}")
 
         sql_upper = sql_query.upper()
         if not sql_upper.startswith("SELECT") and not sql_upper.startswith("SHOW"):
@@ -125,11 +128,11 @@ def api_mysql_simple():
         response.headers.add("Access-Control-Allow-Headers", "Content-Type")
         response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
 
-        print(f"API Simple - Consulta exitosa: {len(result) if result else 0} registros")
+        logger.info(f"API Simple - Consulta exitosa: {len(result) if result else 0} registros")
         return response
 
     except Exception as e:
-        print(f"Error en API MySQL Simple: {e}")
+        logger.error(f"Error en API MySQL Simple: {e}")
         error_response = jsonify({"success": False, "error": str(e)})
         error_response.headers.add("Access-Control-Allow-Origin", "*")
         return error_response, 500
@@ -162,7 +165,7 @@ def api_mysql_columns():
             return jsonify({"table": table, "columns": []})
 
     except Exception as e:
-        print(f"Error en api_mysql_columns: {e}")
+        logger.error(f"Error en api_mysql_columns: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -245,7 +248,7 @@ def api_mysql_data():
         )
 
     except Exception as e:
-        print(f"Error en api_mysql_data: {e}")
+        logger.error(f"Error en api_mysql_data: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -274,7 +277,7 @@ def api_mysql_update():
                 float(cleaned)
                 return cleaned
             except ValueError:
-                print(f"Valor no numerico para columna {column_name}: {value}, usando NULL")
+                logger.info(f"Valor no numerico para columna {column_name}: {value}, usando NULL")
                 return None
 
         return value if value != "" else None
@@ -339,7 +342,7 @@ def api_mysql_update():
 
         for key, value in new_data.items():
             if key in readonly_columns:
-                print(f"Saltando columna de solo lectura: {key}")
+                logger.info(f"Saltando columna de solo lectura: {key}")
                 continue
 
             cleaned_value = clean_column_value(key, value)
@@ -373,7 +376,7 @@ def api_mysql_update():
             return jsonify({"error": "No se pudo actualizar el registro"}), 500
 
     except Exception as e:
-        print(f"Error en api_mysql_update: {e}")
+        logger.error(f"Error en api_mysql_update: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
@@ -447,7 +450,7 @@ def api_mysql_create():
             return jsonify({"error": "No se pudo crear el registro"}), 500
 
     except Exception as e:
-        print(f"Error en api_mysql_create: {e}")
+        logger.error(f"Error en api_mysql_create: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
@@ -468,7 +471,7 @@ def api_mysql_usuario_actual():
             }
         )
     except Exception as e:
-        print(f"Error en api_mysql_usuario_actual: {e}")
+        logger.error(f"Error en api_mysql_usuario_actual: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -529,6 +532,6 @@ def api_mysql_delete():
             return jsonify({"error": "No se pudo eliminar el registro"}), 500
 
     except Exception as e:
-        print(f"Error en api_mysql_delete: {e}")
+        logger.error(f"Error en api_mysql_delete: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500

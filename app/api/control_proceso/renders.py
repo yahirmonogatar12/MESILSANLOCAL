@@ -34,6 +34,9 @@ from flask import Blueprint, redirect, render_template
 
 from app.api.shared import login_requerido
 
+import logging
+logger = logging.getLogger(__name__)
+
 bp = Blueprint("control_proceso_renders", __name__)
 
 
@@ -46,7 +49,7 @@ def historial_operacion_proceso_ajax():
             "Control de proceso/historial_operacion_proceso_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Historial de operación de proceso AJAX: {e}")
+        logger.error(f"Error al cargar template Historial de operación de proceso AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -57,7 +60,7 @@ def bom_management_process_ajax():
     try:
         return render_template("Control de proceso/bom_management_process_ajax.html")
     except Exception as e:
-        print(f"Error al cargar template BOM Management Process AJAX: {e}")
+        logger.error(f"Error al cargar template BOM Management Process AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -70,7 +73,7 @@ def reporte_diario_inspeccion_smt_ajax():
             "Control de proceso/reporte_diario_inspeccion_smt_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Reporte diario de inspección SMT AJAX: {e}")
+        logger.error(f"Error al cargar template Reporte diario de inspección SMT AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -83,7 +86,7 @@ def control_diario_inspeccion_smt_ajax():
             "Control de proceso/control_diario_inspeccion_smt_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Control diario de inspección SMT AJAX: {e}")
+        logger.error(f"Error al cargar template Control diario de inspección SMT AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -96,7 +99,7 @@ def reporte_diario_inspeccion_proceso_ajax():
             "Control de proceso/reporte_diario_inspeccion_proceso_ajax.html"
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error al cargar template Reporte diario de inspección de proceso AJAX: {e}"
         )
         return f"Error al cargar el contenido: {str(e)}", 500
@@ -111,7 +114,7 @@ def control_unidad_empaque_modelo_ajax():
             "Control de proceso/control_unidad_empaque_modelo_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Control de unidad de empaque modelo AJAX: {e}")
+        logger.error(f"Error al cargar template Control de unidad de empaque modelo AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -124,7 +127,7 @@ def packaging_register_management_ajax():
             "Control de proceso/packaging_register_management_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Packaging Register Management AJAX: {e}")
+        logger.error(f"Error al cargar template Packaging Register Management AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -135,7 +138,7 @@ def search_packaging_history_ajax():
     try:
         return render_template("Control de proceso/search_packaging_history_ajax.html")
     except Exception as e:
-        print(f"Error al cargar template Search Packaging History AJAX: {e}")
+        logger.error(f"Error al cargar template Search Packaging History AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -148,7 +151,7 @@ def shipping_register_management_ajax():
             "Control de proceso/shipping_register_management_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Shipping Register Management AJAX: {e}")
+        logger.error(f"Error al cargar template Shipping Register Management AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -159,7 +162,7 @@ def search_shipping_history_ajax():
     try:
         return render_template("Control de proceso/search_shipping_history_ajax.html")
     except Exception as e:
-        print(f"Error al cargar template Search Shipping History AJAX: {e}")
+        logger.error(f"Error al cargar template Search Shipping History AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -172,7 +175,7 @@ def registro_movimiento_identificacion_ajax():
             "Control de proceso/registro_movimiento_identificacion_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Registro Movimiento Identificación AJAX: {e}")
+        logger.error(f"Error al cargar template Registro Movimiento Identificación AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -185,7 +188,7 @@ def control_otras_identificaciones_ajax():
             "Control de proceso/control_otras_identificaciones_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Control Otras Identificaciones AJAX: {e}")
+        logger.error(f"Error al cargar template Control Otras Identificaciones AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -198,7 +201,7 @@ def control_movimiento_ns_producto_ajax():
             "Control de proceso/control_movimiento_ns_producto_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Control Movimiento NS Producto AJAX: {e}")
+        logger.error(f"Error al cargar template Control Movimiento NS Producto AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -209,7 +212,7 @@ def model_sn_management_ajax():
     try:
         return render_template("Control de proceso/model_sn_management_ajax.html")
     except Exception as e:
-        print(f"Error al cargar template Model SN Management AJAX: {e}")
+        logger.error(f"Error al cargar template Model SN Management AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -220,7 +223,7 @@ def control_scrap_ajax():
     try:
         return render_template("Control de proceso/control_scrap_ajax.html")
     except Exception as e:
-        print(f"Error al cargar template Control Scrap AJAX: {e}")
+        logger.error(f"Error al cargar template Control Scrap AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 

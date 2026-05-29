@@ -56,14 +56,12 @@ from app.api.shared.plan_lot_no import _fp_generate_lot_no, _fp_safe_date
 
 
 # `login_requerido` y `requiere_permiso_dropdown` viven en `app.routes`.
-def login_requerido(f):
-    """Proxy del decorador real definido en `app.routes`."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from app import routes as _r
-        return _r.login_requerido(f)(*args, **kwargs)
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
-    return decorated_function
+import logging
+logger = logging.getLogger(__name__)
 
 
 def requiere_permiso_dropdown(pagina, seccion, boton):
@@ -341,7 +339,7 @@ def api_plan_input_main_scan_lots():
             }
         )
     except Exception as e:
-        print(f"Error en api_plan_input_main_scan_lots: {e}")
+        logger.error(f"Error en api_plan_input_main_scan_lots: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -546,7 +544,7 @@ def api_plan_input_main_assign_lot():
                 conn.rollback()
             except Exception:
                 pass
-        print(f"Error en api_plan_input_main_assign_lot: {e}")
+        logger.error(f"Error en api_plan_input_main_assign_lot: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if cursor:
@@ -702,7 +700,7 @@ def api_plan_input_main_create_plan():
                 conn.rollback()
             except Exception:
                 pass
-        print(f"Error en api_plan_input_main_create_plan: {e}")
+        logger.error(f"Error en api_plan_input_main_create_plan: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if cursor:
@@ -1044,7 +1042,7 @@ def api_plan_status():
         )
 
     except Exception as e:
-        print(f"Error en api_plan_status: {e}")
+        logger.error(f"Error en api_plan_status: {e}")
         import traceback
 
         traceback.print_exc()
@@ -1115,12 +1113,12 @@ def api_plan_pending():
         if start:
             where.append("DATE(working_date) >= %s")
             params.append(start)
-            print(f" Filtro START aplicado: {start}")
+            logger.info(f" Filtro START aplicado: {start}")
 
         if end:
             where.append("DATE(working_date) <= %s")
             params.append(end)
-            print(f" Filtro END aplicado: {end}")
+            logger.info(f" Filtro END aplicado: {end}")
 
         where.append("COALESCE(plan_count, 0) > COALESCE(produced_count, 0)")
 
@@ -1134,8 +1132,8 @@ def api_plan_pending():
             "ORDER BY working_date, lot_no"
         )
 
-        print(f" SQL Query: {sql}")
-        print(f" Parametros: {tuple(params) if params else 'Sin parametros'}")
+        logger.info(f" SQL Query: {sql}")
+        logger.info(f" Parametros: {tuple(params) if params else 'Sin parametros'}")
 
         rows = execute_query(sql, tuple(params) if params else None, fetch="all")
 
@@ -1155,11 +1153,11 @@ def api_plan_pending():
                 }
             )
 
-        print(f" Planes pendientes encontrados: {len(data)}")
+        logger.info(f" Planes pendientes encontrados: {len(data)}")
         return jsonify(data)
 
     except Exception as e:
-        print(f" Error en api_plan_pending: {str(e)}")
+        logger.error(f" Error en api_plan_pending: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -1189,14 +1187,14 @@ def api_plan_reschedule():
             FROM plan_main
             WHERE lot_no IN ({placeholders})
         """
-        print(f" Buscando {len(lot_nos)} planes para reprogramar")
+        logger.info(f" Buscando {len(lot_nos)} planes para reprogramar")
         planes_originales = execute_query(sql_select, tuple(lot_nos), fetch="all")
 
         if not planes_originales:
-            print(f" No se encontraron planes para los lot_nos: {lot_nos}")
+            logger.info(f" No se encontraron planes para los lot_nos: {lot_nos}")
             return jsonify({"error": "No se encontraron planes para reprogramar"}), 404
 
-        print(f" Se encontraron {len(planes_originales)} planes")
+        logger.info(f" Se encontraron {len(planes_originales)} planes")
         nuevos_planes_creados = 0
 
         for plan in planes_originales:
@@ -1206,12 +1204,12 @@ def api_plan_reschedule():
 
             cantidad_pendiente = plan_count_original - produced_count
 
-            print(
+            logger.info(
                 f"Plan {lot_no_original}: plan_count={plan_count_original}, produced={produced_count}, pendiente={cantidad_pendiente}"
             )
 
             if cantidad_pendiente <= 0:
-                print(f"Saltando {lot_no_original} - no hay cantidad pendiente")
+                logger.info(f"Saltando {lot_no_original} - no hay cantidad pendiente")
                 continue
 
             # Generar NUEVO LOT_NO manteniendo trazabilidad del lote original
@@ -1232,7 +1230,7 @@ def api_plan_reschedule():
             next_seq = count + 1
 
             nuevo_lot_no = f"{lot_no_base}-{next_seq:02d}"
-            print(
+            logger.info(
                 f"Nuevo lot_no generado: {nuevo_lot_no} (reprogramacion #{next_seq} de {lot_no_base})"
             )
 
@@ -1244,7 +1242,7 @@ def api_plan_reschedule():
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             """
 
-            print(
+            logger.info(
                 f"Creando nuevo plan {nuevo_lot_no} con {cantidad_pendiente} unidades para {new_date}"
             )
 
@@ -1271,7 +1269,7 @@ def api_plan_reschedule():
                 ),
             )
 
-            print(
+            logger.info(
                 f"Nuevo plan creado: {nuevo_lot_no} (trazabilidad: {lot_no_original} -> {nuevo_lot_no})"
             )
 
@@ -1279,13 +1277,13 @@ def api_plan_reschedule():
                 "UPDATE plan_main SET plan_count = %s, status = 'TERMINADO', updated_at = NOW() WHERE lot_no = %s",
                 (produced_count, lot_no_original),
             )
-            print(
+            logger.info(
                 f"Plan original {lot_no_original} actualizado: plan_count={produced_count}, status=TERMINADO"
             )
 
             nuevos_planes_creados += 1
 
-        print(f"Total de planes creados: {nuevos_planes_creados}")
+        logger.info(f"Total de planes creados: {nuevos_planes_creados}")
         return jsonify(
             {
                 "success": True,
@@ -1295,7 +1293,7 @@ def api_plan_reschedule():
         )
 
     except Exception as e:
-        print(f" Error en api_plan_reschedule: {str(e)}")
+        logger.error(f" Error en api_plan_reschedule: {str(e)}")
         import traceback
 
         traceback.print_exc()
@@ -1555,11 +1553,11 @@ def importar_excel_plan_produccion():
 
         fecha_operacion_usuario = request.form.get("fecha_operacion", "").strip()
         if fecha_operacion_usuario:
-            print(
+            logger.info(
                 f" Fecha de operacion personalizada seleccionada: {fecha_operacion_usuario}"
             )
         else:
-            print(" Usando fechas del Excel o fecha actual como respaldo")
+            logger.info(" Usando fechas del Excel o fecha actual como respaldo")
 
         def obtener_nombre_modelo(codigo_modelo):
             """Obtener nombre (project) desde raw por part_no"""
@@ -1573,7 +1571,7 @@ def importar_excel_plan_produccion():
                 row = cursor.fetchone()
                 return (row.get("project") if row else "") or ""
             except Exception as e:
-                print(f"Error obteniendo nombre modelo para {codigo_modelo}: {e}")
+                logger.error(f"Error obteniendo nombre modelo para {codigo_modelo}: {e}")
                 return ""
 
         conn = get_db_connection()
@@ -1584,9 +1582,9 @@ def importar_excel_plan_produccion():
             cursor.execute("SHOW COLUMNS FROM work_orders LIKE 'linea'")
             if not cursor.fetchone():
                 cursor.execute("ALTER TABLE work_orders ADD COLUMN linea VARCHAR(32)")
-                print(" Columna 'linea' agregada a work_orders")
+                logger.info(" Columna 'linea' agregada a work_orders")
         except Exception as e:
-            print(f"Error agregando columna linea: {e}")
+            logger.error(f"Error agregando columna linea: {e}")
 
         registros_insertados = 0
         registros_actualizados = 0
@@ -1621,9 +1619,9 @@ def importar_excel_plan_produccion():
             ],
         }
 
-        print(f"Columnas en el DataFrame: {list(df.columns)}")
-        print(f"Primeras 3 filas del DataFrame:")
-        print(df.head(3))
+        logger.info(f"Columnas en el DataFrame: {list(df.columns)}")
+        logger.info(f"Primeras 3 filas del DataFrame:")
+        logger.info(df.head(3))
 
         columnas_detectadas = {}
         for campo, posibles_nombres in mapeo_columnas.items():
@@ -1632,7 +1630,7 @@ def importar_excel_plan_produccion():
                     columnas_detectadas[campo] = nombre
                     break
 
-        print(f"Columnas detectadas: {columnas_detectadas}")
+        logger.info(f"Columnas detectadas: {columnas_detectadas}")
 
         if "modelo" not in columnas_detectadas or "cantidad" not in columnas_detectadas:
             error_msg = (
@@ -1786,7 +1784,7 @@ def importar_excel_plan_produccion():
         )
 
     except Exception as e:
-        print(f"Error general en importar_excel_plan_produccion: {str(e)}")
+        logger.error(f"Error general en importar_excel_plan_produccion: {str(e)}")
         return jsonify({"success": False, "error": f"Error interno: {str(e)}"}), 500
 
     finally:
@@ -1798,4 +1796,4 @@ def importar_excel_plan_produccion():
             if temp_path and os.path.exists(temp_path):
                 os.remove(temp_path)
         except Exception as e:
-            print(f"Error en cleanup: {str(e)}")
+            logger.error(f"Error en cleanup: {str(e)}")

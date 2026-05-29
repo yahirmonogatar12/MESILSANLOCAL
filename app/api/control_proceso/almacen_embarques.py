@@ -81,16 +81,12 @@ from app.api.pda.shipping_material import (
 
 # `login_requerido` vive en `app.routes`. Se importa dentro del wrapper
 # (tarde) para evitar circular: shared -> routes -> control_proceso -> shared.
-def login_requerido(f):
-    """Proxy del decorador real definido en `app.routes`."""
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from app import routes as _r
-
-        return _r.login_requerido(f)(*args, **kwargs)
-
-    return decorated_function
+import logging
+logger = logging.getLogger(__name__)
 
 
 def normalize_excel_value(value):
@@ -3583,7 +3579,7 @@ def almacen_embarques_entradas_ajax():
             "Control de proceso/almacen_embarques_entradas_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Almacén Embarques Entradas AJAX: {e}")
+        logger.error(f"Error al cargar template Almacén Embarques Entradas AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -3596,7 +3592,7 @@ def almacen_embarques_salidas_ajax():
             "Control de proceso/almacen_embarques_salidas_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Almacén Embarques Salidas AJAX: {e}")
+        logger.error(f"Error al cargar template Almacén Embarques Salidas AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -3613,7 +3609,7 @@ def almacen_embarques_retorno_ajax():
         response.headers["Expires"] = "0"
         return response
     except Exception as e:
-        print(f"Error al cargar template Almacén Embarques Retorno AJAX: {e}")
+        logger.error(f"Error al cargar template Almacén Embarques Retorno AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -3626,7 +3622,7 @@ def almacen_embarques_movimientos_ajax():
             "Control de proceso/almacen_embarques_movimientos_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Almacén Embarques Movimientos AJAX: {e}")
+        logger.error(f"Error al cargar template Almacén Embarques Movimientos AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -3639,7 +3635,7 @@ def almacen_embarques_inventario_general_ajax():
             "Control de proceso/almacen_embarques_inventario_general_ajax.html"
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error al cargar template Almacén Embarques Inventario General AJAX: {e}"
         )
         return f"Error al cargar el contenido: {str(e)}", 500
@@ -3658,7 +3654,7 @@ def almacen_embarques_catalogo_ajax():
         response.headers["Expires"] = "0"
         return response
     except Exception as e:
-        print(f"Error al cargar template Almacén Embarques Catálogo AJAX: {e}")
+        logger.error(f"Error al cargar template Almacén Embarques Catálogo AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -3669,7 +3665,7 @@ def api_almacen_embarques_entradas():
     try:
         return jsonify(_obtener_historial_entradas_almacen_embarques())
     except Exception as e:
-        print(f"Error API entradas almacén embarques: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error API entradas almacén embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -3697,7 +3693,7 @@ def export_almacen_embarques_entradas():
             rows,
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error exportando entradas almacén embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"error": str(e)}), 500
@@ -3710,7 +3706,7 @@ def api_almacen_embarques_salidas():
     try:
         return jsonify(_obtener_historial_salidas_almacen_embarques())
     except Exception as e:
-        print(f"Error API salidas almacén embarques: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error API salidas almacén embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -3739,7 +3735,7 @@ def export_almacen_embarques_salidas():
             rows,
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error exportando salidas almacén embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"error": str(e)}), 500
@@ -3768,7 +3764,7 @@ def api_almacen_embarques_ajustes_template(module_name):
             download_name=filename,
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error generando plantilla ajustes {module_name}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -3859,7 +3855,7 @@ def api_almacen_embarques_ajustes_preview(module_name):
             }
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error preview ajustes {module_name}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -3879,7 +3875,7 @@ def api_almacen_embarques_ajustes_confirm(module_name):
         payload, status_code = _confirmar_ajuste_manual_embarques(config, batch_id)
         return jsonify(payload), status_code
     except Exception as e:
-        print(
+        logger.error(
             f"Error confirmando ajustes {module_name}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -3901,7 +3897,7 @@ def api_almacen_embarques_ajustes_manual(module_name):
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
-        print(
+        logger.error(
             f"Error registrando ajuste manual {module_name}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -3960,7 +3956,7 @@ def api_almacen_embarques_ajustes_cancel(module_name):
             cursor.close()
             conn.close()
     except Exception as e:
-        print(
+        logger.error(
             f"Error cancelando ajustes {module_name}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -3989,7 +3985,7 @@ def assign_almacen_embarques_departure(exit_id):
         )
         return jsonify(payload), status_code
     except Exception as e:
-        print(
+        logger.error(
             f"Error asignando departure a salida {exit_id}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4008,7 +4004,7 @@ def api_almacen_embarques_departure_history():
         )
         return jsonify(payload)
     except Exception as e:
-        print(
+        logger.error(
             f"Error consultando historial de departures: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4021,7 +4017,7 @@ def api_almacen_embarques_retorno():
     try:
         return jsonify(_obtener_historial_retorno_almacen_embarques())
     except Exception as e:
-        print(f"Error API retorno almacén embarques: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error API retorno almacén embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -4093,7 +4089,7 @@ def export_almacen_embarques_retorno():
             rows,
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error exportando retorno almacén embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"error": str(e)}), 500
@@ -4120,7 +4116,7 @@ def export_almacen_embarques_retorno_print_pdf():
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
-        print(
+        logger.error(
             f"Error generando PDF salidas retorno almacén embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4138,7 +4134,7 @@ def api_almacen_embarques_movimientos():
             }
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error API movimientos almacén embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4170,7 +4166,7 @@ def export_almacen_embarques_movimientos():
             rows,
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error exportando movimientos de embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4188,7 +4184,7 @@ def api_almacen_embarques_movimiento_detalle(movement_type, record_id):
             return jsonify({"success": False, "error": "Movimiento no encontrado"}), 404
         return jsonify({"success": True, "movement": movement})
     except Exception as e:
-        print(
+        logger.error(
             f"Error obteniendo detalle de movimiento {movement_type}/{record_id}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4223,7 +4219,7 @@ def api_almacen_embarques_movimiento_update(movement_type, record_id):
         )
         return jsonify(payload), status_code
     except Exception as e:
-        print(
+        logger.error(
             f"Error actualizando movimiento {movement_type}/{record_id}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4255,7 +4251,7 @@ def api_almacen_embarques_movimiento_delete(movement_type, record_id):
         )
         return jsonify(payload), status_code
     except Exception as e:
-        print(
+        logger.error(
             f"Error eliminando movimiento {movement_type}/{record_id}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4269,7 +4265,7 @@ def api_almacen_embarques_inventario_general():
         payload = _obtener_inventario_general_almacen_embarques()
         return jsonify({"success": True, **payload})
     except Exception as e:
-        print(
+        logger.error(
             f"Error API inventario general embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4284,7 +4280,7 @@ def api_almacen_embarques_catalogo():
         payload = _obtener_catalogo_almacen_embarques()
         return jsonify({"success": True, **payload})
     except Exception as e:
-        print(f"Error API catálogo embarques: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error API catálogo embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -4298,7 +4294,7 @@ def api_almacen_embarques_catalogo_create():
         payload, status_code = _crear_catalogo_almacen_embarques(data)
         return jsonify(payload), status_code
     except Exception as e:
-        print(f"Error creando catálogo embarques: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error creando catálogo embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -4312,7 +4308,7 @@ def api_almacen_embarques_catalogo_update(catalog_id):
         payload, status_code = _actualizar_catalogo_almacen_embarques(catalog_id, data)
         return jsonify(payload), status_code
     except Exception as e:
-        print(
+        logger.error(
             f"Error actualizando catálogo embarques {catalog_id}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4328,7 +4324,7 @@ def api_almacen_embarques_catalogo_delete(catalog_id):
         payload, status_code = _eliminar_catalogo_almacen_embarques(catalog_id, data)
         return jsonify(payload), status_code
     except Exception as e:
-        print(
+        logger.error(
             f"Error eliminando catálogo embarques {catalog_id}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4356,7 +4352,7 @@ def export_almacen_embarques_catalogo():
             payload.get("rows") or [],
         )
     except Exception as e:
-        print(f"Error exportando catálogo embarques: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error exportando catálogo embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -4385,7 +4381,7 @@ def export_almacen_embarques_inventario_general():
             payload.get("rows") or [],
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error exportando inventario general embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4409,7 +4405,7 @@ def api_almacen_embarques_inventario_cierre_bootstrap():
             }
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error bootstrap cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4436,7 +4432,7 @@ def api_almacen_embarques_inventario_cierre_template():
             download_name=filename,
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error generando plantilla CSV cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4498,7 +4494,7 @@ def api_almacen_embarques_inventario_cierre_preview():
 
         return jsonify(response_payload)
     except Exception as e:
-        print(
+        logger.error(
             f"Error preview cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4634,7 +4630,7 @@ def api_almacen_embarques_inventario_cierre_confirm():
             cursor.close()
             conn.close()
     except Exception as e:
-        print(
+        logger.error(
             f"Error confirmando cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4709,7 +4705,7 @@ def api_almacen_embarques_inventario_cierre_cancel():
             cursor.close()
             conn.close()
     except Exception as e:
-        print(
+        logger.error(
             f"Error cancelando preview de cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -4756,7 +4752,7 @@ def api_almacen_embarques_inventario_cierre_history_detail(batch_id):
             }
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error consultando detalle de cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
@@ -5287,7 +5283,7 @@ def export_almacen_embarques_inventario_cierre_report(batch_id):
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except Exception as e:
-        print(
+        logger.error(
             f"Error exportando reporte de cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500

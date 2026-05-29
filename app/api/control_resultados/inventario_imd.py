@@ -27,6 +27,9 @@ from flask import Blueprint, jsonify, redirect, render_template, request, url_fo
 
 from app.api.shared import execute_query, login_requerido, obtener_fecha_hora_mexico
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint("control_resultados_inventario_imd", __name__)
 
@@ -63,19 +66,19 @@ def _requiere_permiso_imd(f):
 def inventario_imd_terminado_ajax():
     """Ruta AJAX canonica para cargar el contenido de Inventario IMD Terminado."""
     try:
-        print(" Iniciando carga de Inventario IMD Terminado AJAX...")
+        logger.info(" Iniciando carga de Inventario IMD Terminado AJAX...")
         result = render_template(
             "Control de proceso/inventario_imd_terminado_ajax.html"
         )
-        print(
+        logger.info(
             f" Template Inventario IMD Terminado AJAX renderizado exitosamente, tamano: {len(result)} caracteres"
         )
         return result
     except Exception as e:
         import traceback
 
-        print(f" Error al cargar template Inventario IMD Terminado AJAX: {e}")
-        print(traceback.format_exc())
+        logger.error(f" Error al cargar template Inventario IMD Terminado AJAX: {e}")
+        logger.info(traceback.format_exc())
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -128,7 +131,7 @@ def api_inventario_general():
         return jsonify({"status": "success", "items": results or []})
 
     except Exception as e:
-        print(f"Error en api_inventario_general: {e}")
+        logger.error(f"Error en api_inventario_general: {e}")
         return jsonify({"status": "error", "message": str(e), "items": []}), 500
 
 
@@ -197,7 +200,7 @@ def api_ubicacion():
         return jsonify({"status": "success", "items": results or []})
 
     except Exception as e:
-        print(f"Error en api_ubicacion: {e}")
+        logger.error(f"Error en api_ubicacion: {e}")
         return jsonify({"status": "error", "message": str(e), "items": []}), 500
 
 
@@ -273,7 +276,7 @@ def api_movimientos():
         return jsonify({"status": "success", "items": results or []})
 
     except Exception as e:
-        print(f"Error en api_movimientos: {e}")
+        logger.error(f"Error en api_movimientos: {e}")
         return jsonify({"status": "error", "message": str(e), "items": []}), 500
 
 
@@ -323,7 +326,7 @@ def api_inventario_modelo(codigo_modelo):
         return jsonify(resultado)
 
     except Exception as e:
-        print(f" Error en API inventario modelo {codigo_modelo}: {e}")
+        logger.error(f" Error en API inventario modelo {codigo_modelo}: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -376,5 +379,5 @@ def api_inventario():
                 return jsonify({"modelo": modelo, "stock_total": 0})
 
     except Exception as e:
-        print(f" Error consultando inventario: {e}")
+        logger.error(f" Error consultando inventario: {e}")
         return jsonify({"error": str(e)}), 500

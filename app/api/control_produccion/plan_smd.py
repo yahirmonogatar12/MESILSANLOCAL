@@ -22,14 +22,12 @@ from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
 from app.db_mysql import execute_query
 
 
-def login_requerido(f):
-    """Proxy del decorador real definido en `app.routes`."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from app import routes as _r
-        return _r.login_requerido(f)(*args, **kwargs)
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
-    return decorated_function
+import logging
+logger = logging.getLogger(__name__)
 
 
 bp = Blueprint("control_produccion_plan_smd", __name__)
@@ -62,9 +60,9 @@ def crear_tabla_plan_smd():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
         execute_query(query)
-        print(" Tabla plan_smd creada/verificada")
+        logger.info(" Tabla plan_smd creada/verificada")
     except Exception as e:
-        print(f" Error creando tabla plan_smd: {e}")
+        logger.error(f" Error creando tabla plan_smd: {e}")
 
 
 # crear_tabla_plan_smd movido a app/startup_init.py
@@ -124,7 +122,7 @@ def api_plan_smd_guardar():
         )
 
     except Exception as e:
-        print(f" Error guardando plan SMD: {e}")
+        logger.error(f" Error guardando plan SMD: {e}")
         return jsonify({"error": str(e)}), 500
 
 @bp.route("/api/generar-plan-smd", methods=["POST"])
@@ -146,7 +144,7 @@ def api_generar_plan_smd():
         limite_wo = data.get("limite_wo", None)
         dry_run = data.get("dry_run", False)
 
-        print(f"🤖 AGENTE PLAN SMD iniciado - DRY_RUN: {dry_run}")
+        logger.info(f"🤖 AGENTE PLAN SMD iniciado - DRY_RUN: {dry_run}")
 
         # Variables de seguimiento
         wo_procesadas = 0
@@ -200,7 +198,7 @@ def api_generar_plan_smd():
                 query_wo += f" LIMIT {int(limite_wo)}"
 
             work_orders = execute_query(query_wo, params_wo, fetch="all")
-            print(f"📋 Encontradas {len(work_orders)} work orders")
+            logger.info(f"📋 Encontradas {len(work_orders)} work orders")
 
         except Exception as e:
             incidencias.append(
@@ -258,7 +256,7 @@ def api_generar_plan_smd():
                 )
                 inventario_acumulado_considerado += inventario_total
 
-                print(
+                logger.info(
                     f"📦 WO {codigo_wo} | Modelo: {codigo_modelo} | Planeado: {cantidad_planeada} | Inventario: {inventario_total}"
                 )
 
@@ -277,7 +275,7 @@ def api_generar_plan_smd():
 
             if faltante <= 0:
                 omitidas_sin_faltante.append(codigo_wo)
-                print(
+                logger.info(
                     f"⏭️ WO {codigo_wo} omitida - Sin faltante (inventario suficiente)"
                 )
                 continue
@@ -310,7 +308,7 @@ def api_generar_plan_smd():
             qty_total_plan += faltante
             faltante_total_plan += faltante
 
-            print(
+            logger.info(
                 f" Renglón generado - Lote: {lote} | Modelo: {codigo_modelo} | QTY: {faltante}"
             )
 
@@ -347,7 +345,7 @@ def api_generar_plan_smd():
                     execute_query(query_insert, params_insert)
                     renglones_guardados += 1
 
-                print(f" Plan guardado: {renglones_guardados} renglones")
+                logger.info(f" Plan guardado: {renglones_guardados} renglones")
 
             except Exception as e:
                 incidencias.append(
@@ -374,14 +372,14 @@ def api_generar_plan_smd():
             else f"{len(renglones_plan)} renglones guardados",
         }
 
-        print(
+        logger.info(
             f"🎯 AGENTE COMPLETADO - Generados: {renglones_generados} | Total QTY: {qty_total_plan}"
         )
 
         return jsonify(resumen)
 
     except Exception as e:
-        print(f" Error en Agente PLAN SMD: {e}")
+        logger.error(f" Error en Agente PLAN SMD: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -533,7 +531,7 @@ def api_plan_smd_import():
         )
 
     except Exception as e:
-        print(f" Error importando plan SMD: {e}")
+        logger.error(f" Error importando plan SMD: {e}")
         return jsonify({"error": str(e)}), 500
 
 def crear_tabla_plan_smd_runs():
@@ -565,43 +563,43 @@ def crear_tabla_plan_smd_runs():
                 "ALTER TABLE plan_smd_runs MODIFY status ENUM('RUNNING','PAUSED','ENDED') DEFAULT 'RUNNING'"
             )
         except Exception as e:
-            print(f"  (info) Status PAUSED: {str(e)[:60]}")
+            logger.info(f"  (info) Status PAUSED: {str(e)[:60]}")
         # Columnas adicionales para baseline y conteo AOI
         try:
             execute_query(
                 "ALTER TABLE plan_smd_runs ADD COLUMN aoi_model VARCHAR(64) NULL"
             )
         except Exception as e:
-            print(f"  (info) aoi_model: {str(e)[:60]}")
+            logger.info(f"  (info) aoi_model: {str(e)[:60]}")
         try:
             execute_query("ALTER TABLE plan_smd_runs ADD COLUMN aoi_line_no INT NULL")
         except Exception as e:
-            print(f"  (info) aoi_line_no: {str(e)[:60]}")
+            logger.info(f"  (info) aoi_line_no: {str(e)[:60]}")
         try:
             execute_query("ALTER TABLE plan_smd_runs ADD COLUMN aoi_baseline INT NULL")
         except Exception as e:
-            print(f"  (info) aoi_baseline: {str(e)[:60]}")
+            logger.info(f"  (info) aoi_baseline: {str(e)[:60]}")
         try:
             execute_query(
                 "ALTER TABLE plan_smd_runs ADD COLUMN aoi_baseline_shift_date DATE NULL"
             )
         except Exception as e:
-            print(f"  (info) aoi_baseline_shift_date: {str(e)[:60]}")
+            logger.info(f"  (info) aoi_baseline_shift_date: {str(e)[:60]}")
         try:
             execute_query(
                 "ALTER TABLE plan_smd_runs ADD COLUMN aoi_baseline_shift VARCHAR(16) NULL"
             )
         except Exception as e:
-            print(f"  (info) aoi_baseline_shift: {str(e)[:60]}")
+            logger.info(f"  (info) aoi_baseline_shift: {str(e)[:60]}")
         try:
             execute_query(
                 "ALTER TABLE plan_smd_runs ADD COLUMN aoi_produced_final INT NULL"
             )
         except Exception as e:
-            print(f"  (info) aoi_produced_final: {str(e)[:60]}")
-        print(" Tabla plan_smd_runs creada/verificada")
+            logger.info(f"  (info) aoi_produced_final: {str(e)[:60]}")
+        logger.info(" Tabla plan_smd_runs creada/verificada")
     except Exception as e:
-        print(f"⚠️  Error creando tabla plan_smd_runs (continuando): {str(e)[:100]}")
+        logger.error(f"⚠️  Error creando tabla plan_smd_runs (continuando): {str(e)[:100]}")
 
 
 # crear_tabla_plan_smd_runs movido a app/startup_init.py
@@ -673,7 +671,7 @@ def api_plan_smd_list():
             if linea:
                 sql.append("AND p.linea = %s")
                 params.append(linea)
-                print(f"Filtro de linea aplicado en API: '{linea}'")
+                logger.info(f"Filtro de linea aplicado en API: '{linea}'")
 
         sql.append("ORDER BY fecha_creacion DESC, id DESC")
 
@@ -731,7 +729,7 @@ def api_plan_smd_list():
                             else 0
                         )
         except Exception as e:
-            print(f"?? Error enriqueciendo producido en api_plan_smd_list: {e}")
+            logger.error(f"?? Error enriqueciendo producido en api_plan_smd_list: {e}")
 
         # OVERRIDE: Producido por AOI usando baseline del run (si existe)
         try:
@@ -804,9 +802,9 @@ def api_plan_smd_list():
                                 else 0
                             )
         except Exception as e:
-            print(f"?? Error override producido AOI en api_plan_smd_list: {e}")
+            logger.error(f"?? Error override producido AOI en api_plan_smd_list: {e}")
 
         return jsonify({"success": True, "rows": rows, "count": len(rows)})
     except Exception as e:
-        print(f"? Error en api_plan_smd_list: {e}")
+        logger.error(f"? Error en api_plan_smd_list: {e}")
         return jsonify({"success": False, "error": str(e)})

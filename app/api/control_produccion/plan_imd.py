@@ -35,14 +35,9 @@ from app.api.shared.bom_revisions import (
 from app.api.shared.plan_lot_no import _fp_safe_date
 
 
-def login_requerido(f):
-    """Proxy del decorador real definido en `app.routes`."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from app import routes as _r
-        return _r.login_requerido(f)(*args, **kwargs)
-
-    return decorated_function
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
 
 def requiere_permiso_dropdown(pagina, seccion, boton):

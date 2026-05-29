@@ -41,6 +41,9 @@ from app.services.ict_lgd_parser import (
     resolve_lgd_path,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint("historial_cambios_parametros_ict", __name__)
 
@@ -62,12 +65,12 @@ def crear_indice_history_ict_audit():
             "CREATE INDEX idx_history_ict_audit "
             "ON history_ict (ict, ts, no_parte, linea, fuente_archivo)"
         )
-        print("Indice idx_history_ict_audit creado")
+        logger.info("Indice idx_history_ict_audit creado")
     except Exception as e:
         msg = str(e)
         if "1061" in msg or "Duplicate key name" in msg:
             return
-        print(f"(info) idx_history_ict_audit no se pudo crear: {e}")
+        logger.error(f"(info) idx_history_ict_audit no se pudo crear: {e}")
 
 
 def crear_indice_history_ict_ts_nopart():
@@ -82,12 +85,12 @@ def crear_indice_history_ict_ts_nopart():
             "CREATE INDEX idx_history_ict_ts_nopart "
             "ON history_ict (ts, no_parte, linea, fuente_archivo)"
         )
-        print("Indice idx_history_ict_ts_nopart creado")
+        logger.info("Indice idx_history_ict_ts_nopart creado")
     except Exception as e:
         msg = str(e)
         if "1061" in msg or "Duplicate key name" in msg:
             return
-        print(f"(info) idx_history_ict_ts_nopart no se pudo crear: {e}")
+        logger.error(f"(info) idx_history_ict_ts_nopart no se pudo crear: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -589,7 +592,7 @@ def historial_cambios_parametros_ict_ajax():
             "Control de resultados/historial_cambios_parametros_ict_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template de Historial Cambios Parametros ICT: {e}")
+        logger.error(f"Error al cargar template de Historial Cambios Parametros ICT: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -740,7 +743,7 @@ def ict_param_changes_export():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         import traceback
-        print(f"Error exportando Cambios Parametros ICT: {e}\n{traceback.format_exc()}")
+        logger.error(f"Error exportando Cambios Parametros ICT: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 

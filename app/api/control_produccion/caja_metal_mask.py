@@ -22,14 +22,12 @@ from flask import Blueprint, jsonify, render_template, request
 from app.db_mysql import execute_query
 
 
-def login_requerido(f):
-    """Proxy del decorador real definido en `app.routes`."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        from app import routes as _r
-        return _r.login_requerido(f)(*args, **kwargs)
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
-    return decorated_function
+import logging
+logger = logging.getLogger(__name__)
 
 
 def requiere_permiso_dropdown(pagina, seccion, boton):
@@ -70,7 +68,7 @@ def control_caja_mask_metal_ajax():
             "Control de produccion/control_caja_mask_metal_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Control de caja de mask de metal AJAX: {e}")
+        logger.error(f"Error al cargar template Control de caja de mask de metal AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -123,7 +121,7 @@ def api_get_storage():
         )
         return jsonify({"data": data, "total": total_row.get("total", 0)})
     except Exception as e:
-        print(f"Error en api_get_storage: {e}")
+        logger.error(f"Error en api_get_storage: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -164,7 +162,7 @@ def api_add_storage():
                     "error": f'El Nomero de Gestion "{management_no}" ya existe. Por favor use un codigo/ubicacion diferente.'
                 }
             ), 400
-        print(f"Error en api_add_storage: {e}")
+        logger.error(f"Error en api_add_storage: {e}")
         return jsonify({"error": msg}), 500
 
 
@@ -204,5 +202,5 @@ def api_update_storage(storage_id: int):
         msg = str(e)
         if "Duplicate entry" in msg:
             return jsonify({"error": "El Nomero de Gestion ya existe"}), 400
-        print(f"Error en api_update_storage: {e}")
+        logger.error(f"Error en api_update_storage: {e}")
         return jsonify({"error": msg}), 500

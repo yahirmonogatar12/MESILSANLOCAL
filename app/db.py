@@ -12,6 +12,9 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Cargar variables de entorno
 load_dotenv()
 
@@ -42,17 +45,17 @@ try:
         if test_conn:
             test_conn.close()
             MYSQL_AVAILABLE = True
-            print(" Usando MySQL como base de datos")
+            logger.info(" Usando MySQL como base de datos")
         else:
             MYSQL_AVAILABLE = False
-            print(" MySQL no disponible - usando SQLite como fallback")
+            logger.warning(" MySQL no disponible - usando SQLite como fallback")
     except Exception as e:
         MYSQL_AVAILABLE = False
-        print(f" Error conectando a MySQL: {e}")
-        print(" Usando SQLite como fallback")
+        logger.error(f" Error conectando a MySQL: {e}")
+        logger.warning(" Usando SQLite como fallback")
 except ImportError as e:
-    print(f" Error importando MySQL: {e}")
-    print(" Usando funciones de fallback SQLite")
+    logger.error(f" Error importando MySQL: {e}")
+    logger.warning(" Usando funciones de fallback SQLite")
     MYSQL_AVAILABLE = False
 
 def get_db_connection():
@@ -173,9 +176,9 @@ def create_legacy_tables():
     for table_name, create_sql in tables.items():
         try:
             execute_query(create_sql)
-            print(f" Tabla {table_name} creada/verificada")
+            logger.info(f" Tabla {table_name} creada/verificada")
         except Exception as e:
-            print(f" Error creando tabla {table_name}: {e}")
+            logger.error(f" Error creando tabla {table_name}: {e}")
 
 def init_sqlite_db():
     """Inicialización de SQLite como fallback"""
@@ -208,7 +211,7 @@ def init_sqlite_db():
         conn.close()
         return True
     except Exception as e:
-        print(f"Error inicializando SQLite: {e}")
+        logger.error(f"Error inicializando SQLite: {e}")
         return False
 
 # === FUNCIONES DE COMPATIBILIDAD ===
@@ -289,7 +292,7 @@ def agregar_control_material_almacen(data):
                 try:
                     actualizar_inventario_consolidado_entrada(data)
                 except Exception as e:
-                    print(f"⚠️ Error actualizando inventario_consolidado: {e}")
+                    logger.error(f"⚠️ Error actualizando inventario_consolidado: {e}")
                     # No fallar el guardado principal por esto
             
             return result
@@ -297,7 +300,7 @@ def agregar_control_material_almacen(data):
             # Implementación SQLite similar...
             return True
     except Exception as e:
-        print(f"Error agregando control material almacén: {e}")
+        logger.error(f"Error agregando control material almacén: {e}")
         return False
 
 def obtener_control_material_almacen():
@@ -308,7 +311,7 @@ def obtener_control_material_almacen():
         else:
             return []
     except Exception as e:
-        print(f"Error obteniendo control material almacén: {e}")
+        logger.error(f"Error obteniendo control material almacén: {e}")
         return []
 
 # === FUNCIONES DE MIGRACIÓN ===
@@ -316,22 +319,22 @@ def obtener_control_material_almacen():
 def migrar_datos_sqlite():
     """Migrar datos desde SQLite existente a MySQL"""
     if not MYSQL_AVAILABLE:
-        print(" MySQL no disponible para migración")
+        logger.warning(" MySQL no disponible para migración")
         return False
         
     try:
         sqlite_db_path = os.path.join(os.path.dirname(__file__), 'database', 'ISEMM_MES.db')
         if os.path.exists(sqlite_db_path):
-            print(" Iniciando migración desde SQLite...")
+            logger.info(" Iniciando migración desde SQLite...")
             success = migrar_desde_sqlite(sqlite_db_path)
             if success:
-                print(" Migración completada exitosamente")
+                logger.info(" Migración completada exitosamente")
             return success
         else:
-            print(" No se encontró base de datos SQLite para migrar")
+            logger.info(" No se encontró base de datos SQLite para migrar")
             return True
     except Exception as e:
-        print(f" Error en migración: {e}")
+        logger.error(f" Error en migración: {e}")
         return False
 
 # === FUNCIONES DE PRUEBA ===
@@ -378,11 +381,11 @@ def actualizar_inventario_consolidado_entrada(data):
         """
         
         result = execute_query(query_recalcular, (numero_parte,))
-        print(f"📦 Inventario consolidado actualizado para {numero_parte}")
+        logger.info(f"📦 Inventario consolidado actualizado para {numero_parte}")
         return result > 0
         
     except Exception as e:
-        print(f" Error actualizando inventario_consolidado: {e}")
+        logger.error(f" Error actualizando inventario_consolidado: {e}")
         return False
 
 def test_database_connection():
@@ -398,16 +401,16 @@ def test_database_connection():
                 return True
             return False
     except Exception as e:
-        print(f"Error probando conexión: {e}")
+        logger.error(f"Error probando conexión: {e}")
         return False
 
 if __name__ == "__main__":
-    print(" Probando conexión a base de datos...")
+    logger.info(" Probando conexión a base de datos...")
     if test_database_connection():
-        print(" Conexión exitosa")
+        logger.info(" Conexión exitosa")
         if init_db():
-            print(" Base de datos inicializada")
+            logger.info(" Base de datos inicializada")
         else:
-            print(" Error inicializando base de datos")
+            logger.error(" Error inicializando base de datos")
     else:
-        print(" Error de conexión")
+        logger.error(" Error de conexión")

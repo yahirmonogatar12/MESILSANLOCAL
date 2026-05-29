@@ -83,6 +83,9 @@ from app.api.pda.shipping import (
     get_shipping_permission_dropdown_catalog,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 # Importar MySQLdb para cursores de diccionario
 try:
@@ -90,10 +93,10 @@ try:
     pymysql.install_as_MySQLdb()
     import MySQLdb
     MYSQLDB_AVAILABLE = True
-    print("MySQLdb disponible para user_admin")
+    logger.info("MySQLdb disponible para user_admin")
 except ImportError as e:
     MYSQLDB_AVAILABLE = False
-    print(f"MySQLdb no disponible para user_admin: {e}")
+    logger.warning(f"MySQLdb no disponible para user_admin: {e}")
     MySQLdb = None
 
 
@@ -199,7 +202,7 @@ def execute_with_retry(operation, max_retries=3, retry_delay=0.1):
             return operation()
         except mysql.connector.Error as e:
             if "lock" in str(e).lower() and attempt < max_retries - 1:
-                print(f"Intento {attempt + 1}/{max_retries}: Base de datos ocupada, reintentando en {retry_delay}s...")
+                logger.info(f"Intento {attempt + 1}/{max_retries}: Base de datos ocupada, reintentando en {retry_delay}s...")
                 time.sleep(retry_delay)
                 retry_delay *= 2
                 continue
@@ -314,7 +317,7 @@ def listar_usuarios():
         return jsonify(usuarios)
 
     except Exception as e:
-        print(f"Error listando usuarios: {e}")
+        logger.error(f"Error listando usuarios: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -346,7 +349,7 @@ def obtener_usuario(username):
         return jsonify(usuario)
 
     except Exception as e:
-        print(f"Error obteniendo usuario: {e}")
+        logger.error(f"Error obteniendo usuario: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -485,7 +488,7 @@ def guardar_usuario():
         return jsonify({'success': True, 'mensaje': mensaje})
 
     except Exception as e:
-        print(f"Error guardando usuario: {e}")
+        logger.error(f"Error guardando usuario: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
@@ -555,7 +558,7 @@ def cambiar_estado_usuario():
             return jsonify({'error': 'Usuario no encontrado'}), 404
 
     except Exception as e:
-        print(f"Error cambiando estado: {e}")
+        logger.error(f"Error cambiando estado: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         if 'conn' in locals():
@@ -597,7 +600,7 @@ def desbloquear_usuario():
             return jsonify({'error': 'Usuario no encontrado'}), 404
 
     except Exception as e:
-        print(f"Error desbloqueando usuario: {e}")
+        logger.error(f"Error desbloqueando usuario: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         if 'conn' in locals():
@@ -686,7 +689,7 @@ def borrar_usuario(username):
             return jsonify({'error': 'No se pudo eliminar el usuario'}), 500
 
     except Exception as e:
-        print(f"Error eliminando usuario: {e}")
+        logger.error(f"Error eliminando usuario: {e}")
         traceback.print_exc()
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
     finally:
@@ -718,7 +721,7 @@ def listar_roles():
         return jsonify(roles)
 
     except Exception as e:
-        print(f"Error listando roles: {e}")
+        logger.error(f"Error listando roles: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
@@ -745,7 +748,7 @@ def obtener_permisos_rol(rol_id):
         return jsonify(permisos)
 
     except Exception as e:
-        print(f"Error obteniendo permisos del rol: {e}")
+        logger.error(f"Error obteniendo permisos del rol: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -792,7 +795,7 @@ def listar_permisos_dropdowns():
         return jsonify(permisos_agrupados)
 
     except Exception as e:
-        print(f"Error listando permisos de dropdowns: {e}")
+        logger.error(f"Error listando permisos de dropdowns: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
@@ -819,7 +822,7 @@ def obtener_permisos_dropdowns_rol(rol_id):
         return jsonify(permisos)
 
     except Exception as e:
-        print(f"Error obteniendo permisos de dropdowns del rol: {e}")
+        logger.error(f"Error obteniendo permisos de dropdowns del rol: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
@@ -866,7 +869,7 @@ def actualizar_permisos_dropdowns_rol():
         })
 
     except Exception as e:
-        print(f"Error actualizando permisos de dropdowns: {e}")
+        logger.error(f"Error actualizando permisos de dropdowns: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -925,7 +928,7 @@ def sincronizar_permisos_dropdowns():
                             })
 
             except Exception as e:
-                print(f"Error procesando {archivo}: {e}")
+                logger.error(f"Error procesando {archivo}: {e}")
                 continue
 
         # Agregar permisos del modulo movil de embarques
@@ -1033,7 +1036,7 @@ def sincronizar_permisos_dropdowns():
         })
 
     except Exception as e:
-        print(f"Error sincronizando permisos de dropdowns: {e}")
+        logger.error(f"Error sincronizando permisos de dropdowns: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -1057,7 +1060,7 @@ def listar_permisos_botones():
         return jsonify(permisos)
 
     except Exception as e:
-        print(f"Error listando permisos de botones: {e}")
+        logger.error(f"Error listando permisos de botones: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1083,7 +1086,7 @@ def obtener_permisos_botones_rol(rol_id):
         return jsonify(permisos)
 
     except Exception as e:
-        print(f"Error obteniendo permisos de botones del rol: {e}")
+        logger.error(f"Error obteniendo permisos de botones del rol: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1148,7 +1151,7 @@ def actualizar_permisos_botones_rol():
         return jsonify({'success': True, 'mensaje': f'Permisos de botones del rol {rol["nombre"]} actualizados'})
 
     except Exception as e:
-        print(f"Error actualizando permisos de botones del rol: {e}")
+        logger.error(f"Error actualizando permisos de botones del rol: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1162,7 +1165,7 @@ def obtener_permisos_botones_usuario(username):
         return jsonify(permisos_botones)
 
     except Exception as e:
-        print(f"Error obteniendo permisos de botones del usuario: {e}")
+        logger.error(f"Error obteniendo permisos de botones del usuario: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1188,7 +1191,7 @@ def verificar_permiso_dropdown():
         return jsonify({'tiene_permiso': tiene_permiso})
 
     except Exception as e:
-        print(f"Error verificando permiso de dropdown: {e}")
+        logger.error(f"Error verificando permiso de dropdown: {e}")
         return jsonify({'tiene_permiso': False, 'error': str(e)}), 500
 
 
@@ -1223,7 +1226,7 @@ def obtener_permisos_usuario_actual():
         })
 
     except Exception as e:
-        print(f"Error obteniendo permisos del usuario actual: {e}")
+        logger.error(f"Error obteniendo permisos del usuario actual: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1299,7 +1302,7 @@ def buscar_auditoria():
         })
 
     except Exception as e:
-        print(f"Error buscando auditoria: {e}")
+        logger.error(f"Error buscando auditoria: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1337,7 +1340,7 @@ def detalle_auditoria(id):
         return jsonify(detalle)
 
     except Exception as e:
-        print(f"Error obteniendo detalle de auditoria: {e}")
+        logger.error(f"Error obteniendo detalle de auditoria: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1411,7 +1414,7 @@ def estadisticas_auditoria():
         })
 
     except Exception as e:
-        print(f"Error obteniendo estadisticas: {e}")
+        logger.error(f"Error obteniendo estadisticas: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1482,7 +1485,7 @@ def exportar_auditoria():
             )
 
     except Exception as e:
-        print(f"Error exportando auditoria: {e}")
+        logger.error(f"Error exportando auditoria: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1538,7 +1541,7 @@ def actividad_reciente():
         })
 
     except Exception as e:
-        print(f"Error obteniendo actividad reciente: {e}")
+        logger.error(f"Error obteniendo actividad reciente: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1622,7 +1625,7 @@ def verificar_permisos_usuario():
         return jsonify(permisos_estructurados)
 
     except Exception as e:
-        print(f"Error verificando permisos del usuario: {e}")
+        logger.error(f"Error verificando permisos del usuario: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1759,11 +1762,11 @@ def crear_rol():
             rol_id = cursor.lastrowid
 
             usuario_actual = session.get('usuario')
-            print(f"Usuario actual: {usuario_actual}")
-            print(f"Accion: crear_rol - Rol '{data['nombre']}' creado con nivel {nivel}")
+            logger.info(f"Usuario actual: {usuario_actual}")
+            logger.info(f"Accion: crear_rol - Rol '{data['nombre']}' creado con nivel {nivel}")
 
             # TODO: Restaurar auditoria completa cuando se resuelva el problema de bloqueo de DB
-            print("Auditoria registrada (modo simplificado)")
+            logger.info("Auditoria registrada (modo simplificado)")
 
             conn.commit()
 
@@ -1785,18 +1788,18 @@ def crear_rol():
 
         except Exception as e:
             conn.rollback()
-            print(f"Error en transaccion creando rol: {e}")
+            logger.error(f"Error en transaccion creando rol: {e}")
             return jsonify({'error': f'Error creando rol: {str(e)}'}), 500
 
     except mysql.connector.Error as e:
         if "lock" in str(e).lower():
-            print(f"Base de datos bloqueada creando rol: {e}")
+            logger.info(f"Base de datos bloqueada creando rol: {e}")
             return jsonify({'error': 'Base de datos temporalmente ocupada, intentalo de nuevo'}), 503
         else:
-            print(f"Error de base de datos creando rol: {e}")
+            logger.error(f"Error de base de datos creando rol: {e}")
             return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
     except Exception as e:
-        print(f"Error creando rol: {e}")
+        logger.error(f"Error creando rol: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         if conn:
@@ -1814,65 +1817,65 @@ def eliminar_rol(rol_id):
     """Eliminar un rol"""
     conn = None
     try:
-        print(f"Iniciando eliminacion del rol ID: {rol_id}")
+        logger.info(f"Iniciando eliminacion del rol ID: {rol_id}")
         conn = get_db_connection()
         cursor = get_dict_cursor(conn)
 
         cursor.execute('SELECT * FROM roles WHERE id = %s', (rol_id,))
         rol = cursor.fetchone()
         if not rol:
-            print(f"Rol ID {rol_id} no encontrado")
+            logger.info(f"Rol ID {rol_id} no encontrado")
             conn.close()
             return jsonify({'error': 'Rol no encontrado'}), 404
 
         rol_dict = dict(rol)
-        print(f"Rol encontrado: {rol_dict['nombre']} (Nivel: {rol_dict['nivel']})")
+        logger.info(f"Rol encontrado: {rol_dict['nombre']} (Nivel: {rol_dict['nivel']})")
 
         if rol_dict['nivel'] >= 8:
-            print(f"Intento de eliminar rol del sistema: {rol_dict['nombre']}")
+            logger.info(f"Intento de eliminar rol del sistema: {rol_dict['nombre']}")
             conn.close()
             return jsonify({'error': 'No se puede eliminar un rol del sistema'}), 400
 
         cursor.execute('SELECT COUNT(*) as total FROM usuario_roles WHERE rol_id = %s', (rol_id,))
         usuarios_asignados = cursor.fetchone()['total']
-        print(f"Usuarios asignados al rol: {usuarios_asignados}")
+        logger.info(f"Usuarios asignados al rol: {usuarios_asignados}")
 
         if usuarios_asignados > 0:
-            print(f"No se puede eliminar: {usuarios_asignados} usuarios asignados")
+            logger.info(f"No se puede eliminar: {usuarios_asignados} usuarios asignados")
             conn.close()
             return jsonify({
                 'error': f'No se puede eliminar el rol. Tiene {usuarios_asignados} usuario(s) asignado(s)'
             }), 400
 
         try:
-            print("Eliminando permisos del rol...")
+            logger.info("Eliminando permisos del rol...")
             cursor.execute('DELETE FROM rol_permisos WHERE rol_id = %s', (rol_id,))
             permisos_eliminados = cursor.rowcount
-            print(f"  - Permisos generales eliminados: {permisos_eliminados}")
+            logger.info(f"  - Permisos generales eliminados: {permisos_eliminados}")
 
             cursor.execute('DELETE FROM rol_permisos_botones WHERE rol_id = %s', (rol_id,))
             permisos_botones_eliminados = cursor.rowcount
-            print(f"  - Permisos de botones eliminados: {permisos_botones_eliminados}")
+            logger.info(f"  - Permisos de botones eliminados: {permisos_botones_eliminados}")
 
-            print("Eliminando el rol...")
+            logger.info("Eliminando el rol...")
             cursor.execute('DELETE FROM roles WHERE id = %s', (rol_id,))
             rol_eliminado = cursor.rowcount
-            print(f"  - Roles eliminados: {rol_eliminado}")
+            logger.info(f"  - Roles eliminados: {rol_eliminado}")
 
             if rol_eliminado == 0:
-                print("No se pudo eliminar el rol de la tabla")
+                logger.error("No se pudo eliminar el rol de la tabla")
                 cursor.execute('ROLLBACK')
                 return jsonify({'error': 'No se pudo eliminar el rol'}), 500
 
-            print("Registrando en auditoria...")
+            logger.info("Registrando en auditoria...")
             usuario_actual = session.get('usuario')
-            print(f"Usuario actual: {usuario_actual}")
-            print(f"Accion: eliminar_rol - Rol '{rol_dict['nombre']}' eliminado por {usuario_actual}")
+            logger.info(f"Usuario actual: {usuario_actual}")
+            logger.info(f"Accion: eliminar_rol - Rol '{rol_dict['nombre']}' eliminado por {usuario_actual}")
 
-            print("Auditoria registrada (modo simplificado)")
+            logger.info("Auditoria registrada (modo simplificado)")
 
             conn.commit()
-            print(f"Rol '{rol_dict['nombre']}' eliminado exitosamente")
+            logger.info(f"Rol '{rol_dict['nombre']}' eliminado exitosamente")
 
             return jsonify({
                 'success': True,
@@ -1880,26 +1883,26 @@ def eliminar_rol(rol_id):
             })
 
         except Exception as e:
-            print(f"Error en transaccion, haciendo rollback: {e}")
+            logger.error(f"Error en transaccion, haciendo rollback: {e}")
             conn.rollback()
-            print(f"Error en transaccion eliminando rol: {e}")
+            logger.error(f"Error en transaccion eliminando rol: {e}")
             return jsonify({'error': f'Error eliminando rol: {str(e)}'}), 500
 
     except mysql.connector.Error as e:
         if "lock" in str(e).lower():
-            print(f"Base de datos bloqueada eliminando rol {rol_id}: {e}")
+            logger.info(f"Base de datos bloqueada eliminando rol {rol_id}: {e}")
             return jsonify({'error': 'Base de datos temporalmente ocupada, intentalo de nuevo'}), 503
         else:
-            print(f"Error de base de datos eliminando rol: {e}")
+            logger.error(f"Error de base de datos eliminando rol: {e}")
             return jsonify({'error': f'Error de base de datos: {str(e)}'}), 500
     except Exception as e:
-        print(f"Error general eliminando rol: {e}")
+        logger.error(f"Error general eliminando rol: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         if conn:
             try:
                 conn.close()
-                print("Conexion cerrada")
+                logger.info("Conexion cerrada")
             except:
                 pass
 
@@ -1986,7 +1989,7 @@ def actualizar_rol(rol_id):
             raise e
 
     except Exception as e:
-        print(f"Error actualizando rol: {e}")
+        logger.error(f"Error actualizando rol: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         if conn:

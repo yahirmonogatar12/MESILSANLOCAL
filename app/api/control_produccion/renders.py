@@ -15,6 +15,9 @@ from flask import Blueprint, render_template
 
 from app.api.shared import login_requerido
 
+import logging
+logger = logging.getLogger(__name__)
+
 bp = Blueprint("control_produccion_renders", __name__)
 
 
@@ -27,7 +30,7 @@ def line_material_status_ajax():
             "Control de produccion/line_material_status_es_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Line Material Status_es AJAX: {e}")
+        logger.error(f"Error al cargar template Line Material Status_es AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -38,7 +41,7 @@ def estandares_soldadura_ajax():
     try:
         return render_template("Control de produccion/estandares_soldadura_ajax.html")
     except Exception as e:
-        print(
+        logger.error(
             f"Error al cargar template Estandares sobre control de soldadura AJAX: {e}"
         )
         return f"Error al cargar el contenido: {str(e)}", 500
@@ -53,7 +56,7 @@ def registro_recibo_soldadura_ajax():
             "Control de produccion/registro_recibo_soldadura_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Registro de recibo de soldadura AJAX: {e}")
+        logger.error(f"Error al cargar template Registro de recibo de soldadura AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -66,5 +69,5 @@ def control_salida_soldadura_ajax():
             "Control de produccion/control_salida_soldadura_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Control de salida de soldadura AJAX: {e}")
+        logger.error(f"Error al cargar template Control de salida de soldadura AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500

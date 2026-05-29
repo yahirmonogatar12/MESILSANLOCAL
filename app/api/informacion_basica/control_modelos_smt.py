@@ -35,6 +35,9 @@ from flask import Blueprint, jsonify, render_template, request, session
 
 from app.api.shared import execute_query
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 # Constantes del modulo (ex `app/py/settings.py`)
 TABLE_NAME = "raw_smd"
@@ -62,13 +65,13 @@ def init_control_modelos_table():
         )
 
         if result:
-            print(f"Tabla {TABLE_NAME} encontrada")
+            logger.info(f"Tabla {TABLE_NAME} encontrada")
             ensure_usuario_column()
         else:
-            print(f"ADVERTENCIA: La tabla {TABLE_NAME} no existe en la base de datos")
+            logger.warning(f"ADVERTENCIA: La tabla {TABLE_NAME} no existe en la base de datos")
 
     except Exception as e:
-        print(f"Error verificando tabla: {e}")
+        logger.error(f"Error verificando tabla: {e}")
 
 
 def get_current_user():
@@ -84,7 +87,7 @@ def get_current_user():
 
         return USER_NAME
     except Exception as e:
-        print(f"Error obteniendo usuario de sesion: {e}")
+        logger.error(f"Error obteniendo usuario de sesion: {e}")
         return USER_NAME
 
 
@@ -102,7 +105,7 @@ def ensure_usuario_column():
                 f"ALTER TABLE `{TABLE_NAME}` ADD COLUMN `{MANDATORY_EXTRA_COL}` varchar(128) NULL"
             )
     except Exception as e:
-        print(f"Error verificando/agregando columna usuario: {e}")
+        logger.error(f"Error verificando/agregando columna usuario: {e}")
 
 
 def get_columns_excluding() -> List[str]:
@@ -115,7 +118,7 @@ def get_columns_excluding() -> List[str]:
             cols.append(MANDATORY_EXTRA_COL)
         return cols
     except Exception as e:
-        print(f"Error obteniendo columnas: {e}")
+        logger.error(f"Error obteniendo columnas: {e}")
         return []
 
 
@@ -185,7 +188,7 @@ def index():
             user_name=current_user,
         )
     except Exception as e:
-        print(f"Error cargando datos: {e}")
+        logger.error(f"Error cargando datos: {e}")
         return render_template(
             "INFORMACION BASICA/Control_modelos_SMT.html",
             columns=columns,
@@ -215,7 +218,7 @@ def control_modelos_smt_ajax():
             "INFORMACION BASICA/control_modelos_smt_ajax.html", usuario=usuario_actual
         )
     except Exception as e:
-        print(f"Error al cargar template Control de Modelos SMT AJAX: {e}")
+        logger.error(f"Error al cargar template Control de Modelos SMT AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -250,7 +253,7 @@ def api_get_data():
             "total": len(norm_rows)
         })
     except Exception as e:
-        print(f"Error obteniendo datos actualizados: {e}")
+        logger.error(f"Error obteniendo datos actualizados: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
@@ -278,10 +281,10 @@ def api_create():
         query = f"INSERT INTO `{TABLE_NAME}` ({colnames}) VALUES ({placeholders})"
         execute_query(query, values)
 
-        print(f"Registro creado por usuario: {current_user}")
+        logger.info(f"Registro creado por usuario: {current_user}")
         return jsonify({"ok": True})
     except Exception as e:
-        print(f"Error creando registro: {e}")
+        logger.error(f"Error creando registro: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
@@ -320,7 +323,7 @@ def api_update(rowhash: str):
 
         return jsonify({"ok": True})
     except Exception as e:
-        print(f"Error actualizando registro: {e}")
+        logger.error(f"Error actualizando registro: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
@@ -351,7 +354,7 @@ def api_delete(rowhash: str):
 
         return jsonify({"ok": True})
     except Exception as e:
-        print(f"Error eliminando registro: {e}")
+        logger.error(f"Error eliminando registro: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

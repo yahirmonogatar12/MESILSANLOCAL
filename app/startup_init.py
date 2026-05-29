@@ -16,6 +16,9 @@ gravitacional aunque las funciones ya vivieran en sus blueprints.
 import os
 import time
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def _env_flag(name, default=False):
     val = os.getenv(name)
@@ -37,7 +40,7 @@ def should_run_startup_init():
 def run_startup_init():
     """Ejecuta todas las inicializaciones diferidas de la app."""
     if not should_run_startup_init():
-        print("[startup-init] Saltando inicializaciones (MES_SKIP_STARTUP_INIT=1)")
+        logger.info("[startup-init] Saltando inicializaciones (MES_SKIP_STARTUP_INIT=1)")
         # Workers siguen siendo necesarios aunque las tablas ya existan.
         _start_workers_only()
         return
@@ -45,7 +48,7 @@ def run_startup_init():
     t0 = time.time()
 
     def log(msg):
-        print(f"[startup {round(time.time() - t0, 2)}s] {msg}")
+        logger.info(f"[startup {round(time.time() - t0, 2)}s] {msg}")
 
     # Importes diferidos para evitar ciclos al cargar routes en paralelo.
     from .db import init_db
@@ -126,9 +129,9 @@ def _start_workers_only():
         )
         iniciar_cuchillas_hourly_sync_worker()
     except Exception as e:
-        print(f"[startup-init] Error iniciando cuchillas worker: {e}")
+        logger.error(f"[startup-init] Error iniciando cuchillas worker: {e}")
     try:
         from .api.shared.snapshot_inventario import iniciar_snapshot_inv_worker
         iniciar_snapshot_inv_worker()
     except Exception as e:
-        print(f"[startup-init] Error iniciando snapshot worker: {e}")
+        logger.error(f"[startup-init] Error iniciando snapshot worker: {e}")

@@ -14,6 +14,9 @@ Migrado desde `app/routes.py::crear_tabla_trazabilidad` el 2026-05-28.
 
 from app.db_mysql import execute_query
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def crear_tabla_trazabilidad():
     """Crear tabla de trazabilidad si no existe."""
@@ -35,6 +38,6 @@ def crear_tabla_trazabilidad():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
         execute_query(query)
-        print(" Tabla trazabilidad creada/verificada")
+        logger.info(" Tabla trazabilidad creada/verificada")
     except Exception as e:
-        print(f" Error creando tabla trazabilidad: {e}")
+        logger.error(f" Error creando tabla trazabilidad: {e}")

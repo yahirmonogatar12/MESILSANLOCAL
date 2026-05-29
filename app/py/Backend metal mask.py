@@ -8,6 +8,9 @@ import mysql.connector
 from mysql.connector import pooling
 from dotenv import load_dotenv
 
+import logging
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 DB_CONFIG = {
@@ -203,7 +206,7 @@ def get_storage():
 def add_storage():
     try:
         payload = request.get_json()
-        print(f"DEBUG - Payload recibido: {payload}")
+        logger.info(f"DEBUG - Payload recibido: {payload}")
         
         management_no = payload.get('management_no', '').strip()
         code = payload.get('code', '').strip()
@@ -214,9 +217,9 @@ def add_storage():
         note = payload.get('note', '').strip()
         registration_date = payload.get('registration_date', '').strip()
         
-        print(f"DEBUG - management_no: '{management_no}'")
-        print(f"DEBUG - code: '{code}'")
-        print(f"DEBUG - location: '{location}'")
+        logger.info(f"DEBUG - management_no: '{management_no}'")
+        logger.info(f"DEBUG - code: '{code}'")
+        logger.info(f"DEBUG - location: '{location}'")
         
         if not management_no:
             return jsonify({'error': 'Número de Gestión es requerido'}), 400
@@ -233,8 +236,8 @@ def add_storage():
         return jsonify({'success': True, 'message': 'Caja de almacenamiento registrada exitosamente'})
     
     except Exception as e:
-        print(f"DEBUG - Error completo: {str(e)}")
-        print(f"DEBUG - Tipo de error: {type(e)}")
+        logger.error(f"DEBUG - Error completo: {str(e)}")
+        logger.error(f"DEBUG - Tipo de error: {type(e)}")
         if 'Duplicate entry' in str(e):
             return jsonify({'error': f'El Número de Gestión "{management_no}" ya existe. Por favor use un código/ubicación diferente.'}), 400
         return jsonify({'error': f'Error al registrar la caja de almacenamiento: {str(e)}'}), 500

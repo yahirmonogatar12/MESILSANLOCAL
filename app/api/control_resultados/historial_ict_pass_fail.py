@@ -29,6 +29,9 @@ from flask import Blueprint, jsonify, redirect, render_template, request
 from app.api.shared import execute_query, login_requerido
 from app.api.shared.ict_helpers import _ict_format_row
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint("historial_ict_pass_fail", __name__)
 
@@ -221,7 +224,7 @@ def historial_ict_pass_fail_ajax():
     try:
         return render_template("Control de resultados/history_ict_Pass_Fail.html")
     except Exception as e:
-        print(f"Error al cargar Historial maquina ICT % Pass/Fail: {e}")
+        logger.error(f"Error al cargar Historial maquina ICT % Pass/Fail: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 

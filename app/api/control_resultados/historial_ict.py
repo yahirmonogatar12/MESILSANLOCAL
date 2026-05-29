@@ -40,6 +40,9 @@ from app.services.ict_lgd_parser import (
     IctLgdPathError,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint("historial_ict", __name__)
 
@@ -56,7 +59,7 @@ def historial_ict_ajax():
     try:
         return render_template("Control de resultados/history_ict.html")
     except Exception as e:
-        print(f"Error al cargar Historial ICT: {e}")
+        logger.error(f"Error al cargar Historial ICT: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 

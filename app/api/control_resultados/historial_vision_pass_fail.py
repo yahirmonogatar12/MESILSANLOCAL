@@ -35,6 +35,9 @@ from app.api.shared.vision_helpers import (
     _vision_format_value,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 bp = Blueprint("historial_vision_pass_fail", __name__)
 
@@ -51,7 +54,7 @@ def historial_vision_pass_fail_ajax():
     try:
         return render_template("Control de resultados/history_vision_pass_fail.html")
     except Exception as e:
-        print(f"Error al cargar Historial Vision % Pass/Fail: {e}")
+        logger.error(f"Error al cargar Historial Vision % Pass/Fail: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 

@@ -1,4 +1,6 @@
+import logging
 import os
+import secrets
 import time
 import traceback
 from functools import wraps
@@ -24,6 +26,7 @@ from flask import (
     session,
     url_for,
 )
+from werkzeug.exceptions import HTTPException
 
 # Importar sistema de autenticacion mejorado
 from .auth_system import AuthSystem
@@ -53,9 +56,7 @@ from .db_mysql import execute_query
 #   user_admin         -> app/api/admin/usuarios.py
 
 app = Flask(__name__)
-app.secret_key = os.getenv(
-    "SECRET_KEY", "fallback_key_for_development_only"
-)  # Necesario para usar sesiones
+logger = logging.getLogger(__name__)
 
 
 def _env_flag(name, default=False):
@@ -80,13 +81,70 @@ def should_run_startup_init():
     return True
 
 
+# ---------------------------------------------------------------------------
+# Seguridad de sesion
+# ---------------------------------------------------------------------------
+# SECRET_KEY: nunca usar una clave hardcodeada/publica para firmar cookies.
+#   - Si esta en el entorno, se usa (camino correcto).
+#   - Si NO esta y MES_ENV=production -> abortar el arranque (fail-loud).
+#   - Si NO esta en dev/local -> clave efimera aleatoria (las sesiones no
+#     sobreviven a un reinicio; se avisa para configurar SECRET_KEY).
+_secret_key = os.getenv("SECRET_KEY")
+if not _secret_key:
+    if os.getenv("MES_ENV", "development").strip().lower() == "production":
+        raise RuntimeError(
+            "SECRET_KEY no esta definida y MES_ENV=production. "
+            "Define SECRET_KEY en el entorno antes de arrancar."
+        )
+    _secret_key = secrets.token_hex(32)
+    logger.warning(
+        "SECRET_KEY no definida: usando clave efimera aleatoria. Las sesiones "
+        "se invalidaran al reiniciar. Define SECRET_KEY en .env."
+    )
+app.secret_key = _secret_key
+
+# Flags de la cookie de sesion:
+#   - HTTPONLY + SAMESITE=Lax siempre (mitigan robo via XSS y CSRF).
+#   - SECURE solo bajo HTTPS: MES_SESSION_COOKIE_SECURE (default False para
+#     server local en HTTP). Ponlo en 1 cuando se sirva por HTTPS.
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=_env_flag("MES_SESSION_COOKIE_SECURE", False),
+)
+
+
+@app.errorhandler(Exception)
+def _handle_uncaught_exception(error):
+    """Red de seguridad global: convierte excepciones no atrapadas en 500.
+
+    Acompana al cambio de execute_query (que ahora re-lanza en vez de
+    tragar el error): un fallo de BD se vuelve un 500 visible y logueado,
+    no un []/0 que parece exito. Las HTTPException (404/403/redirects)
+    pasan sin tocar.
+    """
+    if isinstance(error, HTTPException):
+        return error
+
+    logger.exception("Excepcion no atrapada en %s %s", request.method, request.path)
+
+    wants_json = (
+        request.path.startswith("/api/")
+        or request.accept_mimetypes.best == "application/json"
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    )
+    if wants_json:
+        return jsonify({"error": "Error interno del servidor"}), 500
+    return "Error interno del servidor", 500
+
+
 STARTUP_INIT_ENABLED = should_run_startup_init()
 _startup_t0 = time.time()
 
 
 def _startup_log(msg):
     elapsed = round(time.time() - _startup_t0, 2)
-    print(f"[startup {elapsed}s] {msg}")
+    logger.info("[startup %ss] %s", round(time.time() - _startup_t0, 2), msg)
 
 
 # smd_inventory: modulo borrado (commit c9a312b). Mantener como nota historica
@@ -152,27 +210,27 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
 
             try:
                 username = session["usuario"]
-                print(
+                logger.info(
                     f" Verificando permisos para usuario: {username}, página: {pagina}, sección: {seccion}, botón: {boton}"
                 )
 
                 rol_nombre = auth_system.obtener_rol_principal_usuario(username)
                 if not rol_nombre:
-                    print(" Usuario sin roles asignados")
+                    logger.info(" Usuario sin roles asignados")
                     return jsonify({"error": "Usuario sin roles asignados"}), 403
 
-                print(f" Rol del usuario: {rol_nombre}")
+                logger.info(f" Rol del usuario: {rol_nombre}")
                 if rol_nombre == "superadmin":
-                    print(" Superadmin: permiso concedido")
+                    logger.info(" Superadmin: permiso concedido")
                     return f(*args, **kwargs)
 
                 tiene_permiso = auth_system.verificar_permiso_boton(
                     username, pagina, seccion, boton
                 )
-                print(f" Tiene permiso: {tiene_permiso}")
+                logger.info(f" Tiene permiso: {tiene_permiso}")
 
                 if not tiene_permiso:
-                    print(f" Sin permisos para: {pagina} > {seccion} > {boton}")
+                    logger.info(f" Sin permisos para: {pagina} > {seccion} > {boton}")
                     # Respuesta diferente para AJAX vs navegación directa
                     if (
                         request.headers.get("Content-Type") == "application/json"
@@ -209,11 +267,11 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                             403,
                         )
 
-                print(f" Permisos verificados correctamente, ejecutando función...")
+                logger.info(f" Permisos verificados correctamente, ejecutando función...")
                 return f(*args, **kwargs)
 
             except Exception as e:
-                print(f" Error verificando permisos: {e}")
+                logger.error(f" Error verificando permisos: {e}")
                 import traceback
 
                 traceback.print_exc()
@@ -249,7 +307,7 @@ def tiene_permiso_boton(nombre_boton):
         return False
 
     except Exception as e:
-        print(f"Error verificando permiso de botón '{nombre_boton}': {e}")
+        logger.error(f"Error verificando permiso de botón '{nombre_boton}': {e}")
         return False
 
 
@@ -269,11 +327,11 @@ def permisos_botones_pagina(usuario, pagina):
 def login_requerido(f):
     @wraps(f)
     def decorada(*args, **kwargs):
-        print(" Verificando sesión avanzada:", session.get("usuario"))
+        logger.debug("Verificando sesion avanzada: %s", session.get("usuario"))
 
         # Verificar si hay usuario en sesión
         if "usuario" not in session:
-            print("No hay usuario en sesión")
+            logger.debug("No hay usuario en sesion")
             return redirect(url_for("auth_sesion.inicio"))
 
         usuario = session.get("usuario")
@@ -398,7 +456,7 @@ def material():
 
     # Si no tenemos el nombre completo en la sesión, obtenerlo de la BD
     if not nombre_completo and usuario != "Invitado":
-        print(
+        logger.warning(
             f"⚠️ Nombre completo no encontrado en sesión para {usuario}, obteniendo de BD..."
         )
         from .auth_system import auth_system
@@ -409,11 +467,11 @@ def material():
             session["nombre_completo"] = (
                 nombre_completo  # Guardar en sesión para futuras consultas
             )
-            print(f" Nombre completo obtenido de BD: {nombre_completo}")
+            logger.info(f" Nombre completo obtenido de BD: {nombre_completo}")
         else:
             nombre_completo = usuario  # Fallback al username
             session["nombre_completo"] = usuario
-            print(
+            logger.error(
                 f"⚠️ No se pudo obtener nombre completo de BD, usando username: {usuario}"
             )
 
@@ -451,7 +509,7 @@ def dashboard():
                 nombre_completo = result["nombre_completo"]
                 session["nombre_completo"] = nombre_completo
         except Exception as e:
-            print(f"⚠️ Error obteniendo nombre completo para dashboard: {e}")
+            logger.error(f"⚠️ Error obteniendo nombre completo para dashboard: {e}")
             nombre_completo = usuario
 
     if not nombre_completo:
@@ -648,7 +706,7 @@ def cargar_template():
 
     except Exception as e:
         template_name = template_path if template_path else "unknown"
-        print(f"Error al cargar template {template_name}: {str(e)}")
+        logger.error(f"Error al cargar template {template_name}: {str(e)}")
         return jsonify({"error": f"Error al cargar el template: {str(e)}"}), 500
 
 
@@ -673,7 +731,7 @@ def control_de_material_ajax():
     try:
         return render_template("INFORMACION BASICA/CONTROL_DE_MATERIAL.html")
     except Exception as e:
-        print(f"Error al cargar template Control de Material: {e}")
+        logger.error(f"Error al cargar template Control de Material: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -685,7 +743,7 @@ def lista_informacion_basica():
     try:
         return render_template("LISTAS/LISTA_INFORMACIONBASICA.html")
     except Exception as e:
-        print(f"Error al cargar LISTA_INFORMACIONBASICA: {e}")
+        logger.error(f"Error al cargar LISTA_INFORMACIONBASICA: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -696,7 +754,7 @@ def lista_control_material():
     try:
         return render_template("LISTAS/LISTA_DE_MATERIALES.html")
     except Exception as e:
-        print(f"Error al cargar LISTA_DE_MATERIALES: {e}")
+        logger.error(f"Error al cargar LISTA_DE_MATERIALES: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -707,7 +765,7 @@ def lista_control_produccion():
     try:
         return render_template("LISTAS/LISTA_CONTROLDEPRODUCCION.html")
     except Exception as e:
-        print(f"Error al cargar LISTA_CONTROLDEPRODUCCION: {e}")
+        logger.error(f"Error al cargar LISTA_CONTROLDEPRODUCCION: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -798,7 +856,7 @@ def lista_control_proceso():
     try:
         return render_template("LISTAS/LISTA_CONTROL_DE_PROCESO.html")
     except Exception as e:
-        print(f"Error al cargar LISTA_CONTROL_DE_PROCESO: {e}")
+        logger.error(f"Error al cargar LISTA_CONTROL_DE_PROCESO: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -809,7 +867,7 @@ def lista_control_calidad():
     try:
         return render_template("LISTAS/LISTA_CONTROL_DE_CALIDAD.html")
     except Exception as e:
-        print(f"Error al cargar LISTA_CONTROL_DE_CALIDAD: {e}")
+        logger.error(f"Error al cargar LISTA_CONTROL_DE_CALIDAD: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -820,7 +878,7 @@ def lista_control_resultados():
     try:
         return render_template("LISTAS/LISTA_DE_CONTROL_DE_RESULTADOS.html")
     except Exception as e:
-        print(f"Error al cargar LISTA_DE_CONTROL_DE_RESULTADOS: {e}")
+        logger.error(f"Error al cargar LISTA_DE_CONTROL_DE_RESULTADOS: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -851,7 +909,7 @@ def lista_control_reporte():
     try:
         return render_template("LISTAS/LISTA_DE_CONTROL_DE_REPORTE.html")
     except Exception as e:
-        print(f"Error al cargar LISTA_DE_CONTROL_DE_REPORTE: {e}")
+        logger.error(f"Error al cargar LISTA_DE_CONTROL_DE_REPORTE: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -862,7 +920,7 @@ def lista_configuracion_programa():
     try:
         return render_template("LISTAS/LISTA_DE_CONFIGPG.html")
     except Exception as e:
-        print(f"Error al cargar LISTA_DE_CONFIGPG: {e}")
+        logger.error(f"Error al cargar LISTA_DE_CONFIGPG: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -873,7 +931,7 @@ def material_info():
     try:
         return render_template("info.html")
     except Exception as e:
-        print(f"Error al cargar info.html: {e}")
+        logger.error(f"Error al cargar info.html: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 @app.route("/templates/LISTAS/<filename>")
@@ -908,7 +966,7 @@ def serve_list_template(filename):
         return content, 200, {"Content-Type": "text/html; charset=utf-8"}
 
     except Exception as e:
-        print(f"Error sirviendo plantilla {filename}: {str(e)}")
+        logger.error(f"Error sirviendo plantilla {filename}: {str(e)}")
         return f"Error cargando la plantilla: {str(e)}", 500
 
 
@@ -964,7 +1022,7 @@ def verificar_permiso_dropdown():
         )
 
     except Exception as e:
-        print(f"Error verificando permiso: {e}")
+        logger.error(f"Error verificando permiso: {e}")
         return jsonify({"tiene_permiso": False, "error": str(e)}), 500
 
 
@@ -1012,7 +1070,7 @@ def obtener_permisos_usuario_actual():
         )
 
     except Exception as e:
-        print(f"Error obteniendo permisos: {e}")
+        logger.error(f"Error obteniendo permisos: {e}")
         return jsonify({"permisos": [], "error": str(e)}), 500
 
 

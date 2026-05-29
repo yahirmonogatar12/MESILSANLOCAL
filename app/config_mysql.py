@@ -2,6 +2,7 @@
 Adaptado para usar las credenciales proporcionadas por el hosting
 Usa connection pooling para evitar 'Too many connections'"""
 
+import logging
 import os
 import threading
 from contextlib import contextmanager
@@ -9,16 +10,19 @@ from dotenv import load_dotenv
 
 # Cargar variables de entorno
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
 try:
     import pymysql
     pymysql.install_as_MySQLdb()
     import MySQLdb
     import MySQLdb.cursors
     MYSQL_AVAILABLE = True
-    print(" pymysql disponible para config_mysql")
+    logger.debug("pymysql disponible para config_mysql")
 except ImportError:
     MYSQL_AVAILABLE = False
-    print(" pymysql no disponible para config_mysql - usando modo fallback")
+    logger.warning("pymysql no disponible para config_mysql - usando modo fallback")
 
 # Configuración global de MySQL
 MYSQL_CONFIG = {
@@ -35,8 +39,11 @@ MYSQL_CONFIG = {
     'write_timeout': int(os.getenv('MYSQL_WRITE_TIMEOUT', '10'))
 }
 
-# Imprimir config una sola vez al cargar el módulo
-print(f"🔧 MySQL Config: host={MYSQL_CONFIG['host']}, port={MYSQL_CONFIG['port']}, db={MYSQL_CONFIG['db']}, user={MYSQL_CONFIG['user']}")
+# Imprimir config una sola vez al cargar el módulo (sin password).
+logger.info(
+    "MySQL Config: host=%s port=%s db=%s user=%s",
+    MYSQL_CONFIG['host'], MYSQL_CONFIG['port'], MYSQL_CONFIG['db'], MYSQL_CONFIG['user'],
+)
 
 # ============ CONNECTION POOL ============
 _pool = []
@@ -88,7 +95,7 @@ def _create_connection():
         connection = MySQLdb.connect(**MYSQL_CONFIG)
         return connection
     except Exception as e:
-        print(f"Error conectando a MySQL: {e}")
+        logger.error("Error conectando a MySQL: %s", e)
         return None
 
 def _get_pooled_connection():
@@ -157,7 +164,7 @@ def get_db_connection():
         connection = _get_pooled_connection()
         yield connection
     except Exception as e:
-        print(f"Error en conexión MySQL: {e}")
+        logger.error("Error en conexion MySQL: %s", e)
         if connection:
             try:
                 connection.rollback()
@@ -175,24 +182,28 @@ def get_db_connection():
             _return_to_pool(connection)
 
 def execute_query(query, params=None, fetch=None):
-    """Ejecutar consulta en MySQL"""
+    """Ejecutar consulta en MySQL.
+
+    Politica de errores (fail-loud, 2026-05-29):
+      - DML / SELECT: si la consulta falla, se loguea con stack y se RE-LANZA.
+        Antes se devolvia []/None/0 y el fallo se confundia con "sin
+        resultados" / "0 filas afectadas" (perdida silenciosa de datos).
+        El errorhandler global en app.routes lo convierte en un 500 visible.
+      - DDL (ALTER/CREATE/DROP): conserva el manejo tolerante historico para
+        no romper el arranque idempotente: 1060/1061 (columna/clave duplicada)
+        se re-lanzan para que el llamador los maneje; otros errores de DDL se
+        loguean y se tragan.
+      - Sin driver MySQL o sin conexion disponible: se RE-LANZA (RuntimeError)
+        en vez de simular un resultado vacio.
+    """
     if not MYSQL_AVAILABLE:
-        if fetch == 'one':
-            return None
-        elif fetch == 'all':
-            return []
-        else:
-            return 0
+        raise RuntimeError(
+            "MySQL no disponible (pymysql/MySQLdb no se pudo importar)."
+        )
 
     conn = _get_pooled_connection()
     if conn is None:
-        print(" Conexión MySQL no disponible - retornando valores por defecto")
-        if fetch == 'one':
-            return None
-        elif fetch == 'all':
-            return []
-        else:
-            return 0
+        raise RuntimeError("Conexion MySQL no disponible (pool sin conexiones).")
 
     try:
         cursor = conn.cursor(MySQLdb.cursors.DictCursor)
@@ -225,51 +236,58 @@ def execute_query(query, params=None, fetch=None):
 
     except Exception as e:
         error_str = str(e)
-        # Devolver conexión al pool antes de hacer raise
+        # Devolver conexión al pool antes de propagar.
         try:
             _return_to_pool(conn)
         except Exception:
             pass
-        # Para DDL (ALTER/CREATE/DROP), re-lanzar errores esperados como 1060 (Duplicate column)
-        # y 1061 (Duplicate key name) para que el código que llama pueda manejarlos
+
         query_upper = query.strip().upper()
-        if query_upper.startswith(('ALTER ', 'CREATE ', 'DROP ')):
+        is_ddl = query_upper.startswith(('ALTER ', 'CREATE ', 'DROP '))
+
+        if is_ddl:
+            # DDL idempotente: 1060 (Duplicate column) / 1061 (Duplicate key)
+            # se re-lanzan para que el llamador los maneje; el resto se traga
+            # para no romper el arranque.
             if any(code in error_str for code in ['1060', '1061']):
                 raise
-        print(f"Error ejecutando consulta MySQL: {e}")
-        if fetch == 'one':
-            return None
-        elif fetch == 'all':
-            return []
-        else:
-            return 0
+            logger.warning("Error (tolerado) ejecutando DDL MySQL: %s", e)
+            if fetch == 'one':
+                return None
+            elif fetch == 'all':
+                return []
+            else:
+                return 0
+
+        # DML / SELECT: fail-loud.
+        logger.error("Error ejecutando consulta MySQL: %s", e, exc_info=True)
+        raise
 
 def convert_sqlite_to_mysql(query):
-    """Convertir consultas de SQLite a MySQL"""
-    mysql_query = query
+    """Pass-through. (Antes hacia conversiones SQLite -> MySQL.)
 
-    # Reemplazar tipos de datos SQLite por MySQL
-    mysql_query = mysql_query.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'INT AUTO_INCREMENT PRIMARY KEY')
-    mysql_query = mysql_query.replace('AUTOINCREMENT', 'AUTO_INCREMENT')
-    mysql_query = mysql_query.replace('TEXT', 'TEXT')
-    mysql_query = mysql_query.replace('REAL', 'DECIMAL(10,2)')
-    mysql_query = mysql_query.replace('BLOB', 'LONGBLOB')
+    Se neutralizo el 2026-05-29. La version anterior aplicaba reemplazos
+    de SUBSTRING ciegos (`REAL`->`DECIMAL`, `BLOB`->`LONGBLOB`,
+    `CURRENT_TIMESTAMP`->`NOW()`, `AUTOINCREMENT`->...) que podian corromper
+    queries cuando esas cadenas aparecian dentro de identificadores o
+    literales (p.ej. una columna que contiene "REAL", o el valor
+    'CURRENT_TIMESTAMP'). El comentario en cuchillas_corte.py ("sin
+    conversion automatica REAL->DECIMAL") evidencia que ya habia causado
+    problemas.
 
-    # Reemplazar funciones SQLite por MySQL
-    mysql_query = mysql_query.replace('datetime(\'now\')', 'NOW()')
-    mysql_query = mysql_query.replace('CURRENT_TIMESTAMP', 'NOW()')
+    Motivos para eliminar la conversion en vez de "arreglarla":
+      - El unico backend es MySQL; ya no se generan queries en sintaxis
+        SQLite. Una busqueda en el repo confirma que NINGUN query usa
+        AUTOINCREMENT, datetime('now'), ni tipos REAL/BLOB.
+      - MySQL soporta de forma nativa `CURRENT_TIMESTAMP` y la sintaxis
+        `LIMIT count OFFSET offset`, asi que esas reescrituras eran
+        innecesarias.
 
-    # Reemplazar LIMIT con OFFSET por sintaxis MySQL
-    if 'LIMIT' in mysql_query and 'OFFSET' in mysql_query:
-        import re
-        pattern = r'LIMIT\s+(\d+)\s+OFFSET\s+(\d+)'
-        match = re.search(pattern, mysql_query)
-        if match:
-            count = match.group(1)
-            offset = match.group(2)
-            mysql_query = re.sub(pattern, f'LIMIT {offset}, {count}', mysql_query)
-
-    return mysql_query
+    Se conserva la funcion (en vez de borrar las llamadas) para no tocar
+    `execute_query` y por si en el futuro se quisiera reintroducir una
+    conversion ROBUSTA (tokenizando SQL, no con str.replace).
+    """
+    return query
 
 def test_connection():
     """Probar conexión a MySQL"""
@@ -282,12 +300,12 @@ def test_connection():
             cursor.fetchone()
             return True
     except Exception as e:
-        print(f" Error de conexión: {e}")
+        logger.error("Error de conexion: %s", e)
         return False
 
 if __name__ == "__main__":
-    print(" Probando conexión a MySQL...")
+    logger.info(" Probando conexión a MySQL...")
     if test_connection():
-        print(" Conexión exitosa")
+        logger.info(" Conexión exitosa")
     else:
-        print(" Error de conexión")
+        logger.error(" Error de conexión")

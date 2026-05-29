@@ -344,7 +344,7 @@ def historial_cambio_material_smt():
     try:
         return render_template("Control de calidad/historial_cambio_material_smt.html")
     except Exception as e:
-        print(f"Error al cargar historial de cambio de material SMT: {e}")
+        logger.error(f"Error al cargar historial de cambio de material SMT: {e}")
         return f"Error al cargar la página: {str(e)}", 500
 
 
@@ -357,7 +357,7 @@ def historial_cambio_material_smt_ajax():
             "Control de calidad/historial_cambio_material_smt_ajax.html"
         )
     except Exception as e:
-        print(f"Error en historial_cambio_material_smt_ajax: {e}")
+        logger.error(f"Error en historial_cambio_material_smt_ajax: {e}")
         return f"Error interno del servidor: {e}", 500
 
 
@@ -473,8 +473,8 @@ def api_historial_smt_latest():
 
         return jsonify({"success": True, "data": data, "total": len(data)})
     except Exception as e:
-        print(f"Error en api_historial_smt_latest: {e}")
-        print(traceback.format_exc())
+        logger.error(f"Error en api_historial_smt_latest: {e}")
+        logger.info(traceback.format_exc())
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -567,6 +567,6 @@ def api_historial_smt_latest_v2():
 
         return jsonify({"success": True, "data": data, "total": len(data)})
     except Exception as e:
-        print("Error en api_historial_smt_latest_v2:", e)
-        print(traceback.format_exc())
+        logger.error("Error en api_historial_smt_latest_v2: %s", e)
+        logger.info(traceback.format_exc())
         return jsonify({"success": False, "error": str(e)}), 500

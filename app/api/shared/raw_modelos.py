@@ -25,13 +25,12 @@ from app.db_mysql import execute_query
 
 # Patron proxy anti-circular: `login_requerido` vive en app.routes y se
 # resuelve tarde para no arrastrar el ciclo shared -> routes -> shared.
-def login_requerido(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        from app import routes as _r
-        return _r.login_requerido(f)(*args, **kwargs)
+# Decorador de auth centralizado (antes era un proxy duplicado en cada
+# modulo). app.api.shared lo reexporta desde app.routes de forma lazy.
+from app.api.shared import login_requerido
 
-    return decorated
+import logging
+logger = logging.getLogger(__name__)
 
 
 bp = Blueprint("api_raw", __name__, url_prefix="/api/raw")
@@ -54,7 +53,7 @@ def listar_modelos_raw():
         modelos = [row.get("part_no") for row in result if row.get("part_no")]
         return jsonify({"success": True, "data": modelos, "count": len(modelos)})
     except Exception as e:
-        print(f"Error listando modelos RAW (part_no): {e}")
+        logger.error(f"Error listando modelos RAW (part_no): {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -93,7 +92,7 @@ def obtener_ct_uph():
             "uph": row.get("uph") if row.get("uph") is not None else None,
         })
     except Exception as e:
-        print(f"Error obteniendo CT/UPH raw_smd: {e}")
+        logger.error(f"Error obteniendo CT/UPH raw_smd: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -148,5 +147,5 @@ def api_raw_search():
             return jsonify([])
 
     except Exception as e:
-        print(f"Error en api_raw_search: {e}")
+        logger.error(f"Error en api_raw_search: {e}")
         return jsonify({"error": str(e)}), 500
