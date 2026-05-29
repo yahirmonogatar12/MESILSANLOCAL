@@ -984,9 +984,10 @@ def exportar_wos_excel():
         from openpyxl import Workbook
         from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
-        # po_wo_models.listar_wos vive en app/po_wo_models.py (modelo de datos legacy).
-        # No se confunde con app.api.control_produccion.po_wo.listar_wos (endpoint Flask).
-        from app.po_wo_models import listar_wos as listar_wos_modelo
+        # po_wo_models.listar_wos vive en app/api/control_produccion/po_wo_models.py
+        # (modelo de datos). No se confunde con
+        # app.api.control_produccion.po_wo.listar_wos (endpoint Flask).
+        from app.api.control_produccion.po_wo_models import listar_wos as listar_wos_modelo
 
         fecha_desde = request.args.get("fecha_desde")
         fecha_hasta = request.args.get("fecha_hasta")

@@ -14,7 +14,6 @@ templates y otros modulos siguen funcionando sin tener que actualizar):
   POST  /api/mi-perfil     -> api_mi_perfil    (actualiza perfil + password)
 
 Helpers privados que vinieron juntos:
-  - `cargar_usuarios()`       — fallback legacy de usuarios.json (solo usado por login)
   - `render_landing_page()`   — render compartido por index/inicio/login
 
 Convenciones:
@@ -26,7 +25,6 @@ Convenciones:
     `"index"`, `"inicio"`, `"favicon"` siguen siendo los nombres efectivos.
 """
 
-import json
 import os
 import re
 
@@ -50,26 +48,9 @@ logger = logging.getLogger(__name__)
 bp = Blueprint("auth_sesion", __name__)
 
 
-# ---------------------------------------------------------------------------
-# Helper privado: legacy del sistema de usuarios.json (pre-MySQL)
-# ---------------------------------------------------------------------------
-
-
-def cargar_usuarios():
-    """Funcion deprecada - se mantiene como fallback solo para `login`."""
-    # `app/database/usuarios.json` vive dos niveles arriba (app/api/auth/ -> app/)
-    ruta = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-        "database",
-        "usuarios.json",
-    )
-    ruta = os.path.abspath(ruta)
-    try:
-        with open(ruta, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        logger.info(" usuarios.json no encontrado, usando solo sistema de BD")
-        return {}
+# Nota: el login usa SOLO el sistema de BD. El fallback legacy a usuarios.json
+# (funcion cargar_usuarios) se elimino el 2026-05-29: el archivo no existia y
+# ese path comparaba contrasenas en texto plano.
 
 
 # ---------------------------------------------------------------------------
@@ -202,39 +183,6 @@ def login():
         if is_ajax:
             return jsonify({"success": True, "redirect": redirect_url})
         return redirect(redirect_url)
-
-    # FALLBACK: Intentar con el sistema antiguo (usuarios.json)
-    try:
-        usuarios_json = cargar_usuarios()
-        if user in usuarios_json and usuarios_json[user] == pw:
-            logger.warning(f" Login exitoso con sistema JSON (fallback): {user}")
-            session["usuario"] = user
-            session["nombre_completo"] = user
-            session["email"] = ""
-            session["departamento"] = ""
-            logger.warning(f" Usuario del sistema JSON (fallback): {user}")
-
-            auth_system.registrar_auditoria(
-                usuario=user,
-                modulo="sistema",
-                accion="login_json",
-                descripcion="Inicio de sesion con sistema JSON (fallback)",
-                resultado="EXITOSO",
-            )
-
-            redirect_url = url_for("auth_sesion.inicio")
-            if user.startswith("Materiales") or user == "1111":
-                redirect_url = url_for("material")
-            elif user.startswith("Produccion") or user == "2222":
-                redirect_url = url_for("produccion")
-            elif user.startswith("DDESARROLLO") or user == "3333":
-                redirect_url = url_for("desarrollo")
-
-            if is_ajax:
-                return jsonify({"success": True, "redirect": redirect_url})
-            return redirect(redirect_url)
-    except Exception as e:
-        logger.error(f" Error en fallback JSON: {e}")
 
     logger.error(f" Login fallo: {user} ({auth_message})")
     auth_system.registrar_auditoria(

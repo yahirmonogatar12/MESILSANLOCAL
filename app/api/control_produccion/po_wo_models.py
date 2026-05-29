@@ -1,14 +1,13 @@
 """
-Modelos de base de datos para el sistema PO → WO
-Basado        execute_query(query_work_orders)
-        print(" Tabla work_orders creada/verificada")
-        
-        # Migrar tabla existente para WO independientes
-        migrar_work_orders_independientes()n la especificación del agente de IA
+Modelos de base de datos para el sistema PO -> WO.
+
+Reubicado desde app/po_wo_models.py a app/api/control_produccion/ el
+2026-05-29 (vive junto a su unico consumidor, po_wo.py). Crea/migra las
+tablas PO/WO al importarse si MES_SKIP_STARTUP_INIT no esta activo.
 """
 
-from .db_mysql import execute_query
-from .config_mysql import get_db_connection
+from app.db_mysql import execute_query
+from app.config_mysql import get_db_connection
 from datetime import datetime, date
 import re
 import os

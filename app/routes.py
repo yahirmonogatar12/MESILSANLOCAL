@@ -221,8 +221,8 @@ def permisos_botones_pagina(usuario, pagina):
     return permisos.permisos_botones(usuario, pagina)
 
 
-# Fase 6 (2026-05-28): cargar_usuarios (legacy fallback usuarios.json) movido
-# a app/api/auth/sesion.py — solo lo consume `login` que ya vive ahi.
+# 2026-05-29: el fallback legacy a usuarios.json (cargar_usuarios) se elimino;
+# el login usa solo el sistema de BD (auth_system).
 
 
 # ACTUALIZADO: Usar el sistema de autenticación avanzado
