@@ -65,7 +65,7 @@ Ubicación: `app/templates/LISTAS/`
 |---|---|
 | `app/api/<seccion>/<modulo>.py` | Blueprint dueño de rutas de template/API del módulo nuevo |
 | `app/api/__init__.py` | Orquestador central: `_MODULOS_REGISTRADOS` + `registrar_blueprints_api(app)` |
-| `app/api/shared/__init__.py` | Re-exports lazy de helpers transversales (`login_requerido`, `execute_query`, `auth_system`, `obtener_fecha_hora_mexico`) |
+| `app/api/shared/__init__.py` | Re-exports lazy de helpers transversales (`login_requerido`, `requiere_permiso_dropdown`, `execute_query`, `auth_system`, `obtener_fecha_hora_mexico`) |
 | `app/api/auth/sesion.py` | Login, logout, inicio, perfil y helper privado de landing |
 | `app/routes.py` | Núcleo transversal y rutas LISTAS actuales; no recibe backend nuevo de módulos |
 | `app/auth_system.py` | Sistema de permisos: roles, botones, verificación |
@@ -187,10 +187,13 @@ window.miNuevaFuncion = function() {
 En `app/api/<seccion>/<modulo>.py`:
 
 ```python
+import logging
+
 from flask import Blueprint, render_template
 
 from app.api.shared import login_requerido
 
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("mi_modulo", __name__)
 
@@ -202,7 +205,7 @@ def mi_template_ajax():
     try:
         return render_template("MI_MODULO/MI_TEMPLATE.html")
     except Exception as e:
-        print(f"Error al cargar MI_TEMPLATE: {e}")
+        logger.error("Error al cargar MI_TEMPLATE: %s", e)
         return f"Error al cargar el contenido: {str(e)}", 500
 ```
 
@@ -288,10 +291,13 @@ compartido de listas o en el paquete de la nueva sección), sin meter lógica de
 módulo en `routes.py`:
 
 ```python
+import logging
+
 from flask import Blueprint, render_template
 
 from app.api.shared import login_requerido
 
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("mi_seccion_sidebar", __name__)
 
@@ -303,7 +309,7 @@ def lista_mi_seccion():
     try:
         return render_template("LISTAS/LISTA_MI_SECCION.html")
     except Exception as e:
-        print(f"Error al cargar LISTA_MI_SECCION: {e}")
+        logger.error("Error al cargar LISTA_MI_SECCION: %s", e)
         return f"Error al cargar el contenido: {str(e)}", 500
 ```
 

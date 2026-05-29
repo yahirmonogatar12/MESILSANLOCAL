@@ -154,10 +154,13 @@ Buscar la zona de contenedores (cerca de línea ~574) y agregar:
 **Archivo:** `app/api/<seccion>/<modulo>.py`
 
 ```python
+import logging
+
 from flask import Blueprint, render_template
 
 from app.api.shared import login_requerido
 
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("mi_modulo", __name__)
 
@@ -169,7 +172,7 @@ def mi_modulo():
     try:
         return render_template("Carpeta/mi_modulo.html")
     except Exception as e:
-        print(f"Error al cargar Mi Módulo: {e}")
+        logger.error("Error al cargar Mi Módulo: %s", e)
         return f"Error al cargar el contenido: {str(e)}", 500
 ```
 

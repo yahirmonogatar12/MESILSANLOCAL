@@ -2,9 +2,8 @@
 
 Migrado desde `app/routes.py` el 2026-05-28 (Fase 6). Sin cambios funcionales.
 
-Rutas (todas con `endpoint=` explicito para preservar los nombres legacy sin
-prefijo de blueprint — asi `url_for("auth_sesion.inicio")`, `url_for("login")`, etc. en
-templates y otros modulos siguen funcionando sin tener que actualizar):
+Rutas (con `endpoint=` explicito que fija el nombre LOCAL del endpoint; el
+endpoint real queda prefijado por el blueprint, p.ej. `auth_sesion.login`):
 
   GET   /                  -> index            (redirect a inicio)
   GET   /inicio            -> inicio           (landing page)
@@ -16,13 +15,15 @@ templates y otros modulos siguen funcionando sin tener que actualizar):
 Helpers privados que vinieron juntos:
   - `render_landing_page()`   — render compartido por index/inicio/login
 
-Convenciones:
-  - Blueprint name: "auth_sesion" — el endpoint visible se mantiene SIN prefijo
-    gracias a `endpoint="login"`, etc., lo cual es CRITICO porque hay 13+
-    referencias a `url_for("inicio"/"login"/"logout")` en routes.py + 3 en
-    templates (landing.html, login.html).
-  - `PUBLIC_ROUTE_ENDPOINTS` en routes.py NO requiere cambio: `"login"`,
-    `"index"`, `"inicio"`, `"favicon"` siguen siendo los nombres efectivos.
+Convenciones (OJO con url_for):
+  - Blueprint name: "auth_sesion". `endpoint="login"` NO quita el prefijo: el
+    endpoint real es `auth_sesion.login` (Flask siempre antepone el nombre del
+    blueprint). Por eso TODAS las referencias usan la forma PREFIJADA:
+    `url_for("auth_sesion.login")`, `url_for("auth_sesion.inicio")`, etc. en
+    routes.py, templates (landing.html, login.html) y otros modulos.
+  - `PUBLIC_ROUTE_ENDPOINTS` en routes.py lista los nombres prefijados:
+    "auth_sesion.index", "auth_sesion.inicio", "auth_sesion.login" (mas
+    "favicon", que es ruta a nivel de app, sin blueprint).
 """
 
 import os

@@ -126,7 +126,7 @@ No se debe dejar una ruta en el Blueprint y mover su SQL o CRUD a `db_mysql.py` 
 | ✏️ MODIFICAR | `app/api/__init__.py` | Agregar `"<seccion>.<modulo>"` a `_MODULOS_REGISTRADOS` |
 | ✏️ MODIFICAR | `app/static/js/<nombre>.js` | Lógica de carga, render y exportación |
 | — REFERENCIA | `app/api/shared/__init__.py` | Expone `execute_query` y re-exports lazy de helpers core |
-| — REFERENCIA | `app/config_mysql_hybrid.py` | Implementación de `execute_query()` |
+| — REFERENCIA | `app/config_mysql.py` | Implementación real de `execute_query()` (pool de conexiones + fail-loud) |
 
 ---
 
@@ -212,12 +212,14 @@ Rutas:
   GET /api/<modulo>/<accion>/export  -> XLSX
 """
 
+import logging
 import traceback
 
 from flask import Blueprint, jsonify, request
 
 from app.api.shared import execute_query, login_requerido
 
+logger = logging.getLogger(__name__)
 
 bp = Blueprint("mi_modulo", __name__)
 
@@ -292,7 +294,7 @@ _MODULOS_REGISTRADOS = [
 
 | Regla | Detalle |
 |-------|---------|
-| **Siempre usar `execute_query()`** | No crear conexiones manuales; usar la función centralizada de `config_mysql_hybrid.py` |
+| **Siempre usar `execute_query()`** | No crear conexiones manuales; usar la función centralizada (`config_mysql.py`, re-exportada por `app.api.shared`). Hace _fail-loud_: si la query falla re-lanza, no devuelve `[]` |
 | **Filtros con `WHERE 1=1`** | Permite concatenar `AND` dinámicos sin lógica condicional extra |
 | **Campos `date`/`datetime` → `str()`** | Los tipos `date` de Python no son serializables por `jsonify` |
 | **Valores `None` → valor por defecto** | Usar `row.get("campo", "") or ""` para evitar `null` en JSON |
@@ -363,8 +365,7 @@ def mi_api_export():
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except Exception as e:
-        import traceback
-        print(f"Error exportando: {e}\n{traceback.format_exc()}")
+        logger.exception("Error exportando: %s", e)
         return jsonify({"error": str(e)}), 500
 ```
 

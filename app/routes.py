@@ -308,9 +308,9 @@ def require_login_by_default():
 
 
 # Fase 6 (2026-05-28): /, /login, /inicio movidos a app/api/auth/sesion.py
-# (junto con render_landing_page y cargar_usuarios). Los endpoints conservan
-# los nombres "index", "login", "inicio" via endpoint= explicito para que
-# url_for() en templates y JS siga funcionando sin cambios.
+# (junto con render_landing_page). Los endpoints quedan como auth_sesion.index /
+# auth_sesion.login / auth_sesion.inicio (el endpoint= solo fija el nombre local;
+# el blueprint antepone el prefijo). url_for() los referencia con ese prefijo.
 
 
 # Fase 6 (2026-05-28): /api/mi-perfil movido a app/api/auth/sesion.py.
@@ -1128,7 +1128,8 @@ def produccion_info():
 
 
 # Helpers ICT movidos a app/api/shared/ict_helpers.py (2026-05-27).
-# Reexportados arriba si algun consumidor legacy aun los importa de routes.
+# Ya NO se reexportan desde routes: los consumidores los importan directo de ese
+# modulo (ver "Re-exports zombies eliminados" al inicio del archivo).
 
 # Migracion 2026-05-27: 31 helpers Vision + 2 helpers Excel + 2 renders + 6 APIs
 # movidos a 4 archivos nuevos:
@@ -1139,7 +1140,7 @@ def produccion_info():
 #   app/api/control_resultados/historial_vision.py            (render + 4 APIs)
 #   app/api/control_resultados/historial_vision_pass_fail.py  (render + 2 APIs)
 # Aliases 301: /historial-vision{,-ajax}, /historial-vision-pass-fail{,-ajax}.
-# Helpers Vision y Excel reexportados arriba para no romper consumidores legacy.
+# Helpers Vision y Excel: se importan directo de app/api/shared/* (sin re-export en routes).
 
 
 # Migracion 2026-05-27: Historial ICT (defects) movido a
@@ -1147,4 +1148,4 @@ def produccion_info():
 # Aliases 301: /historial-ict, /historial-ict-ajax, /ict/front-full-defects2.
 # Helpers _ict_format_row, _ict_find_history_record, _ict_load_local_parameters
 # y _append_indexable_text_filter movidos a app/api/shared/ict_helpers.py
-# y reexportados arriba via from .api.shared.ict_helpers import (...).
+# (se importan directo de ahi; routes.py ya no los reexporta).
