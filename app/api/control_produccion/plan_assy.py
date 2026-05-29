@@ -1459,6 +1459,48 @@ def api_plan_main_list():
 # ---------------------------------------------------------------------------
 
 
+# Tokens que delatan la fila de encabezado real del Excel de plan (por si el
+# archivo trae un titulo/fila vacia arriba y el encabezado no esta en la fila 1).
+_PLAN_ENCABEZADO_TOKENS = ("linea", "modelo", "model", "cantidad", "quantity", "parte", "po")
+
+
+def _plan_norm_encabezado(valor):
+    """Normaliza un nombre de columna para comparar (minusculas, sin puntos)."""
+    s = str(valor).strip().lower().replace(".", " ")
+    return " ".join(s.split())
+
+
+def _plan_fila_es_encabezado(valores):
+    """True si la fila contiene >=2 nombres de columna reconocibles."""
+    aciertos = 0
+    for v in valores:
+        norm = _plan_norm_encabezado(v)
+        if norm and any(tok in norm for tok in _PLAN_ENCABEZADO_TOKENS):
+            aciertos += 1
+    return aciertos >= 2
+
+
+def _plan_releer_con_encabezado(temp_path, filename, max_filas=15):
+    """Re-lee el Excel cuando el encabezado no esta en la primera fila.
+
+    Busca en las primeras `max_filas` la fila que contiene los nombres de
+    columna (Linea/Modelo/Cantidad/N. parte/...), la usa como encabezado y
+    descarta las filas de titulo de arriba. Devuelve el DataFrame o None.
+    """
+    engine = "openpyxl" if str(filename).lower().endswith(".xlsx") else "xlrd"
+    try:
+        raw = pd.read_excel(temp_path, header=None, engine=engine)
+    except Exception:
+        return None
+    for i in range(min(max_filas, len(raw))):
+        fila = raw.iloc[i].tolist()
+        if _plan_fila_es_encabezado(fila):
+            df = raw.iloc[i + 1:].copy()
+            df.columns = [str(v).strip() for v in fila]
+            return df.reset_index(drop=True)
+    return None
+
+
 @bp.route("/importar_excel_plan_produccion", methods=["POST"])
 @login_requerido
 def importar_excel_plan_produccion():
@@ -1535,6 +1577,17 @@ def importar_excel_plan_produccion():
                     }
                 ), 500
 
+        # Si pandas no encontro encabezados validos (p.ej. el Excel trae un
+        # titulo arriba y quedaron columnas "Unnamed: N"), buscar la fila de
+        # encabezado real y re-leer desde ahi.
+        if not _plan_fila_es_encabezado(list(df.columns)):
+            df_detectado = _plan_releer_con_encabezado(temp_path, filename)
+            if df_detectado is not None and not df_detectado.empty:
+                df = df_detectado
+                logger.info(
+                    f"Encabezado detectado en fila interna. Columnas: {list(df.columns)}"
+                )
+
         if df.empty:
             return jsonify(
                 {"success": False, "error": "El archivo Excel esta vacio"}
@@ -1586,12 +1639,15 @@ def importar_excel_plan_produccion():
             "linea": ["Linea", "linea", "Line", "LINEA", "Linea"],
             "modelo": ["Modelo", "modelo", "Model", "MODELO"],
             "numero_parte": [
+                # El match es por nombre NORMALIZADO (minusculas, sin puntos),
+                # asi que cada entrada cubre sus variantes de mayus/punto/espacio.
                 "Numero de parte",
-                "Numero de parte",
+                "No. de parte",
+                "N. parte",
+                "No. parte",
+                "nparte",
                 "numero_parte",
                 "Part Number",
-                "NUMERO_PARTE",
-                "Numero_Parte",
             ],
             "cantidad": ["Cantidad", "cantidad", "Quantity", "CANTIDAD"],
             "fecha_operacion": [
@@ -1614,18 +1670,26 @@ def importar_excel_plan_produccion():
         logger.info(f"Primeras 3 filas del DataFrame:")
         logger.info(df.head(3))
 
+        # Deteccion por nombre NORMALIZADO (insensible a mayus/minus y puntos),
+        # asi "N. parte", "NO. de parte", "No.Parte", etc. mapean a numero_parte.
         columnas_detectadas = {}
+        cols_norm = {_plan_norm_encabezado(c): c for c in df.columns}
         for campo, posibles_nombres in mapeo_columnas.items():
             for nombre in posibles_nombres:
-                if nombre in df.columns:
-                    columnas_detectadas[campo] = nombre
+                col_real = cols_norm.get(_plan_norm_encabezado(nombre))
+                if col_real is not None:
+                    columnas_detectadas[campo] = col_real
                     break
 
         logger.info(f"Columnas detectadas: {columnas_detectadas}")
 
-        if "modelo" not in columnas_detectadas or "cantidad" not in columnas_detectadas:
+        # Se acepta Modelo O Numero de parte como identificador (ademas de Cantidad).
+        tiene_identificador = (
+            "modelo" in columnas_detectadas or "numero_parte" in columnas_detectadas
+        )
+        if not tiene_identificador or "cantidad" not in columnas_detectadas:
             error_msg = (
-                f"El archivo debe contener al menos las columnas: Modelo y Cantidad. "
+                "El archivo debe contener al menos: Modelo o Numero de parte, y Cantidad. "
             )
             error_msg += f"Columnas encontradas: {list(df.columns)}. "
             error_msg += f"Mapeo detectado: {columnas_detectadas}"
@@ -1634,11 +1698,21 @@ def importar_excel_plan_produccion():
 
         for index, row in df.iterrows():
             try:
-                modelo = str(row.get(columnas_detectadas["modelo"], "")).strip()
+                modelo = str(row.get(columnas_detectadas.get("modelo", ""), "")).strip()
+                if modelo == "nan":
+                    modelo = ""
+
+                numero_parte = str(
+                    row.get(columnas_detectadas.get("numero_parte", ""), "")
+                ).strip()
+                if numero_parte == "nan":
+                    numero_parte = ""
+
                 cantidad = row.get(columnas_detectadas["cantidad"], 0)
 
-                if not modelo or modelo == "nan":
-                    errores.append(f"Fila {index + 2}: Modelo vacio")
+                # Identificador: modelo si existe, sino el numero de parte.
+                if not modelo and not numero_parte:
+                    errores.append(f"Fila {index + 2}: Modelo / Numero de parte vacio")
                     continue
 
                 try:
@@ -1657,12 +1731,6 @@ def importar_excel_plan_produccion():
                 linea = str(row.get(columnas_detectadas.get("linea", ""), "")).strip()
                 if linea == "nan":
                     linea = ""
-
-                numero_parte = str(
-                    row.get(columnas_detectadas.get("numero_parte", ""), "")
-                ).strip()
-                if numero_parte == "nan":
-                    numero_parte = ""
 
                 codigo_po = str(
                     row.get(columnas_detectadas.get("codigo_po", ""), "SIN-PO")
@@ -1718,7 +1786,7 @@ def importar_excel_plan_produccion():
 
                 codigo_wo = f"WO-{fecha_codigo}-{nuevo_numero:04d}"
 
-                codigo_modelo = modelo
+                codigo_modelo = modelo or numero_parte
                 nombre_modelo = obtener_nombre_modelo(codigo_modelo)
 
                 cursor.execute(
