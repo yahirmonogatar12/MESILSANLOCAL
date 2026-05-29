@@ -7,7 +7,6 @@ tablas PO/WO al importarse si MES_SKIP_STARTUP_INIT no esta activo.
 """
 
 from app.db_mysql import execute_query
-from app.config_mysql import get_db_connection
 from datetime import datetime, date
 import re
 import os

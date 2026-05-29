@@ -153,8 +153,14 @@ def get_mysql_connection():
     return _create_connection()
 
 @contextmanager
-def get_db_connection():
-    """Context manager para conexión a MySQL (usa pool)"""
+def pooled_connection():
+    """Context manager para una conexion del pool MySQL.
+
+    Antes se llamaba `get_db_connection`, pero ese nombre colisionaba con
+    db.get_db_connection y db_mysql.get_db_connection (que NO son context
+    managers y devuelven una conexion suelta). Renombrado el 2026-05-29.
+    Uso: `with pooled_connection() as conn: ...`.
+    """
     if not MYSQL_AVAILABLE:
         yield None
         return
@@ -292,7 +298,7 @@ def convert_sqlite_to_mysql(query):
 def test_connection():
     """Probar conexión a MySQL"""
     try:
-        with get_db_connection() as conn:
+        with pooled_connection() as conn:
             if conn is None:
                 return False
             cursor = conn.cursor()
