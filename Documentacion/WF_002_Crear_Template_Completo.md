@@ -91,7 +91,7 @@ Este documento detalla el flujo completo para crear un **nuevo módulo con templ
 
 **Ubicación:** `app/static/css/<nombre>.css`
 
-**Ejemplo real:** `app/static/css/Pass-Fail-ict.css`
+**Ejemplo real:** `app/static/css/ict-Pass-Fail.css`
 
 ### Qué cambiar respecto al CSS base:
 - Todos los selectores con ID: `#ict-table` → `#pf-ict-table`
@@ -107,7 +107,7 @@ Este documento detalla el flujo completo para crear un **nuevo módulo con templ
 
 **Ubicación:** `app/static/js/<nombre>.js`
 
-**Ejemplo real:** `app/static/js/Pass-Fail-ict.js`
+**Ejemplo real:** `app/static/js/ict-Pass-Fail.js`
 
 ### Checklist de adaptación:
 
@@ -204,7 +204,11 @@ const controlResultadosContainers = [
   "historial-aoi-unique-container",
   "historial-ict-unique-container",
   "historial-cambios-parametros-ict-unique-container",
-  "historial-maquina-ict-pass-fail-unique-container",  // ← AGREGAR
+  "historial-maquina-ict-pass-fail-unique-container",
+  "historial-vision-unique-container",
+  "historial-vision-pass-fail-unique-container",
+  "inventario-imd-terminado-unique-container",
+  "mi-modulo-unique-container",  // ← AGREGAR el tuyo
 ];
 ```
 

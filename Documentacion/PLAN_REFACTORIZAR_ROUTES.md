@@ -1,7 +1,7 @@
 # Plan: Refactorizar `app/routes.py`
 
 **Fecha del plan**: 2026-05-28
-**Estado actual**: `routes.py` tiene **1232 líneas** tras Fase 6 (baseline original: 4455 líneas, 105 defs top-level → ahora 33 defs core).
+**Estado actual**: `routes.py` tiene **1131 líneas** tras Fase 6 + extracción de helpers a shared/ (baseline original: 4455 líneas, 105 defs top-level → ahora 28 defs core).
 **Meta**: reducir a **~2100 líneas** (-53%) moviendo o borrando lo que ya no debería vivir aquí.
 
 ## Progreso
@@ -15,6 +15,7 @@
 | **Fase 4 (11 rutas gordas + 3 helpers huérfanos)** | ✅ **2026-05-28** | **1823** | **-1323** | **379** | ✅ 10 URLs verificadas |
 | **Fase 5 (limpieza imports muertos)** | ✅ **2026-05-28** | **1745** | **-78** | **379** | ✅ AST OK + lazy resolve OK |
 | **Fase 6 (auth blueprint: index/inicio/login/logout/api_mi_perfil)** | ✅ **2026-05-28** | **1232** | **-513** | **379** | ✅ 5 URLs migradas + url_for resuelve |
+| **Fase 6+ (helpers extraídos a `shared/`)** | ✅ **2026-05-28** | **1131** | **-101** | **379** | ✅ lazy resolve OK |
 
 ## Principio rector
 
@@ -461,21 +462,29 @@ esos helpers.
 | **Fase 4 (mover 11 rutas gordas + Fase 5 anticipada) ✅** | **1823** | **-2632** |
 | **Fase 5 (limpiar 72 imports muertos) ✅** | **1745** | **-2710** |
 | **Fase 6 (auth blueprint) ✅** | **1232** | **-3223** |
+| **Fase 6+ (helpers a `shared/`) ✅** | **1131** | **-3324** |
 
-**Meta destruida**: `routes.py` está en **1232 líneas** (objetivo era ~2100 / -53%).
-Reducción real: **-3223 líneas (-72.3%)** desde el baseline.
+**Meta destruida**: `routes.py` está en **1131 líneas** (objetivo era ~2100 / -53%).
+Reducción real: **-3324 líneas (-74.6%)** desde el baseline.
 
-**Verificación final del contenido**: AST analysis confirma que las **40 funciones
+**Verificación final del contenido**: AST analysis confirma que las **28 funciones
 top-level** que quedan en `routes.py` corresponden 1:1 con la lista de
-"debe quedarse" del plan (24 core + 8 LISTAS + 1 serve_list_template + 7 más).
-**0 funciones faltantes, 0 funciones extra** (los 3 closures internos
+"debe quedarse" del plan tras la extracción de helpers extra.
+**0 funciones faltantes, 0 funciones extra** (los closures internos
 `decorated_function`/`decorator`/`decorada` son parte legítima de la
-implementación de `login_requerido` y `requiere_permiso_dropdown`).
+implementación de `login_requerido`).
 
-**Refactor COMPLETO**: `routes.py` con **1232 líneas**, **33 defs top-level**
+**Refactor COMPLETO**: `routes.py` con **1131 líneas**, **28 defs top-level**
 (decoradores, middleware, helpers de auth, landing/dashboard, renders
 transversales y LISTAS), **0 funciones DDL**, **0 re-exports zombies**,
 **0 imports muertos**.
+
+**Helpers extraídos a `app/api/shared/`** (post-Fase 6):
+- `obtener_fecha_hora_mexico` → `shared/datetime_helpers.py` (consumido por ~15 blueprints)
+- `requiere_permiso_dropdown` → `shared/permisos.py` (decorador transversal)
+
+Ambos se siguen exponiendo desde `app.api.shared` via proxy lazy PEP 562
+`__getattr__`, manteniendo el import-path canónico para los consumidores.
 
 ---
 

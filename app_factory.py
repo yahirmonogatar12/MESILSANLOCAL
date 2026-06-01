@@ -64,10 +64,9 @@ def create_app():
         # Inicializaciones de BD + arranque de workers (respeta MES_SKIP_STARTUP_INIT)
         run_startup_init()
 
-        if "health" not in app.view_functions:
-            @app.get("/")
-            def health():
-                return "ok", 200
+        # Nota: la raiz "/" la sirve auth_sesion.index (landing). El health check
+        # es /api/health en routes.py. No se agrega un "/" extra aqui (evita una
+        # segunda regla para "/").
 
         app._mes_factory_initialized = True
 

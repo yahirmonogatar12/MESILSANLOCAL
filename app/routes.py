@@ -67,21 +67,6 @@ def _env_flag(name, default=False):
     return str(val).strip().lower() in ("1", "true", "yes", "on", "si")
 
 
-def should_run_startup_init():
-    # Overrides explícitos
-    if _env_flag("MES_FORCE_STARTUP_INIT", False):
-        return True
-    if _env_flag("MES_SKIP_STARTUP_INIT", False):
-        return False
-
-    # Si estamos en dev con reloader, solo correr en el proceso real
-    if _env_flag("MES_USE_RELOADER", False):
-        return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
-
-    # Sin reloader: correr init normalmente
-    return True
-
-
 # ---------------------------------------------------------------------------
 # Seguridad de sesion
 # ---------------------------------------------------------------------------
@@ -139,14 +124,9 @@ def _handle_uncaught_exception(error):
     return "Error interno del servidor", 500
 
 
-STARTUP_INIT_ENABLED = should_run_startup_init()
-_startup_t0 = time.time()
-
-
-def _startup_log(msg):
-    elapsed = round(time.time() - _startup_t0, 2)
-    logger.info("[startup %ss] %s", round(time.time() - _startup_t0, 2), msg)
-
+# El control real del startup (should_run_startup_init / run_startup_init) vive
+# en app/startup_init.py y lo invoca app_factory.create_app(). routes.py ya no
+# duplica esa logica.
 
 # smd_inventory: modulo borrado (commit c9a312b). Mantener como nota historica
 # para evitar que reaparezca como "TODO migrar" en futuros audits.
