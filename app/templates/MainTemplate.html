@@ -61,6 +61,8 @@
     <link id="control-plan-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_smt.css', v='20260526a') }}">
     <!-- WF_004: CSS persistente Inventario IMD-SMD Terminado (Control de resultados) -->
     <link id="inventario-imd-terminado-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_imd_terminado.css', v='20260527a') }}">
+    <!-- WF_004: CSS persistente Inventario Exceso QA (Control de resultados / Control de inventario) -->
+    <link id="inventario-exceso-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_exceso.css', v='20260601e') }}">
     <!-- WF_004: CSS persistente Historial AOI (Control de resultados) -->
     <link id="control-historial-aoi-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_historial_aoi.css', v='20260527a') }}">
     <!-- WF_004: CSS persistente modulos ICT (Control de resultados / Historial de maquinas calidad) -->
@@ -681,6 +683,12 @@
 
         <!-- Inventario IMD-SMD Terminado (Control de inventario) -->
         <div id="inventario-imd-terminado-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Inventario Exceso QA (Control de inventario) -->
+        <!-- WF_002: contenedor unico para carga AJAX del modulo Inventario Exceso QA. -->
+        <div id="inventario-exceso-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
@@ -2849,6 +2857,20 @@ function hideAllMaterialContainers() {
                 if (container) container.style.display = 'block';
 
                 cargarContenidoDinamico('inventario-imd-terminado-unique-container', '/control_resultados/inventario_imd_terminado');
+            };
+
+            // WF_002/WF_004: modulo Inventario Exceso QA usa contenedor unico
+            // y callback para inicializar JS/CSS persistente tras la carga AJAX.
+            window.mostrarInventarioExceso = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('inventario-exceso-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('inventario-exceso-unique-container', '/control_resultados/inventario_exceso', () => {
+                    if (typeof window.initInventarioExceso === 'function') {
+                        window.initInventarioExceso();
+                    }
+                });
             };
 
             // WF_002: Historial admin (entradas/salidas/retornos) e Inventario actual

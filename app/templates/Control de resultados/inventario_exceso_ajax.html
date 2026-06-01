@@ -1,0 +1,261 @@
+<!-- Inventario Exceso QA.
+     WF_001: cargado desde LISTA_DE_CONTROL_DE_RESULTADOS / Control de inventario.
+     WF_002: fragment AJAX con contenedor y IDs propios inventario-exceso-*.
+     WF_003: consumido por app/api/control_resultados/inventario_exceso.py.
+     WF_004: CSS propio persistente/cache-busted en MainTemplate.html y asegurado por JS. -->
+<div
+    id="inventario-exceso-module"
+    class="inventario-exceso-module"
+    data-module-type="inventory"
+>
+    <div id="inventario-exceso-stage" class="ae-inventory-stage">
+        <section class="ae-inventory-pane ae-inventory-pane--main">
+            <div class="ae-filters-card">
+                <div class="ae-card-header">
+                    <h3>Catálogo actual</h3>
+                </div>
+                <div class="ae-filters">
+                    <div class="ae-filter-group ae-filter-group--wide">
+                        <label for="inventario-exceso-search">No. parte</label>
+                        <input
+                            type="text"
+                            id="inventario-exceso-search"
+                            placeholder="Filtrar por no. parte"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                    </div>
+                    <button id="inventario-exceso-search-btn" class="ae-btn-primary" type="button">
+                        Buscar
+                    </button>
+                    <button id="inventario-exceso-clear-btn" class="ae-btn-secondary" type="button">
+                        Limpiar
+                    </button>
+                    <button id="inventario-exceso-export-btn" class="ae-btn-export" type="button">
+                        Exportar Excel
+                    </button>
+                    <button id="inventario-exceso-open-closure-btn" class="ae-btn-primary" type="button">
+                        Cierre de inventario
+                    </button>
+                </div>
+            </div>
+
+            <div class="ae-results-card">
+                <div class="ae-card-header">
+                    <h3>Inventario Exceso</h3>
+                    <span id="inventario-exceso-count" class="ae-record-count">0 piezas</span>
+                    <span id="inventario-exceso-status" class="ae-status-text"></span>
+                </div>
+                <div class="ae-table-shell">
+                    <div class="ae-table-head">
+                        <table class="ae-history-table ae-history-table--head">
+                            <colgroup>
+                                <col style="width: 16%;">
+                                <col style="width: 20%;">
+                                <col style="width: 12%;">
+                                <col style="width: 13%;">
+                                <col style="width: 13%;">
+                                <col style="width: 13%;">
+                                <col style="width: 13%;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>No. parte</th>
+                                    <th>Modelo</th>
+                                    <th>Cliente</th>
+                                    <th>Inv. inicial</th>
+                                    <th>Entradas</th>
+                                    <th>Salidas</th>
+                                    <th>Cantidad total</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="ae-table-body-wrap">
+                        <table class="ae-history-table ae-history-table--body">
+                            <colgroup>
+                                <col style="width: 16%;">
+                                <col style="width: 20%;">
+                                <col style="width: 12%;">
+                                <col style="width: 13%;">
+                                <col style="width: 13%;">
+                                <col style="width: 13%;">
+                                <col style="width: 13%;">
+                            </colgroup>
+                            <tbody id="inventario-exceso-tbody">
+                                <tr>
+                                    <td colspan="7" class="ae-empty-cell">Cargando inventario...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="ae-inventory-pane ae-inventory-pane--closure">
+            <div class="ae-filters-card ae-closure-meta-card">
+                <div class="ae-card-header ae-card-header--closure">
+                    <div class="ae-card-header__title-group">
+                        <button id="inventario-exceso-closure-back-btn" class="ae-back-btn" type="button" aria-label="Regresar a inventario">
+                            &#8592;
+                        </button>
+                        <h3>Datos del cierre</h3>
+                    </div>
+                    <span id="inventario-exceso-closure-status" class="ae-status-text"></span>
+                </div>
+                <div class="ae-closure-meta-grid">
+                    <div class="ae-filter-group">
+                        <label for="inventario-exceso-closure-date">Fecha</label>
+                        <input type="text" id="inventario-exceso-closure-date" readonly>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="inventario-exceso-closure-user">Usuario</label>
+                        <input type="text" id="inventario-exceso-closure-user" readonly>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="inventario-exceso-closure-month">Mes del cierre</label>
+                        <input type="text" id="inventario-exceso-closure-month" readonly>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="inventario-exceso-closure-file">CSV de inventario fisico</label>
+                        <input type="file" id="inventario-exceso-closure-file" accept=".csv,text/csv">
+                    </div>
+                    <button id="inventario-exceso-closure-template-btn" class="ae-btn-secondary" type="button">
+                        Descargar plantilla
+                    </button>
+                    <button id="inventario-exceso-closure-reset-btn" class="ae-btn-secondary" type="button">
+                        Reiniciar carga
+                    </button>
+                    <button id="inventario-exceso-closure-preview-btn" class="ae-btn-primary" type="button">
+                        Validar preview
+                    </button>
+                    <button id="inventario-exceso-closure-confirm-btn" class="ae-btn-success" type="button" disabled>
+                        Confirmar cierre
+                    </button>
+                </div>
+                <div id="inventario-exceso-closure-errors" class="ae-closure-errors"></div>
+            </div>
+
+            <div class="ae-closure-preview-layout">
+                <div class="ae-results-card ae-closure-summary-card">
+                    <div class="ae-card-header">
+                        <h3>Accuracy del cierre</h3>
+                    </div>
+                    <div class="ae-closure-summary-body">
+                        <div id="inventario-exceso-closure-donut" class="ae-closure-donut">
+                            <div class="ae-closure-donut__inner">
+                                <strong id="inventario-exceso-closure-accuracy">0%</strong>
+                                <span>Accuracy</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ae-results-card ae-closure-preview-card">
+                    <div class="ae-card-header">
+                        <h3>Preview del cierre</h3>
+                        <span id="inventario-exceso-closure-preview-count" class="ae-record-count">0 registros</span>
+                    </div>
+                    <div class="ae-table-shell">
+                        <div class="ae-table-head">
+                            <table class="ae-history-table ae-history-table--head">
+                                <colgroup>
+                                    <col style="width: 18%;">
+                                    <col style="width: 16%;">
+                                    <col style="width: 14%;">
+                                    <col style="width: 13%;">
+                                    <col style="width: 13%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 14%;">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>No. parte</th>
+                                        <th>Modelo</th>
+                                        <th>Cliente</th>
+                                        <th>Sistema</th>
+                                        <th>Fisico CSV</th>
+                                        <th>Diferencia</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <div class="ae-table-body-wrap">
+                            <table class="ae-history-table ae-history-table--body">
+                                <colgroup>
+                                    <col style="width: 18%;">
+                                    <col style="width: 16%;">
+                                    <col style="width: 14%;">
+                                    <col style="width: 13%;">
+                                    <col style="width: 13%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 14%;">
+                                </colgroup>
+                                <tbody id="inventario-exceso-closure-preview-tbody">
+                                    <tr>
+                                        <td colspan="7" class="ae-empty-cell">Cargando preview base...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ae-results-card">
+                <div class="ae-card-header">
+                    <h3>Historial de cierres</h3>
+                    <span id="inventario-exceso-closure-history-count" class="ae-record-count">0 registros</span>
+                </div>
+                <div class="ae-table-shell">
+                    <div class="ae-table-head">
+                        <table class="ae-history-table ae-history-table--head">
+                            <colgroup>
+                                <col style="width: 18%;">
+                                <col style="width: 12%;">
+                                <col style="width: 16%;">
+                                <col style="width: 14%;">
+                                <col style="width: 10%;">
+                                <col style="width: 14%;">
+                                <col style="width: 16%;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Cierre</th>
+                                    <th>Mes</th>
+                                    <th>Fecha</th>
+                                    <th>Usuario</th>
+                                    <th>Accuracy</th>
+                                    <th>Estado</th>
+                                    <th>Accion</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="ae-table-body-wrap">
+                        <table class="ae-history-table ae-history-table--body">
+                            <colgroup>
+                                <col style="width: 18%;">
+                                <col style="width: 12%;">
+                                <col style="width: 16%;">
+                                <col style="width: 14%;">
+                                <col style="width: 10%;">
+                                <col style="width: 14%;">
+                                <col style="width: 16%;">
+                            </colgroup>
+                            <tbody id="inventario-exceso-closure-history-tbody">
+                                <tr>
+                                    <td colspan="7" class="ae-empty-cell">Sin cierres registrados.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/inventario_exceso.js', v='20260601b') }}"></script>

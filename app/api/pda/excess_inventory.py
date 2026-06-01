@@ -9,6 +9,10 @@ La autenticacion se reutiliza desde `/api/shipping/auth/*`; estos endpoints
 son publicos respecto a la sesion web del portal, igual que las apps PDA.
 """
 
+import csv
+import re
+from collections import Counter
+from pathlib import Path
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
@@ -38,6 +42,8 @@ logger = logging.getLogger(__name__)
 EXCESS_TABLES = {
     "pieces": "qa_exceso_inventario_piezas",
     "movements": "qa_exceso_movimientos",
+    "closures": "qa_exceso_inventario_cierres",
+    "closure_batches": "qa_exceso_inventario_cierre_lotes",
 }
 
 bp = Blueprint("excess_inventory_api", __name__, url_prefix="/api/shipping/excess")
@@ -45,6 +51,25 @@ bp = Blueprint("excess_inventory_api", __name__, url_prefix="/api/shipping/exces
 
 def normalize_scan_code(raw_value):
     return normalize_search(raw_value).upper()
+
+
+def resolve_part_number_from_scan_code(raw_value, catalog_part_numbers):
+    scan_code = normalize_scan_code(raw_value)
+    if not scan_code:
+        return ""
+
+    normalized_catalog = [
+        normalize_part_number(part_number)
+        for part_number in catalog_part_numbers
+        if normalize_part_number(part_number)
+    ]
+    for part_number in sorted(normalized_catalog, key=len, reverse=True):
+        if scan_code.startswith(part_number):
+            return part_number
+
+    match = re.search(r"[A-Z]{2,5}\d{6,12}", scan_code)
+    candidate = normalize_part_number(match.group(0)) if match else ""
+    return candidate if candidate in set(normalized_catalog) else ""
 
 
 def resolve_catalog_snapshot(cursor, part_number):
@@ -69,6 +94,200 @@ def resolve_catalog_snapshot(cursor, part_number):
     return cursor.fetchone()
 
 
+def fetch_shipping_catalog_snapshots(cursor):
+    cursor.execute(
+        f"""
+        SELECT
+          c.id AS catalog_id,
+          c.part_number,
+          c.product_model,
+          c.description,
+          c.customer,
+          c.zone_code,
+          i.id AS shipping_inventory_id
+        FROM `{SHIPPING_TABLES['catalog']}` c
+        LEFT JOIN `{SHIPPING_TABLES['inventory']}` i
+          ON i.catalog_id = c.id
+        WHERE COALESCE(c.part_number, '') <> ''
+        """
+    )
+    snapshots = {}
+    for row in cursor.fetchall():
+        part_number = normalize_part_number(row.get("part_number"))
+        if part_number and part_number not in snapshots:
+            snapshots[part_number] = row
+    return snapshots
+
+
+def parse_excess_baseline_csv(csv_path, catalog_part_numbers):
+    path = Path(csv_path)
+    rows = []
+    errors = []
+    duplicate_counts = Counter()
+
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fieldnames = [normalize_search(name).upper() for name in (reader.fieldnames or [])]
+        if fieldnames != ["BARCODE"]:
+            return [], [f"El CSV baseline debe contener exactamente la columna BARCODE: {path}"]
+
+        for line_number, row in enumerate(reader, start=2):
+            raw_scan_code = normalize_scan_code(row.get("BARCODE"))
+            if not raw_scan_code:
+                continue
+
+            duplicate_counts[raw_scan_code] += 1
+            scan_code = (
+                raw_scan_code
+                if duplicate_counts[raw_scan_code] == 1
+                else f"{raw_scan_code}#BASELINE{duplicate_counts[raw_scan_code]:04d}"
+            )
+
+            part_number = resolve_part_number_from_scan_code(raw_scan_code, catalog_part_numbers)
+            if not part_number:
+                errors.append(
+                    f"Linea {line_number}: no se pudo relacionar {raw_scan_code} con el catalogo de embarques."
+                )
+                continue
+            rows.append(
+                {
+                    "scan_code": scan_code,
+                    "raw_code": raw_scan_code,
+                    "part_number": part_number,
+                }
+            )
+
+    return rows, errors
+
+
+def import_excess_baseline_csv(
+    cursor,
+    csv_path,
+    scanned_at="2026-05-31 23:59:00",
+    registered_by="Carga inicial",
+    device_id="baseline-cierre-mayo",
+):
+    catalog_snapshots = fetch_shipping_catalog_snapshots(cursor)
+    parsed_rows, errors = parse_excess_baseline_csv(csv_path, catalog_snapshots.keys())
+    if errors:
+        return {"success": False, "errors": errors, "inserted": 0, "skipped": 0}
+
+    inserted = 0
+    skipped = 0
+    movement_inserted = 0
+    by_part = Counter()
+
+    for parsed in parsed_rows:
+        scan_code = parsed["scan_code"]
+        raw_code = parsed.get("raw_code") or scan_code
+        part_number = parsed["part_number"]
+        catalog = catalog_snapshots.get(part_number) or {}
+        by_part[part_number] += 1
+
+        cursor.execute(
+            f"""
+            SELECT id
+            FROM `{EXCESS_TABLES['pieces']}`
+            WHERE scan_code = %s
+            LIMIT 1
+            """,
+            (scan_code,),
+        )
+        existing = cursor.fetchone()
+        if existing:
+            piece_id = existing.get("id")
+            skipped += 1
+        else:
+            cursor.execute(
+                f"""
+                INSERT INTO `{EXCESS_TABLES['pieces']}` (
+                  scan_code,
+                  raw_code,
+                  part_number,
+                  quantity,
+                  catalog_id,
+                  shipping_inventory_id,
+                  source_return_id,
+                  product_model,
+                  description,
+                  customer,
+                  zone_code,
+                  status,
+                  registered_by_user_id,
+                  registered_by,
+                  device_id,
+                  notes,
+                  scanned_at
+                ) VALUES (%s, %s, %s, 1, %s, %s, NULL, %s, %s, %s, %s, 'active', NULL, %s, %s, %s, %s)
+                """,
+                (
+                    scan_code,
+                    raw_code,
+                    part_number,
+                    catalog.get("catalog_id"),
+                    catalog.get("shipping_inventory_id"),
+                    catalog.get("product_model"),
+                    catalog.get("description"),
+                    catalog.get("customer"),
+                    catalog.get("zone_code"),
+                    registered_by,
+                    device_id,
+                    f"Baseline importado desde {Path(csv_path).name}",
+                    scanned_at,
+                ),
+            )
+            piece_id = cursor.lastrowid
+            inserted += 1
+
+        cursor.execute(
+            f"""
+            SELECT id
+            FROM `{EXCESS_TABLES['movements']}`
+            WHERE piece_id = %s
+              AND movement_type = 'entry'
+            LIMIT 1
+            """,
+            (piece_id,),
+        )
+        if not cursor.fetchone():
+            cursor.execute(
+                f"""
+                INSERT INTO `{EXCESS_TABLES['movements']}` (
+                  piece_id,
+                  scan_code,
+                  movement_type,
+                  part_number,
+                  quantity,
+                  registered_by_user_id,
+                  registered_by,
+                  device_id,
+                  notes,
+                  movement_at
+                ) VALUES (%s, %s, 'entry', %s, 1, NULL, %s, %s, %s, %s)
+                """,
+                (
+                    piece_id,
+                    scan_code,
+                    part_number,
+                    registered_by,
+                    device_id,
+                    f"Baseline importado desde {Path(csv_path).name}",
+                    scanned_at,
+                ),
+            )
+            movement_inserted += 1
+
+    return {
+        "success": True,
+        "source": str(csv_path),
+        "total": len(parsed_rows),
+        "inserted": inserted,
+        "skipped": skipped,
+        "movementInserted": movement_inserted,
+        "byPart": dict(sorted(by_part.items())),
+    }
+
+
 def resolve_latest_excess_return(cursor, part_number):
     cursor.execute(
         f"""
@@ -82,6 +301,49 @@ def resolve_latest_excess_return(cursor, part_number):
         (part_number, "%Exceso%"),
     )
     return cursor.fetchone()
+
+
+def resolve_registered_by_user_id(cursor, registered_by_id, *identity_values):
+    if registered_by_id:
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios_sistema
+            WHERE id = %s
+              AND activo = 1
+            LIMIT 1
+            """,
+            (registered_by_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return row.get("id")
+
+    identities = [
+        normalize_search(value)
+        for value in identity_values
+        if normalize_search(value)
+    ]
+    if not identities:
+        return None
+
+    placeholders = ", ".join(["%s"] * len(identities))
+    cursor.execute(
+        f"""
+        SELECT id
+        FROM usuarios_sistema
+        WHERE activo = 1
+          AND (
+            username IN ({placeholders})
+            OR nombre_completo IN ({placeholders})
+          )
+        ORDER BY id ASC
+        LIMIT 1
+        """,
+        tuple(identities + identities),
+    )
+    row = cursor.fetchone()
+    return row.get("id") if row else None
 
 
 @bp.route("/pieces", methods=["POST"])
@@ -102,7 +364,16 @@ def create_excess_piece():
     )
     quantity = normalize_integer(data.get("quantity")) or 1
     registered_by = normalize_search(data.get("registeredBy")) or "Usuario local"
-    registered_by_id = normalize_integer(data.get("registeredById"))
+    registered_by_id = normalize_integer(
+        data.get("registeredById")
+        or data.get("registered_by_user_id")
+        or data.get("userId")
+    )
+    registered_by_username = normalize_search(
+        data.get("registeredByUsername")
+        or data.get("username")
+        or data.get("userName")
+    )
     device_id = normalize_search(data.get("deviceId")) or None
     notes = normalize_search(data.get("notes")) or None
     scanned_at = to_sql_datetime(data.get("scannedAt"))
@@ -160,6 +431,12 @@ def create_excess_piece():
             ), 404
 
         related_return = resolve_latest_excess_return(cursor, part_number)
+        registered_by_id = resolve_registered_by_user_id(
+            cursor,
+            registered_by_id,
+            registered_by_username,
+            registered_by,
+        )
 
         cursor.execute(
             f"""
@@ -479,6 +756,58 @@ def init_excess_inventory_tables():
                 ON DELETE RESTRICT,
               CONSTRAINT fk_excess_mov_user
                 FOREIGN KEY (registered_by_user_id) REFERENCES usuarios_sistema (id)
+                ON UPDATE CASCADE
+                ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{EXCESS_TABLES['closure_batches']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              closure_label VARCHAR(120) NOT NULL,
+              closure_month CHAR(7) NOT NULL,
+              closed_at DATETIME NULL,
+              created_by VARCHAR(120) NULL,
+              confirmed_by VARCHAR(120) NULL,
+              status ENUM('pending', 'confirmed', 'cancelled') NOT NULL DEFAULT 'pending',
+              source_filename VARCHAR(255) NULL,
+              file_hash VARCHAR(64) NULL,
+              rows_hash VARCHAR(64) NULL,
+              payload_json LONGTEXT NULL,
+              summary_json LONGTEXT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              confirmed_at DATETIME NULL,
+              PRIMARY KEY (id),
+              KEY idx_excess_closure_batch_status (status),
+              KEY idx_excess_closure_batch_month (closure_month),
+              KEY idx_excess_closure_batch_closed_at (closed_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{EXCESS_TABLES['closures']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              closure_batch_id BIGINT UNSIGNED NULL,
+              closure_label VARCHAR(120) NULL,
+              part_number VARCHAR(64) NOT NULL,
+              product_model VARCHAR(180) NULL,
+              customer VARCHAR(120) NULL,
+              system_quantity INT NOT NULL DEFAULT 0,
+              physical_quantity INT NOT NULL DEFAULT 0,
+              difference_quantity INT NOT NULL DEFAULT 0,
+              initial_quantity INT NOT NULL DEFAULT 0,
+              closed_at DATETIME NOT NULL,
+              closed_by VARCHAR(120) NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              KEY idx_excess_closure_part_closed_at (part_number, closed_at),
+              KEY idx_excess_closure_batch (closure_batch_id),
+              CONSTRAINT fk_excess_closure_batch
+                FOREIGN KEY (closure_batch_id) REFERENCES `{EXCESS_TABLES['closure_batches']}` (id)
                 ON UPDATE CASCADE
                 ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

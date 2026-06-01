@@ -1,0 +1,594 @@
+/* Inventario Exceso QA.
+   WF_002: CSS propio y scopeado del template.
+   WF_004: cargado de forma persistente desde MainTemplate.html y reforzado por JS.
+   No depende de almacen_embarques_history.css para evitar colisiones entre pestañas. */
+
+#control-resultados-content-area:not(.mes-area-hidden):has(> #inventario-exceso-unique-container[style*="display: block"]) {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    height: calc(100vh - var(--header-height, 100px) - 31px) !important;
+    height: calc(100dvh - var(--header-height, 100px) - 31px) !important;
+    max-height: calc(100vh - var(--header-height, 100px) - 31px) !important;
+    max-height: calc(100dvh - var(--header-height, 100px) - 31px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#inventario-exceso-unique-container[style*="display: block"] {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    padding: 5px !important;
+    margin-top: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+}
+
+#inventario-exceso-module {
+    --ae-table-scrollbar-width: 12px;
+    color: var(--ilsan-text-light);
+    display: flex;
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#inventario-exceso-module .ae-inventory-stage {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    transition: transform 0.28s ease;
+}
+
+#inventario-exceso-module.is-closure-active .ae-inventory-stage {
+    transform: translateX(-100%) !important;
+}
+
+#inventario-exceso-module .ae-inventory-pane {
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-right: 10px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+#inventario-exceso-module .ae-inventory-pane--closure {
+    padding-left: 10px;
+    padding-right: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) clamp(124px, 22%, 160px);
+    gap: 18px;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#inventario-exceso-module .ae-inventory-pane--main {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 18px;
+}
+
+#inventario-exceso-module .ae-filters-card,
+#inventario-exceso-module .ae-results-card {
+    width: 100%;
+    background: var(--ilsan-dark-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+#inventario-exceso-module .ae-filters-card {
+    flex: 0 0 auto;
+}
+
+#inventario-exceso-module .ae-results-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#inventario-exceso-module .ae-inventory-pane--main > .ae-results-card {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+}
+
+#inventario-exceso-module .ae-card-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#inventario-exceso-module .ae-card-header h3 {
+    color: var(--ilsan-text-light);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1 1 auto;
+}
+
+#inventario-exceso-module .ae-record-count {
+    color: var(--ilsan-text-gray);
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px 10px;
+    border-radius: 16px;
+    margin-left: auto;
+}
+
+#inventario-exceso-module .ae-status-text {
+    color: var(--ilsan-text-gray);
+    font-size: 0.8rem;
+    margin-left: 6px;
+    white-space: nowrap;
+}
+
+#inventario-exceso-module .ae-status-text.is-error {
+    color: #ff9a9a;
+}
+
+#inventario-exceso-module .ae-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: flex-start;
+    width: 100%;
+    column-gap: 10px;
+    row-gap: 10px;
+    padding: 12px 18px 16px;
+}
+
+#inventario-exceso-module .ae-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#inventario-exceso-module .ae-filter-group--wide {
+    min-width: min(100%, 260px);
+    flex: 0 1 300px;
+}
+
+#inventario-exceso-module .ae-filter-group label {
+    color: var(--ilsan-text-light);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+#inventario-exceso-module .ae-filter-group input,
+#inventario-exceso-module .ae-filter-group select {
+    width: 160px;
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#inventario-exceso-module .ae-filter-group--wide input {
+    width: 100%;
+}
+
+#inventario-exceso-module .ae-filter-group input:focus,
+#inventario-exceso-module .ae-filter-group select:focus {
+    outline: none;
+    border-color: var(--ilsan-accent-blue);
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+#inventario-exceso-module .ae-filter-group input::placeholder {
+    color: var(--ilsan-text-muted);
+}
+
+#inventario-exceso-module .ae-btn-primary,
+#inventario-exceso-module .ae-btn-success,
+#inventario-exceso-module .ae-btn-export,
+#inventario-exceso-module .ae-btn-secondary,
+#inventario-exceso-module .ae-btn-inline {
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-weight: 600;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+#inventario-exceso-module .ae-btn-primary {
+    min-width: 110px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.85rem;
+    background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+#inventario-exceso-module .ae-btn-export {
+    margin-left: auto;
+    padding: 8px 14px;
+    border-radius: 5px;
+    color: #fff;
+    font-size: 0.75rem;
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+}
+
+#inventario-exceso-module .ae-btn-secondary {
+    padding: 7px 10px;
+    border-radius: 5px;
+    color: var(--ilsan-text-light);
+    font-size: 0.72rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#inventario-exceso-module .ae-btn-success {
+    min-width: 96px;
+    padding: 8px 8px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.76rem;
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+}
+
+#inventario-exceso-module .ae-btn-primary:hover,
+#inventario-exceso-module .ae-btn-export:hover,
+#inventario-exceso-module .ae-btn-success:hover {
+    transform: translateY(-2px);
+}
+
+#inventario-exceso-module .ae-btn-secondary:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#inventario-exceso-module .ae-table-shell {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--ilsan-dark-secondary);
+    border-radius: 0 0 12px 12px;
+    isolation: isolate;
+}
+
+#inventario-exceso-module .ae-inventory-pane--main .ae-table-shell,
+#inventario-exceso-module .ae-closure-preview-card .ae-table-shell,
+#inventario-exceso-module .ae-inventory-pane--closure > .ae-results-card:last-child .ae-table-shell {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+}
+
+#inventario-exceso-module .ae-table-head {
+    flex: 0 0 auto;
+    overflow: hidden;
+    background: var(--ilsan-dark-header);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+    z-index: 2;
+    box-sizing: border-box;
+    padding-right: var(--ae-table-scrollbar-width);
+}
+
+#inventario-exceso-module .ae-table-body-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    overflow-y: scroll;
+    overflow-x: auto;
+    background: var(--ilsan-dark-secondary);
+    scrollbar-width: thin;
+    scrollbar-color: var(--ilsan-accent-blue) var(--ilsan-dark-tertiary);
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+}
+
+#inventario-exceso-module .ae-table-body-wrap::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+#inventario-exceso-module .ae-table-body-wrap::-webkit-scrollbar-track {
+    background: var(--ilsan-dark-tertiary);
+    border-radius: 10px;
+    margin: 4px;
+}
+
+#inventario-exceso-module .ae-table-body-wrap::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--ilsan-accent-blue), var(--ilsan-accent-dark-blue));
+    border-radius: 10px;
+    border: 2px solid var(--ilsan-dark-tertiary);
+}
+
+#inventario-exceso-module .ae-table-body-wrap::-webkit-scrollbar-corner {
+    background: var(--ilsan-dark-tertiary);
+}
+
+#inventario-exceso-module .ae-history-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    background-color: var(--ilsan-dark-secondary);
+}
+
+#inventario-exceso-module .ae-history-table th,
+#inventario-exceso-module .ae-history-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 0.8rem;
+    line-height: 1.25;
+    color: var(--ilsan-text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#inventario-exceso-module .ae-history-table th {
+    height: 40px;
+    background: var(--ilsan-dark-header);
+    color: #fff;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+}
+
+#inventario-exceso-module .ae-history-table tbody tr:nth-child(even) {
+    background: rgba(78, 84, 112, 0.45);
+}
+
+#inventario-exceso-module .ae-history-table tbody tr:nth-child(odd) {
+    background: rgba(68, 72, 90, 0.72);
+}
+
+#inventario-exceso-module .ae-history-table tbody tr:hover {
+    background: rgba(52, 152, 219, 0.14);
+}
+
+#inventario-exceso-module .ae-empty-cell {
+    padding: 26px 12px !important;
+    color: var(--ilsan-text-gray) !important;
+    text-align: center !important;
+}
+
+#inventario-exceso-module .ae-card-header--closure {
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+#inventario-exceso-module .ae-card-header__title-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+#inventario-exceso-module .ae-back-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ilsan-text-light);
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+#inventario-exceso-module .ae-closure-meta-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+    padding: 14px 18px 18px;
+    align-items: end;
+}
+
+#inventario-exceso-module .ae-closure-meta-grid .ae-filter-group {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+#inventario-exceso-module .ae-closure-meta-grid .ae-filter-group input,
+#inventario-exceso-module .ae-closure-meta-grid .ae-filter-group select {
+    width: 100%;
+    min-width: 0;
+}
+
+#inventario-exceso-module .ae-closure-meta-grid .ae-btn-primary,
+#inventario-exceso-module .ae-closure-meta-grid .ae-btn-secondary,
+#inventario-exceso-module .ae-closure-meta-grid .ae-btn-success {
+    flex: 0 0 170px;
+    min-width: 170px;
+    min-height: 34px;
+    padding-inline: 12px;
+}
+
+#inventario-exceso-module .ae-closure-errors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 18px 16px;
+}
+
+#inventario-exceso-module .ae-closure-error-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(231, 76, 60, 0.16);
+    border: 1px solid rgba(231, 76, 60, 0.32);
+    color: #ffb8b2;
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+
+#inventario-exceso-module .ae-closure-preview-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+    gap: 18px;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+#inventario-exceso-module .ae-closure-preview-layout > .ae-results-card,
+#inventario-exceso-module .ae-closure-preview-card {
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+#inventario-exceso-module .ae-inventory-pane--closure > .ae-results-card:last-child {
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+#inventario-exceso-module .ae-closure-preview-card .ae-table-body-wrap,
+#inventario-exceso-module .ae-inventory-pane--closure > .ae-results-card:last-child .ae-table-body-wrap {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow-y: scroll;
+}
+
+#inventario-exceso-module .ae-closure-summary-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px;
+}
+
+#inventario-exceso-module .ae-closure-donut {
+    width: 172px;
+    height: 172px;
+    margin: 0 auto;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: conic-gradient(#27ae60 0deg, #27ae60 0deg, rgba(255,255,255,0.08) 0deg);
+}
+
+#inventario-exceso-module .ae-closure-donut__inner {
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    background: #252a39;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#inventario-exceso-module .ae-closure-donut__inner strong {
+    color: var(--ilsan-text-light);
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+#inventario-exceso-module .ae-closure-donut__inner span {
+    color: var(--ilsan-text-gray);
+    font-size: 0.74rem;
+    margin-top: 6px;
+}
+
+#inventario-exceso-module .history-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 88px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+#inventario-exceso-module .history-badge--success {
+    color: var(--ilsan-text-light);
+    background: rgba(39, 174, 96, 0.2);
+    border: 1px solid rgba(39, 174, 96, 0.28);
+}
+
+#inventario-exceso-module .history-badge--warning {
+    color: var(--ilsan-text-light);
+    background: rgba(230, 126, 34, 0.2);
+    border: 1px solid rgba(230, 126, 34, 0.32);
+}
+
+#inventario-exceso-module .history-badge--danger {
+    color: var(--ilsan-text-light);
+    background: rgba(231, 76, 60, 0.2);
+    border: 1px solid rgba(231, 76, 60, 0.32);
+}
+
+#inventario-exceso-module .history-badge--neutral {
+    color: var(--ilsan-text-light);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#inventario-exceso-module .ae-btn-inline {
+    min-width: 54px;
+    min-height: 28px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 0.72rem;
+    background: rgba(52, 152, 219, 0.22);
+    border: 1px solid rgba(52, 152, 219, 0.28);
+}
+
+@media (max-width: 900px) {
+    #inventario-exceso-module .ae-filters,
+    #inventario-exceso-module .ae-closure-meta-grid {
+        flex-wrap: wrap;
+    }
+
+    #inventario-exceso-module .ae-btn-export {
+        margin-left: 0;
+    }
+
+    #inventario-exceso-module .ae-closure-preview-layout {
+        grid-template-columns: 1fr;
+    }
+}

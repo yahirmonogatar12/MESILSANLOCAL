@@ -12,11 +12,17 @@
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
                             data-permiso-seccion="Control de inventario"
                             data-permiso-boton="Estatus de inventario en proceso">Estatus de inventario en proceso</li>
+                    <!-- WF_001: boton del modulo Inventario Exceso QA con permisos granulares. -->
                     <li class="sidebar-link" tabindex="0"
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
                             data-permiso-seccion="Control de inventario"
                             data-permiso-boton="IMD-SMD TERMINADO"
                             onclick="window.parent.mostrarInventarioIMDTerminado ? window.parent.mostrarInventarioIMDTerminado() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('inventario-imd-terminado-unique-container', '/control_resultados/inventario_imd_terminado') : window.location.href='/control_resultados/inventario_imd_terminado')">IMD-SMD TERMINADO</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Control de inventario"
+                            data-permiso-boton="Inventario Exceso"
+                            onclick="window.parent.mostrarInventarioExceso ? window.parent.mostrarInventarioExceso() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('inventario-exceso-unique-container', '/control_resultados/inventario_exceso') : window.location.href='/control_resultados/inventario_exceso')">Inventario Exceso</li>
                 </ul>
             </li>
             <li class="sidebar-section">
