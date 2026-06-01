@@ -66,9 +66,10 @@ en routes.py.
 # y se espera que exponga un atributo `bp` (Flask Blueprint).
 _MODULOS_REGISTRADOS = [
     # Fase 6 (2026-05-28): index/inicio/login/logout/api_mi_perfil
-    # + helpers cargar_usuarios/render_landing_page extraidos de routes.py.
-    # Los endpoints preservan los nombres legacy SIN prefijo (endpoint="login",
-    # endpoint="inicio", etc.) para no romper url_for() en templates y JS.
+    # + helper render_landing_page extraidos de routes.py.
+    # Los endpoints quedan PREFIJADOS por el blueprint (auth_sesion.index,
+    # auth_sesion.login, etc.); el `endpoint=` solo fija el nombre local.
+    # url_for() en templates/JS usa la forma prefijada.
     "auth.sesion",
     "admin.permisos",
     "admin.usuarios",

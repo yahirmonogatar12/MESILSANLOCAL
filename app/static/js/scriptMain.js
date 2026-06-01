@@ -2833,8 +2833,19 @@ window.mostrarHistorialAOI = function () {
       window.limpiarHistorialAOI();
     }
 
-    // Ocultar otros contenedores dentro del área de control de resultados
-    const controlResultadosContainers = ["control-resultados-info-container"];
+    // Ocultar TODOS los contenedores de Control de Resultados (para no dejar
+    // paneles superpuestos al navegar entre modulos; el de AOI se muestra mas
+    // abajo en esta misma funcion).
+    const controlResultadosContainers = [
+      "control-resultados-info-container",
+      "historial-aoi-unique-container",
+      "historial-ict-unique-container",
+      "historial-cambios-parametros-ict-unique-container",
+      "historial-maquina-ict-pass-fail-unique-container",
+      "historial-vision-unique-container",
+      "historial-vision-pass-fail-unique-container",
+      "inventario-imd-terminado-unique-container",
+    ];
 
     controlResultadosContainers.forEach((containerId) => {
       const container = document.getElementById(containerId);

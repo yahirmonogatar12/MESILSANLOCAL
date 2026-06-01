@@ -65,13 +65,22 @@ app/api/
 2. **El nombre del archivo coincide con el módulo** (snake_case del template, no del listing).
 3. **Se importan helpers transversales desde `app.api.shared`**:
    ```python
-   from app.api.shared import login_requerido, execute_query, auth_system
+   from app.api.shared import (
+       login_requerido,
+       requiere_permiso_dropdown,
+       execute_query,
+       auth_system,
+       obtener_fecha_hora_mexico,
+   )
    ```
-   `login_requerido` y `auth_system` se resuelven de forma lazy desde
-   `app.routes` para evitar ciclos de import. `obtener_fecha_hora_mexico` vive
-   en `app/api/shared/datetime_helpers.py` y también se expone desde
-   `app.api.shared`. Helpers privados de otro módulo no se re-exportan aquí:
-   impórtalos desde su dueño.
+   Los 5 símbolos se resuelven de forma **lazy** via PEP 562 `__getattr__`:
+   - `execute_query` ← `app.db_mysql`
+   - `obtener_fecha_hora_mexico` ← `app.api.shared.datetime_helpers`
+   - `requiere_permiso_dropdown` ← `app.api.shared.permisos`
+   - `login_requerido` y `auth_system` ← `app.routes` (decorador clave + instancia singleton)
+
+   Helpers privados de otro módulo NO se re-exportan aquí: impórtalos desde
+   su dueño (p.ej. `from app.api.control_produccion.cuchillas_corte import _cuchillas_rows_to_json`).
 4. **Para registrar el blueprint**, se agrega su ruta a `_MODULOS_REGISTRADOS` en `app/api/__init__.py`:
    ```python
    _MODULOS_REGISTRADOS = [
@@ -629,7 +638,7 @@ http://localhost:5000/api/<modulo>/<accion>?fecha=<fecha_con_datos>
 
 ### 7b. Verificar la tabla en el template
 
-1. Navegar a la ruta del template (ej: `/historial-maquina-ict-pass-fail`)
+1. Navegar a la ruta del template (ej: `/historial_ict_pass_fail/ajax`)
 2. Cambiar la fecha a una que tenga datos
 3. Hacer clic en "Consultar"
 4. Verificar:
@@ -708,12 +717,12 @@ Para un módulo nuevo "Historial ICT % Pass/Fail" en la sección Control de resu
 | Template | `app/templates/Control de resultados/history_ict_Pass_Fail.html` | — |
 | CSS | `app/static/css/ict-Pass-Fail.css` | — |
 | JS | `app/static/js/ict-Pass-Fail.js` | — |
-| Blueprint | `app/api/control_resultados/ict_pass_fail.py` | `bp = Blueprint("ict_pass_fail", ...)` |
-| Registrado en | `app/api/__init__.py` | `_MODULOS_REGISTRADOS += ["control_resultados.ict_pass_fail"]` |
-| Ruta página | `app/api/control_resultados/ict_pass_fail.py` | `/historial-maquina-ict-pass-fail` |
-| API datos | `app/api/control_resultados/ict_pass_fail.py` | `GET /api/ict/pass-fail` |
-| API export | `app/api/control_resultados/ict_pass_fail.py` | `GET /api/ict/pass-fail/export` |
-| Tabla HTML | `#pf-ict-table` | tbody: `#pf-ict-body` |
+| Blueprint | `app/api/control_resultados/historial_ict_pass_fail.py` | `bp = Blueprint("historial_ict_pass_fail", ...)` |
+| Registrado en | `app/api/__init__.py` | `_MODULOS_REGISTRADOS += ["control_resultados.historial_ict_pass_fail"]` |
+| Ruta página | `app/api/control_resultados/historial_ict_pass_fail.py` | `/historial_ict_pass_fail/ajax` (canonica; `/historial-maquina-ict-pass-fail` es 301) |
+| API datos | `app/api/control_resultados/historial_ict_pass_fail.py` | `GET /api/ict/pass-fail` |
+| API export | `app/api/control_resultados/historial_ict_pass_fail.py` | `GET /api/ict/pass-fail/export` |
+| Tabla HTML | `#ict-pass-fail-table` | tbody: `#ict-pass-fail-body` |
 | Filtro fecha | `#pf-filter-fecha` | param: `fecha` |
 | Filtro línea | `#pf-filter-linea` | param: `linea` |
 | Filtro parte | `#pf-filter-part-number` | param: `no_parte` |
@@ -752,6 +761,9 @@ bajo su Blueprint o un módulo hermano de la misma sección.
   `url_for()`.
 - `app/api/shared` queda como proxy lazy de helpers core y `execute_query`; no
   debe re-exportar helpers privados de otros blueprints.
+- `obtener_fecha_hora_mexico` migrado a `app/api/shared/datetime_helpers.py`.
+- `requiere_permiso_dropdown` extraído a `app/api/shared/permisos.py` (junto con
+  `tiene_permiso_boton` y `permisos_botones_pagina` cuando se cosolide).
 - `_MODULOS_REGISTRADOS` es la fuente de registro para auth, admin, módulos de
   secciones, servicios compartidos, portal y PDA.
 
