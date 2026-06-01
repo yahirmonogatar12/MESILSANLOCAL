@@ -191,6 +191,18 @@ SHIPPING_PERMISSION_DEFINITIONS = [
         'section': 'Retornos y requerimientos',
     },
     {
+        'key': 'view_excess_inventory',
+        'name': 'Ver inventario de exceso QA',
+        'description': 'Permite consultar el inventario de exceso gestionado por QA.',
+        'section': 'Inventario de exceso',
+    },
+    {
+        'key': 'write_excess_inventory',
+        'name': 'Registrar inventario de exceso QA',
+        'description': 'Permite registrar piezas de exceso desde la app movil de QA.',
+        'section': 'Inventario de exceso',
+    },
+    {
         'key': 'view_requirements',
         'name': 'Ver requerimientos',
         'description': 'Permite consultar requerimientos de material.',

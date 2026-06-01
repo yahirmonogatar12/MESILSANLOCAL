@@ -7,4 +7,5 @@ propio blueprint con prefijo `/api/<modulo>` o equivalente.
 Modulos:
   - shipping.py          -> APP Registro de Embarques (entradas/salidas/auth)
                             (ex `app/shipping_api.py`)
+  - excess_inventory.py -> APP Inventario de Exceso QA
 """

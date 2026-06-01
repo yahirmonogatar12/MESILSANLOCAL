@@ -17,6 +17,8 @@ PUBLIC_API_EXACT_PATHS = frozenset(
         "/api/shipping/material/returns",
         "/api/shipping/material/inventory",
         "/api/shipping/material/stats/today",
+        "/api/shipping/excess/pieces",
+        "/api/shipping/excess/stats/today",
     }
 )
 

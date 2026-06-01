@@ -55,6 +55,7 @@ def run_startup_init():
     from .auth_system import AuthSystem
     from .api.pda.shipping import init_shipping_tables
     from .api.pda.shipping_material import init_shipping_material_tables
+    from .api.pda.excess_inventory import init_excess_inventory_tables
     from .api.control_produccion.cuchillas_corte import crear_tablas_cuchillas_corte
     from .api.shared.snapshot_inventario import crear_tablas_snapshot_inventario
     from .api.control_produccion.plan_smt import crear_tabla_plan_smt_v2
@@ -84,6 +85,10 @@ def run_startup_init():
     log("Iniciando init_shipping_material_tables()")
     init_shipping_material_tables()
     log("init_shipping_material_tables() completado")
+
+    log("Iniciando init_excess_inventory_tables()")
+    init_excess_inventory_tables()
+    log("init_excess_inventory_tables() completado")
 
     log("Iniciando bootstrap de cuchillas de corte")
     crear_tablas_cuchillas_corte()

@@ -117,6 +117,10 @@ def normalize_part_number(raw_value):
     return normalize_search(raw_value).upper()
 
 
+def requires_box_id_entry(part_number):
+    return normalize_part_number(part_number).startswith("EBR")
+
+
 def normalize_box_code(raw_value):
     return normalize_search(raw_value).upper()
 
@@ -3134,6 +3138,20 @@ def create_entry_from_oqc_boxes():
             return jsonify(validation), validation.get("status", 400)
 
         part_number = validation["partNumber"]
+        expected_part_number = normalize_part_number(
+            data.get("expectedPartNumber") or data.get("expected_part_number")
+        )
+        if expected_part_number and part_number != expected_part_number:
+            conn.rollback()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "El numero de parte del QR no coincide con las cajas OQC",
+                    "expectedPartNumber": expected_part_number,
+                    "partNumber": part_number,
+                }
+            ), 409
+
         quantity = validation["quantity"]
         boxes = validation["boxes"]
         inventory = ensure_inventory_record(cursor, part_number)
@@ -3338,6 +3356,14 @@ def create_entry():
             }
         ), 400
 
+    if requires_box_id_entry(part_number):
+        return jsonify(
+            {
+                "success": False,
+                "error": "Este numero de parte requiere registro por Box ID",
+            }
+        ), 409
+
     conn = None
     cursor = None
 
@@ -3486,6 +3512,20 @@ def create_exit_from_oqc_boxes():
             return jsonify(validation), validation.get("status", 400)
 
         part_number = validation["partNumber"]
+        expected_part_number = normalize_part_number(
+            data.get("expectedPartNumber") or data.get("expected_part_number")
+        )
+        if expected_part_number and part_number != expected_part_number:
+            conn.rollback()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "El numero de parte del QR no coincide con las cajas OQC",
+                    "expectedPartNumber": expected_part_number,
+                    "partNumber": part_number,
+                }
+            ), 409
+
         quantity = validation["quantity"]
         boxes = validation["boxes"]
         inventory = ensure_inventory_record(cursor, part_number)
@@ -3749,6 +3789,14 @@ def create_exit():
                 "error": "Se requiere numero de parte y una cantidad valida",
             }
         ), 400
+
+    if requires_box_id_entry(part_number):
+        return jsonify(
+            {
+                "success": False,
+                "error": "Este numero de parte requiere registro por Box ID",
+            }
+        ), 409
 
     conn = None
     cursor = None

@@ -120,6 +120,7 @@ _MODULOS_REGISTRADOS = [
     "portal.tickets",
     "pda.shipping",
     "pda.shipping_material",
+    "pda.excess_inventory",
 ]
 
 
