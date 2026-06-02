@@ -142,11 +142,161 @@ def _obtener_historial_cierres(cursor, limit=20):
     return rows
 
 
-def _obtener_inventario_actual(cursor, search=None, limit=2000):
+def _sincronizar_entradas_exceso(cursor):
+    cursor.execute(
+        f"""
+        INSERT INTO `{EXCESS_TABLES['entries']}` (
+          piece_id,
+          scan_code,
+          raw_code,
+          part_number,
+          quantity,
+          source,
+          registered_by_user_id,
+          registered_by,
+          device_id,
+          notes,
+          entry_at
+        )
+        SELECT
+          p.id,
+          p.scan_code,
+          p.raw_code,
+          p.part_number,
+          p.quantity,
+          CASE
+            WHEN p.device_id = 'baseline-cierre-mayo'
+              OR p.registered_by = 'Carga inicial'
+            THEN 'baseline'
+            ELSE 'mobile'
+          END AS source,
+          p.registered_by_user_id,
+          p.registered_by,
+          p.device_id,
+          p.notes,
+          p.scanned_at
+        FROM `{EXCESS_TABLES['pieces']}` p
+        LEFT JOIN `{EXCESS_TABLES['entries']}` e
+          ON e.piece_id = p.id
+        WHERE p.status = 'active'
+          AND e.id IS NULL
+        """
+    )
+
+
+def _sincronizar_salidas_exceso(cursor):
+    lock_name = "qa_exceso_salidas_sync"
+    cursor.execute("SELECT GET_LOCK(%s, 0) AS lock_acquired", (lock_name,))
+    lock_row = cursor.fetchone() or {}
+    lock_acquired = (
+        lock_row.get("lock_acquired")
+        if isinstance(lock_row, dict)
+        else lock_row[0] if lock_row else 0
+    )
+    if int(lock_acquired or 0) != 1:
+        logger.info("Sincronizacion de salidas de exceso ya esta en ejecucion; se omite esta llamada")
+        return 0
+
+    try:
+        cursor.execute("SET SESSION innodb_lock_wait_timeout = 5")
+        cursor.execute(
+            f"""
+        INSERT INTO `{EXCESS_TABLES['exits']}` (
+          piece_id,
+          scan_code,
+          raw_code,
+          part_number,
+          box_scan_id,
+          box_code,
+          oqc_release_box_id,
+          oqc_folio,
+          oqc_box_quantity,
+          oqc_status,
+          qc_passed,
+          released_at,
+          lqc_last_scan,
+          source
+        )
+        SELECT
+          p.id,
+          p.scan_code,
+          p.raw_code,
+          p.part_number,
+          NULL AS box_scan_id,
+          b.box_code,
+          o.id,
+          o.oqc_folio,
+          o.quantity,
+          o.status,
+          o.qc_passed,
+          o.released_at,
+          b.last_scan,
+          'oqc_lqc_match'
+        FROM `{EXCESS_TABLES['pieces']}` p
+        STRAIGHT_JOIN `box_scans` b FORCE INDEX (idx_box_scans_serial)
+          ON b.serial = p.scan_code
+        STRAIGHT_JOIN `{OQC_RELEASE_BOXES_TABLE}` o FORCE INDEX (idx_oqc_release_box_code)
+          ON o.box_code = b.box_code COLLATE utf8mb4_0900_ai_ci
+         AND o.part_number = p.part_number COLLATE utf8mb4_0900_ai_ci
+        LEFT JOIN (
+          SELECT c1.*
+          FROM `{EXCESS_TABLES['closures']}` c1
+          INNER JOIN (
+            SELECT
+              part_number AS part_number_key,
+              MAX(closed_at) AS max_closed_at
+            FROM `{EXCESS_TABLES['closures']}`
+            GROUP BY part_number
+          ) lc
+            ON lc.part_number_key = c1.part_number
+           AND lc.max_closed_at = c1.closed_at
+        ) latest_x
+          ON latest_x.part_number = p.part_number
+        LEFT JOIN `{EXCESS_TABLES['exits']}` existing_exit
+          ON existing_exit.piece_id = p.id
+        WHERE existing_exit.id IS NULL
+          AND p.status = 'active'
+          AND o.status IN ('released', 'received_shipping')
+          AND COALESCE(o.qc_passed, 0) = 1
+          AND o.released_at IS NOT NULL
+          AND p.scanned_at < o.released_at
+          AND o.released_at > COALESCE(latest_x.closed_at, '1000-01-01')
+          AND o.released_at >= (
+            SELECT COALESCE(MIN(closed_at), '1000-01-01')
+            FROM `{EXCESS_TABLES['closures']}`
+          )
+        ON DUPLICATE KEY UPDATE
+          scan_code = VALUES(scan_code),
+          raw_code = VALUES(raw_code),
+          part_number = VALUES(part_number),
+          box_code = VALUES(box_code),
+          oqc_release_box_id = VALUES(oqc_release_box_id),
+          oqc_folio = VALUES(oqc_folio),
+          oqc_box_quantity = VALUES(oqc_box_quantity),
+          oqc_status = VALUES(oqc_status),
+          qc_passed = VALUES(qc_passed),
+          released_at = VALUES(released_at),
+          lqc_last_scan = VALUES(lqc_last_scan),
+          source = VALUES(source)
+        """
+        )
+        return cursor.rowcount
+    finally:
+        cursor.execute("SELECT RELEASE_LOCK(%s)", (lock_name,))
+
+
+def _sincronizar_movimientos_exceso(cursor, sync_exits=True):
+    _sincronizar_entradas_exceso(cursor)
+    if sync_exits:
+        _sincronizar_salidas_exceso(cursor)
+
+
+def _obtener_inventario_actual(cursor, search=None, limit=2000, sync_exits=False):
     where = ["1 = 1"]
     params = []
     search_value = normalize_search(search)
     part_key = "CONVERT({column} USING utf8mb4) COLLATE utf8mb4_unicode_ci"
+    _sincronizar_movimientos_exceso(cursor, sync_exits=sync_exits)
     if search_value:
         like = f"%{search_value}%"
         where.append(
@@ -187,9 +337,11 @@ def _obtener_inventario_actual(cursor, search=None, limit=2000):
           ON {part_key.format(column='latest.part_number')} = {part_key.format(column='i.part_number')}
         LEFT JOIN (
           SELECT
-            p.part_number,
-            COALESCE(SUM(p.quantity), 0) AS entries_qty
-          FROM `{EXCESS_TABLES['pieces']}` p
+            e.part_number,
+            COALESCE(SUM(e.quantity), 0) AS entries_qty
+          FROM `{EXCESS_TABLES['entries']}` e
+          INNER JOIN `{EXCESS_TABLES['pieces']}` p
+            ON p.id = e.piece_id
           LEFT JOIN (
             SELECT c1.*
             FROM `{EXCESS_TABLES['closures']}` c1
@@ -203,22 +355,19 @@ def _obtener_inventario_actual(cursor, search=None, limit=2000):
               ON lc.part_number_key = {part_key.format(column='c1.part_number')}
              AND lc.max_closed_at = c1.closed_at
           ) latest_p
-            ON {part_key.format(column='latest_p.part_number')} = {part_key.format(column='p.part_number')}
+            ON {part_key.format(column='latest_p.part_number')} = {part_key.format(column='e.part_number')}
           WHERE p.status = 'active'
-            AND p.scanned_at >= COALESCE(latest_p.closed_at, '1000-01-01')
-          GROUP BY {part_key.format(column='p.part_number')}, p.part_number
+            AND e.entry_at > COALESCE(latest_p.closed_at, '1000-01-01')
+          GROUP BY {part_key.format(column='e.part_number')}, e.part_number
         ) entradas
           ON {part_key.format(column='entradas.part_number')} = {part_key.format(column='i.part_number')}
         LEFT JOIN (
           SELECT
-            p.part_number,
-            COUNT(DISTINCT p.id) AS exits_qty
-          FROM `{EXCESS_TABLES['pieces']}` p
-          STRAIGHT_JOIN `box_scans` b
-            ON b.serial = p.scan_code
-          STRAIGHT_JOIN `{OQC_RELEASE_BOXES_TABLE}` o
-            ON o.box_code COLLATE utf8mb4_unicode_ci = b.box_code
-           AND o.part_number COLLATE utf8mb4_unicode_ci = p.part_number
+            x.part_number,
+            COUNT(DISTINCT x.piece_id) AS exits_qty
+          FROM `{EXCESS_TABLES['exits']}` x
+          INNER JOIN `{EXCESS_TABLES['pieces']}` p
+            ON p.id = x.piece_id
           LEFT JOIN (
             SELECT c1.*
             FROM `{EXCESS_TABLES['closures']}` c1
@@ -232,14 +381,10 @@ def _obtener_inventario_actual(cursor, search=None, limit=2000):
               ON lc.part_number_key = {part_key.format(column='c1.part_number')}
              AND lc.max_closed_at = c1.closed_at
           ) latest_x
-            ON latest_x.part_number = p.part_number
+            ON {part_key.format(column='latest_x.part_number')} = {part_key.format(column='x.part_number')}
           WHERE p.status = 'active'
-            AND o.status IN ('released', 'received_shipping')
-            AND COALESCE(o.qc_passed, 0) = 1
-            AND o.released_at IS NOT NULL
-            AND p.scanned_at < o.released_at
-            AND o.released_at >= COALESCE(latest_x.closed_at, '1000-01-01')
-          GROUP BY {part_key.format(column='p.part_number')}, p.part_number
+            AND x.released_at > COALESCE(latest_x.closed_at, '1000-01-01')
+          GROUP BY {part_key.format(column='x.part_number')}, x.part_number
         ) salidas
           ON {part_key.format(column='salidas.part_number')} = {part_key.format(column='i.part_number')}
         WHERE {' AND '.join(where)}
@@ -493,6 +638,7 @@ def inventario_exceso_ajax():
 @bp.route("/api/inventario_exceso/inventory", methods=["GET"])
 @login_requerido
 def api_inventario_exceso_inventory():
+    init_excess_inventory_tables()
     conn = get_db_connection()
     cursor = get_dict_cursor(conn)
     try:
@@ -511,39 +657,46 @@ def api_inventario_exceso_inventory():
         conn.close()
 
 
+@bp.route("/api/inventario_exceso/exits/sync", methods=["POST"])
+@login_requerido
+def api_inventario_exceso_exits_sync():
+    init_excess_inventory_tables()
+    conn = get_db_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        _sincronizar_movimientos_exceso(cursor, sync_exits=True)
+        return jsonify({"success": True, "message": "Salidas sincronizadas."})
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @bp.route("/api/inventario_exceso/exits/detail", methods=["GET"])
 @login_requerido
 def api_inventario_exceso_exits_detail():
+    init_excess_inventory_tables()
     limit = min(max(normalize_integer(request.args.get("limit")) or 500, 1), 2000)
     search = normalize_search(request.args.get("q") or request.args.get("search"))
     part_number = normalize_part_number(request.args.get("partNumber"))
     box_code = normalize_search(request.args.get("boxCode")).upper()
 
-    part_key = "CONVERT({column} USING utf8mb4) COLLATE utf8mb4_unicode_ci"
-    where = [
-        "p.status = 'active'",
-        "o.status IN ('released', 'received_shipping')",
-        "COALESCE(o.qc_passed, 0) = 1",
-        "o.released_at IS NOT NULL",
-        "p.scanned_at < o.released_at",
-        "o.released_at >= COALESCE(latest_x.closed_at, '1000-01-01')",
-    ]
+    where = ["p.status = 'active'"]
     params = []
 
     if part_number:
-        where.append("p.part_number = %s")
+        where.append("x.part_number = %s")
         params.append(part_number)
     if box_code:
-        where.append("b.box_code = %s")
+        where.append("x.box_code = %s")
         params.append(box_code)
     if search:
         like = f"%{search}%"
         where.append(
             "("
-            "p.scan_code LIKE %s OR "
-            "p.part_number LIKE %s OR "
-            "b.box_code LIKE %s OR "
-            "o.oqc_folio LIKE %s"
+            "x.scan_code LIKE %s OR "
+            "x.part_number LIKE %s OR "
+            "x.box_code LIKE %s OR "
+            "x.oqc_folio LIKE %s"
             ")"
         )
         params.extend([like, like, like, like])
@@ -551,54 +704,28 @@ def api_inventario_exceso_exits_detail():
     conn = get_db_connection()
     cursor = get_dict_cursor(conn)
     try:
+        _sincronizar_movimientos_exceso(cursor)
         cursor.execute(
             f"""
             SELECT
-              p.id AS piece_id,
-              p.part_number,
-              p.scan_code,
-              b.box_code,
-              o.oqc_folio,
-              o.id AS oqc_release_box_id,
-              o.quantity AS oqc_box_quantity,
-              o.status AS oqc_status,
-              DATE_FORMAT(o.released_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS released_at,
-              DATE_FORMAT(b.last_scan, '%%Y-%%m-%%d %%H:%%i:%%s') AS lqc_last_scan,
+              x.piece_id,
+              x.part_number,
+              x.scan_code,
+              x.raw_code,
+              x.box_code,
+              x.oqc_folio,
+              x.oqc_release_box_id,
+              x.oqc_box_quantity,
+              x.oqc_status,
+              x.qc_passed,
+              DATE_FORMAT(x.released_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS released_at,
+              DATE_FORMAT(x.lqc_last_scan, '%%Y-%%m-%%d %%H:%%i:%%s') AS lqc_last_scan,
               DATE_FORMAT(p.scanned_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS excess_scanned_at
-            FROM `{EXCESS_TABLES['pieces']}` p
-            STRAIGHT_JOIN `box_scans` b
-              ON b.serial = p.scan_code
-            STRAIGHT_JOIN `{OQC_RELEASE_BOXES_TABLE}` o
-              ON o.box_code COLLATE utf8mb4_unicode_ci = b.box_code
-             AND o.part_number COLLATE utf8mb4_unicode_ci = p.part_number
-            LEFT JOIN (
-              SELECT c1.*
-              FROM `{EXCESS_TABLES['closures']}` c1
-              INNER JOIN (
-                SELECT
-                  {part_key.format(column='part_number')} AS part_number_key,
-                  MAX(closed_at) AS max_closed_at
-                FROM `{EXCESS_TABLES['closures']}`
-                GROUP BY {part_key.format(column='part_number')}
-              ) lc
-                ON lc.part_number_key = {part_key.format(column='c1.part_number')}
-               AND lc.max_closed_at = c1.closed_at
-            ) latest_x
-              ON latest_x.part_number = p.part_number
+            FROM `{EXCESS_TABLES['exits']}` x
+            INNER JOIN `{EXCESS_TABLES['pieces']}` p
+              ON p.id = x.piece_id
             WHERE {' AND '.join(where)}
-            GROUP BY
-              p.id,
-              p.part_number,
-              p.scan_code,
-              b.box_code,
-              o.oqc_folio,
-              o.id,
-              o.quantity,
-              o.status,
-              o.released_at,
-              b.last_scan,
-              p.scanned_at
-            ORDER BY o.released_at DESC, b.last_scan DESC, p.id DESC
+            ORDER BY x.released_at DESC, x.lqc_last_scan DESC, x.piece_id DESC
             LIMIT %s
             """,
             tuple(params + [limit]),
@@ -617,10 +744,16 @@ def api_inventario_exceso_exits_detail():
 @bp.route("/api/inventario_exceso/inventory/export", methods=["GET"])
 @login_requerido
 def api_inventario_exceso_inventory_export():
+    init_excess_inventory_tables()
     conn = get_db_connection()
     cursor = get_dict_cursor(conn)
     try:
-        rows = _obtener_inventario_actual(cursor, request.args.get("search"), limit=20000)
+        rows = _obtener_inventario_actual(
+            cursor,
+            request.args.get("search"),
+            limit=20000,
+            sync_exits=True,
+        )
 
         from openpyxl import Workbook
         from openpyxl.styles import Alignment, Font, PatternFill
@@ -677,6 +810,7 @@ def api_inventario_exceso_inventory_export():
 @bp.route("/api/inventario_exceso/movements", methods=["GET"])
 @login_requerido
 def api_inventario_exceso_movements():
+    init_excess_inventory_tables()
     limit = min(max(normalize_integer(request.args.get("limit")) or 200, 1), 1000)
     search = normalize_search(request.args.get("q"))
     from_date = normalize_search(request.args.get("fromDate"))
@@ -731,11 +865,12 @@ def api_inventario_exceso_movements():
 @bp.route("/api/inventario_exceso/cierre/bootstrap", methods=["GET"])
 @login_requerido
 def api_inventario_exceso_cierre_bootstrap():
+    init_excess_inventory_tables()
     fecha_actual = obtener_fecha_hora_mexico()
     conn = get_db_connection()
     cursor = get_dict_cursor(conn)
     try:
-        current_rows = _obtener_inventario_actual(cursor)
+        current_rows = _obtener_inventario_actual(cursor, sync_exits=True)
         preview = _construir_preview(current_rows)
         metadata = {
             "closureDate": fecha_actual.strftime("%Y-%m-%d"),
@@ -762,10 +897,11 @@ def api_inventario_exceso_cierre_bootstrap():
 @bp.route("/api/inventario_exceso/cierre/template", methods=["GET"])
 @login_requerido
 def api_inventario_exceso_cierre_template():
+    init_excess_inventory_tables()
     conn = get_db_connection()
     cursor = get_dict_cursor(conn)
     try:
-        rows = _obtener_inventario_actual(cursor)
+        rows = _obtener_inventario_actual(cursor, sync_exits=True)
         output = io.StringIO()
         writer = csv.writer(output, lineterminator="\n")
         writer.writerow(["part_number", "current_qty"])
@@ -785,6 +921,7 @@ def api_inventario_exceso_cierre_template():
 @bp.route("/api/inventario_exceso/cierre/preview", methods=["POST"])
 @login_requerido
 def api_inventario_exceso_cierre_preview():
+    init_excess_inventory_tables()
     file_storage = request.files.get("closure_file")
     if not file_storage:
         return jsonify({"success": False, "error": "Se requiere el CSV de inventario fisico."}), 400
@@ -793,7 +930,7 @@ def api_inventario_exceso_cierre_preview():
     conn = get_db_connection()
     cursor = get_dict_cursor(conn)
     try:
-        current_rows = _obtener_inventario_actual(cursor)
+        current_rows = _obtener_inventario_actual(cursor, sync_exits=True)
         if not current_rows:
             return jsonify({"success": False, "error": "No hay inventario activo para cerrar."}), 400
 
@@ -865,6 +1002,7 @@ def api_inventario_exceso_cierre_preview():
 @bp.route("/api/inventario_exceso/cierre/confirm", methods=["POST"])
 @login_requerido
 def api_inventario_exceso_cierre_confirm():
+    init_excess_inventory_tables()
     data = request.get_json(silent=True) or {}
     batch_id = normalize_integer(data.get("batchId") or data.get("batch_id"))
     if not batch_id:
@@ -969,6 +1107,7 @@ def api_inventario_exceso_cierre_confirm():
 @bp.route("/api/inventario_exceso/cierre/history", methods=["GET"])
 @login_requerido
 def api_inventario_exceso_cierre_history():
+    init_excess_inventory_tables()
     conn = get_db_connection()
     cursor = get_dict_cursor(conn)
     try:
@@ -981,6 +1120,7 @@ def api_inventario_exceso_cierre_history():
 @bp.route("/api/inventario_exceso/cierre/history/<int:batch_id>", methods=["GET"])
 @login_requerido
 def api_inventario_exceso_cierre_history_detail(batch_id):
+    init_excess_inventory_tables()
     conn = get_db_connection()
     cursor = get_dict_cursor(conn)
     try:

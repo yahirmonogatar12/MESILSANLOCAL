@@ -3,7 +3,7 @@
   // WF_002: JS propio con IDs prefijados inventario-exceso-*.
   // WF_003: integra API JSON/Excel del blueprint control_resultados.inventario_exceso.
   // WF_004: garantiza CSS persistente/cache-busted aunque el template se cargue por AJAX.
-  const ASSET_VERSION = "20260601e";
+  const ASSET_VERSION = "20260602a";
   const STYLESHEET_ID = "inventario-exceso-css";
   const STYLESHEET_HREF = `/static/css/inventario_exceso.css?v=${ASSET_VERSION}`;
 
@@ -11,6 +11,7 @@
     batchId: null,
     valid: false,
     history: [],
+    exitsSyncStarted: false,
   };
 
   function ensureStylesheet() {
@@ -127,7 +128,20 @@
       .join("");
   }
 
-  async function loadInventory() {
+  async function syncExitsInBackground() {
+    if (state.exitsSyncStarted) return;
+    state.exitsSyncStarted = true;
+    setStatus("Inventario actualizado. Sincronizando salidas...");
+    try {
+      await fetchJson("/api/inventario_exceso/exits/sync", { method: "POST" });
+      await loadInventory({ skipExitSync: true });
+      setStatus("Inventario actualizado.");
+    } catch (error) {
+      setStatus(`Inventario actualizado. Salidas pendientes: ${error.message}`, true);
+    }
+  }
+
+  async function loadInventory(options = {}) {
     const { search, tbody, count } = getElements();
     if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="7" class="ae-empty-cell">Cargando inventario...</td></tr>`;
@@ -141,6 +155,9 @@
         count.textContent = `${formatNumber(payload.totalQuantity)} piezas / ${formatNumber(payload.totalParts)} partes`;
       }
       setStatus("Inventario actualizado.");
+      if (!options.skipExitSync) {
+        syncExitsInBackground();
+      }
     } catch (error) {
       tbody.innerHTML = `<tr><td colspan="7" class="ae-empty-cell">${escapeHtml(error.message)}</td></tr>`;
       setStatus(error.message, true);

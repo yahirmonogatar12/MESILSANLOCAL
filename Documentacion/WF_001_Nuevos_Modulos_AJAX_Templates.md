@@ -23,7 +23,7 @@ La app utiliza un sistema de **carga dinámica de contenido** donde:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  MainTemplate.html (Layout Principal)           │
+│  MainTemplate.html (Layout Principal)               │
 │  ┌──────────────┐  ┌─────────────────────────────┐  │
 │  │ Navbar       │  │                             │  │
 │  │ (8 botones)  │  │   Área de Contenido         │  │

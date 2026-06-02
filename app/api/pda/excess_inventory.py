@@ -41,6 +41,8 @@ logger = logging.getLogger(__name__)
 
 EXCESS_TABLES = {
     "pieces": "qa_exceso_inventario_piezas",
+    "entries": "qa_exceso_entradas",
+    "exits": "qa_exceso_salidas",
     "movements": "qa_exceso_movimientos",
     "closures": "qa_exceso_inventario_cierres",
     "closure_batches": "qa_exceso_inventario_cierre_lotes",
@@ -758,6 +760,77 @@ def init_excess_inventory_tables():
                 FOREIGN KEY (registered_by_user_id) REFERENCES usuarios_sistema (id)
                 ON UPDATE CASCADE
                 ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{EXCESS_TABLES['entries']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              piece_id BIGINT UNSIGNED NOT NULL,
+              scan_code VARCHAR(160) NOT NULL,
+              raw_code TEXT NULL,
+              part_number VARCHAR(64) NOT NULL,
+              quantity INT NOT NULL DEFAULT 1,
+              source ENUM('mobile', 'baseline', 'manual') NOT NULL DEFAULT 'mobile',
+              registered_by_user_id INT NULL,
+              registered_by VARCHAR(120) NULL,
+              device_id VARCHAR(80) NULL,
+              notes TEXT NULL,
+              entry_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              UNIQUE KEY uq_excess_entry_piece (piece_id),
+              KEY idx_excess_entry_scan_code (scan_code),
+              KEY idx_excess_entry_part_number (part_number),
+              KEY idx_excess_entry_entry_at (entry_at),
+              KEY idx_excess_entry_source (source),
+              CONSTRAINT fk_excess_entry_piece
+                FOREIGN KEY (piece_id) REFERENCES `{EXCESS_TABLES['pieces']}` (id)
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT,
+              CONSTRAINT fk_excess_entry_user
+                FOREIGN KEY (registered_by_user_id) REFERENCES usuarios_sistema (id)
+                ON UPDATE CASCADE
+                ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{EXCESS_TABLES['exits']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              piece_id BIGINT UNSIGNED NOT NULL,
+              scan_code VARCHAR(160) NOT NULL,
+              raw_code TEXT NULL,
+              part_number VARCHAR(64) NOT NULL,
+              box_scan_id BIGINT UNSIGNED NULL,
+              box_code VARCHAR(120) NOT NULL,
+              oqc_release_box_id BIGINT UNSIGNED NOT NULL,
+              oqc_folio VARCHAR(80) NULL,
+              oqc_box_quantity INT NULL,
+              oqc_status VARCHAR(40) NULL,
+              qc_passed TINYINT(1) NULL,
+              released_at DATETIME NOT NULL,
+              lqc_last_scan DATETIME NULL,
+              source VARCHAR(60) NOT NULL DEFAULT 'oqc_lqc_match',
+              notes TEXT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              UNIQUE KEY uq_excess_exit_piece (piece_id),
+              KEY idx_excess_exit_scan_code (scan_code),
+              KEY idx_excess_exit_part_number (part_number),
+              KEY idx_excess_exit_box_code (box_code),
+              KEY idx_excess_exit_oqc_release_box (oqc_release_box_id),
+              KEY idx_excess_exit_released_at (released_at),
+              CONSTRAINT fk_excess_exit_piece
+                FOREIGN KEY (piece_id) REFERENCES `{EXCESS_TABLES['pieces']}` (id)
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
         )
