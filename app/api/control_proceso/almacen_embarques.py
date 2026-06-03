@@ -135,15 +135,17 @@ def _aplicar_filtros_historial_embarques(sql, params, search_columns):
     search = request.args.get("search", "").strip()
     fecha_desde = request.args.get("fecha_desde", "").strip()
     fecha_hasta = request.args.get("fecha_hasta", "").strip()
+    tiene_filtro_fecha = bool(fecha_desde or fecha_hasta)
 
-    # Los historiales operativos sólo deben mostrar el periodo vigente.
-    # Los movimientos anteriores quedan trazados en el historial de cierres.
-    sql += f"""
-        AND COALESCE(movement_at, created_at) >= COALESCE(
-            (SELECT MAX(closed_at) FROM `{SHIPPING_TABLES['inventory_closures']}`),
-            '1000-01-01'
-        )
-    """
+    if not tiene_filtro_fecha:
+        # En la carga normal se conserva el periodo vigente. Si el usuario pide
+        # un rango especifico, el historial debe poder consultar periodos ya cerrados.
+        sql += f"""
+            AND COALESCE(movement_at, created_at) >= COALESCE(
+                (SELECT MAX(closed_at) FROM `{SHIPPING_TABLES['inventory_closures']}`),
+                '1000-01-01'
+            )
+        """
 
     if fecha_desde:
         sql += " AND DATE(COALESCE(movement_at, created_at)) >= %s"
@@ -161,6 +163,18 @@ def _aplicar_filtros_historial_embarques(sql, params, search_columns):
         params.extend([like_value] * len(search_columns))
 
     return sql, params
+
+
+def _obtener_limite_historial_embarques(default=300, filtered=5000):
+    """Usar un limite mayor cuando el usuario aplica filtros explicitos."""
+    tiene_filtros = any(
+        (
+            request.args.get("search", "").strip(),
+            request.args.get("fecha_desde", "").strip(),
+            request.args.get("fecha_hasta", "").strip(),
+        )
+    )
+    return filtered if tiene_filtros else default
 
 
 def _obtener_historial_entradas_almacen_embarques(limit=300):
@@ -3663,7 +3677,11 @@ def almacen_embarques_catalogo_ajax():
 def api_almacen_embarques_entradas():
     """Obtener historial de entradas de almacén de embarques."""
     try:
-        return jsonify(_obtener_historial_entradas_almacen_embarques())
+        return jsonify(
+            _obtener_historial_entradas_almacen_embarques(
+                limit=_obtener_limite_historial_embarques()
+            )
+        )
     except Exception as e:
         logger.error(f"Error API entradas almacén embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
@@ -3704,7 +3722,11 @@ def export_almacen_embarques_entradas():
 def api_almacen_embarques_salidas():
     """Obtener historial de salidas de almacén de embarques."""
     try:
-        return jsonify(_obtener_historial_salidas_almacen_embarques())
+        return jsonify(
+            _obtener_historial_salidas_almacen_embarques(
+                limit=_obtener_limite_historial_embarques()
+            )
+        )
     except Exception as e:
         logger.error(f"Error API salidas almacén embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
@@ -4015,7 +4037,11 @@ def api_almacen_embarques_departure_history():
 def api_almacen_embarques_retorno():
     """Obtener historial de retornos de almacén de embarques."""
     try:
-        return jsonify(_obtener_historial_retorno_almacen_embarques())
+        return jsonify(
+            _obtener_historial_retorno_almacen_embarques(
+                limit=_obtener_limite_historial_embarques()
+            )
+        )
     except Exception as e:
         logger.error(f"Error API retorno almacén embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
