@@ -81,8 +81,31 @@ def crear_tabla_plan_smt_v2():
         """
         execute_query(query)
         logger.info("Tabla plan_smt creada/verificada")
+        _ensure_qr_required_count_column()
     except Exception as e:
         logger.error(f"Error creando tabla plan_smt: {e}")
+
+
+def _ensure_qr_required_count_column():
+    """Migracion idempotente: agrega qr_required_count a plan_smt si falta.
+
+    Numero de QR distintos requeridos por planilla para liberar el interlock en
+    SMT. Default 1 => planes existentes mantienen el comportamiento actual.
+    """
+    try:
+        existing = execute_query(
+            "SHOW COLUMNS FROM plan_smt LIKE %s",
+            ("qr_required_count",),
+            fetch="one",
+        )
+        if not existing:
+            execute_query(
+                "ALTER TABLE plan_smt "
+                "ADD COLUMN qr_required_count INT NOT NULL DEFAULT 1"
+            )
+            logger.info("Columna plan_smt.qr_required_count agregada")
+    except Exception as e:
+        logger.error(f"Error asegurando columna qr_required_count: {e}")
 
 
 # crear_tabla_plan_smt_v2 movido a app/startup_init.py
@@ -111,7 +134,7 @@ def api_plan_smt_list():
             "SELECT id, lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
             "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
             "COALESCE(produced_count,0) AS produced_count, COALESCE(output,0) AS output, COALESCE(entregadas_main,0) AS entregadas_main, "
-            "status, group_no, sequence, routing FROM plan_smt"
+            "status, group_no, sequence, routing, COALESCE(qr_required_count,1) AS qr_required_count FROM plan_smt"
         )
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -148,6 +171,10 @@ def api_plan_smt_list():
                     "group_no": r.get("group_no") if isinstance(r, dict) else r[18],
                     "sequence": r.get("sequence") if isinstance(r, dict) else r[19],
                     "routing": r.get("routing") if isinstance(r, dict) else r[20],
+                    "qr_required_count": (
+                        r.get("qr_required_count") if isinstance(r, dict) else r[21]
+                    )
+                    or 1,
                 }
             )
         return jsonify(data)
@@ -208,10 +235,17 @@ def api_plan_smt_create():
         sequence = data.get("sequence", 1)
         process = data.get("process") or "SMT"
 
+        # QR requeridos por planilla (multi-QR SMT). Default 1, acotado 1..20.
+        try:
+            qr_required_count = int(data.get("qr_required_count") or 1)
+        except (TypeError, ValueError):
+            qr_required_count = 1
+        qr_required_count = max(1, min(qr_required_count, 20))
+
         sql = (
             "INSERT INTO plan_smt (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
-            "plan_count, ct, uph, status, group_no, sequence, created_at) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,NOW())"
+            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, created_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,%s,NOW())"
         )
         params = (
             lot_no,
@@ -229,6 +263,7 @@ def api_plan_smt_create():
             uph,
             group_no,
             sequence,
+            qr_required_count,
         )
 
         execute_query(sql, params)
@@ -297,11 +332,19 @@ def api_plan_smt_update():
             "uph",
             "group_no",
             "sequence",
+            "qr_required_count",
         ]
         for field in allowed_fields:
             if field in data:
+                value = data[field]
+                if field == "qr_required_count":
+                    try:
+                        value = int(value or 1)
+                    except (TypeError, ValueError):
+                        value = 1
+                    value = max(1, min(value, 20))
                 sets.append(f"{field} = %s")
-                vals.append(data[field])
+                vals.append(value)
         if not sets:
             return jsonify({"error": "No hay campos para actualizar"}), 400
         sets.append("updated_at = NOW()")
@@ -550,6 +593,7 @@ def api_plan_smt_export_excel():
             "Plan",
             "Output",
             "Status",
+            "QR requeridos",
         ]
         ws.append(headers)
         for c in ws[1]:
@@ -577,6 +621,7 @@ def api_plan_smt_export_excel():
                     p.get("plan_count", ""),
                     p.get("output", ""),
                     p.get("status", ""),
+                    p.get("qr_required_count", 1),
                 ]
             )
         bio = io.BytesIO()
@@ -663,6 +708,18 @@ def api_plan_smt_import_excel():
                     )
                 except Exception:
                     plan_count = 0
+                try:
+                    qr_required_count = int(
+                        float(
+                            row.get(
+                                "qr_required_count",
+                                row.get("qr_requeridos", row.get("qr", 1)),
+                            )
+                            or 1
+                        )
+                    )
+                except Exception:
+                    qr_required_count = 1
             else:
                 line_raw = str(row.iloc[0]).strip() if len(row) > 0 else ""
                 part_no = str(row.iloc[1]).strip() if len(row) > 1 else ""
@@ -671,6 +728,11 @@ def api_plan_smt_import_excel():
                     plan_count = int(float(row.iloc[3])) if len(row) > 3 else 0
                 except Exception:
                     plan_count = 0
+                # Columna 4 opcional: QR requeridos (default 1 si no viene).
+                try:
+                    qr_required_count = int(float(row.iloc[4])) if len(row) > 4 else 1
+                except Exception:
+                    qr_required_count = 1
 
             if (
                 not part_no
@@ -684,12 +746,15 @@ def api_plan_smt_import_excel():
             if shift == "NAN" or not shift:
                 shift = "DIA"
 
+            qr_required_count = max(1, min(qr_required_count, 20))
+
             parsed_rows.append(
                 {
                     "line": line,
                     "part_no": part_no,
                     "shift": shift,
                     "plan_count": plan_count,
+                    "qr_required_count": qr_required_count,
                 }
             )
 
@@ -766,14 +831,15 @@ def api_plan_smt_import_excel():
                     "PLAN",  # status
                     1,  # group_no
                     idx,  # sequence
+                    item.get("qr_required_count", 1),  # qr_required_count
                 )
             )
 
         insert_prefix = (
             "INSERT INTO plan_smt (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
-            "plan_count, ct, uph, status, group_no, sequence, created_at) VALUES "
+            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, created_at) VALUES "
         )
-        row_placeholders = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())"
+        row_placeholders = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())"
         insert_batch_size = 200
         imported = 0
 

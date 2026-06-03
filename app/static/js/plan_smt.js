@@ -203,6 +203,7 @@ function renderTableSMT(plans) {
           <td>${plan.ct || 0}</td>
           <td>${plan.uph || 0}</td>
           <td>${plan.plan_count || 0}</td>
+          <td style="text-align:center; ${(plan.qr_required_count || 1) > 1 ? 'color:#3498db; font-weight:bold;' : ''}">${plan.qr_required_count || 1}</td>
           <td>${plan.produced_count || 0}</td>
           <td><span class="status-badge ${statusClass}">${plan.status || 'PLAN'}</span></td>
           <td>${plan.shift || 'DIA'}</td>
@@ -351,6 +352,7 @@ function openEditModalSMT(planId) {
             </div>
             <div><label style="color: #888; font-size: 12px;">Part No</label><input type="text" name="part_no" id="smt-edit-part_no" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
             <div><label style="color: #888; font-size: 12px;">Cantidad</label><input type="number" name="plan_count" id="smt-edit-plan_count" min="0" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
+            <div><label style="color: #888; font-size: 12px;">QR requeridos</label><input type="number" name="qr_required_count" id="smt-edit-qr_required_count" min="1" max="20" value="1" title="QR distintos por planilla para liberar la banda (multi-QR SMT)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
           </div>
           <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
             <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
@@ -372,6 +374,7 @@ function openEditModalSMT(planId) {
   document.getElementById('smt-edit-shift').value = plan.shift || 'DIA';
   document.getElementById('smt-edit-part_no').value = plan.part_no || '';
   document.getElementById('smt-edit-plan_count').value = plan.plan_count || 0;
+  document.getElementById('smt-edit-qr_required_count').value = plan.qr_required_count || 1;
 
   const cancelBtn = document.getElementById('smt-edit-cancel-plan-btn');
   if (cancelBtn) {
@@ -402,7 +405,8 @@ async function updatePlanSMT(formData) {
       line: formData.get('line'),
       shift: formData.get('shift'),
       part_no: partNo,
-      plan_count: parseInt(formData.get('plan_count'), 10) || 0
+      plan_count: parseInt(formData.get('plan_count'), 10) || 0,
+      qr_required_count: Math.max(1, Math.min(parseInt(formData.get('qr_required_count'), 10) || 1, 20))
     };
 
     const response = await axios.post('/api/plan-smt/update', data);
@@ -566,6 +570,10 @@ function createModalsInBodySMT() {
               <label style="color: #888; font-size: 12px;">Plan Count *</label>
               <input type="number" name="plan_count" value="0" required style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
             </div>
+            <div class="form-group">
+              <label style="color: #888; font-size: 12px;">QR requeridos</label>
+              <input type="number" name="qr_required_count" value="1" min="1" max="20" title="QR distintos por planilla para liberar la banda (multi-QR SMT)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
+            </div>
           </div>
           <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
             <button type="submit" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Crear Plan</button>
@@ -598,6 +606,7 @@ async function createPlanSMT(formData) {
       project: formData.get('project') || '',
       process: formData.get('process') || 'SMT',
       plan_count: parseInt(formData.get('plan_count')) || 0,
+      qr_required_count: Math.max(1, Math.min(parseInt(formData.get('qr_required_count')) || 1, 20)),
       uph: parseInt(formData.get('uph')) || 100,
       status: 'PLAN'
     };
