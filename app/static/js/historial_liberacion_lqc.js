@@ -8,7 +8,7 @@
   const STYLESHEETS = [
     {
       id: 'historial-liberacion-lqc-css',
-      href: '/static/css/historial_liberacion_lqc.css?v=20260528a',
+      href: '/static/css/historial_liberacion_lqc.css?v=20260604a',
     },
   ];
 
