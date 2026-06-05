@@ -1,0 +1,288 @@
+<!-- Inventario reparacion SMD - Version AJAX (solo lectura) -->
+<!-- Lee pcb_inventory_scan_smd (area='REPARACION'). CSS persistente en
+     app/static/css/inventario_reparacion_smd.css (WF_004). -->
+<div id="inventario-reparacion-smd-unique-container" class="inventario-reparacion-smd-container">
+
+    <div class="tabs-rep">
+      <button class="tab-rep active" data-panel="stock">Stock actual</button>
+      <button class="tab-rep" data-panel="movimientos">Detalle de movimientos</button>
+      <button class="tab-rep" data-panel="defectos">Resumen por defecto</button>
+    </div>
+
+    <!-- ===================== STOCK ACTUAL ===================== -->
+    <section id="rep-panel-stock" class="panel-rep active">
+      <div class="controls-rep">
+        <div class="group-rep">
+          <label class="label-rep">No. Parte / Modelo</label>
+          <input type="text" id="rep-s-parte" class="input-rep" placeholder="Buscar parte o modelo..."/>
+        </div>
+        <div class="group-rep">
+          <label class="label-rep">Proceso</label>
+          <select id="rep-s-proceso" class="select-rep">
+            <option value="">Todos</option>
+            <option value="SMD">SMD</option>
+            <option value="IMD">IMD</option>
+            <option value="ASSY">ASSY</option>
+          </select>
+        </div>
+        <div class="group-rep" style="flex-direction: row; align-items: center; gap: 6px; align-self: flex-end;">
+          <input type="checkbox" id="rep-s-incluir-cero"/>
+          <label class="label-rep" for="rep-s-incluir-cero" style="text-transform: none;">Incluir stock 0</label>
+        </div>
+        <button class="btn-rep" id="rep-s-buscar">Consultar</button>
+        <button class="btn-rep" id="rep-s-limpiar">Limpiar</button>
+        <button class="btn-rep" id="rep-s-exportar" style="background: #456636; border-color: #20688c;"> Exportar Excel</button>
+        <div class="status-rep" id="rep-s-status">—</div>
+      </div>
+
+      <div id="rep-s-loading" class="loading-rep"><div class="spinner-rep"></div><p>Cargando stock de reparacion…</p></div>
+      <div class="table-container-rep">
+        <table class="table-rep" id="rep-s-table">
+          <thead>
+            <tr>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>No. Parte</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('s', 'pcb_part_no')">▼</button>
+                </div>
+                <div id="filtro-s-pcb_part_no" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar parte..." oninput="aplicarFiltroTextoRep('s', 'pcb_part_no', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>Modelo</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('s', 'modelo')">▼</button>
+                </div>
+                <div id="filtro-s-modelo" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar modelo..." oninput="aplicarFiltroTextoRep('s', 'modelo', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>Proceso</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('s', 'proceso')">▼</button>
+                </div>
+                <div id="filtro-s-proceso" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar proceso..." oninput="aplicarFiltroTextoRep('s', 'proceso', this.value)">
+                </div>
+              </th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Scrap</th>
+              <th>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>Stock actual</span>
+                  <button class="clear-all-filters-rep" onclick="limpiarTodosFiltrosRep('s')" title="Limpiar todos los filtros">×</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== DETALLE DE MOVIMIENTOS ===================== -->
+    <section id="rep-panel-movimientos" class="panel-rep">
+      <div class="controls-rep">
+        <div class="group-rep">
+          <label class="label-rep">Fecha desde</label>
+          <input type="date" id="rep-m-desde" class="input-rep"/>
+        </div>
+        <div class="group-rep">
+          <label class="label-rep">Fecha hasta</label>
+          <input type="date" id="rep-m-hasta" class="input-rep"/>
+        </div>
+        <div class="group-rep">
+          <label class="label-rep">No. Parte / Modelo</label>
+          <input type="text" id="rep-m-parte" class="input-rep" placeholder="Buscar..."/>
+        </div>
+        <div class="group-rep">
+          <label class="label-rep">Proceso</label>
+          <select id="rep-m-proceso" class="select-rep">
+            <option value="">Todos</option>
+            <option value="SMD">SMD</option>
+            <option value="IMD">IMD</option>
+            <option value="ASSY">ASSY</option>
+          </select>
+        </div>
+        <div class="group-rep">
+          <label class="label-rep">Tipo</label>
+          <select id="rep-m-tipo" class="select-rep">
+            <option value="">Todos</option>
+            <option value="ENTRADA">ENTRADA</option>
+            <option value="SALIDA">SALIDA</option>
+            <option value="SCRAP">SCRAP</option>
+          </select>
+        </div>
+        <button class="btn-rep" id="rep-m-buscar">Consultar</button>
+        <button class="btn-rep" id="rep-m-limpiar">Limpiar</button>
+        <button class="btn-rep" id="rep-m-exportar" style="background: #456636; border-color: #20688c;"> Exportar Excel</button>
+        <div class="status-rep" id="rep-m-status">—</div>
+      </div>
+
+      <div id="rep-m-loading" class="loading-rep"><div class="spinner-rep"></div><p>Cargando movimientos…</p></div>
+      <div class="table-container-rep">
+        <table class="table-rep" id="rep-m-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>Tipo</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('m', 'tipo_movimiento')">▼</button>
+                </div>
+                <div id="filtro-m-tipo_movimiento" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar tipo..." oninput="aplicarFiltroTextoRep('m', 'tipo_movimiento', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>QR</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('m', 'scanned_original')">▼</button>
+                </div>
+                <div id="filtro-m-scanned_original" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar QR..." oninput="aplicarFiltroTextoRep('m', 'scanned_original', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>No. Parte</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('m', 'pcb_part_no')">▼</button>
+                </div>
+                <div id="filtro-m-pcb_part_no" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar parte..." oninput="aplicarFiltroTextoRep('m', 'pcb_part_no', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>Modelo</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('m', 'modelo')">▼</button>
+                </div>
+                <div id="filtro-m-modelo" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar modelo..." oninput="aplicarFiltroTextoRep('m', 'modelo', this.value)">
+                </div>
+              </th>
+              <th>Proceso</th>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>Defecto</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('m', 'defect_type')">▼</button>
+                </div>
+                <div id="filtro-m-defect_type" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar defecto..." oninput="aplicarFiltroTextoRep('m', 'defect_type', this.value)">
+                </div>
+              </th>
+              <th>Ubic. componente</th>
+              <th>Etapa det.</th>
+              <th>Qty</th>
+              <th>Array</th>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>Usuario</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('m', 'scanned_by')">▼</button>
+                </div>
+                <div id="filtro-m-scanned_by" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar usuario..." oninput="aplicarFiltroTextoRep('m', 'scanned_by', this.value)">
+                </div>
+              </th>
+              <th>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>Comentarios</span>
+                  <button class="clear-all-filters-rep" onclick="limpiarTodosFiltrosRep('m')" title="Limpiar todos los filtros">×</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== RESUMEN POR DEFECTO ===================== -->
+    <section id="rep-panel-defectos" class="panel-rep">
+      <div class="controls-rep">
+        <div class="group-rep">
+          <label class="label-rep">Fecha desde</label>
+          <input type="date" id="rep-d-desde" class="input-rep"/>
+        </div>
+        <div class="group-rep">
+          <label class="label-rep">Fecha hasta</label>
+          <input type="date" id="rep-d-hasta" class="input-rep"/>
+        </div>
+        <div class="group-rep">
+          <label class="label-rep">Proceso</label>
+          <select id="rep-d-proceso" class="select-rep">
+            <option value="">Todos</option>
+            <option value="SMD">SMD</option>
+            <option value="IMD">IMD</option>
+            <option value="ASSY">ASSY</option>
+          </select>
+        </div>
+        <button class="btn-rep" id="rep-d-buscar">Consultar</button>
+        <button class="btn-rep" id="rep-d-limpiar">Limpiar</button>
+        <button class="btn-rep" id="rep-d-exportar" style="background: #456636; border-color: #20688c;"> Exportar Excel</button>
+        <div class="status-rep" id="rep-d-status">—</div>
+      </div>
+
+      <div id="rep-d-loading" class="loading-rep"><div class="spinner-rep"></div><p>Cargando resumen de defectos…</p></div>
+      <div class="table-container-rep">
+        <table class="table-rep" id="rep-d-table">
+          <thead>
+            <tr>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>Defecto</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('d', 'defect_type')">▼</button>
+                </div>
+                <div id="filtro-d-defect_type" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar defecto..." oninput="aplicarFiltroTextoRep('d', 'defect_type', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-rep">
+                <div class="header-content-rep">
+                  <span>Etapa deteccion</span>
+                  <button class="filter-btn-rep" onclick="toggleFiltroRep('d', 'etapa_deteccion')">▼</button>
+                </div>
+                <div id="filtro-d-etapa_deteccion" class="header-filter-rep">
+                  <input type="text" class="filter-input-rep" placeholder="Buscar etapa..." oninput="aplicarFiltroTextoRep('d', 'etapa_deteccion', this.value)">
+                </div>
+              </th>
+              <th># Registros</th>
+              <th>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>Qty total</span>
+                  <button class="clear-all-filters-rep" onclick="limpiarTodosFiltrosRep('d')" title="Limpiar todos los filtros">×</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+<script src="{{ url_for('static', filename='js/inventario-reparacion-smd-module.js') }}"></script>
+<script>
+  (function () {
+    let intentos = 0;
+    function tryInit() {
+      if (typeof window.inicializarInventarioReparacionSMD === 'function') {
+        window.inicializarInventarioReparacionSMD();
+      } else if (intentos < 20) {
+        intentos++;
+        setTimeout(tryInit, 50);
+      } else {
+        console.error('[REP] inicializarInventarioReparacionSMD no disponible tras 20 intentos');
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryInit);
+    } else {
+      tryInit();
+    }
+  })();
+</script>

@@ -89,6 +89,12 @@ _MODULOS_REGISTRADOS = [
     "control_resultados.aoi",
     # Migracion 2026-05-27: IMD-SMD TERMINADO a blueprint
     "control_resultados.inventario_imd",
+    # Inventario reparacion SMD: reporte solo-lectura de pcb_inventory_scan_smd
+    # (area='REPARACION'). Va justo despues de IMD-SMD TERMINADO en el sidebar.
+    "control_resultados.inventario_reparacion_smd",
+    # Inventario reparacion ASSY: gemelo del de SMD pero sobre
+    # pcb_inventory_scan_prod (Control_produccion). Va despues de reparacion SMD.
+    "control_resultados.inventario_reparacion_assy",
     "control_resultados.inventario_exceso",
     # Migracion 2026-05-27: 3 modulos ICT (Control de resultados)
     "control_resultados.historial_ict",

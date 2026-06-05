@@ -2845,6 +2845,8 @@ window.mostrarHistorialAOI = function () {
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "inventario-imd-terminado-unique-container",
+      "inventario-reparacion-smd-unique-container",
+      "inventario-reparacion-assy-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -2933,6 +2935,8 @@ window.mostrarHistorialICT = function () {
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "inventario-imd-terminado-unique-container",
+      "inventario-reparacion-smd-unique-container",
+      "inventario-reparacion-assy-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -3046,6 +3050,8 @@ window.mostrarHistorialVision = function () {
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "inventario-imd-terminado-unique-container",
+      "inventario-reparacion-smd-unique-container",
+      "inventario-reparacion-assy-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -3161,6 +3167,8 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "inventario-imd-terminado-unique-container",
+      "inventario-reparacion-smd-unique-container",
+      "inventario-reparacion-assy-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -3279,6 +3287,8 @@ window.mostrarHistorialVisionPassFail = function () {
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "inventario-imd-terminado-unique-container",
+      "inventario-reparacion-smd-unique-container",
+      "inventario-reparacion-assy-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {

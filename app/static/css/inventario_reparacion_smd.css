@@ -1,0 +1,384 @@
+/* Inventario reparacion SMD - WF_004 CSS persistente.
+ * Basado en inventario_imd_terminado.css (mismo look del portal).
+ * Cargado desde MainTemplate.html con cache-busting ?v=20260605a.
+ * Fallback ensureModuleStyles() en inventario-reparacion-smd-module.js. */
+
+.inventario-reparacion-smd-container * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.inventario-reparacion-smd-container {
+  font-family: 'LG regular', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #32323E;
+  color: lightgray;
+}
+
+.inventario-reparacion-smd-container .container-rep {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.inventario-reparacion-smd-container .header-rep {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #20688C;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.inventario-reparacion-smd-container .header-rep h1 {
+  color: #ecf0f1;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.inventario-reparacion-smd-container .tabs-rep {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.inventario-reparacion-smd-container .tab-rep {
+  border: 1px solid #20688C;
+  background: #3C3940;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.inventario-reparacion-smd-container .tab-rep.active {
+  background: #20688C;
+}
+
+.inventario-reparacion-smd-container .panel-rep {
+  display: none;
+}
+
+.inventario-reparacion-smd-container .panel-rep.active {
+  display: block;
+}
+
+/* Controles */
+.inventario-reparacion-smd-container .controls-rep {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  background: #34334E;
+  border: 1px solid #20688C;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.inventario-reparacion-smd-container .group-rep {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inventario-reparacion-smd-container .label-rep {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #ecf0f1;
+  letter-spacing: .3px;
+}
+
+.inventario-reparacion-smd-container .input-rep,
+.inventario-reparacion-smd-container .select-rep {
+  background: #2c3e50;
+  color: lightgray;
+  border: 1px solid #34495e;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.inventario-reparacion-smd-container .btn-rep {
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: 1px solid #20688C;
+  background: #3C3940;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  min-width: auto;
+  align-self: flex-end;
+}
+
+.inventario-reparacion-smd-container .btn-rep:hover {
+  background: #2980b9;
+}
+
+.inventario-reparacion-smd-container .status-rep {
+  margin-left: auto;
+  align-self: center;
+  background: #40424F;
+  border: 1px solid #5F6375;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+/* Tabla — sin scroll propio. El scroll lo lleva el area padre
+   (.control-resultados-content-area) para evitar barras anidadas. */
+.inventario-reparacion-smd-container .table-container-rep {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid #5F6375;
+  background: #40424F;
+  scrollbar-width: thin;
+  scrollbar-color: #20688C #40424F;
+}
+
+.inventario-reparacion-smd-container .table-container-rep::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.inventario-reparacion-smd-container .table-container-rep::-webkit-scrollbar-track {
+  background: #40424F;
+  border-radius: 4px;
+}
+
+.inventario-reparacion-smd-container .table-container-rep::-webkit-scrollbar-thumb {
+  background: #20688C;
+  border-radius: 4px;
+}
+
+.inventario-reparacion-smd-container .table-container-rep::-webkit-scrollbar-thumb:hover {
+  background: #3498db;
+}
+
+.inventario-reparacion-smd-container .table-rep {
+  width: 100%;
+  border-collapse: collapse;
+  background: #40424F;
+  font-size: 11px;
+  table-layout: fixed;
+}
+
+.inventario-reparacion-smd-container .table-rep th {
+  background: #172A46;
+  color: #ecf0f1;
+  padding: 7px;
+  border: 1px solid #20688C;
+  position: sticky;
+  top: 0;
+}
+
+.inventario-reparacion-smd-container .table-rep td {
+  padding: 6px;
+  border: 1px solid #5F6375;
+  color: lightgray;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inventario-reparacion-smd-container .table-rep tbody tr:hover td {
+  background: #485563;
+}
+
+/* Loader */
+.inventario-reparacion-smd-container .loading-rep {
+  display: none;
+  text-align: center;
+  background: #40424F;
+  border-radius: 6px;
+  padding: 18px;
+  margin: 8px 0;
+}
+
+.inventario-reparacion-smd-container .spinner-rep {
+  border: 3px solid #555;
+  border-top: 3px solid #00D4FF;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 8px;
+  animation: spin-rep 1s linear infinite;
+}
+
+@keyframes spin-rep {
+  to { transform: rotate(360deg); }
+}
+
+/* Chips de tipo de movimiento / stock */
+.inventario-reparacion-smd-container .ok-rep {
+  color: #27ae60;
+  background: rgba(39, 174, 96, .1);
+  border: 1px solid rgba(39, 174, 96, .35);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.inventario-reparacion-smd-container .ng-rep {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, .1);
+  border: 1px solid rgba(231, 76, 60, .35);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.inventario-reparacion-smd-container .warn-rep {
+  color: #f39c12;
+  background: rgba(243, 156, 18, .1);
+  border: 1px solid rgba(243, 156, 18, .35);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* Stock actual: positivo verde, negativo rojo */
+.inventario-reparacion-smd-container .stock-pos { color: #27ae60; font-weight: 700; }
+.inventario-reparacion-smd-container .stock-neg { color: #e74c3c; font-weight: 700; }
+.inventario-reparacion-smd-container .stock-zero { color: #95a5a6; }
+
+/* Scrollbar */
+.inventario-reparacion-smd-container ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.inventario-reparacion-smd-container ::-webkit-scrollbar-thumb {
+  background: #20688C;
+  border-radius: 3px;
+}
+
+.inventario-reparacion-smd-container ::-webkit-scrollbar-track {
+  background: #40424F;
+}
+
+/* Estilos para filtros de cabecera */
+.inventario-reparacion-smd-container .filterable-header-rep {
+  position: relative;
+  vertical-align: top;
+  padding: 6px 8px !important;
+  min-width: 120px;
+}
+
+.inventario-reparacion-smd-container .filterable-header-rep .header-content-rep {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.inventario-reparacion-smd-container .filterable-header-rep .header-content-rep span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ecf0f1;
+  text-align: left;
+  line-height: 1.2;
+  flex: 1;
+  min-width: 0;
+  word-wrap: break-word;
+}
+
+.inventario-reparacion-smd-container .filterable-header-rep .filter-btn-rep {
+  background: #2c3e50;
+  border: 1px solid #20688C;
+  color: #3498db;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 0;
+  margin-left: auto;
+}
+
+.inventario-reparacion-smd-container .filterable-header-rep .filter-btn-rep:hover {
+  background: #20688C;
+  color: #ecf0f1;
+  transform: scale(1.1);
+}
+
+.inventario-reparacion-smd-container .filterable-header-rep .filter-btn-rep.active {
+  background: #3498db;
+  color: #fff;
+  border-color: #2980b9;
+}
+
+.inventario-reparacion-smd-container .filterable-header-rep .header-filter-rep {
+  position: absolute;
+  top: 0%;
+  left: 0;
+  right: 0;
+  background: #2c3e50;
+  border: 1px solid #20688C;
+  border-radius: 4px;
+  box-shadow: 0 -4px 8px rgba(0,0,0,0.3);
+  z-index: 9999 !important;
+  padding: 5px;
+  margin-bottom: 2px;
+  min-width: 150px;
+  display: none;
+}
+
+.inventario-reparacion-smd-container .filterable-header-rep .filter-input-rep {
+  width: 100%;
+  background: #34495e !important;
+  border: 1px solid #20688C !important;
+  color: lightgray !important;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  outline: none;
+}
+
+.inventario-reparacion-smd-container .filterable-header-rep .filter-input-rep:focus {
+  border-color: #3498db !important;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.inventario-reparacion-smd-container .clear-all-filters-rep {
+  background: #e74c3c !important;
+  border: 1px solid #c0392b !important;
+  color: #fff !important;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  transition: all 0.2s ease;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+
+.inventario-reparacion-smd-container .clear-all-filters-rep:hover {
+  background: #c0392b !important;
+  transform: scale(1.05);
+}
+
+/* Override para evitar conflictos con overflow */
+.inventario-reparacion-smd-container .table-rep th:not(.filterable-header-rep) {
+  overflow: hidden;
+}
+
+.inventario-reparacion-smd-container .filterable-header-rep {
+  overflow: visible !important;
+}
+
+@media(max-width: 900px) {
+  .inventario-reparacion-smd-container .status-rep {
+    width: 100%;
+    order: 99;
+  }
+}

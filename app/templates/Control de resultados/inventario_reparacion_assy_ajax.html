@@ -1,0 +1,297 @@
+<!-- Inventario reparacion ASSY - Version AJAX (solo lectura) -->
+<!-- Lee pcb_inventory_scan_prod (area='REPARACION'). CSS persistente en
+     app/static/css/inventario_reparacion_assy.css (WF_004). -->
+<div id="inventario-reparacion-assy-unique-container" class="inventario-reparacion-assy-container">
+
+    <div class="tabs-repa">
+      <button class="tab-repa active" data-panel="stock">Stock actual</button>
+      <button class="tab-repa" data-panel="movimientos">Detalle de movimientos</button>
+      <button class="tab-repa" data-panel="defectos">Resumen por defecto</button>
+    </div>
+
+    <!-- ===================== STOCK ACTUAL ===================== -->
+    <section id="repa-panel-stock" class="panel-repa active">
+      <div class="controls-repa">
+        <div class="group-repa">
+          <label class="label-repa">No. Parte / Modelo</label>
+          <input type="text" id="repa-s-parte" class="input-repa" placeholder="Buscar parte o modelo..."/>
+        </div>
+        <div class="group-repa">
+          <label class="label-repa">Proceso</label>
+          <select id="repa-s-proceso" class="select-repa">
+            <option value="">Todos</option>
+            <option value="SMD">SMD</option>
+            <option value="IMD">IMD</option>
+            <option value="ASSY">ASSY</option>
+          </select>
+        </div>
+        <div class="group-repa" style="flex-direction: row; align-items: center; gap: 6px; align-self: flex-end;">
+          <input type="checkbox" id="repa-s-incluir-cero"/>
+          <label class="label-repa" for="repa-s-incluir-cero" style="text-transform: none;">Incluir stock 0</label>
+        </div>
+        <button class="btn-repa" id="repa-s-buscar">Consultar</button>
+        <button class="btn-repa" id="repa-s-limpiar">Limpiar</button>
+        <button class="btn-repa" id="repa-s-exportar" style="background: #456636; border-color: #20688c;"> Exportar Excel</button>
+        <div class="status-repa" id="repa-s-status">—</div>
+      </div>
+
+      <div id="repa-s-loading" class="loading-repa"><div class="spinner-repa"></div><p>Cargando stock de reparacion…</p></div>
+      <div class="table-container-repa">
+        <table class="table-repa" id="repa-s-table">
+          <thead>
+            <tr>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>No. Parte</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('s', 'pcb_part_no')">▼</button>
+                </div>
+                <div id="filtro-repa-s-pcb_part_no" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar parte..." oninput="aplicarFiltroTextoRepA('s', 'pcb_part_no', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>Modelo</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('s', 'modelo')">▼</button>
+                </div>
+                <div id="filtro-repa-s-modelo" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar modelo..." oninput="aplicarFiltroTextoRepA('s', 'modelo', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>Proceso</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('s', 'proceso')">▼</button>
+                </div>
+                <div id="filtro-repa-s-proceso" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar proceso..." oninput="aplicarFiltroTextoRepA('s', 'proceso', this.value)">
+                </div>
+              </th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Scrap</th>
+              <th>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>Stock actual</span>
+                  <button class="clear-all-filters-repa" onclick="limpiarTodosFiltrosRepA('s')" title="Limpiar todos los filtros">×</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== DETALLE DE MOVIMIENTOS ===================== -->
+    <section id="repa-panel-movimientos" class="panel-repa">
+      <div class="controls-repa">
+        <div class="group-repa">
+          <label class="label-repa">Fecha desde</label>
+          <input type="date" id="repa-m-desde" class="input-repa"/>
+        </div>
+        <div class="group-repa">
+          <label class="label-repa">Fecha hasta</label>
+          <input type="date" id="repa-m-hasta" class="input-repa"/>
+        </div>
+        <div class="group-repa">
+          <label class="label-repa">No. Parte / Modelo</label>
+          <input type="text" id="repa-m-parte" class="input-repa" placeholder="Buscar..."/>
+        </div>
+        <div class="group-repa">
+          <label class="label-repa">Proceso</label>
+          <select id="repa-m-proceso" class="select-repa">
+            <option value="">Todos</option>
+            <option value="SMD">SMD</option>
+            <option value="IMD">IMD</option>
+            <option value="ASSY">ASSY</option>
+          </select>
+        </div>
+        <div class="group-repa">
+          <label class="label-repa">Tipo</label>
+          <select id="repa-m-tipo" class="select-repa">
+            <option value="">Todos</option>
+            <option value="ENTRADA">ENTRADA</option>
+            <option value="SALIDA">SALIDA</option>
+            <option value="SCRAP">SCRAP</option>
+          </select>
+        </div>
+        <button class="btn-repa" id="repa-m-buscar">Consultar</button>
+        <button class="btn-repa" id="repa-m-limpiar">Limpiar</button>
+        <button class="btn-repa" id="repa-m-exportar" style="background: #456636; border-color: #20688c;"> Exportar Excel</button>
+        <div class="status-repa" id="repa-m-status">—</div>
+      </div>
+
+      <div id="repa-m-loading" class="loading-repa"><div class="spinner-repa"></div><p>Cargando movimientos…</p></div>
+      <div class="table-container-repa">
+        <table class="table-repa" id="repa-m-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>Tipo</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('m', 'tipo_movimiento')">▼</button>
+                </div>
+                <div id="filtro-repa-m-tipo_movimiento" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar tipo..." oninput="aplicarFiltroTextoRepA('m', 'tipo_movimiento', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>QR</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('m', 'scanned_original')">▼</button>
+                </div>
+                <div id="filtro-repa-m-scanned_original" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar QR..." oninput="aplicarFiltroTextoRepA('m', 'scanned_original', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>No. Parte</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('m', 'pcb_part_no')">▼</button>
+                </div>
+                <div id="filtro-repa-m-pcb_part_no" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar parte..." oninput="aplicarFiltroTextoRepA('m', 'pcb_part_no', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>Modelo</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('m', 'modelo')">▼</button>
+                </div>
+                <div id="filtro-repa-m-modelo" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar modelo..." oninput="aplicarFiltroTextoRepA('m', 'modelo', this.value)">
+                </div>
+              </th>
+              <th>Proceso</th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>Defecto</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('m', 'defect_type')">▼</button>
+                </div>
+                <div id="filtro-repa-m-defect_type" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar defecto..." oninput="aplicarFiltroTextoRepA('m', 'defect_type', this.value)">
+                </div>
+              </th>
+              <th>Ubic. componente</th>
+              <th>Etapa det.</th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>Linea salida</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('m', 'linea_salida_pcb')">▼</button>
+                </div>
+                <div id="filtro-repa-m-linea_salida_pcb" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar linea..." oninput="aplicarFiltroTextoRepA('m', 'linea_salida_pcb', this.value)">
+                </div>
+              </th>
+              <th>Qty</th>
+              <th>Array</th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>Usuario</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('m', 'scanned_by')">▼</button>
+                </div>
+                <div id="filtro-repa-m-scanned_by" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar usuario..." oninput="aplicarFiltroTextoRepA('m', 'scanned_by', this.value)">
+                </div>
+              </th>
+              <th>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>Comentarios</span>
+                  <button class="clear-all-filters-repa" onclick="limpiarTodosFiltrosRepA('m')" title="Limpiar todos los filtros">×</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== RESUMEN POR DEFECTO ===================== -->
+    <section id="repa-panel-defectos" class="panel-repa">
+      <div class="controls-repa">
+        <div class="group-repa">
+          <label class="label-repa">Fecha desde</label>
+          <input type="date" id="repa-d-desde" class="input-repa"/>
+        </div>
+        <div class="group-repa">
+          <label class="label-repa">Fecha hasta</label>
+          <input type="date" id="repa-d-hasta" class="input-repa"/>
+        </div>
+        <div class="group-repa">
+          <label class="label-repa">Proceso</label>
+          <select id="repa-d-proceso" class="select-repa">
+            <option value="">Todos</option>
+            <option value="SMD">SMD</option>
+            <option value="IMD">IMD</option>
+            <option value="ASSY">ASSY</option>
+          </select>
+        </div>
+        <button class="btn-repa" id="repa-d-buscar">Consultar</button>
+        <button class="btn-repa" id="repa-d-limpiar">Limpiar</button>
+        <button class="btn-repa" id="repa-d-exportar" style="background: #456636; border-color: #20688c;"> Exportar Excel</button>
+        <div class="status-repa" id="repa-d-status">—</div>
+      </div>
+
+      <div id="repa-d-loading" class="loading-repa"><div class="spinner-repa"></div><p>Cargando resumen de defectos…</p></div>
+      <div class="table-container-repa">
+        <table class="table-repa" id="repa-d-table">
+          <thead>
+            <tr>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>Defecto</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('d', 'defect_type')">▼</button>
+                </div>
+                <div id="filtro-repa-d-defect_type" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar defecto..." oninput="aplicarFiltroTextoRepA('d', 'defect_type', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-repa">
+                <div class="header-content-repa">
+                  <span>Etapa deteccion</span>
+                  <button class="filter-btn-repa" onclick="toggleFiltroRepA('d', 'etapa_deteccion')">▼</button>
+                </div>
+                <div id="filtro-repa-d-etapa_deteccion" class="header-filter-repa">
+                  <input type="text" class="filter-input-repa" placeholder="Buscar etapa..." oninput="aplicarFiltroTextoRepA('d', 'etapa_deteccion', this.value)">
+                </div>
+              </th>
+              <th># Registros</th>
+              <th>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>Qty total</span>
+                  <button class="clear-all-filters-repa" onclick="limpiarTodosFiltrosRepA('d')" title="Limpiar todos los filtros">×</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+<script src="{{ url_for('static', filename='js/inventario-reparacion-assy-module.js') }}"></script>
+<script>
+  (function () {
+    let intentos = 0;
+    function tryInit() {
+      if (typeof window.inicializarInventarioReparacionASSY === 'function') {
+        window.inicializarInventarioReparacionASSY();
+      } else if (intentos < 20) {
+        intentos++;
+        setTimeout(tryInit, 50);
+      } else {
+        console.error('[REPA] inicializarInventarioReparacionASSY no disponible tras 20 intentos');
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryInit);
+    } else {
+      tryInit();
+    }
+  })();
+</script>

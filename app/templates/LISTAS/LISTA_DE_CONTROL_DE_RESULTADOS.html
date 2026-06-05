@@ -18,6 +18,18 @@
                             data-permiso-seccion="Control de inventario"
                             data-permiso-boton="IMD-SMD TERMINADO"
                             onclick="window.parent.mostrarInventarioIMDTerminado ? window.parent.mostrarInventarioIMDTerminado() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('inventario-imd-terminado-unique-container', '/control_resultados/inventario_imd_terminado') : window.location.href='/control_resultados/inventario_imd_terminado')">IMD-SMD TERMINADO</li>
+                    <!-- Modulo solo-lectura del inventario de reparacion SMD (pcb_inventory_scan_smd, area=REPARACION). -->
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Control de inventario"
+                            data-permiso-boton="Inventario reparacion SMD"
+                            onclick="window.parent.mostrarInventarioReparacionSMD ? window.parent.mostrarInventarioReparacionSMD() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('inventario-reparacion-smd-unique-container', '/control_resultados/inventario_reparacion_smd') : window.location.href='/control_resultados/inventario_reparacion_smd')">Inventario reparacion SMD</li>
+                    <!-- Modulo solo-lectura del inventario de reparacion ASSY (pcb_inventory_scan_prod, area=REPARACION). -->
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Control de inventario"
+                            data-permiso-boton="Inventario reparacion ASSY"
+                            onclick="window.parent.mostrarInventarioReparacionASSY ? window.parent.mostrarInventarioReparacionASSY() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('inventario-reparacion-assy-unique-container', '/control_resultados/inventario_reparacion_assy') : window.location.href='/control_resultados/inventario_reparacion_assy')">Inventario reparacion ASSY</li>
                     <li class="sidebar-link" tabindex="0"
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
                             data-permiso-seccion="Control de inventario"
