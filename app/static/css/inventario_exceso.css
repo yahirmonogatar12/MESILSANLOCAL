@@ -369,6 +369,29 @@
     font-size: 0.72rem;
 }
 
+#inventario-exceso-module .ae-inventory-total-row th,
+#inventario-exceso-module .ae-inventory-total-row td {
+    height: 20px;
+    background: rgba(52, 152, 219, 0.16);
+    color: #b9dcff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-top-color: rgba(52, 152, 219, 0.22);
+    border-bottom-color: rgba(52, 152, 219, 0.18);
+}
+
+#inventario-exceso-module .ae-inventory-total-row .ae-inventory-total-label {
+    color: #fff;
+    background: var(--ilsan-dark-header);
+    text-transform: uppercase;
+}
+
+#inventario-exceso-module .ae-inventory-total-row .ae-inventory-total-empty {
+    background: var(--ilsan-dark-secondary);
+    border-color: transparent;
+    color: transparent;
+}
+
 #inventario-exceso-module .ae-history-table tbody tr:nth-child(even) {
     background: rgba(78, 84, 112, 0.45);
 }

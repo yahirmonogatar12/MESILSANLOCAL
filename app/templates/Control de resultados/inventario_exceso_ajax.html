@@ -43,8 +43,6 @@
             <div class="ae-results-card">
                 <div class="ae-card-header">
                     <h3>Inventario Exceso</h3>
-                    <span id="inventario-exceso-count" class="ae-record-count">0 piezas</span>
-                    <span id="inventario-exceso-status" class="ae-status-text"></span>
                 </div>
                 <div class="ae-table-shell">
                     <div class="ae-table-head">
@@ -59,6 +57,15 @@
                                 <col style="width: 13%;">
                             </colgroup>
                             <thead>
+                                <tr id="inventario-exceso-totals-row" class="ae-inventory-total-row">
+                                    <td class="ae-inventory-total-empty"></td>
+                                    <td class="ae-inventory-total-empty"></td>
+                                    <th scope="row" class="ae-inventory-total-label">TOTALES</th>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                </tr>
                                 <tr>
                                     <th>No. parte</th>
                                     <th>Modelo</th>
@@ -258,4 +265,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/inventario_exceso.js', v='20260602a') }}"></script>
+<script src="{{ url_for('static', filename='js/inventario_exceso.js', v='20260605b') }}"></script>

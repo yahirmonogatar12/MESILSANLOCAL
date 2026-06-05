@@ -3,7 +3,7 @@
   // WF_002: JS propio con IDs prefijados inventario-exceso-*.
   // WF_003: integra API JSON/Excel del blueprint control_resultados.inventario_exceso.
   // WF_004: garantiza CSS persistente/cache-busted aunque el template se cargue por AJAX.
-  const ASSET_VERSION = "20260602a";
+  const ASSET_VERSION = "20260605b";
   const STYLESHEET_ID = "inventario-exceso-css";
   const STYLESHEET_HREF = `/static/css/inventario_exceso.css?v=${ASSET_VERSION}`;
 
@@ -56,8 +56,7 @@
       searchBtn: document.getElementById("inventario-exceso-search-btn"),
       clearBtn: document.getElementById("inventario-exceso-clear-btn"),
       exportBtn: document.getElementById("inventario-exceso-export-btn"),
-      status: document.getElementById("inventario-exceso-status"),
-      count: document.getElementById("inventario-exceso-count"),
+      totalsRow: document.getElementById("inventario-exceso-totals-row"),
       tbody: document.getElementById("inventario-exceso-tbody"),
       openClosureBtn: document.getElementById("inventario-exceso-open-closure-btn"),
       backClosureBtn: document.getElementById("inventario-exceso-closure-back-btn"),
@@ -78,13 +77,6 @@
       historyCount: document.getElementById("inventario-exceso-closure-history-count"),
       historyTbody: document.getElementById("inventario-exceso-closure-history-tbody"),
     };
-  }
-
-  function setStatus(text, isError) {
-    const { status } = getElements();
-    if (!status) return;
-    status.textContent = text || "";
-    status.classList.toggle("is-error", Boolean(isError));
   }
 
   function setClosureStatus(text, isError) {
@@ -128,39 +120,68 @@
       .join("");
   }
 
+  function computeInventoryTotals(rows) {
+    return (rows || []).reduce(
+      (totals, row) => {
+        totals.initialQuantity += Number(row.initial_quantity || 0);
+        totals.entriesQty += Number(row.entries_qty || 0);
+        totals.exitsQty += Number(row.exits_qty || 0);
+        totals.currentQuantity += Number(row.current_quantity || 0);
+        return totals;
+      },
+      {
+        initialQuantity: 0,
+        entriesQty: 0,
+        exitsQty: 0,
+        currentQuantity: 0,
+      },
+    );
+  }
+
+  function renderInventoryTotals(rows) {
+    const { totalsRow } = getElements();
+    if (!totalsRow) return;
+    const totals = computeInventoryTotals(rows);
+    totalsRow.innerHTML = `
+      <td class="ae-inventory-total-empty"></td>
+      <td class="ae-inventory-total-empty"></td>
+      <th scope="row" class="ae-inventory-total-label">TOTALES</th>
+      <td>${formatNumber(totals.initialQuantity)}</td>
+      <td>${formatNumber(totals.entriesQty)}</td>
+      <td>${formatNumber(totals.exitsQty)}</td>
+      <td>${formatNumber(totals.currentQuantity)}</td>
+    `;
+  }
+
   async function syncExitsInBackground() {
     if (state.exitsSyncStarted) return;
     state.exitsSyncStarted = true;
-    setStatus("Inventario actualizado. Sincronizando salidas...");
     try {
       await fetchJson("/api/inventario_exceso/exits/sync", { method: "POST" });
       await loadInventory({ skipExitSync: true });
-      setStatus("Inventario actualizado.");
     } catch (error) {
-      setStatus(`Inventario actualizado. Salidas pendientes: ${error.message}`, true);
+      console.warn("Inventario Exceso: no fue posible sincronizar salidas.", error);
     }
   }
 
   async function loadInventory(options = {}) {
-    const { search, tbody, count } = getElements();
+    const { search, tbody } = getElements();
     if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="7" class="ae-empty-cell">Cargando inventario...</td></tr>`;
-    setStatus("Consultando inventario...");
+    renderInventoryTotals([]);
     try {
       const params = new URLSearchParams();
       if (search?.value.trim()) params.set("q", search.value.trim());
       const payload = await fetchJson(`/api/inventario_exceso/inventory?${params.toString()}`);
-      tbody.innerHTML = renderInventoryRows(payload.items || []);
-      if (count) {
-        count.textContent = `${formatNumber(payload.totalQuantity)} piezas / ${formatNumber(payload.totalParts)} partes`;
-      }
-      setStatus("Inventario actualizado.");
+      const rows = payload.items || [];
+      tbody.innerHTML = renderInventoryRows(rows);
+      renderInventoryTotals(rows);
       if (!options.skipExitSync) {
         syncExitsInBackground();
       }
     } catch (error) {
       tbody.innerHTML = `<tr><td colspan="7" class="ae-empty-cell">${escapeHtml(error.message)}</td></tr>`;
-      setStatus(error.message, true);
+      renderInventoryTotals([]);
     }
   }
 
