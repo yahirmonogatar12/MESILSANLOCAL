@@ -3,7 +3,7 @@
   // WF_002: JS propio con IDs prefijados inventario-exceso-*.
   // WF_003: integra API JSON/Excel del blueprint control_resultados.inventario_exceso.
   // WF_004: garantiza CSS persistente/cache-busted aunque el template se cargue por AJAX.
-  const ASSET_VERSION = "20260605b";
+  const ASSET_VERSION = "20260605c";
   const STYLESHEET_ID = "inventario-exceso-css";
   const STYLESHEET_HREF = `/static/css/inventario_exceso.css?v=${ASSET_VERSION}`;
 
@@ -12,6 +12,7 @@
     valid: false,
     history: [],
     exitsSyncStarted: false,
+    inventoryRequestId: 0,
   };
 
   function ensureStylesheet() {
@@ -37,6 +38,10 @@
     return number.toLocaleString("es-MX");
   }
 
+  function normalizeSearchInput(value) {
+    return String(value ?? "").trim();
+  }
+
   async function fetchJson(url, options) {
     const response = await fetch(url, {
       credentials: "same-origin",
@@ -47,6 +52,20 @@
       throw new Error(payload.error || payload.message || "No fue posible completar la solicitud.");
     }
     return payload;
+  }
+
+  function buildInventoryUrl(searchValue) {
+    const params = new URLSearchParams();
+    if (searchValue) params.set("q", searchValue);
+    const query = params.toString();
+    return `/api/inventario_exceso/inventory${query ? `?${query}` : ""}`;
+  }
+
+  function inventoryErrorMessage(error) {
+    if (error instanceof TypeError || error?.message === "Failed to fetch") {
+      return "No fue posible consultar el inventario. Intenta nuevamente.";
+    }
+    return error?.message || "No fue posible consultar el inventario.";
   }
 
   function getElements() {
@@ -156,9 +175,12 @@
   async function syncExitsInBackground() {
     if (state.exitsSyncStarted) return;
     state.exitsSyncStarted = true;
+    const requestIdAtStart = state.inventoryRequestId;
     try {
       await fetchJson("/api/inventario_exceso/exits/sync", { method: "POST" });
-      await loadInventory({ skipExitSync: true });
+      if (requestIdAtStart === state.inventoryRequestId) {
+        await loadInventory({ skipExitSync: true, showLoading: false, silentError: true });
+      }
     } catch (error) {
       console.warn("Inventario Exceso: no fue posible sincronizar salidas.", error);
     }
@@ -167,12 +189,19 @@
   async function loadInventory(options = {}) {
     const { search, tbody } = getElements();
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="7" class="ae-empty-cell">Cargando inventario...</td></tr>`;
-    renderInventoryTotals([]);
+    const requestId = state.inventoryRequestId + 1;
+    state.inventoryRequestId = requestId;
+    const searchValue =
+      options.searchValue !== undefined
+        ? normalizeSearchInput(options.searchValue)
+        : normalizeSearchInput(search?.value);
+    if (options.showLoading !== false) {
+      tbody.innerHTML = `<tr><td colspan="7" class="ae-empty-cell">Cargando inventario...</td></tr>`;
+      renderInventoryTotals([]);
+    }
     try {
-      const params = new URLSearchParams();
-      if (search?.value.trim()) params.set("q", search.value.trim());
-      const payload = await fetchJson(`/api/inventario_exceso/inventory?${params.toString()}`);
+      const payload = await fetchJson(buildInventoryUrl(searchValue));
+      if (requestId !== state.inventoryRequestId) return;
       const rows = payload.items || [];
       tbody.innerHTML = renderInventoryRows(rows);
       renderInventoryTotals(rows);
@@ -180,7 +209,8 @@
         syncExitsInBackground();
       }
     } catch (error) {
-      tbody.innerHTML = `<tr><td colspan="7" class="ae-empty-cell">${escapeHtml(error.message)}</td></tr>`;
+      if (requestId !== state.inventoryRequestId || options.silentError) return;
+      tbody.innerHTML = `<tr><td colspan="7" class="ae-empty-cell">${escapeHtml(inventoryErrorMessage(error))}</td></tr>`;
       renderInventoryTotals([]);
     }
   }
@@ -393,16 +423,17 @@
     elements.root.dataset.initialized = "true";
 
     elements.searchBtn?.addEventListener("click", () => {
-      loadInventory();
+      loadInventory({ searchValue: elements.search?.value });
     });
     elements.search?.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
-        loadInventory();
+        loadInventory({ searchValue: elements.search?.value });
       }
     });
-    elements.clearBtn?.addEventListener("click", () => {
+    elements.clearBtn?.addEventListener("click", (event) => {
+      event.preventDefault();
       if (elements.search) elements.search.value = "";
-      loadInventory();
+      loadInventory({ searchValue: "" });
     });
     elements.exportBtn?.addEventListener("click", () => {
       const params = new URLSearchParams();
