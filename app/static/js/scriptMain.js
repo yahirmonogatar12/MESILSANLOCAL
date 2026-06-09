@@ -2807,6 +2807,42 @@ window.mostrarHistorialLiberacionLQC = function () {
   );
 };
 
+window.mostrarPPMsIQC = function () {
+  _mostrarModuloCalidad(
+    "ppms-iqc-unique-container",
+    "/control_calidad/ppms/iqc",
+    () => {
+      if (typeof window.inicializarPPMsIQC === "function") {
+        window.inicializarPPMsIQC("#ppms-iqc-module");
+      }
+    },
+  );
+};
+
+window.mostrarPPMsLQC = function () {
+  _mostrarModuloCalidad(
+    "ppms-lqc-unique-container",
+    "/control_calidad/ppms/lqc",
+    () => {
+      if (typeof window.inicializarPPMsLQC === "function") {
+        window.inicializarPPMsLQC("#ppms-lqc-module");
+      }
+    },
+  );
+};
+
+window.mostrarPPMsOQC = function () {
+  _mostrarModuloCalidad(
+    "ppms-oqc-unique-container",
+    "/control_calidad/ppms/oqc",
+    () => {
+      if (typeof window.inicializarPPMsOQC === "function") {
+        window.inicializarPPMsOQC("#ppms-oqc-module");
+      }
+    },
+  );
+};
+
 // Función AJAX para Historial AOI - GLOBAL
 window.mostrarHistorialAOI = function () {
   try {

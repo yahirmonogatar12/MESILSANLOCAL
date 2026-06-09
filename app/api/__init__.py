@@ -84,6 +84,8 @@ _MODULOS_REGISTRADOS = [
     "control_calidad.smt_historial",
     # Migracion 2026-05-28: Historial de liberacion LQC
     "control_calidad.historial_liberacion_lqc",
+    # WF_001-WF_004 (2026-06-05): modulos PPM's IQC/LQC/OQC
+    "control_calidad.ppms",
     # Fase 3.3 (2026-05-28): 6 renders cortos de Control de calidad
     "control_calidad.renders",
     "control_resultados.aoi",

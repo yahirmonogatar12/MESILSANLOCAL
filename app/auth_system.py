@@ -532,6 +532,10 @@ class AuthSystem:
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Reportes de calidad', 'Acceso a reportes de calidad'),
             # WF_001 (2026-05-28): seed modulo Historial de liberacion LQC en Inspeccion de calidad.
             ('LISTA_CONTROL_DE_CALIDAD', 'Inspeccion de calidad', 'Historial de liberacion LQC', 'Acceso al historial de liberacion LQC'),
+            # WF_001 (2026-06-05): seed modulos PPM's en Control de calidad.
+            ('LISTA_CONTROL_DE_CALIDAD', "PPM's", "PPM's IQC", "Acceso al modulo PPM's IQC"),
+            ('LISTA_CONTROL_DE_CALIDAD', "PPM's", "PPM's LQC", "Acceso al modulo PPM's LQC"),
+            ('LISTA_CONTROL_DE_CALIDAD', "PPM's", "PPM's OQC", "Acceso al modulo PPM's OQC"),
 
             # LISTA DE CONTROL DE RESULTADOS
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Análisis de resultados', 'Acceso al análisis de resultados'),
@@ -604,7 +608,7 @@ class AuthSystem:
         self._asignar_permisos_botones_especificos(cursor, 'calidad', [
             'LISTA_CONTROL_DE_CALIDAD', 'LISTA_INFORMACIONBASICA'
         ], [
-            'Control de calidad', 'Información básica'
+            'Control de calidad', "PPM's", 'Información básica'
         ])
         
         # Consulta - solo ver, sin modificar

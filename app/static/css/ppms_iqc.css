@@ -1,0 +1,39 @@
+/* PPM's IQC.
+   WF_004: CSS persistente propio cargado desde MainTemplate.html y reforzado por JS. */
+
+.ppms-module {
+    color: var(--ilsan-text-light);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    background: var(--ilsan-dark-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.ppms-module__header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ppms-module__header h2 {
+    color: var(--ilsan-text-light);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0;
+}
+
+.ppms-module__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    background: var(--ilsan-dark-secondary);
+}

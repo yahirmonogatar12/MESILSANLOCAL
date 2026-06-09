@@ -1,0 +1,13 @@
+<!-- PPM's IQC - fragmento AJAX.
+     WF_001: cargado desde LISTA_CONTROL_DE_CALIDAD / PPM's.
+     WF_002: container ppms-iqc-unique-container.
+     WF_003: consumido por app/api/control_calidad/ppms.py.
+     WF_004: CSS persistente en MainTemplate.html y JS idempotente. -->
+<section id="ppms-iqc-module" class="ppms-module" data-ppms-module="iqc">
+    <header class="ppms-module__header">
+        <h2>PPM's IQC</h2>
+    </header>
+    <div class="ppms-module__body"></div>
+</section>
+
+<script src="{{ url_for('static', filename='js/ppms_iqc.js', v='20260605a') }}"></script>

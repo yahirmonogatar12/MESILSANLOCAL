@@ -110,6 +110,31 @@
                             onclick="window.parent.mostrarHistorialLiberacionLQC ? window.parent.mostrarHistorialLiberacionLQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-liberacion-lqc-unique-container', '/historial_liberacion_lqc/ajax') : window.location.href='/historial_liberacion_lqc/ajax')">Historial de liberacion LQC</li>
                 </ul>
             </li>
+            <li class="sidebar-section">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarPPMs" aria-expanded="false">
+                    <span class="sidebar-icon"></span>
+                    PPM's
+                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                </button>
+                <ul class="collapse sidebar-dropdown-list" id="sidebarPPMs">
+                    <!-- WF_001: opciones iniciales para modulos PPM's de Control de calidad. -->
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="PPM's"
+                            data-permiso-boton="PPM's IQC"
+                            onclick="window.parent.mostrarPPMsIQC ? window.parent.mostrarPPMsIQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('ppms-iqc-unique-container', '/control_calidad/ppms/iqc') : window.location.href='/control_calidad/ppms/iqc')">PPM's IQC</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="PPM's"
+                            data-permiso-boton="PPM's LQC"
+                            onclick="window.parent.mostrarPPMsLQC ? window.parent.mostrarPPMsLQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('ppms-lqc-unique-container', '/control_calidad/ppms/lqc') : window.location.href='/control_calidad/ppms/lqc')">PPM's LQC</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="PPM's"
+                            data-permiso-boton="PPM's OQC"
+                            onclick="window.parent.mostrarPPMsOQC ? window.parent.mostrarPPMsOQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('ppms-oqc-unique-container', '/control_calidad/ppms/oqc') : window.location.href='/control_calidad/ppms/oqc')">PPM's OQC</li>
+                </ul>
+            </li>
         </ul>
     </aside>
 

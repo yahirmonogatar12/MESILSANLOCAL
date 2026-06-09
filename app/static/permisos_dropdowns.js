@@ -105,6 +105,21 @@ const allDropdowns = [
         "boton": "Control de inspeccion de OQC"
     },
     {
+        "pagina": "LISTA_CONTROL_DE_CALIDAD",
+        "seccion": "PPM's",
+        "boton": "PPM's IQC"
+    },
+    {
+        "pagina": "LISTA_CONTROL_DE_CALIDAD",
+        "seccion": "PPM's",
+        "boton": "PPM's LQC"
+    },
+    {
+        "pagina": "LISTA_CONTROL_DE_CALIDAD",
+        "seccion": "PPM's",
+        "boton": "PPM's OQC"
+    },
+    {
         "pagina": "LISTA_CONTROL_DE_PROCESO",
         "seccion": "Control de produccion",
         "boton": "Control de produccion SMT"

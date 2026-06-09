@@ -1,0 +1,74 @@
+<!-- PPM's LQC - fragmento AJAX.
+     WF_001: cargado desde LISTA_CONTROL_DE_CALIDAD / PPM's.
+     WF_002: container ppms-lqc-unique-container.
+     WF_003: consumido por app/api/control_calidad/ppms.py.
+     WF_004: CSS persistente en MainTemplate.html y JS idempotente. -->
+<section id="ppms-lqc-module" class="ppms-module" data-ppms-module="lqc">
+    <header class="ppms-module__header">
+        <h2>PPM's LQC</h2>
+        <div class="ppms-lqc-target">
+            <label for="ppms-lqc-target">TARGET</label>
+            <input id="ppms-lqc-target" type="number" min="0" step="1" value="20000">
+            <button id="ppms-lqc-save-target" class="ppms-btn ppms-btn--secondary" type="button">Guardar</button>
+        </div>
+    </header>
+    <div class="ppms-module__body ppms-lqc">
+        <form id="ppms-lqc-filters" class="ppms-lqc-filters">
+            <div class="ppms-field">
+                <label for="ppms-lqc-date-from">Fecha desde</label>
+                <input id="ppms-lqc-date-from" type="date">
+            </div>
+            <div class="ppms-field">
+                <label for="ppms-lqc-date-to">Fecha hasta</label>
+                <input id="ppms-lqc-date-to" type="date">
+            </div>
+            
+            <div class="ppms-field">
+                <label for="ppms-lqc-line">Linea</label>
+                <select id="ppms-lqc-line">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="ppms-field ppms-field--wide">
+                <label for="ppms-lqc-search">No. parte / familia / modelo</label>
+                <input id="ppms-lqc-search" type="text" autocomplete="off">
+            </div>
+            <button class="ppms-btn ppms-btn--primary" type="submit">Consultar</button>
+            <button id="ppms-lqc-clear" class="ppms-btn ppms-btn--secondary" type="button">Limpiar</button>
+        </form>
+
+        <section class="ppms-lqc-charts">
+            <div class="ppms-lqc-chart-panel">
+                <div id="ppms-lqc-trend-title" class="ppms-lqc-chart-title">Trend TTL PPMs LQC</div>
+                <div id="ppms-lqc-trend-chart" class="ppms-svg-chart" role="img" aria-label="Tendencia PPM LQC"></div>
+            </div>
+            <div class="ppms-lqc-chart-panel">
+                <div class="ppms-lqc-chart-title">Top 5 Project PPMs</div>
+                <div id="ppms-lqc-top-part-chart" class="ppms-svg-chart" role="img" aria-label="Top 5 PPM por numero de parte"></div>
+            </div>
+        </section>
+
+        <section class="ppms-lqc-tables">
+            <div class="ppms-lqc-table-block">
+                <h3>Tendencia</h3>
+                <div class="ppms-table-scroll">
+                    <table class="ppms-table" id="ppms-lqc-trend-table"></table>
+                </div>
+            </div>
+            <div class="ppms-lqc-table-block">
+                <h3>Detalle Top 5</h3>
+                <div class="ppms-table-scroll">
+                    <table class="ppms-table" id="ppms-lqc-top-detail-table"></table>
+                </div>
+            </div>
+            <div class="ppms-lqc-table-block ppms-lqc-table-block--wide">
+                <h3>Detalle por linea</h3>
+                <div class="ppms-table-scroll ppms-table-scroll--wide">
+                    <table class="ppms-table ppms-table--weekly" id="ppms-lqc-line-weekly-table"></table>
+                </div>
+            </div>
+        </section>
+    </div>
+</section>
+
+<script src="{{ url_for('static', filename='js/ppms_lqc.js', v='20260608b') }}"></script>

@@ -73,6 +73,10 @@
     <link id="history-vision-pass-fail-css" rel="stylesheet" href="{{ url_for('static', filename='css/history_vision_pass_fail.css', v='20260527b') }}">
     <!-- WF_004: CSS persistente Historial de liberacion LQC (Control de calidad / Inspeccion de calidad) -->
     <link id="historial-liberacion-lqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_liberacion_lqc.css', v='20260604a') }}">
+    <!-- WF_004: CSS persistente PPM's IQC/LQC/OQC (Control de calidad). -->
+    <link id="ppms-iqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/ppms_iqc.css', v='20260605a') }}">
+    <link id="ppms-lqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/ppms_lqc.css', v='20260608d') }}">
+    <link id="ppms-oqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/ppms_oqc.css', v='20260608d') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -643,6 +647,10 @@
         <div id="historial-inspeccion-master-sample-smt-unique-container" style="display: none;"></div>
         <div id="control-inspeccion-oqc-unique-container" style="display: none;"></div>
         <div id="historial-liberacion-lqc-unique-container" style="display: none;"></div>
+        <!-- WF_002: contenedores unicos para modulos PPM's. -->
+        <div id="ppms-iqc-unique-container" style="display: none;"></div>
+        <div id="ppms-lqc-unique-container" style="display: none;"></div>
+        <div id="ppms-oqc-unique-container" style="display: none;"></div>
     </div>
 
     <!-- Contenedor específico para el contenido de Control de Resultados (LADO DERECHO) -->

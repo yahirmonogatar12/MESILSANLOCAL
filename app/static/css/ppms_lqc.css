@@ -1,0 +1,303 @@
+/* PPM's LQC.
+   WF_004: CSS persistente propio cargado desde MainTemplate.html y reforzado por JS. */
+
+.ppms-module {
+    color: var(--ilsan-text-light);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    background: var(--ilsan-dark-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.ppms-module__header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 48px;
+    padding: 10px 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ppms-module__header h2 {
+    color: var(--ilsan-text-light);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0;
+}
+
+.ppms-module__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    background: var(--ilsan-dark-secondary);
+}
+
+.ppms-lqc-target,
+.ppms-lqc-filters {
+    display: flex;
+    align-items: end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ppms-lqc-target {
+    align-items: center;
+    margin-left: auto;
+}
+
+.ppms-lqc-target label,
+.ppms-field label {
+    color: rgba(255, 255, 255, 0.78);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    margin: 0 0 5px;
+    text-transform: uppercase;
+}
+
+.ppms-lqc-target label {
+    margin: 0 4px 0 0;
+}
+
+.ppms-lqc-target input,
+.ppms-field input,
+.ppms-field select {
+    background: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    color: #102032;
+    font-size: 0.88rem;
+    height: 34px;
+    min-width: 120px;
+    padding: 0 10px;
+}
+
+.ppms-lqc-target input {
+    width: 110px;
+    min-width: 110px;
+}
+
+.ppms-lqc {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+}
+
+.ppms-lqc-filters {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.ppms-field {
+    flex: 0 0 auto;
+}
+
+.ppms-field--wide {
+    flex: 1 1 220px;
+}
+
+.ppms-field--wide input {
+    width: 100%;
+}
+
+.ppms-btn {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 0.86rem;
+    font-weight: 700;
+    height: 34px;
+    min-width: 86px;
+    padding: 0 14px;
+}
+
+.ppms-btn:disabled {
+    cursor: progress;
+    opacity: 0.62;
+}
+
+.ppms-btn--primary {
+    background: var(--ilsan-blue-primary, #3498db);
+    border-color: rgba(52, 152, 219, 0.85);
+}
+
+.ppms-btn--secondary {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.ppms-lqc-chart-panel,
+.ppms-lqc-table-block {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+}
+
+.is-over-target {
+    color: #ff6464 !important;
+}
+
+.ppms-lqc-charts {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(360px, 1fr));
+}
+
+.ppms-lqc-chart-panel {
+    flex: 0 0 auto;
+    min-height: 330px;
+    padding: 12px 14px 14px;
+}
+
+.ppms-lqc-chart-title {
+    color: #ffffff;
+    font-size: 0.98rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.ppms-svg-chart {
+    background: #ffffff;
+    height: 302px;
+    min-height: 302px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.ppms-chart-svg {
+    display: block;
+    height: 100%;
+    width: 100%;
+}
+
+.ppms-chart-point,
+.ppms-chart-bar {
+    cursor: default;
+}
+
+.ppms-lqc-tables {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+}
+
+.ppms-lqc-table-block {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.ppms-lqc-table-block--wide {
+    grid-column: 1 / -1;
+    overflow: visible;
+}
+
+.ppms-lqc-table-block h3 {
+    color: #ffffff;
+    font-size: 0.92rem;
+    font-weight: 800;
+    margin: 0;
+    padding: 10px 12px;
+}
+
+.ppms-table-scroll {
+    max-height: 280px;
+    overflow: auto;
+}
+
+.ppms-table-scroll--wide {
+    max-height: none;
+    overflow: visible;
+}
+
+.ppms-table {
+    border-collapse: collapse;
+    color: #ffffff;
+    font-size: 0.82rem;
+    min-width: 100%;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.ppms-table th,
+.ppms-table td {
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    overflow: hidden;
+    padding: 8px 10px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ppms-table th {
+    background: #142d4b;
+    color: #ffffff;
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.ppms-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+}
+
+.ppms-table--weekly {
+    min-width: 100%;
+    width: 100%;
+}
+
+.ppms-line-name {
+    font-weight: 800;
+    vertical-align: middle;
+}
+
+.ppms-table--weekly .ppms-line-group-end td,
+.ppms-table--weekly .ppms-line-group-cell {
+    border-bottom: 4px solid #142d4b;
+}
+
+.ppms-table tbody tr:nth-child(odd) td {
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.ppms-table tbody tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.065);
+}
+
+.ppms-empty {
+    color: rgba(255, 255, 255, 0.68);
+    height: 72px;
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .ppms-module__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .ppms-lqc-charts,
+    .ppms-lqc-tables {
+        grid-template-columns: 1fr;
+    }
+
+    .ppms-lqc-table-block--wide {
+        grid-column: auto;
+    }
+}

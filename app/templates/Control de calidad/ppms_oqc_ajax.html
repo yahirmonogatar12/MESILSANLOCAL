@@ -1,0 +1,81 @@
+<!-- PPM's OQC - fragmento AJAX.
+     WF_001: cargado desde LISTA_CONTROL_DE_CALIDAD / PPM's.
+     WF_002: container ppms-oqc-unique-container.
+     WF_003: consumido por app/api/control_calidad/ppms.py.
+     WF_004: CSS persistente en MainTemplate.html y JS idempotente. -->
+<section id="ppms-oqc-module" class="ppms-module" data-ppms-module="oqc">
+    <header class="ppms-module__header">
+        <h2>PPM's OQC</h2>
+        <div class="ppms-oqc-target">
+            <label for="ppms-oqc-target">TARGET</label>
+            <input id="ppms-oqc-target" type="number" min="0" step="1" value="20000">
+            <button id="ppms-oqc-save-target" class="ppms-btn ppms-btn--secondary" type="button">Guardar</button>
+        </div>
+    </header>
+    <div class="ppms-module__body ppms-oqc">
+        <form id="ppms-oqc-filters" class="ppms-oqc-filters">
+            <div class="ppms-field">
+                <label for="ppms-oqc-date-from">Fecha desde</label>
+                <input id="ppms-oqc-date-from" type="date">
+            </div>
+            <div class="ppms-field">
+                <label for="ppms-oqc-date-to">Fecha hasta</label>
+                <input id="ppms-oqc-date-to" type="date">
+            </div>
+            <div class="ppms-field">
+                <label for="ppms-oqc-group-by">Periodo</label>
+                <select id="ppms-oqc-group-by">
+                    <option value="month">Mes</option>
+                    <option value="week">Semana</option>
+                    <option value="day">Dia</option>
+                </select>
+            </div>
+            <div class="ppms-field">
+                <label for="ppms-oqc-line">Linea</label>
+                <select id="ppms-oqc-line">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="ppms-field ppms-field--wide">
+                <label for="ppms-oqc-search">No. parte / familia / modelo</label>
+                <input id="ppms-oqc-search" type="text" autocomplete="off">
+            </div>
+            <button class="ppms-btn ppms-btn--primary" type="submit">Consultar</button>
+            <button id="ppms-oqc-clear" class="ppms-btn ppms-btn--secondary" type="button">Limpiar</button>
+        </form>
+
+        <section class="ppms-oqc-charts">
+            <div class="ppms-oqc-chart-panel">
+                <div id="ppms-oqc-trend-title" class="ppms-oqc-chart-title">Trend TTL PPMs OQC</div>
+                <div id="ppms-oqc-trend-chart" class="ppms-svg-chart" role="img" aria-label="Tendencia PPM OQC"></div>
+            </div>
+            <div class="ppms-oqc-chart-panel">
+                <div class="ppms-oqc-chart-title">Top 5 Project PPMs</div>
+                <div id="ppms-oqc-top-part-chart" class="ppms-svg-chart" role="img" aria-label="Top 5 PPM por numero de parte"></div>
+            </div>
+        </section>
+
+        <section class="ppms-oqc-tables">
+            <div class="ppms-oqc-table-block">
+                <h3>Tendencia</h3>
+                <div class="ppms-table-scroll">
+                    <table class="ppms-table" id="ppms-oqc-trend-table"></table>
+                </div>
+            </div>
+            <div class="ppms-oqc-table-block">
+                <h3>Detalle Top 5</h3>
+                <div class="ppms-table-scroll">
+                    <table class="ppms-table" id="ppms-oqc-top-detail-table"></table>
+                </div>
+            </div>
+            <div class="ppms-oqc-table-block ppms-oqc-table-block--wide">
+                <h3>Detalle por linea</h3>
+                <div class="ppms-table-scroll ppms-table-scroll--wide">
+                    <table class="ppms-table ppms-table--weekly" id="ppms-oqc-line-weekly-table"></table>
+                </div>
+            </div>
+        </section>
+    </div>
+</section>
+
+<script src="{{ url_for('static', filename='js/ppms_oqc.js', v='20260608b') }}"></script>
