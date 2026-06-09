@@ -61,6 +61,10 @@
     <link id="control-plan-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_smt.css', v='20260526a') }}">
     <!-- WF_004: CSS persistente Inventario IMD-SMD Terminado (Control de resultados) -->
     <link id="inventario-imd-terminado-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_imd_terminado.css', v='20260527a') }}">
+    <!-- WF_004: CSS persistente Inventario reparacion SMD (Control de resultados / Control de inventario) -->
+    <link id="inventario-reparacion-smd-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_reparacion_smd.css', v='20260605a') }}">
+    <!-- WF_004: CSS persistente Inventario reparacion ASSY (Control de resultados / Control de inventario) -->
+    <link id="inventario-reparacion-assy-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_reparacion_assy.css', v='20260605a') }}">
     <!-- WF_004: CSS persistente Inventario Exceso QA (Control de resultados / Control de inventario) -->
     <link id="inventario-exceso-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_exceso.css', v='20260605c') }}">
     <!-- WF_004: CSS persistente Historial AOI (Control de resultados) -->
@@ -691,6 +695,16 @@
 
         <!-- Inventario IMD-SMD Terminado (Control de inventario) -->
         <div id="inventario-imd-terminado-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Inventario reparacion SMD (Control de inventario) -->
+        <div id="inventario-reparacion-smd-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Inventario reparacion ASSY (Control de inventario) -->
+        <div id="inventario-reparacion-assy-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
@@ -2865,6 +2879,26 @@ function hideAllMaterialContainers() {
                 if (container) container.style.display = 'block';
 
                 cargarContenidoDinamico('inventario-imd-terminado-unique-container', '/control_resultados/inventario_imd_terminado');
+            };
+
+            // Inventario reparacion SMD (Control de resultados / Control de inventario).
+            // Reporte solo-lectura de pcb_inventory_scan_smd (area='REPARACION').
+            window.mostrarInventarioReparacionSMD = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('inventario-reparacion-smd-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('inventario-reparacion-smd-unique-container', '/control_resultados/inventario_reparacion_smd');
+            };
+
+            // Inventario reparacion ASSY (Control de resultados / Control de inventario).
+            // Reporte solo-lectura de pcb_inventory_scan_prod (area='REPARACION').
+            window.mostrarInventarioReparacionASSY = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('inventario-reparacion-assy-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('inventario-reparacion-assy-unique-container', '/control_resultados/inventario_reparacion_assy');
             };
 
             // WF_002/WF_004: modulo Inventario Exceso QA usa contenedor unico
