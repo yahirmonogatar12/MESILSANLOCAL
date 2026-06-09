@@ -125,6 +125,19 @@ def normalize_box_code(raw_value):
     return normalize_search(raw_value).upper()
 
 
+def is_return_exit_movement(return_quantity, loss_quantity, reason=None, movement_type=None):
+    return_qty = normalize_integer(return_quantity) or 0
+    loss_qty = normalize_integer(loss_quantity) or 0
+    reason_text = normalize_search(reason).lower()
+    movement_text = normalize_search(movement_type).lower()
+    return loss_qty > 0 and (
+        movement_text in {"exit", "salida", "salida_retorno", "return_exit"}
+        or return_qty <= loss_qty
+        or "salida retorno" in reason_text
+        or "salida de retorno" in reason_text
+    )
+
+
 def normalize_departure_code(raw_value):
     value = normalize_search(raw_value)
     return value.upper() if value else ""
@@ -2224,7 +2237,12 @@ def rebuild_part_inventory_state(cursor, part_number):
         if movement_type == "return":
             return_quantity = normalize_integer(movement.get("return_quantity")) or 0
             loss_quantity = normalize_integer(movement.get("loss_quantity")) or 0
-            net_quantity = return_quantity - loss_quantity
+            is_return_exit = is_return_exit_movement(
+                return_quantity,
+                loss_quantity,
+                movement.get("reason"),
+            )
+            net_quantity = -loss_quantity if is_return_exit else return_quantity - loss_quantity
             previous_quantity = current_quantity
             new_quantity = previous_quantity + net_quantity
 
@@ -2314,6 +2332,19 @@ def rebuild_part_inventory_state(cursor, part_number):
                         "movement_at": movement_at,
                     }
                 )
+            elif net_quantity < 0:
+                remaining_quantity = abs(net_quantity)
+                for layer in layer_queue:
+                    available_quantity = normalize_integer(layer.get("available_quantity")) or 0
+                    if remaining_quantity <= 0:
+                        break
+                    if available_quantity <= 0:
+                        continue
+
+                    consumed_quantity = min(available_quantity, remaining_quantity)
+                    layer["available_quantity"] = available_quantity - consumed_quantity
+                    tracked_available[layer["entry_id"]] = layer["available_quantity"]
+                    remaining_quantity -= consumed_quantity
 
             current_quantity = new_quantity
             last_return_at = movement_at
@@ -2588,14 +2619,21 @@ def adjust_shipping_movement_record(
                 else normalize_integer(current_row.get("loss_quantity"))
             ) or 0
 
-            if next_return_quantity <= 0:
+            if next_return_quantity < 0 or next_loss_quantity < 0:
                 conn.rollback()
                 return {
                     "success": False,
-                    "error": "La cantidad de retorno debe ser mayor a cero",
+                    "error": "Las cantidades de retorno no pueden ser negativas",
                 }, 400
 
-            if next_loss_quantity < 0 or next_loss_quantity > next_return_quantity:
+            if next_return_quantity <= 0 and next_loss_quantity <= 0:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "error": "La cantidad de retorno o salida debe ser mayor a cero",
+                }, 400
+
+            if next_return_quantity > 0 and next_loss_quantity > next_return_quantity:
                 conn.rollback()
                 return {
                     "success": False,
@@ -4053,13 +4091,48 @@ def create_return():
     data = request.get_json(silent=True) or {}
     return_quantity = normalize_integer(data.get("returnQty"))
     loss_quantity = normalize_integer(data.get("lossQty")) or 0
+    movement_type = normalize_search(
+        data.get("movementType") or data.get("movement_type")
+    ).lower()
+    reason_text = normalize_search(data.get("reason")) or "Retorno a embarques"
+    is_return_exit = is_return_exit_movement(
+        return_quantity,
+        loss_quantity,
+        reason_text,
+        movement_type,
+    )
     part_number = normalize_part_number(
         data.get("partNumber")
         or data.get("warehousingCode")
         or data.get("part_number")
     )
 
-    if not part_number or return_quantity is None or return_quantity <= 0:
+    if not part_number:
+        return jsonify(
+            {
+                "success": False,
+                "error": "Se requiere numero de parte valido",
+            }
+        ), 400
+
+    if loss_quantity < 0:
+        return jsonify(
+            {
+                "success": False,
+                "error": "La cantidad de salida de retorno no puede ser negativa",
+            }
+        ), 400
+
+    if is_return_exit:
+        if loss_quantity <= 0:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "La cantidad de salida de retorno debe ser mayor a cero",
+                }
+            ), 400
+        return_quantity = 0
+    elif return_quantity is None or return_quantity <= 0:
         return jsonify(
             {
                 "success": False,
@@ -4067,7 +4140,7 @@ def create_return():
             }
         ), 400
 
-    if loss_quantity < 0 or loss_quantity > return_quantity:
+    if not is_return_exit and loss_quantity > return_quantity:
         return jsonify(
             {
                 "success": False,
@@ -4095,6 +4168,20 @@ def create_return():
         previous_quantity = normalize_integer(inventory.get("current_quantity")) or 0
         net_quantity = return_quantity - loss_quantity
         new_quantity = previous_quantity + net_quantity
+        if is_return_exit and new_quantity < 0:
+            conn.rollback()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "No hay inventario suficiente para registrar la salida de retorno",
+                }
+            ), 400
+        fifo_plan = {"allocations": []}
+        if is_return_exit:
+            fifo_plan = build_fifo_allocations(
+                load_fifo_layers(cursor, inventory["part_number"]),
+                loss_quantity,
+            )
         available_quantity = resolve_available_layer_quantity(
             previous_quantity,
             net_quantity,
@@ -4110,6 +4197,8 @@ def create_return():
                 "last_return_at": movement_at,
             },
         )
+        if is_return_exit:
+            apply_fifo_allocations(cursor, fifo_plan["allocations"])
 
         cursor.execute(
             f"""
@@ -4147,7 +4236,7 @@ def create_return():
                 inventory.get("customer") or inventory.get("catalog_customer"),
                 inventory.get("zone_code") or inventory.get("catalog_zone_code"),
                 normalize_search(data.get("location")) or None,
-                normalize_search(data.get("reason")) or "Retorno a embarques",
+                reason_text,
                 normalize_search(data.get("remarks")) or None,
                 normalize_search(data.get("registeredBy"))
                 or normalize_search(data.get("userName"))

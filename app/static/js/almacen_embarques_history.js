@@ -2585,12 +2585,14 @@
       return;
     }
 
+    const isReturnExit = movementType === "exit";
     const requestBody = {
       partNumber,
-      returnQty: quantity,
-      lossQty: movementType === "exit" ? quantity : 0,
+      returnQty: isReturnExit ? 0 : quantity,
+      lossQty: isReturnExit ? quantity : 0,
+      movementType,
       location,
-      reason: movementType === "exit" ? `${reason} / Salida retorno` : reason,
+      reason: isReturnExit ? `${reason} / Salida retorno` : reason,
       remarks,
       registeredBy,
     };

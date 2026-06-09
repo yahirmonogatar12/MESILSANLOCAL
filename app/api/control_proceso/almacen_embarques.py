@@ -130,6 +130,18 @@ def _normalizar_texto_embarques_historial(value):
     return str(value)
 
 
+def _es_salida_retorno_embarques(return_quantity, loss_quantity, reason=""):
+    """Detectar filas que representan una salida de retorno, no entrada."""
+    return_qty = _normalizar_numero_embarques_historial(return_quantity) or 0
+    loss_qty = _normalizar_numero_embarques_historial(loss_quantity) or 0
+    reason_text = _normalizar_texto_embarques_historial(reason).lower()
+    return loss_qty > 0 and (
+        return_qty <= loss_qty
+        or "salida retorno" in reason_text
+        or "salida de retorno" in reason_text
+    )
+
+
 def _aplicar_filtros_historial_embarques(sql, params, search_columns):
     """Aplicar filtros comunes de historial para los módulos de embarques."""
     search = request.args.get("search", "").strip()
@@ -830,7 +842,18 @@ def _obtener_inventario_general_almacen_embarques(limit=5000):
         LEFT JOIN (
             SELECT
                 {part_number_key_expr % 'r.part_number'} AS part_number_key,
-                COALESCE(SUM(r.return_quantity), 0) AS return_entries_qty,
+                COALESCE(SUM(
+                    CASE
+                        WHEN COALESCE(r.loss_quantity, 0) > 0
+                         AND (
+                            COALESCE(r.return_quantity, 0) <= COALESCE(r.loss_quantity, 0)
+                            OR LOWER(COALESCE(r.reason, '')) LIKE '%%salida retorno%%'
+                            OR LOWER(COALESCE(r.reason, '')) LIKE '%%salida de retorno%%'
+                         )
+                        THEN 0
+                        ELSE COALESCE(r.return_quantity, 0)
+                    END
+                ), 0) AS return_entries_qty,
                 COALESCE(SUM(r.loss_quantity), 0) AS return_exits_qty
             FROM `{SHIPPING_TABLES['returns']}` r
             LEFT JOIN ({closure_subquery}) cierre_r
@@ -4936,7 +4959,18 @@ def export_almacen_embarques_inventario_cierre_report(batch_id):
             f"""
             SELECT
               part_number,
-              COALESCE(SUM(return_quantity), 0) AS return_quantity,
+              COALESCE(SUM(
+                CASE
+                  WHEN COALESCE(loss_quantity, 0) > 0
+                   AND (
+                    COALESCE(return_quantity, 0) <= COALESCE(loss_quantity, 0)
+                    OR LOWER(COALESCE(reason, '')) LIKE '%%salida retorno%%'
+                    OR LOWER(COALESCE(reason, '')) LIKE '%%salida de retorno%%'
+                   )
+                  THEN 0
+                  ELSE COALESCE(return_quantity, 0)
+                END
+              ), 0) AS return_quantity,
               COALESCE(SUM(loss_quantity), 0) AS loss_quantity
             FROM `{SHIPPING_TABLES['returns']}`
             WHERE {movement_clause}
@@ -5080,9 +5114,14 @@ def export_almacen_embarques_inventario_cierre_report(batch_id):
             }
             return_quantity = _normalizar_numero_embarques_historial(item.get("return_quantity")) or 0
             loss_quantity = _normalizar_numero_embarques_historial(item.get("loss_quantity")) or 0
-            if return_quantity:
+            is_return_exit = _es_salida_retorno_embarques(
+                return_quantity,
+                loss_quantity,
+                item.get("reason"),
+            )
+            if return_quantity and not is_return_exit:
                 retorno_rows.append({**base, "movement_type": "Entrada retorno", "quantity": return_quantity})
-            if loss_quantity:
+            if loss_quantity and is_return_exit:
                 retorno_rows.append({**base, "movement_type": "Salida retorno", "quantity": loss_quantity})
 
         adjustment_clause, adjustment_params = period_filter("adjusted_at")
