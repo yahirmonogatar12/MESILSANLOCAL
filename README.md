@@ -14,7 +14,7 @@ Para ver la documentación completa y detallada del sistema, consulta el **[Manu
 Otros documentos de referencia:
 - Índice técnico v2: [README_TECNICO_MES.md](Documentacion/README_TECNICO_MES.md)
 - Guía de Desarrollo de Módulos: [GUIA_DESARROLLO_MODULOS_MES.md](Documentacion/GUIA_DESARROLLO_MODULOS_MES.md)
-- Hallazgos y Riesgos de Seguridad: [HALLAZGOS_TECNICOS_Y_RIESGOS.md](Documentacion/HALLAZGOS_TECNICOS_Y_RIESGOS.md)
+- Hallazgos y Riesgos de Seguridad: [ANALISIS_MEJORAS_REPO.md](Documentacion/ANALISIS_MEJORAS_REPO.md)
 
 ## Requisitos
 

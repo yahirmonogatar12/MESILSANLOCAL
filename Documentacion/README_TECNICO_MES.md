@@ -13,26 +13,17 @@ Este indice centraliza la documentacion tecnica actualizada del sistema MES ILSA
 
 ## Mapa del paquete documental
 
-- [ARQUITECTURA_SISTEMA_MES.md](./ARQUITECTURA_SISTEMA_MES.md)
-- [SETUP_Y_OPERACION_TECNICA.md](./SETUP_Y_OPERACION_TECNICA.md)
-- [CATALOGO_MODULOS_Y_RUTAS.md](./CATALOGO_MODULOS_Y_RUTAS.md)
-- [MODELO_DE_DATOS_MYSQL.md](./MODELO_DE_DATOS_MYSQL.md)
-- [MODULO_BOM_DEEP_DIVE.md](./MODULO_BOM_DEEP_DIVE.md)
-- [HALLAZGOS_TECNICOS_Y_RIESGOS.md](./HALLAZGOS_TECNICOS_Y_RIESGOS.md)
-- [REFACTOR_BACKEND/README.md](./REFACTOR_BACKEND/README.md)
+- [MANUAL_TECNICO_COMPLETO.md](./MANUAL_TECNICO_COMPLETO.md) — Manual maestro que consolida la arquitectura, flujos visuales, estructura del repositorio, catálogo de APIs y esquema de base de datos.
+- [ANALISIS_MEJORAS_REPO.md](./ANALISIS_MEJORAS_REPO.md) — Diagnóstico detallado de mejoras de seguridad y arquitectura (anteriormente Hallazgos Técnicos y Riesgos).
+- [SISTEMA_AUTENTICACION_ROLES.md](./SISTEMA_AUTENTICACION_ROLES.md) — Documentación detallada del control de acceso basado en roles (RBAC).
+- [GUIA_DESARROLLO_MODULOS_MES.md](./GUIA_DESARROLLO_MODULOS_MES.md) — Guía y checklist para desarrollo e integración de nuevos módulos.
 
 ## Programa activo de refactor backend
 
 El programa activo de refactor backend y su seguimiento por fases vive en:
 
-- [REFACTOR_BACKEND/README.md](./REFACTOR_BACKEND/README.md)
-
-Ese paquete contiene:
-
-- tablero global de avance
-- fases del refactor con estado real observado
-- decisiones y supuestos cerrados
-- bitacora de continuidad entre sesiones
+- [PLAN_REFACTORIZAR_ROUTES.md](./PLAN_REFACTORIZAR_ROUTES.md) — Seguimiento de la migración de routes.py a blueprints.
+- [PLAN_REFACTOR_CONTENEDOR_UNICO.md](./PLAN_REFACTOR_CONTENEDOR_UNICO.md) — Plan de refactor estructural para un contenedor universal único.
 
 ## Quick start tecnico
 
@@ -54,11 +45,8 @@ Ese paquete contiene:
 
 Los siguientes documentos previos no se eliminan. Siguen siendo utiles para contexto historico o decisiones previas:
 
-- [DOCUMENTACION_API_RUTAS_SISTEMA.md](./DOCUMENTACION_API_RUTAS_SISTEMA.md)
-- [GUIA_DESARROLLO_MODULOS_MES.md](./GUIA_DESARROLLO_MODULOS_MES.md)
-- [IMPLEMENTACION_CONTROL_MODELOS_AJAX.md](./IMPLEMENTACION_CONTROL_MODELOS_AJAX.md)
-- [PROMPT_CONTROL_BOM_AJAX_IMPLEMENTACION.md](./PROMPT_CONTROL_BOM_AJAX_IMPLEMENTACION.md)
 - [Implementar AJAX.md](./Implementar AJAX.md)
+- [INSTRUCCIONES-IMPLEMENTACION-AJAX.md](./INSTRUCCIONES-IMPLEMENTACION-AJAX.md)
 
 ## Convenciones usadas en esta documentacion
 

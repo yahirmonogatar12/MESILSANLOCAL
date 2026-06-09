@@ -207,19 +207,17 @@ sequenceDiagram
 El proyecto mantiene una estructura modular. A continuación se detallan las carpetas y archivos fundamentales:
 
 *   [run.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/run.py): Punto de entrada principal en ejecución local. Carga la app Flask e inicia el servidor de desarrollo.
-*   [vercel.json](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/vercel.json): Configuración de Vercel para enrutamiento serverless. Redirige todas las rutas HTTP a `api/index.py`.
-*   [api/index.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/api/index.py): Punto de entrada y configuración del blueprint central para ejecuciones serverless.
 *   [requirements.txt](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/requirements.txt): Declaración de las dependencias requeridas (Flask, pymysql, openpyxl, pandas, etc.).
 *   [app/](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app): Directorio raíz del código de la aplicación Flask.
     *   [app/routes.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/routes.py): El monolito del backend. Contiene la mayoría de las rutas heredadas, controladores HTML y los decoradores principales de sesión (`@login_requerido`).
     *   [app/auth_system.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/auth_system.py): Sistema de autenticación de usuarios. Administra logins, encriptación, validación de permisos de botones específicos y el log de auditoría.
     *   [app/db_mysql.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/db_mysql.py): Core de ejecución de consultas SQL. Contiene utilidades de compatibilidad de sintaxis entre dialectos de bases de datos.
     *   [app/config_mysql.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/config_mysql.py): Inicializador del pool de conexiones. Configura límites de hilos, timeouts de lectura/escritura y reconexión automática.
-    *   [app/Almacen_api.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/Almacen_api.py): API de administración de inventarios de almacén. Controla listados, historial de entradas/salidas/retornos y exportación de reportes Excel estructurados.
-    *   [app/shipping_api.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/shipping_api.py): Capa de autenticación de embarques, permisos, catálogos de cargos/departamentos y endpoints para terminales móviles PDA.
-    *   [app/shipping_material_api.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/shipping_material_api.py): Controlador maestro de movimientos físicos de almacén de embarques. Maneja lógica FIFO, cierres de inventario y caja por caja.
-    *   [app/tickets_portal.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/tickets_portal.py): Portal de soporte IT interno. Administra tickets de prioridad baja a crítica con soporte para adjuntar imágenes.
-    *   [app/py/Backend metal mask.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/py/Backend%20metal%20mask.py): Módulo para tracking de ubicaciones y ciclos de uso de las plantillas metálicas (stencil) de soldadura.
+    *   [app/api/control_material/material_admin.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/api/control_material/material_admin.py): API de administración de inventarios de almacén. Controla listados, historial de entradas/salidas/retornos y exportación de reportes Excel estructurados.
+    *   [app/api/pda/shipping.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/api/pda/shipping.py): Capa de autenticación de embarques, permisos, catálogos de cargos/departamentos y endpoints para terminales móviles PDA.
+    *   [app/api/pda/shipping_material.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/api/pda/shipping_material.py): Controlador maestro de movimientos físicos de almacén de embarques. Maneja lógica FIFO, cierres de inventario y caja por caja.
+    *   [app/api/portal/tickets.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/api/portal/tickets.py): Portal de soporte IT interno. Administra tickets de prioridad baja a crítica con soporte para adjuntar imágenes.
+    *   [app/api/control_produccion/metal_mask.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/api/control_produccion/metal_mask.py): Módulo para tracking de ubicaciones y ciclos de uso de las plantillas metálicas (stencil) de soldadura.
     *   [app/templates/](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/templates): Contenedor de todas las vistas HTML de Jinja2, divididas por departamentos.
     *   [app/static/](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/static): Recursos estáticos del frontend (imágenes, hojas de estilo CSS y scripts JS de soporte).
 
@@ -234,14 +232,14 @@ Maneja la seguridad del sistema y el control de accesos basados en roles (RBAC -
 *   **Permiso de Botón**: Define que cada botón interactivo de la interfaz web está ligado a una página, una sección y un identificador de botón en la tabla `permisos_botones`. El decorador `@requiere_permiso` valida si el usuario cuenta con dicho permiso antes de resolver la ruta.
 *   **Auditoría de Acciones**: Las mutaciones críticas de base de datos invocan la función `registrar_auditoria()`, la cual escribe de forma inmediata en la tabla `auditoria_sistema` el usuario, módulo, acción realizada, descripción detallada y resultado de la transacción.
 
-### 5.2 Módulo de Almacén y Control de Materiales (`app/Almacen_api.py`)
+### 5.2 Módulo de Almacén y Control de Materiales (`app/api/control_material/material_admin.py`)
 Proporciona endpoints y vistas para el control de materia prima recibida.
 *   `GET /material/inventario_actual`: Renderiza la vista de inventario basada en AJAX. Requiere el permiso `LISTA_DE_MATERIALES > Control de material > Inventario actual`.
 *   `GET /api/material_admin/inventory/summary`: Devuelve el resumen agrupado por número de parte, cantidad en stock y lotes.
 *   `GET /api/material_admin/inventory/lots`: Devuelve el inventario desglosado por lote individual, mostrando cuarentena y fechas de recibo.
 *   `GET /api/material_admin/inventory/export`: Genera y retorna un documento Excel estructurado con estilos visuales unificados.
 
-### 5.3 Módulo de Embarques e Integración PDA (`app/shipping_api.py` & `app/shipping_material_api.py`)
+### 5.3 Módulo de Embarques e Integración PDA (`app/api/pda/shipping.py` & `app/api/pda/shipping_material.py`)
 Módulo crítico que gestiona el inventario de producto terminado.
 *   `POST /api/shipping/auth/login`: Autentica al personal de almacén en la PDA móvil. Cuenta con lógica de intentos fallidos (Max 5) y bloqueo temporal del usuario (15 minutos).
 *   `GET /api/shipping/users/<user_id>/permissions`: Devuelve la lista de permisos efectivos del usuario móvil, soportando compatibilidad retroactiva.
@@ -249,7 +247,7 @@ Módulo crítico que gestiona el inventario de producto terminado.
 *   `GET /api/shipping/material/fifo/allocate`: Motor FIFO del sistema. Recibe un número de parte y la cantidad requerida, y devuelve el orden exacto en el que las cajas deben ser despachadas basándose en su fecha de registro en almacén.
 *   `POST /api/shipping/material/exits/batch`: Registra la salida física de cajas hacia transporte o cliente final, reduciendo el stock disponible en sistema.
 
-### 5.4 Portal de Soporte IT (`app/tickets_portal.py`)
+### 5.4 Portal de Soporte IT (`app/api/portal/tickets.py`)
 Canal de soporte de software y hardware interno de planta.
 *   `GET /portal-tickets`: Renderiza el dashboard principal del sistema de tickets.
 *   `POST /api/tickets`: Crea un nuevo ticket. Soporta dos variantes: `normal` (comunicación directa operador-superadmin) y `superticket` (donde solo superadmin puede responder, para comunicados oficiales).
@@ -286,13 +284,13 @@ El sistema utiliza MySQL como motor de persistencia relacional. A continuación 
 
 
 
-## 8. Guía de Configuración, Despliegue y Operación
+## 7. Guía de Configuración, Despliegue y Operación
 
-### 8.1 Requisitos Base del Entorno
+### 7.1 Requisitos Base del Entorno
 *   **Python 3.11.x** (Especificado en [runtime.txt](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/runtime.txt)).
 *   **MySQL Server 8.0** o superior.
 
-### 8.2 Variables de Entorno Requeridas (.env)
+### 7.2 Variables de Entorno Requeridas (.env)
 Debe crearse un archivo `.env` en la raíz del proyecto basándose en [.env.example](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/.env.example):
 
 ```bash
@@ -310,7 +308,7 @@ SECRET_KEY=clave_secreta_para_sesiones_flask
 TZ=America/Mexico_City
 ```
 
-### 8.3 Ejecución en Modo Desarrollo (Local)
+### 7.3 Ejecución en Modo Desarrollo (Local)
 Para levantar el servidor web local con recarga automática:
 
 ```powershell
@@ -325,25 +323,26 @@ pip install -r requirements.txt
 python run.py
 ```
 
-### 8.4 Despliegue en Servidor de Producción / Serverless (Vercel)
-Este proyecto está preparado para ejecutarse en entornos serverless como Vercel:
-1.  El archivo [vercel.json](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/vercel.json) redirige las peticiones al ruteador serverless [api/index.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/api/index.py).
-2.  Las variables de entorno `MYSQL_*` deben configurarse en el panel de control del proyecto de Vercel.
-3.  El pool de conexiones en serverless debe mantenerse pequeño (`_MAX_POOL_SIZE = 3` en `config_mysql.py`) para evitar la saturación de conexiones en el servidor MySQL debido a la naturaleza efímera y escalable de las funciones serverless de Vercel.
+### 7.4 Despliegue en Servidor de Producción (Azure App Service / Serverless)
+El proyecto está configurado para desplegarse activamente en Azure App Service a través del CI en GitHub Actions, utilizando `run.py` o `aplication.py` como punto de entrada.
+Para configuraciones serverless alternativas (como Vercel):
+1.  El archivo `vercel.json` (si se utiliza) redirige las peticiones al ruteador serverless `api/index.py`.
+2.  Las variables de entorno `MYSQL_*` deben configurarse en el panel del proveedor.
+3.  El pool de conexiones en entornos serverless efímeros debe mantenerse pequeño (`_MAX_POOL_SIZE = 3` en `config_mysql.py`) para evitar la saturación de conexiones en el servidor MySQL.
 
 ---
 
-## 9. Hallazgos Técnicos, Seguridad y Roadmap de Refactorización
+## 8. Hallazgos Técnicos, Seguridad y Roadmap de Refactorización
 
 Como parte del análisis de ingeniería realizado sobre el código fuente actual, se han detectado áreas de atención crítica:
 
-### 9.1 Riesgos Críticos de Seguridad
+### 8.1 Riesgos Críticos de Seguridad
 *   **Rutas de Escritura sin Autenticación**: En el monolito [routes.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/routes.py) existen endpoints de inserción y modificación de datos que no cuentan con los decoradores `@login_requerido` ni `@requiere_permiso`. Esto expone el sistema a posibles modificaciones de datos no autorizadas si se accede directamente a las APIs.
 *   **Inconsistencia en Claves de Sesión**: Se observa el uso alternado de `session['usuario']` y `session['username']` en diferentes archivos. Esto puede provocar fallos de permisos o expulsión involuntaria de la sesión activa del usuario.
 
-### 9.2 Programa de Refactorización Activo
-El sistema se encuentra en un proceso de transición para desacoplar el monolito [routes.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/routes.py) (que actualmente supera el millón de caracteres) en Blueprints Flask especializados e independientes.
-*   **Fase 1 (Completada)**: Migración de los submódulos de Almacén a [Almacen_api.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/Almacen_api.py).
-*   **Fase 2 (Completada)**: Migración y diseño de la API de Embarques en [shipping_api.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/shipping_api.py) y [shipping_material_api.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/shipping_material_api.py).
+### 8.2 Programa de Refactorización Activo
+El sistema se encuentra en un proceso de transición para desacoplar el monolito [routes.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/routes.py) en Blueprints Flask especializados e independientes.
+*   **Fase 1 (Completada)**: Migración de los submódulos de Almacén a [material_admin.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/api/control_material/material_admin.py).
+*   **Fase 2 (Completada)**: Migración y diseño de la API de Embarques en [shipping.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/api/pda/shipping.py) y [shipping_material.py](file:///C:/Users/yahir/OneDrive/Escritorio/MES/MES/MESILSANLOCAL/app/api/pda/shipping_material.py).
 *   **Fase 3 (En Progreso)**: Extracción de las rutas SMT/SMD y migración a planos dedicados.
 *   **Fase 4 (Planificada)**: Unificación y auditoría completa de seguridad, forzando decoradores de autenticación en cada endpoint del backend.
