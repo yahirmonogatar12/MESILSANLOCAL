@@ -28,7 +28,7 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, redirect, render_template, request, send_file
 
-from app.api.shared import execute_query, login_requerido
+from app.api.shared import excel_response_ict, execute_query, login_requerido
 from app.api.shared.ict_helpers import (
     _append_indexable_text_filter,
     _ict_format_row,
@@ -262,71 +262,19 @@ def export_ict_excel():
         sql += " ORDER BY ts DESC LIMIT 500"
         rows = execute_query(sql, tuple(params), fetch="all") or []
 
-        from io import BytesIO
-
-        from openpyxl import Workbook
-        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Historial ICT"
-
-        header_fill = PatternFill(start_color="3f6b6e", end_color="3f6b6e", fill_type="solid")
-        cell_fill = PatternFill(start_color="a1a09c", end_color="a1a09c", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=10)
-        border = Border(
-            left=Side(style="thin", color="000000"),
-            right=Side(style="thin", color="000000"),
-            top=Side(style="thin", color="000000"),
-            bottom=Side(style="thin", color="000000"),
-        )
-
+        items = [_ict_format_row(row) for row in rows]
         headers = [
             "Fecha", "Hora", "Linea", "ICT", "Resultado",
             "No Parte", "Barcode", "Fuente", "Defect Code", "Defect Valor",
         ]
-
-        for col_num, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col_num, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.border = border
-
-        for row_idx, row in enumerate(rows, start=2):
-            formatted = _ict_format_row(row)
-            values = [
-                formatted.get("fecha", ""),
-                formatted.get("hora", ""),
-                formatted.get("linea", ""),
-                formatted.get("ict", ""),
-                formatted.get("resultado", ""),
-                formatted.get("no_parte", ""),
-                formatted.get("barcode", ""),
-                formatted.get("fuente_archivo", ""),
-                formatted.get("defect_code", ""),
-                formatted.get("defect_valor", ""),
-            ]
-            for col_num, value in enumerate(values, start=1):
-                cell = ws.cell(row=row_idx, column=col_num, value=value)
-                cell.fill = cell_fill
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = border
-
-        for col in range(1, len(headers) + 1):
-            column_letter = ws.cell(row=1, column=col).column_letter
-            ws.column_dimensions[column_letter].width = 16
-
-        output = BytesIO()
-        wb.save(output)
-        output.seek(0)
-
-        filename = f"historial_ict_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        return send_file(
-            output,
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            as_attachment=True,
-            download_name=filename,
+        keys = [
+            "fecha", "hora", "linea", "ict", "resultado",
+            "no_parte", "barcode", "fuente_archivo", "defect_code", "defect_valor",
+        ]
+        filename = f"historial_ict_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        return excel_response_ict(
+            items, headers, keys, widths=[16] * len(headers),
+            sheet="Historial ICT", filename=filename,
         )
     except IctLgdNotFoundError as e:
         return jsonify({"error": str(e)}), 404
@@ -355,24 +303,14 @@ def export_ict_defects_excel():
         if resultado_filter:
             rows = [row for row in rows if row.get("resultado_local") == resultado_filter]
 
-        from io import BytesIO
-
-        from openpyxl import Workbook
-        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-
-        wb = Workbook()
-        ws = wb.active
-        ws.title = f"Parametros {barcode[:20]}"
-
-        header_fill = PatternFill(start_color="3f6b6e", end_color="3f6b6e", fill_type="solid")
-        cell_fill = PatternFill(start_color="a1a09c", end_color="a1a09c", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=10)
-        border = Border(
-            left=Side(style="thin", color="000000"),
-            right=Side(style="thin", color="000000"),
-            top=Side(style="thin", color="000000"),
-            bottom=Side(style="thin", color="000000"),
-        )
+        items = []
+        for row in rows:
+            formatted = _ict_format_row(row)
+            hlim = formatted.get("hlim_pct", "")
+            llim = formatted.get("llim_pct", "")
+            formatted["hlim_fmt"] = f"{hlim}%" if hlim else ""
+            formatted["llim_fmt"] = f"{llim}%" if llim else ""
+            items.append(formatted)
 
         headers = [
             "Fecha", "Hora", "Linea", "ICT", "Barcode",
@@ -381,67 +319,17 @@ def export_ict_defects_excel():
             "LLIM", "H.P", "L.P", "WS", "DS",
             "RC", "P", "J", "Resultado", "Tipo Defecto",
         ]
-
-        for col_num, header in enumerate(headers, start=1):
-            cell = ws.cell(row=1, column=col_num, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.border = border
-
-        for row_idx, row in enumerate(rows, start=2):
-            formatted = _ict_format_row(row)
-            hlim = formatted.get("hlim_pct", "")
-            llim = formatted.get("llim_pct", "")
-
-            row_values = [
-                formatted.get("fecha", ""),
-                formatted.get("hora", ""),
-                formatted.get("linea", ""),
-                formatted.get("ict", ""),
-                formatted.get("barcode", ""),
-                formatted.get("componente", ""),
-                formatted.get("pinref", ""),
-                formatted.get("act_value", ""),
-                formatted.get("act_unit", ""),
-                formatted.get("std_value", ""),
-                formatted.get("std_unit", ""),
-                formatted.get("meas_value", ""),
-                formatted.get("m_value", ""),
-                formatted.get("r_value", ""),
-                f"{hlim}%" if hlim else "",
-                f"{llim}%" if llim else "",
-                formatted.get("hp_value", ""),
-                formatted.get("lp_value", ""),
-                formatted.get("ws_value", ""),
-                formatted.get("ds_value", ""),
-                formatted.get("rc_value", ""),
-                formatted.get("p_flag", ""),
-                formatted.get("j_flag", ""),
-                formatted.get("resultado_local", ""),
-                formatted.get("defecto_tipo", ""),
-            ]
-
-            for col_num, value in enumerate(row_values, start=1):
-                cell = ws.cell(row=row_idx, column=col_num, value=value)
-                cell.fill = cell_fill
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = border
-
-        for col in range(1, len(headers) + 1):
-            column_letter = ws.cell(row=1, column=col).column_letter
-            ws.column_dimensions[column_letter].width = 12
-
-        output = BytesIO()
-        wb.save(output)
-        output.seek(0)
-
-        filename = f"parametros_{barcode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        return send_file(
-            output,
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            as_attachment=True,
-            download_name=filename,
+        keys = [
+            "fecha", "hora", "linea", "ict", "barcode",
+            "componente", "pinref", "act_value", "act_unit", "std_value",
+            "std_unit", "meas_value", "m_value", "r_value", "hlim_fmt",
+            "llim_fmt", "hp_value", "lp_value", "ws_value", "ds_value",
+            "rc_value", "p_flag", "j_flag", "resultado_local", "defecto_tipo",
+        ]
+        filename = f"parametros_{barcode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        return excel_response_ict(
+            items, headers, keys, widths=[12] * len(headers),
+            sheet=f"Parametros {barcode[:20]}", filename=filename,
         )
     except IctLgdNotFoundError as e:
         return jsonify({"error": str(e)}), 404

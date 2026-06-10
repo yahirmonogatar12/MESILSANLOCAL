@@ -395,10 +395,8 @@ def _eco_effective_valid_from(value, effective_date):
 
 
 def _eco_plant_date():
-    try:
-        return (datetime.utcnow() - timedelta(hours=6)).strftime('%Y-%m-%d')
-    except Exception:
-        return datetime.now().strftime('%Y-%m-%d')
+    from app.api.shared import obtener_fecha_mexico
+    return obtener_fecha_mexico()
 
 
 def _eco_parse_qty(value, default=1.0):

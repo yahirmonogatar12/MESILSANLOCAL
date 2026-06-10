@@ -1,0 +1,516 @@
+/* Historial de Operadores por Maquina (vista historial_estaciones_qa) - Tema ILSAN.
+ * WF_004: cargado persistente desde MainTemplate.html y asegurado por JS.
+ * Mismo lenguaje visual que el modulo Historial ICT (ict.css) y que
+ * stations_qa.css: tarjetas redondeadas, card-header con icono, botones con
+ * gradiente, tabla centrada con encabezado sticky en gradiente.
+ */
+
+/* ========== CONTENEDOR PRINCIPAL ========== */
+.hopm-page {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+}
+
+.hopm-page * {
+    box-sizing: border-box;
+}
+
+/* ========== TARJETAS (CARDS) ========== */
+.hopm-card {
+    background: var(--ilsan-dark-secondary);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    width: 100%;
+    animation: hopmFadeInUp 0.5s ease;
+}
+
+@keyframes hopmFadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hopm-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-wrap: wrap;
+}
+
+.hopm-card-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--ilsan-accent-blue);
+    flex-shrink: 0;
+}
+
+.hopm-card-header h3 {
+    color: var(--ilsan-text-light);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+}
+
+/* Chips de conteo en el header de resultados */
+.hopm-record-count {
+    color: var(--ilsan-text-gray);
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px 10px;
+    border-radius: 16px;
+    white-space: nowrap;
+}
+
+.hopm-record-count strong {
+    color: var(--ilsan-text-light);
+    font-weight: 700;
+}
+
+.hopm-record-count--ok strong {
+    color: #27ae60;
+}
+
+.hopm-record-count--ng strong {
+    color: var(--ilsan-accent-red);
+}
+
+/* ========== FILTROS ========== */
+.hopm-filters {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 10px;
+    row-gap: 10px;
+    padding: 12px 18px 16px;
+    align-items: flex-end;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.hopm-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hopm-filter-group label {
+    color: var(--ilsan-text-light);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.hopm-input-icon {
+    width: 12px;
+    height: 12px;
+    color: var(--ilsan-accent-blue);
+}
+
+.hopm-filter-group input,
+.hopm-filter-group select {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    width: 160px;
+}
+
+.hopm-filter-group--search input {
+    width: 240px;
+}
+
+.hopm-filter-group select option {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 8px;
+}
+
+.hopm-filter-group input:focus,
+.hopm-filter-group select:focus {
+    outline: none;
+    border-color: var(--ilsan-accent-blue);
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.hopm-filter-group input::placeholder {
+    color: var(--ilsan-text-gray);
+}
+
+/* Icono de calendario de los date inputs visible en tema oscuro */
+.hopm-filter-group input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
+}
+
+/* ========== BOTONES ========== */
+.hopm-btn-primary {
+    background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    min-width: 110px;
+    align-self: flex-end;
+}
+
+.hopm-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.hopm-btn-primary:active {
+    transform: translateY(0);
+}
+
+.hopm-btn-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* Boton verde de exportacion (como btn-export del ICT) */
+.hopm-btn-export {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+    white-space: nowrap;
+}
+
+.hopm-btn-export:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.4);
+}
+
+.hopm-btn-export:active {
+    transform: translateY(0);
+}
+
+.hopm-btn-export svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Boton sutil del header (Actualizar) */
+.hopm-btn-header {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.hopm-btn-header:hover {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: rgba(52, 152, 219, 0.45);
+}
+
+.hopm-btn-header svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Boton fantasma (Limpiar) */
+.hopm-btn-ghost {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    align-self: flex-end;
+}
+
+.hopm-btn-ghost:hover {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: rgba(52, 152, 219, 0.45);
+}
+
+button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ========== TABLA ========== */
+.hopm-table-wrap {
+    position: relative;
+    max-height: clamp(360px, 60vh, 780px);
+    min-height: clamp(260px, 45vh, 520px);
+    overflow: auto;
+    border-radius: 0 0 16px 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ilsan-accent-blue) var(--ilsan-dark-tertiary);
+}
+
+.hopm-table-wrap::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.hopm-table-wrap::-webkit-scrollbar-track {
+    background: var(--ilsan-dark-tertiary);
+    border-radius: 10px;
+    margin: 4px;
+}
+
+.hopm-table-wrap::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--ilsan-accent-blue), var(--ilsan-accent-dark-blue));
+    border-radius: 10px;
+    border: 2px solid var(--ilsan-dark-tertiary);
+}
+
+.hopm-table-wrap::-webkit-scrollbar-corner {
+    background: var(--ilsan-dark-tertiary);
+}
+
+.hopm-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--ilsan-dark-secondary);
+}
+
+.hopm-table th,
+.hopm-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.hopm-table thead th {
+    background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
+    color: var(--ilsan-text-light);
+    position: sticky;
+    top: 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.3px;
+    z-index: 10;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.hopm-table tbody td {
+    color: var(--ilsan-text-secondary);
+    background-color: var(--ilsan-dark-secondary);
+    transition: background-color 0.2s ease;
+    white-space: nowrap;
+}
+
+.hopm-table tbody tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+.hopm-table tbody tr:hover td {
+    background-color: var(--ilsan-hover);
+}
+
+.hopm-code {
+    font-family: "Consolas", "Courier New", monospace;
+    font-weight: 600;
+    color: var(--ilsan-accent-blue);
+}
+
+/* Badge de tipo (ICT/FCT/Packing) */
+.hopm-type {
+    display: inline-block;
+    min-width: 64px;
+    padding: 2px 8px;
+    border-radius: 16px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(52, 152, 219, 0.15);
+    color: var(--ilsan-accent-blue);
+    border: 1px solid rgba(52, 152, 219, 0.35);
+}
+
+/* Badge de estado de la sesion */
+.hopm-status {
+    display: inline-block;
+    min-width: 80px;
+    padding: 2px 8px;
+    border-radius: 16px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.hopm-status--open {
+    background: rgba(39, 174, 96, 0.15);
+    color: #2ecc71;
+    border: 1px solid rgba(39, 174, 96, 0.35);
+}
+
+.hopm-status--closed {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ilsan-text-gray);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.hopm-empty {
+    text-align: center;
+    padding: 3rem !important;
+    color: var(--ilsan-text-gray);
+    font-size: 0.9rem;
+}
+
+/* ========== INDICADOR DE CARGA ========== */
+.hopm-table-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(20, 24, 36, 0.92), rgba(28, 32, 48, 0.85));
+    backdrop-filter: blur(2px);
+    color: var(--ilsan-text-light);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.hopm-table-loading[hidden] {
+    display: none;
+}
+
+.hopm-table-loading span {
+    font-size: 0.85rem;
+}
+
+.hopm-spinner {
+    width: 36px;
+    height: 36px;
+    border: 4px solid rgba(52, 152, 219, 0.2);
+    border-top: 4px solid var(--ilsan-accent-blue);
+    border-radius: 50%;
+    animation: hopmSpin 1s linear infinite;
+}
+
+@keyframes hopmSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ========== TOAST ========== */
+.hopm-toast {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 15000;
+    max-width: min(420px, calc(100vw - 36px));
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.82rem;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+    animation: hopmFadeInUp 0.3s ease;
+}
+
+.hopm-toast--success {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+}
+
+.hopm-toast--error {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.hopm-toast--info {
+    background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .hopm-page {
+        padding: 16px 16px 32px;
+        gap: 12px;
+    }
+
+    .hopm-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hopm-filter-group,
+    .hopm-filter-group input,
+    .hopm-filter-group select,
+    .hopm-filter-group--search input {
+        width: 100%;
+        max-width: none;
+    }
+
+    .hopm-btn-primary,
+    .hopm-btn-ghost {
+        width: 100%;
+    }
+
+    .hopm-card-header {
+        gap: 6px;
+    }
+
+    .hopm-table-wrap {
+        max-height: 40vh;
+    }
+
+    .hopm-table th,
+    .hopm-table td {
+        font-size: 0.75rem;
+        padding: 6px 4px;
+    }
+}

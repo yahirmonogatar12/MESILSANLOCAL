@@ -34,7 +34,7 @@ from decimal import Decimal
 
 from flask import Blueprint, jsonify, redirect, render_template, request
 
-from app.api.shared import execute_query, login_requerido
+from app.api.shared import excel_response, execute_query, login_requerido
 from app.services.ict_lgd_parser import (
     IctLgdError,
     get_lgd_parameters_for_barcode,
@@ -664,8 +664,6 @@ def ict_param_changes_api():
 @login_requerido
 def ict_param_changes_export():
     """Exportar cambios de parametros ICT calculados desde LGD locales."""
-    from app.api.shared.excel_helpers import _send_excel_download
-
     try:
         fecha = request.args.get("fecha", "").strip()
         fecha_desde = request.args.get("fecha_desde", "").strip()
@@ -689,56 +687,23 @@ def ict_param_changes_export():
         )
         rows = payload.get("rows", [])
 
-        from io import BytesIO
-
-        from openpyxl import Workbook
-        from openpyxl.styles import Alignment, Font, PatternFill
-
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Cambios Parametros ICT"
-
         headers = [
             "Jornada", "Hora Anterior", "Hora Cambio", "ICT", "Linea",
             "No Parte", "Componente", "Parametro", "Valor Anterior",
             "Valor Nuevo", "Archivo Anterior", "Archivo Cambio",
         ]
-        header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-        header_font = Font(color="FFFFFF", bold=True)
-
-        for col_idx, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col_idx, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center")
-
-        for row_idx, row in enumerate(rows, 2):
-            ws.cell(row=row_idx, column=1, value=row.get("jornada", "") or "")
-            ws.cell(row=row_idx, column=2, value=row.get("hora_anterior", "") or "")
-            ws.cell(row=row_idx, column=3, value=row.get("hora_cambio", "") or "")
-            ws.cell(row=row_idx, column=4, value=row.get("ict", "") or "")
-            ws.cell(row=row_idx, column=5, value=row.get("linea", "") or "")
-            ws.cell(row=row_idx, column=6, value=row.get("no_parte", "") or "")
-            ws.cell(row=row_idx, column=7, value=row.get("componente", "") or "")
-            ws.cell(row=row_idx, column=8, value=row.get("parametro", "") or "")
-            ws.cell(row=row_idx, column=9, value=row.get("valor_anterior", "") or "")
-            ws.cell(row=row_idx, column=10, value=row.get("valor_nuevo", "") or "")
-            ws.cell(row=row_idx, column=11, value=row.get("archivo_anterior", "") or "")
-            ws.cell(row=row_idx, column=12, value=row.get("archivo_cambio", "") or "")
-
-        col_widths = [12, 12, 12, 14, 8, 22, 25, 22, 20, 20, 48, 48]
-        for col_idx, width in enumerate(col_widths, 1):
-            ws.column_dimensions[
-                ws.cell(row=1, column=col_idx).column_letter
-            ].width = width
-        ws.freeze_panes = "A2"
-
-        output = BytesIO()
-        wb.save(output)
-        output.seek(0)
-
-        filename = f"cambios_parametros_ict_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        return _send_excel_download(output, filename)
+        keys = [
+            "jornada", "hora_anterior", "hora_cambio", "ict", "linea",
+            "no_parte", "componente", "parametro", "valor_anterior",
+            "valor_nuevo", "archivo_anterior", "archivo_cambio",
+        ]
+        items = [{key: (row.get(key) or "") for key in keys} for row in rows]
+        filename = f"cambios_parametros_ict_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        return excel_response(
+            items, headers, keys,
+            widths=[12, 12, 12, 14, 8, 22, 25, 22, 20, 20, 48, 48],
+            sheet="Cambios Parametros ICT", filename=filename, freeze="A2",
+        )
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:

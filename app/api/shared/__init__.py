@@ -25,6 +25,16 @@ __all__ = [
     "requiere_permiso_dropdown",
     "auth_system",
     "obtener_fecha_hora_mexico",
+    "obtener_fecha_mexico",
+    "formatear_hora",
+    "formatear_fecha",
+    "formatear_fecha_hora",
+    "excel_response",
+    "excel_response_ict",
+    "sanitizar_texto",
+    "parsear_booleano",
+    "dict_cursor",
+    "conexion_o_error",
 ]
 
 _LAZY_FROM_ROUTES = {
@@ -38,11 +48,33 @@ _LAZY_FROM_DB_MYSQL = {
 
 _LAZY_FROM_DATETIME_HELPERS = {
     "obtener_fecha_hora_mexico",
+    "obtener_fecha_mexico",
+    "formatear_hora",
+    "formatear_fecha",
+    "formatear_fecha_hora",
 }
 
 # Fachada de permisos por boton (app/api/shared/permisos.py).
 _LAZY_FROM_PERMISOS = {
     "requiere_permiso_dropdown",
+}
+
+# Exportacion Excel estilo ILSAN (app/api/shared/excel.py).
+_LAZY_FROM_EXCEL = {
+    "excel_response",
+    "excel_response_ict",
+}
+
+# Sanitizacion de inputs de request (app/api/shared/request_helpers.py).
+_LAZY_FROM_REQUEST_HELPERS = {
+    "sanitizar_texto",
+    "parsear_booleano",
+}
+
+# Conexion MySQL del pool para CRUDs (app/api/shared/db_helpers.py).
+_LAZY_FROM_DB_HELPERS = {
+    "dict_cursor",
+    "conexion_o_error",
 }
 
 
@@ -51,11 +83,20 @@ def __getattr__(name):
         from app.db_mysql import execute_query
         return execute_query
     if name in _LAZY_FROM_DATETIME_HELPERS:
-        from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
-        return obtener_fecha_hora_mexico
+        from app.api.shared import datetime_helpers
+        return getattr(datetime_helpers, name)
     if name in _LAZY_FROM_PERMISOS:
         from app.api.shared.permisos import requiere_permiso_dropdown
         return requiere_permiso_dropdown
+    if name in _LAZY_FROM_EXCEL:
+        from app.api.shared import excel
+        return getattr(excel, name)
+    if name in _LAZY_FROM_REQUEST_HELPERS:
+        from app.api.shared import request_helpers
+        return getattr(request_helpers, name)
+    if name in _LAZY_FROM_DB_HELPERS:
+        from app.api.shared import db_helpers
+        return getattr(db_helpers, name)
     if name in _LAZY_FROM_ROUTES:
         from app import routes as _r
         return getattr(_r, name)

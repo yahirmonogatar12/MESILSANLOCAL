@@ -30,7 +30,7 @@ from flask import (
     Blueprint, jsonify, redirect, render_template, request, send_file, url_for,
 )
 
-from app.api.shared import execute_query, login_requerido
+from app.api.shared import excel_response_ict, execute_query, login_requerido
 from app.api.shared.vision_helpers import (
     _build_history_vision_query,
     _get_history_vision_record,
@@ -218,68 +218,18 @@ def export_vision_excel():
         sql, params = _build_history_vision_query()
         rows = execute_query(sql, params, fetch="all") or []
 
-        from io import BytesIO
-
-        from openpyxl import Workbook
-        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Historial Vision"
-
-        header_fill = PatternFill(start_color="3f6b6e", end_color="3f6b6e", fill_type="solid")
-        cell_fill = PatternFill(start_color="a1a09c", end_color="a1a09c", fill_type="solid")
-        header_font = Font(bold=True, color="FFFFFF", size=10)
-        border = Border(
-            left=Side(style="thin", color="000000"),
-            right=Side(style="thin", color="000000"),
-            top=Side(style="thin", color="000000"),
-            bottom=Side(style="thin", color="000000"),
-        )
-
+        keys = ["linea", "fecha", "hora", "numero_parte", "qr", "barcode", "resultado"]
+        items = [
+            {key: _vision_format_value(row.get(key, "")) or "" for key in keys}
+            for row in rows
+        ]
         headers = [
             "Linea", "Fecha", "Hora", "Numero de parte", "QR", "Barcode", "Resultado",
         ]
-
-        for col_num, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col_num, value=header)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.border = border
-
-        for row_idx, row in enumerate(rows, start=2):
-            values = [
-                _vision_format_value(row.get("linea", "")) or "",
-                _vision_format_value(row.get("fecha", "")) or "",
-                _vision_format_value(row.get("hora", "")) or "",
-                _vision_format_value(row.get("numero_parte", "")) or "",
-                _vision_format_value(row.get("qr", "")) or "",
-                _vision_format_value(row.get("barcode", "")) or "",
-                _vision_format_value(row.get("resultado", "")) or "",
-            ]
-
-            for col_num, value in enumerate(values, start=1):
-                cell = ws.cell(row=row_idx, column=col_num, value=value)
-                cell.fill = cell_fill
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = border
-
-        column_widths = [22, 14, 14, 28, 36, 24, 14]
-        for col_num, width in enumerate(column_widths, start=1):
-            column_letter = ws.cell(row=1, column=col_num).column_letter
-            ws.column_dimensions[column_letter].width = width
-
-        output = BytesIO()
-        wb.save(output)
-        output.seek(0)
-
-        filename = f"historial_vision_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        return send_file(
-            output,
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            as_attachment=True,
-            download_name=filename,
+        filename = f"historial_vision_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        return excel_response_ict(
+            items, headers, keys, widths=[22, 14, 14, 28, 36, 24, 14],
+            sheet="Historial Vision", filename=filename,
         )
     except Exception as e:
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500

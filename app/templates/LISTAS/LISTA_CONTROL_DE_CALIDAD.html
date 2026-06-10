@@ -2,6 +2,20 @@
         <aside class="app-sidebar">
         <ul class="sidebar-menu">
             <li class="sidebar-section">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarControlMaquinas" aria-expanded="false">
+                    <span class="sidebar-icon"></span>
+                    Control de maquinas
+                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                </button>
+                <ul class="collapse sidebar-dropdown-list" id="sidebarControlMaquinas">
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Control de maquinas"
+                            data-permiso-boton="Control de maquinas de calidad"
+                            onclick="window.parent.mostrarControlMaquinasCalidad ? window.parent.mostrarControlMaquinasCalidad() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('stations-qa-unique-container', '/control_calidad/stations_qa') : window.location.href='/control_calidad/stations_qa')">Control de maquinas de calidad</li>
+                </ul>
+            </li>
+            <li class="sidebar-section">
                 <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarReparacion" aria-expanded="false">
                     <span class="sidebar-icon"></span>
                     Control de item de reparacion  

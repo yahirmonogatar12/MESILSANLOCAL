@@ -264,6 +264,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
     ];
 
     controlResultadosAjaxContainers.forEach((containerId) => {
@@ -2843,6 +2844,18 @@ window.mostrarPPMsOQC = function () {
   );
 };
 
+window.mostrarControlMaquinasCalidad = function () {
+  _mostrarModuloCalidad(
+    "stations-qa-unique-container",
+    "/control_calidad/stations_qa",
+    () => {
+      if (typeof window.inicializarStationsQA === "function") {
+        window.inicializarStationsQA("#stqa-module");
+      }
+    },
+  );
+};
+
 // Función AJAX para Historial AOI - GLOBAL
 window.mostrarHistorialAOI = function () {
   try {
@@ -2880,6 +2893,7 @@ window.mostrarHistorialAOI = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
       "inventario-imd-terminado-unique-container",
       "inventario-reparacion-smd-unique-container",
       "inventario-reparacion-assy-unique-container",
@@ -2970,6 +2984,7 @@ window.mostrarHistorialICT = function () {
       "historial-cambios-parametros-ict-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
       "inventario-imd-terminado-unique-container",
       "inventario-reparacion-smd-unique-container",
       "inventario-reparacion-assy-unique-container",
@@ -3085,6 +3100,7 @@ window.mostrarHistorialVision = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
       "inventario-imd-terminado-unique-container",
       "inventario-reparacion-smd-unique-container",
       "inventario-reparacion-assy-unique-container",
@@ -3202,6 +3218,7 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
       "inventario-imd-terminado-unique-container",
       "inventario-reparacion-smd-unique-container",
       "inventario-reparacion-assy-unique-container",
@@ -3322,6 +3339,7 @@ window.mostrarHistorialVisionPassFail = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
       "inventario-imd-terminado-unique-container",
       "inventario-reparacion-smd-unique-container",
       "inventario-reparacion-assy-unique-container",
@@ -3362,6 +3380,7 @@ window.mostrarHistorialVisionPassFail = function () {
 
     const historialVisionPassFailContainer = document.getElementById(
       "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
     );
     if (!historialVisionPassFailContainer) {
       console.error(
@@ -3380,6 +3399,8 @@ window.mostrarHistorialVisionPassFail = function () {
     if (typeof window.cargarContenidoDinamico === "function") {
       window.cargarContenidoDinamico(
         "historial-vision-pass-fail-unique-container",
+        "historial-operadores-maquina-unique-container",
+      "historial-operadores-maquina-unique-container",
         "/historial_vision_pass_fail/ajax",
         () => {
           const intentarInicializarVisionPassFail = () => {
@@ -3432,6 +3453,7 @@ window.mostrarHistorialCambiosParametrosICT = function () {
       "historial-ict-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
