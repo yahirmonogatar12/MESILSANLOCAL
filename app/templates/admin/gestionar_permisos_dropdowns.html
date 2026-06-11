@@ -6,548 +6,8 @@
     <title>Gestión de Permisos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4A90E2;
-            --primary-hover: #357ABD;
-            --secondary-color: #333438;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
-            --warning-color: #ffc107;
-            --text-primary: #e0e0e0;
-            --text-secondary: #b0b0b0;
-            --border-color: #444;
-            --background-dark: #23242a;
-            --background-panel: #28292d;
-            --background-card: #333438;
-            --shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
-        }
-
-        * {
-            transition: all 0.2s ease;
-        }
-
-        body {
-            background-color: var(--background-dark);
-            font-family: Arial, sans-serif;
-            color: var(--text-primary);
-            line-height: 1.6;
-        }
-
-        .container-fluid {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1rem;
-        }
-
-        /* Header oscuro */
-        .page-header {
-            background: var(--background-panel);
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border-color);
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--primary-color);
-            margin: 0;
-        }
-
-        .page-subtitle {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            margin: 0;
-        }
-
-        /* Panel principal oscuro */
-        .main-panel {
-            background: var(--background-panel);
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border-color);
-            overflow: hidden;
-        }
-
-        /* Barra de filtros oscura */
-        .filter-bar {
-            background: var(--background-card);
-            border-bottom: 1px solid var(--border-color);
-            padding: 1rem 1.5rem;
-        }
-
-        .filter-section {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .filter-label {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-            white-space: nowrap;
-        }
-
-        .form-select, .form-control {
-            background-color: var(--background-card);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-            min-width: 140px;
-            color: var(--text-primary);
-        }
-
-        .form-select:focus, .form-control:focus {
-            background-color: var(--background-card);
-            border-color: var(--primary-color);
-            color: var(--text-primary);
-            box-shadow: 0 0 0 0.25rem rgba(74, 144, 226, 0.25);
-        }
-
-        /* Botones oscuros */
-        .btn-minimal {
-            border: 1px solid var(--border-color);
-            background: var(--background-card);
-            color: var(--text-secondary);
-            border-radius: 8px;
-            padding: 0.5rem 1rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
-        }
-
-        .btn-minimal:hover {
-            background: var(--secondary-color);
-            color: var(--text-primary);
-            border-color: var(--primary-color);
-        }
-
-        .btn-minimal.active {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-
-        .btn-success-minimal {
-            background: var(--success-color);
-            color: white;
-            border-color: var(--success-color);
-        }
-
-        .btn-success-minimal:hover {
-            background: #218838;
-            border-color: #218838;
-        }
-
-        .btn-danger-minimal {
-            background: var(--danger-color);
-            color: white;
-            border-color: var(--danger-color);
-        }
-
-        .btn-danger-minimal:hover {
-            background: #c82333;
-            border-color: #c82333;
-        }
-
-        /* Stats bar oscura */
-        .stats-bar {
-            background: var(--background-card);
-            border-bottom: 1px solid var(--border-color);
-            padding: 0.75rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-        }
-
-        .stat-value {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .stat-label {
-            color: var(--text-secondary);
-        }
-
-        /* Lista de permisos oscura */
-        .permissions-container {
-            padding: 1.5rem;
-            background: var(--background-panel);
-        }
-
-        .permission-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 0.75rem;
-        }
-
-        .permission-item {
-            background: var(--background-card);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1rem;
-            cursor: pointer;
-            position: relative;
-        }
-
-        .permission-item:hover {
-            border-color: var(--primary-color);
-            box-shadow: var(--shadow);
-        }
-
-        .permission-item.enabled {
-            border-left: 3px solid var(--success-color);
-            background: linear-gradient(to right, rgba(40, 167, 69, 0.1), var(--background-card));
-        }
-
-        .permission-item.disabled {
-            border-left: 3px solid var(--danger-color);
-            background: linear-gradient(to right, rgba(220, 53, 69, 0.1), var(--background-card));
-        }
-
-        .permission-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 0.75rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .permission-title {
-            font-weight: 500;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            line-height: 1.4;
-            flex: 1;
-        }
-
-        .permission-status {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-            margin-top: 0.25rem;
-        }
-
-        .permission-status.enabled {
-            background: var(--success-color);
-            box-shadow: 0 0 4px rgba(40, 167, 69, 0.5);
-        }
-
-        .permission-status.disabled {
-            background: var(--danger-color);
-            box-shadow: 0 0 4px rgba(220, 53, 69, 0.5);
-        }
-
-        .permission-meta {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .permission-path {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-        }
-
-        .permission-badge {
-            background: var(--secondary-color);
-            color: var(--text-secondary);
-            padding: 0.125rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.625rem;
-            font-weight: 500;
-            border: 1px solid var(--border-color);
-        }
-
-        /* Sección de roles oscura */
-        .roles-sidebar {
-            background: var(--background-panel);
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border-color);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .role-item {
-            padding: 0.75rem;
-            border-radius: 8px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            margin-bottom: 0.5rem;
-            background: var(--background-card);
-        }
-
-        .role-item:hover {
-            background: var(--secondary-color);
-            border-color: var(--border-color);
-        }
-
-        .role-item.active {
-            background: rgba(74, 144, 226, 0.2);
-            border-color: var(--primary-color);
-        }
-
-        .role-item .btn {
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-
-        .role-item:hover .btn {
-            opacity: 1;
-        }
-
-        .role-item.active .btn {
-            opacity: 1;
-        }
-
-        .role-name {
-            font-weight: 500;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-        }
-
-        .role-description {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-top: 0.25rem;
-        }
-
-        .role-count {
-            font-size: 0.75rem;
-            color: var(--primary-color);
-            font-weight: 500;
-            margin-top: 0.25rem;
-        }
-
-        /* Loading states oscuros */
-        .loading-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 3rem;
-            color: var(--text-secondary);
-        }
-
-        .spinner {
-            width: 24px;
-            height: 24px;
-            border: 2px solid var(--border-color);
-            border-top: 2px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Empty state oscuro */
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-secondary);
-        }
-
-        .empty-icon {
-            font-size: 3rem;
-            opacity: 0.3;
-            margin-bottom: 1rem;
-        }
-
-        /* Toast styles oscuros */
-        .toast {
-            border: none;
-            border-radius: 8px;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .toast-success {
-            background: var(--success-color);
-            color: white;
-        }
-
-        .toast-error {
-            background: var(--danger-color);
-            color: white;
-        }
-
-        /* Badge oscuro */
-        .badge {
-            background-color: var(--primary-color) !important;
-            color: white;
-        }
-
-        /* Contador de roles mejorado */
-        .roles-counter-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            white-space: nowrap;
-            min-width: 60px;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .roles-counter-badge:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-            background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
-        }
-
-        .roles-counter-badge i {
-            font-size: 0.8rem;
-            opacity: 0.9;
-            margin-right: 4px;
-        }
-
-        .roles-counter-badge span {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            letter-spacing: 0.5px;
-            font-weight: 700;
-        }
-
-        /* Animación del contador cuando cambia */
-        @keyframes countPulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-
-        .roles-counter-badge.updating {
-            animation: countPulse 0.6s ease-in-out;
-        }
-
-        /* Efecto de carga con brillo */
-        .roles-counter-badge.loading {
-            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-
-        /* Responsivo para móviles */
-        @media (max-width: 768px) {
-            .roles-counter-badge {
-                padding: 6px 10px;
-                font-size: 0.8rem;
-                min-width: 50px;
-            }
-            
-            .roles-counter-badge i {
-                font-size: 0.7rem;
-            }
-        }
-
-        /* Toggle Switch para permisos */
-        .permission-toggle {
-            position: relative;
-            display: inline-block;
-            width: 50px;
-            height: 24px;
-        }
-
-        .permission-toggle input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--danger-color);
-            transition: 0.3s;
-            border-radius: 24px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: 0.3s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: var(--success-color);
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .container-fluid {
-                padding: 0.5rem;
-            }
-            
-            .filter-section {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .permission-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-bar {
-                flex-direction: column;
-                gap: 0.5rem;
-                align-items: stretch;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-base.css', v='20260611a') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_permisos.css', v='20260611a') }}">
 </head>
 <body>
     <div class="container-fluid">
@@ -561,7 +21,11 @@
                     </h1>
                     <p class="page-subtitle mt-1">Administra los permisos de acceso para cada rol del sistema</p>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="header-actions">
+                    <a class="btn-minimal btn-quiet text-decoration-none" href="/admin/panel">
+                        <i class="fas fa-arrow-left"></i>
+                        Panel
+                    </a>
                     <button class="btn-minimal" onclick="sincronizarPermisos()">
                         <i class="fas fa-sync-alt"></i>
                         Sincronizar
@@ -578,114 +42,152 @@
             </div>
         </div>
 
-        <div class="row">
+        <div class="permissions-shell">
             <!-- Sidebar de Roles -->
-            <div class="col-lg-3">
-                <div class="roles-sidebar">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0 fw-semibold">Roles</h6>
-                        <div class="d-flex gap-2 align-items-center">
-                            <button class="btn btn-success btn-sm" onclick="mostrarModalCrearRol()" title="Crear nuevo rol">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                            <div class="roles-counter-badge" id="totalRolesContainer">
-                                <i class="fas fa-users-cog me-1"></i>
-                                <span id="totalRoles">0</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="rolesContainer">
-                        <div class="loading-container">
-                            <div class="spinner"></div>
-                            <small class="mt-2">Cargando roles...</small>
+            <aside class="roles-sidebar">
+                <div class="roles-toolbar">
+                    <h6 class="roles-title">
+                        <i class="fas fa-users-cog"></i>
+                        Roles
+                    </h6>
+                    <div class="d-flex gap-2 align-items-center">
+                        <button class="btn btn-success btn-sm" onclick="mostrarModalCrearRol()" title="Crear nuevo rol">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <div class="roles-counter-badge" id="totalRolesContainer">
+                            <i class="fas fa-users-cog me-1"></i>
+                            <span id="totalRoles">0</span>
                         </div>
                     </div>
                 </div>
-            </div>
+                <div class="role-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="form-control" id="roleSearchInput"
+                        placeholder="Buscar rol..." oninput="filterRoles()">
+                </div>
+                <div id="rolesContainer">
+                    <div class="loading-container">
+                        <div class="spinner"></div>
+                        <small class="mt-2">Cargando roles...</small>
+                    </div>
+                </div>
+            </aside>
 
             <!-- Panel Principal -->
-            <div class="col-lg-9">
-                <div class="main-panel">
-                    <!-- Barra de Filtros -->
-                    <div class="filter-bar">
-                        <div class="filter-section">
-                            <div class="filter-group">
-                                <span class="filter-label">Buscar:</span>
-                                <input type="text" class="form-control" id="searchInput" 
-                                    placeholder="Buscar permisos..." onkeyup="filterPermissions()">
-                            </div>
-                            <div class="filter-group">
-                                <span class="filter-label">Página:</span>
-                                <select class="form-select" id="pageFilter" onchange="filterByPage()">
-                                    <option value="">Todas las páginas</option>
-                                </select>
-                            </div>
-                            <div class="filter-group">
-                                <span class="filter-label">Sección:</span>
-                                <select class="form-select" id="sectionFilter" onchange="filterBySection()">
-                                    <option value="">Todas las secciones</option>
-                                </select>
-                            </div>
-                            <div class="filter-group">
-                                <span class="filter-label">Estado:</span>
-                                <select class="form-select" id="statusFilter" onchange="filterByStatus()">
-                                    <option value="">Todos</option>
-                                    <option value="enabled">Habilitados</option>
-                                    <option value="disabled">Deshabilitados</option>
-                                </select>
-                            </div>
+            <main class="main-panel">
+              <!-- Encabezado del panel (resumen + filtros + stats): fijo al hacer scroll -->
+              <div class="panel-sticky-head">
+                <div class="role-summary" id="roleSummary">
+                    <div>
+                        <h2 class="summary-title" id="summaryRoleName">
+                            <i class="fas fa-shield-alt"></i>
+                            Selecciona un rol
+                        </h2>
+                        <div class="summary-meta" id="summaryRoleMeta">
+                            <span class="summary-pill">
+                                <i class="fas fa-circle-info"></i>
+                                Sin rol activo
+                            </span>
                         </div>
                     </div>
-
-                    <!-- Barra de Estadísticas -->
-                    <div class="stats-bar">
-                        <div class="d-flex gap-4">
-                            <div class="stat-item">
-                                <span class="stat-label">Total:</span>
-                                <span class="stat-value" id="totalPermissions">0</span>
-                            </div>
-                            <div class="stat-item">
-                                <i class="fas fa-check-circle text-success me-1"></i>
-                                <span class="stat-label">Habilitados:</span>
-                                <span class="stat-value text-success" id="enabledCount">0</span>
-                            </div>
-                            <div class="stat-item">
-                                <i class="fas fa-times-circle text-danger me-1"></i>
-                                <span class="stat-label">Deshabilitados:</span>
-                                <span class="stat-value text-danger" id="disabledCount">0</span>
-                            </div>
+                    <div class="summary-progress">
+                        <div class="summary-progress-label">
+                            <span>Permisos habilitados</span>
+                            <strong id="summaryEnabledRatio">0%</strong>
                         </div>
-                        <div class="d-flex gap-2">
-                            <button class="btn-minimal btn-success-minimal" onclick="enableAllPermissions()">
-                                <i class="fas fa-check-double"></i>
-                                Habilitar Todos
-                            </button>
-                            <button class="btn-minimal btn-danger-minimal" onclick="disableAllPermissions()">
-                                <i class="fas fa-times"></i>
-                                Deshabilitar Todos
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Contenedor de Permisos -->
-                    <div class="permissions-container">
-                        <div id="permissionsContainer">
-                            <div class="empty-state">
-                                <div class="empty-icon">
-                                    <i class="fas fa-hand-pointer"></i>
-                                </div>
-                                <h5>Selecciona un rol</h5>
-                                <p class="mb-0">Elige un rol de la barra lateral para ver y gestionar sus permisos</p>
-                            </div>
+                        <div class="summary-progress-track">
+                            <div class="summary-progress-fill" id="summaryProgressFill"></div>
                         </div>
                     </div>
                 </div>
-            </div>
+
+                <!-- Barra de Filtros -->
+                <div class="filter-bar">
+                    <div class="filter-section">
+                        <div class="filter-group">
+                            <span class="filter-label">Buscar permiso</span>
+                            <input type="text" class="form-control" id="searchInput" 
+                                placeholder="Nombre, página o sección..." oninput="filterPermissions()">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Página</span>
+                            <select class="form-select" id="pageFilter" onchange="filterByPage()">
+                                <option value="">Todas las páginas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Sección</span>
+                            <select class="form-select" id="sectionFilter" onchange="filterBySection()">
+                                <option value="">Todas las secciones</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Estado</span>
+                            <select class="form-select" id="statusFilter" onchange="filterByStatus()">
+                                <option value="">Todos</option>
+                                <option value="enabled">Habilitados</option>
+                                <option value="disabled">Deshabilitados</option>
+                            </select>
+                        </div>
+                        <button class="btn-minimal btn-quiet" onclick="resetPermissionFilters()">
+                            <i class="fas fa-filter-circle-xmark"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Barra de Estadísticas -->
+                <div class="stats-bar">
+                    <div class="stats-cluster">
+                        <div class="stat-item">
+                            <span class="stat-label">Total rol</span>
+                            <span class="stat-value" id="totalPermissions">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Visibles</span>
+                            <span class="stat-value" id="visiblePermissions">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Habilitados</span>
+                            <span class="stat-value text-success" id="enabledCount">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Deshabilitados</span>
+                            <span class="stat-value text-danger" id="disabledCount">0</span>
+                        </div>
+                    </div>
+                    <div class="bulk-actions">
+                        <button class="btn-minimal btn-success-minimal" onclick="enableAllPermissions()">
+                            <i class="fas fa-check-double"></i>
+                            Habilitar todos
+                        </button>
+                        <button class="btn-minimal btn-danger-minimal" onclick="disableAllPermissions()">
+                            <i class="fas fa-times"></i>
+                            Deshabilitar todos
+                        </button>
+                    </div>
+                </div>
+              </div>
+              <!-- /panel-sticky-head -->
+
+                <!-- Contenedor de Permisos -->
+                <div class="permissions-container">
+                    <div id="permissionsContainer">
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-hand-pointer"></i>
+                            </div>
+                            <h5>Selecciona un rol</h5>
+                            <p class="mb-0">Elige un rol de la barra lateral para ver y gestionar sus permisos</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
         </div>
     </div>
 
     <!-- Toast Container -->
-    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11;">
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
         <div id="successToast" class="toast toast-success" role="alert">
             <div class="toast-body">
                 <div class="d-flex align-items-center">
@@ -707,9 +209,9 @@
     <!-- Modal Crear Rol -->
     <div class="modal fade" id="modalCrearRol" tabindex="-1" aria-labelledby="modalCrearRolLabel" aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content" style="background-color: var(--background-panel); border: 1px solid var(--border-color);">
-                <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                    <h5 class="modal-title" id="modalCrearRolLabel" style="color: var(--text-primary);">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCrearRolLabel">
                         <i class="fas fa-plus-circle me-2"></i>Crear Nuevo Rol
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -717,15 +219,15 @@
                 <div class="modal-body">
                     <form id="formCrearRol">
                         <div class="mb-3">
-                            <label for="nombreRol" class="form-label" style="color: var(--text-primary);">Nombre del Rol</label>
+                            <label for="nombreRol" class="form-label">Nombre del Rol</label>
                             <input type="text" class="form-control" id="nombreRol" required>
                         </div>
                         <div class="mb-3">
-                            <label for="descripcionRol" class="form-label" style="color: var(--text-primary);">Descripción</label>
+                            <label for="descripcionRol" class="form-label">Descripción</label>
                             <textarea class="form-control" id="descripcionRol" rows="3" required></textarea>
                         </div>
                         <div class="mb-3">
-                            <label for="nivelRol" class="form-label" style="color: var(--text-primary);">Nivel de Acceso</label>
+                            <label for="nivelRol" class="form-label">Nivel de Acceso</label>
                             <select class="form-select" id="nivelRol" required>
                                 <option value="">Selecciona un nivel</option>
                                 <option value="1">1 - Básico</option>
@@ -736,13 +238,13 @@
                                 <option value="6">6 - Jefe</option>
                                 <option value="7">7 - Gerente</option>
                             </select>
-                            <div class="form-text" style="color: var(--text-secondary);">
+                            <div class="form-text">
                                 Los niveles 8-10 están reservados para roles del sistema
                             </div>
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-success" onclick="crearRol()">
                         <i class="fas fa-save me-1"></i>Crear Rol
@@ -755,9 +257,9 @@
     <!-- Modal Editar Rol -->
     <div class="modal fade" id="modalEditarRol" tabindex="-1" aria-labelledby="modalEditarRolLabel" aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content" style="background-color: var(--background-panel); border: 1px solid var(--border-color);">
-                <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                    <h5 class="modal-title" id="modalEditarRolLabel" style="color: var(--text-primary);">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEditarRolLabel">
                         <i class="fas fa-edit me-2"></i>Editar Rol
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -766,15 +268,15 @@
                     <form id="formEditarRol">
                         <input type="hidden" id="editRolId">
                         <div class="mb-3">
-                            <label for="editNombreRol" class="form-label" style="color: var(--text-primary);">Nombre del Rol</label>
+                            <label for="editNombreRol" class="form-label">Nombre del Rol</label>
                             <input type="text" class="form-control" id="editNombreRol" required>
                         </div>
                         <div class="mb-3">
-                            <label for="editDescripcionRol" class="form-label" style="color: var(--text-primary);">Descripción</label>
+                            <label for="editDescripcionRol" class="form-label">Descripción</label>
                             <textarea class="form-control" id="editDescripcionRol" rows="3" required></textarea>
                         </div>
                         <div class="mb-3">
-                            <label for="editNivelRol" class="form-label" style="color: var(--text-primary);">Nivel de Acceso</label>
+                            <label for="editNivelRol" class="form-label">Nivel de Acceso</label>
                             <select class="form-select" id="editNivelRol" required>
                                 <option value="">Selecciona un nivel</option>
                                 <option value="1">1 - Básico</option>
@@ -785,17 +287,17 @@
                                 <option value="6">6 - Jefe</option>
                                 <option value="7">7 - Gerente</option>
                             </select>
-                            <div class="form-text" style="color: var(--text-secondary);">
+                            <div class="form-text">
                                 Los roles del sistema (nivel 8+) solo permiten cambiar la descripción
                             </div>
                         </div>
-                        <div id="warningEditSistema" class="alert alert-warning" style="display: none; background-color: var(--warning-color); color: #000;">
+                        <div id="warningEditSistema" class="alert alert-warning d-none">
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             Este es un rol del sistema. Solo se puede modificar la descripción.
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="actualizarRol()">
                         <i class="fas fa-save me-1"></i>Guardar Cambios
@@ -808,9 +310,9 @@
     <!-- Modal Confirmar Eliminación -->
     <div class="modal fade" id="modalEliminarRol" tabindex="-1" aria-labelledby="modalEliminarRolLabel" aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content" style="background-color: var(--background-panel); border: 1px solid var(--border-color);">
-                <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
-                    <h5 class="modal-title" id="modalEliminarRolLabel" style="color: var(--text-primary);">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEliminarRolLabel">
                         <i class="fas fa-trash me-2 text-danger"></i>Eliminar Rol
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -818,15 +320,15 @@
                 <div class="modal-body">
                     <div class="text-center">
                         <i class="fas fa-exclamation-triangle text-warning" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                        <h6 style="color: var(--text-primary);">¿Estás seguro de que quieres eliminar este rol?</h6>
-                        <p style="color: var(--text-secondary);" id="deleteRolInfo">Esta acción no se puede deshacer.</p>
-                        <div class="alert alert-danger" style="background-color: rgba(220, 53, 69, 0.2); border: 1px solid var(--danger-color); color: var(--text-primary);">
+                        <h6>¿Estás seguro de que quieres eliminar este rol?</h6>
+                        <p class="text-secondary" id="deleteRolInfo">Esta acción no se puede deshacer.</p>
+                        <div class="alert alert-danger" style="background-color: rgba(239, 68, 68, 0.18); border: 1px solid var(--danger); color: var(--text);">
                             <strong>Advertencia:</strong> Se eliminarán todos los permisos asociados a este rol.
                         </div>
                     </div>
                     <input type="hidden" id="deleteRolId">
                 </div>
-                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-danger" onclick="confirmarEliminarRol()">
                         <i class="fas fa-trash me-1"></i>Eliminar Rol
@@ -844,15 +346,6 @@
         let allDropdowns = [];
         let rolePermissions = {};
         let filteredPermissions = [];
-
-        function escapeHtml(value) {
-            return String(value ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
 
         // Inicializar la aplicación
         document.addEventListener('DOMContentLoaded', function() {
@@ -1345,35 +838,31 @@
                 
                 permissionElement.innerHTML = `
                     <div class="permission-header">
-                        <div class="permission-title">${escapeHtml(displayBoton)}</div>
+                        <div class="permission-title">${displayBoton}</div>
                         <label class="permission-toggle">
-                            <input type="checkbox" class="permission-toggle-input" ${permission.activo ? 'checked' : ''}>
+                            <input type="checkbox" ${permission.activo ? 'checked' : ''} 
+                                onchange="togglePermission('${permission.pagina}', '${permission.seccion}', '${permission.boton}', this.checked)">
                             <span class="slider"></span>
                         </label>
                     </div>
                     <div class="permission-meta">
                         <div class="permission-path">
                             <i class="fas fa-folder me-1"></i>
-                            <span class="permission-badge">${escapeHtml(permission.pagina.replace('LISTA_', ''))}</span>
+                            <span class="permission-badge">${permission.pagina.replace('LISTA_', '')}</span>
                             ${permission.boton === 'Crear ECO' ? '<span class="permission-badge">Acción ECO</span>' : ''}
                         </div>
                         <div class="permission-path">
                             <i class="fas fa-layer-group me-1"></i>
-                            <span>${escapeHtml(permission.seccion)}</span>
+                            <span>${permission.seccion}</span>
                         </div>
                         ${displayDescripcion ? `
                             <div class="permission-path">
                                 <i class="fas fa-info-circle me-1"></i>
-                                <span>${escapeHtml(displayDescripcion)}</span>
+                                <span>${displayDescripcion}</span>
                             </div>
                         ` : ''}
                     </div>
                 `;
-
-                const toggleInput = permissionElement.querySelector('.permission-toggle-input');
-                toggleInput.addEventListener('change', function() {
-                    togglePermission(permission.pagina, permission.seccion, permission.boton, this.checked);
-                });
                 
                 grid.appendChild(permissionElement);
             });

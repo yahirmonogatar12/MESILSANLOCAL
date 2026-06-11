@@ -1,0 +1,273 @@
+/* =====================================================================
+   admin_usuarios.css — estilos específicos de Administración de Usuarios.
+   Depende de admin-base.css (tokens, botones, formularios, modales).
+   ===================================================================== */
+.admin-container {
+    max-width: 1560px;
+    margin: 0 auto;
+    padding: 0 1.25rem 1.25rem;
+}
+
+/* ---------- Header sticky ---------- */
+.admin-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    background: linear-gradient(135deg, rgb(28, 34, 44), rgb(20, 25, 33));
+    border: 1px solid var(--line-soft);
+    border-top: none;
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    padding: 1.05rem 1.35rem;
+    margin-bottom: 1.1rem;
+    box-shadow: var(--shadow-md);
+}
+/* Tapa la franja entre el header y el contenido al hacer scroll. */
+.admin-header::after {
+    content: "";
+    position: absolute;
+    left: -1.35rem;
+    right: -1.35rem;
+    top: 100%;
+    height: 1.2rem;
+    background: var(--bg-base);
+}
+.admin-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    color: var(--text-strong);
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+.admin-header h2 i { color: var(--accent); }
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* ---------- Tarjetas de estadísticas ---------- */
+.stats-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.9rem;
+    margin-bottom: 1.1rem;
+}
+.stat-card {
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-md);
+    padding: 1rem 1.1rem;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    border-left: 3px solid var(--accent);
+}
+.stat-card.is-success { border-left-color: var(--success); }
+.stat-card.is-warning { border-left-color: var(--warning); }
+.stat-card.is-info { border-left-color: #38bdf8; }
+.stat-card h4 {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.stat-card .stat-number {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    line-height: 1;
+}
+
+/* ---------- Panel de la tabla ---------- */
+.table-panel {
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.table-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
+    gap: 0.75rem;
+    align-items: end;
+    padding: 1rem 1.25rem;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--line-soft);
+}
+.toolbar-group { display: flex; flex-direction: column; gap: 0.35rem; }
+.toolbar-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+.search-wrap { position: relative; }
+.search-wrap i {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+.search-wrap .form-control { padding-left: 2.2rem; }
+.toolbar-result { color: var(--text-muted); font-size: 0.8rem; align-self: center; white-space: nowrap; }
+
+/* ---------- Tabla ---------- */
+.usuarios-table-container {
+    max-height: calc(100vh - 360px);
+    min-height: 320px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+}
+.usuarios-table-container::-webkit-scrollbar { width: 9px; }
+.usuarios-table-container::-webkit-scrollbar-track { background: transparent; }
+.usuarios-table-container::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
+.usuarios-table-container::-webkit-scrollbar-thumb:hover { background: var(--accent-strong); }
+
+.table {
+    margin: 0;
+    color: var(--text);
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text);
+}
+.table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--surface-3);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--line-strong);
+    padding: 0.7rem 0.9rem;
+    white-space: nowrap;
+}
+.table tbody td {
+    background: var(--surface-2);
+    border-color: var(--line-soft);
+    color: var(--text);
+    vertical-align: middle;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.86rem;
+}
+.table tbody tr { transition: background-color var(--ease); }
+.table-hover tbody tr:hover td { background: var(--surface-3); }
+
+/* ---------- Acciones por fila ---------- */
+.user-actions { display: flex; gap: 0.3rem; }
+.user-actions .btn { width: 32px; height: 32px; padding: 0; justify-content: center; }
+
+/* ---------- Loading / vacío ---------- */
+.loading { display: none; text-align: center; padding: 2.5rem; color: var(--text-muted); }
+.empty-row td { text-align: center; color: var(--text-muted); padding: 2.5rem !important; }
+
+/* ---------- Tabla de roles (modal de usuario) ---------- */
+.roles-field-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+}
+.roles-selected-count {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border: 1px solid rgba(78, 161, 255, 0.35);
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+}
+.roles-table-wrap {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--surface-1);
+}
+.roles-table-toolbar {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.6rem 0.7rem;
+    background: var(--surface-3);
+    border-bottom: 1px solid var(--line-soft);
+}
+.roles-search { flex: 1 1 auto; }
+.roles-table-toolbar .btn { white-space: nowrap; flex-shrink: 0; }
+
+.roles-table-scroll {
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+}
+.roles-table-scroll::-webkit-scrollbar { width: 9px; }
+.roles-table-scroll::-webkit-scrollbar-track { background: transparent; }
+.roles-table-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
+
+.roles-table { margin: 0; color: var(--text); }
+.roles-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--surface-3);
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--line-strong);
+    padding: 0.55rem 0.7rem;
+}
+.roles-table tbody td {
+    background: transparent;
+    border-color: var(--line-soft);
+    color: var(--text);
+    vertical-align: middle;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.85rem;
+}
+.role-row { cursor: pointer; transition: background-color var(--ease); }
+.role-row:hover td { background: var(--surface-3); }
+/* Fila seleccionada: resaltada cuando su checkbox está marcado */
+.role-row:has(input[name="roles"]:checked) td {
+    background: var(--accent-soft);
+}
+.role-row:has(input[name="roles"]:checked) td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+.role-check-cell { text-align: center; }
+.role-check-cell .form-check-input { margin: 0; cursor: pointer; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+    .stats-cards { grid-template-columns: repeat(2, 1fr); }
+    .table-toolbar { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+    .admin-container { padding: 0 0.75rem 0.75rem; }
+    .admin-header { flex-direction: column; align-items: stretch; }
+    .header-actions { justify-content: stretch; }
+    .header-actions .btn { flex: 1 1 auto; justify-content: center; }
+    .stats-cards { grid-template-columns: 1fr; }
+    .table-toolbar { grid-template-columns: 1fr; }
+    .usuarios-table-container { max-height: none; }
+}

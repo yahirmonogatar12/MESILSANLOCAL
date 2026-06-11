@@ -523,6 +523,8 @@ class AuthSystem:
             # WF_001 (2026-05-27): seed para los 2 modulos Vision en Historial de maquinas calidad.
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina vision', 'Acceso al historial de la maquina vision'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina Vision % Pass/Fail', 'Acceso al historial Vision % Pass/Fail'),
+            # WF_001 (2026-06-09): seed modulo Historial de Operadores por Maquina.
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de Operadores por Maquina', 'Acceso al historial de operadores por maquina de calidad'),
             
             # LISTA CONTROL DE CALIDAD - Control de calidad  
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección de entrada', 'Acceso a inspección de entrada'),
@@ -536,6 +538,8 @@ class AuthSystem:
             ('LISTA_CONTROL_DE_CALIDAD', "PPM's", "PPM's IQC", "Acceso al modulo PPM's IQC"),
             ('LISTA_CONTROL_DE_CALIDAD', "PPM's", "PPM's LQC", "Acceso al modulo PPM's LQC"),
             ('LISTA_CONTROL_DE_CALIDAD', "PPM's", "PPM's OQC", "Acceso al modulo PPM's OQC"),
+            # WF_001 (2026-06-09): seed modulo Control de maquinas de calidad.
+            ('LISTA_CONTROL_DE_CALIDAD', 'Control de maquinas', 'Control de maquinas de calidad', 'Acceso al modulo Control de maquinas de calidad'),
 
             # LISTA DE CONTROL DE RESULTADOS
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Análisis de resultados', 'Acceso al análisis de resultados'),
@@ -608,7 +612,7 @@ class AuthSystem:
         self._asignar_permisos_botones_especificos(cursor, 'calidad', [
             'LISTA_CONTROL_DE_CALIDAD', 'LISTA_INFORMACIONBASICA'
         ], [
-            'Control de calidad', "PPM's", 'Información básica'
+            'Control de calidad', "PPM's", 'Control de maquinas', 'Información básica'
         ])
         
         # Consulta - solo ver, sin modificar

@@ -16,7 +16,7 @@ from functools import wraps
 
 from flask import Blueprint, render_template, session
 
-from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
+from app.api.shared.datetime_helpers import obtener_fecha_mexico
 
 
 # Decorador de auth centralizado (antes era un proxy duplicado en cada
@@ -57,7 +57,7 @@ def control_embarque_ajax():
 def crear_plan_produccion():
     """Cargar la pagina de Crear Plan de Produccion"""
     try:
-        fecha_hoy = obtener_fecha_hora_mexico().strftime("%Y-%m-%d")
+        fecha_hoy = obtener_fecha_mexico()
         usuario_logueado = session.get("usuario", "")
         return render_template(
             "Control de produccion/Crear plan de produccion.html",

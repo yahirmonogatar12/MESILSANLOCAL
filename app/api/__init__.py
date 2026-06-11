@@ -86,6 +86,8 @@ _MODULOS_REGISTRADOS = [
     "control_calidad.historial_liberacion_lqc",
     # WF_001-WF_004 (2026-06-05): modulos PPM's IQC/LQC/OQC
     "control_calidad.ppms",
+    # WF_001-WF_004 (2026-06-09): CRUD stations_qa para maquinas de calidad
+    "control_calidad.stations_qa",
     # Fase 3.3 (2026-05-28): 6 renders cortos de Control de calidad
     "control_calidad.renders",
     "control_resultados.aoi",
@@ -98,6 +100,9 @@ _MODULOS_REGISTRADOS = [
     # pcb_inventory_scan_prod (Control_produccion). Va despues de reparacion SMD.
     "control_resultados.inventario_reparacion_assy",
     "control_resultados.inventario_exceso",
+    # WF_001-WF_004 (2026-06-09): Historial de Operadores por Maquina
+    # (vista historial_estaciones_qa, solo lectura).
+    "control_resultados.historial_operadores_maquina",
     # Migracion 2026-05-27: 3 modulos ICT (Control de resultados)
     "control_resultados.historial_ict",
     "control_resultados.historial_ict_pass_fail",

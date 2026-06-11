@@ -27,12 +27,13 @@ area='REPARACION'.
 
 import logging
 import traceback
-from io import BytesIO
 
-from flask import Blueprint, Response, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request
 
 from app.api.shared import (
+    excel_response,
     execute_query,
+    formatear_hora,
     login_requerido,
     requiere_permiso_dropdown,
 )
@@ -53,10 +54,6 @@ REP_PERMISO_BOTON = "Inventario reparacion SMD"
 _requiere_permiso_rep = requiere_permiso_dropdown(
     REP_PERMISO_PAGINA, REP_PERMISO_SECCION, REP_PERMISO_BOTON
 )
-
-
-# Estilo de encabezados Excel estandar ILSAN (WF_003).
-_XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 # ---------------------------------------------------------------------------
@@ -83,27 +80,6 @@ def inventario_reparacion_smd_ajax():
 # ---------------------------------------------------------------------------
 # Helpers de filtros (comunes a las 3 vistas)
 # ---------------------------------------------------------------------------
-
-
-def _fmt_hora(valor):
-    """Normaliza la hora a 'HH:MM:SS'.
-
-    TIME() en pymysql devuelve un timedelta; str() da '11:32:15' pero sin
-    cero a la izquierda en la hora (p.ej. '9:05:00'). Aqui se rellena.
-    """
-    if valor is None:
-        return ""
-    import datetime as _dt
-
-    if isinstance(valor, _dt.timedelta):
-        total = int(valor.total_seconds())
-        total %= 24 * 3600
-        h, resto = divmod(total, 3600)
-        m, s = divmod(resto, 60)
-        return f"{h:02d}:{m:02d}:{s:02d}"
-    # datetime/time u otra cosa: tomar la parte de hora del string.
-    s = str(valor)
-    return s.split(".")[0][-8:] if len(s) >= 8 else s
 
 
 def _filtros_comunes():
@@ -209,7 +185,7 @@ def api_reparacion_stock_export():
             "total_entrada", "total_salida", "total_scrap", "stock_actual",
         ]
         widths = [16, 24, 10, 14, 14, 12, 14]
-        return _excel_response(
+        return excel_response(
             items, headers, keys, widths,
             sheet="Stock Reparacion SMD", filename="stock_reparacion_smd",
         )
@@ -264,7 +240,7 @@ def _query_movimientos(limit=None):
         result.append({
             "inventory_date": str(r.get("inventory_date") or ""),
             "fecha_hora": str(r.get("fecha_hora") or ""),
-            "hora": _fmt_hora(r.get("hora")),
+            "hora": formatear_hora(r.get("hora")),
             "tipo_movimiento": r.get("tipo_movimiento") or "",
             "scanned_original": r.get("scanned_original") or "",
             "pcb_part_no": r.get("pcb_part_no") or "",
@@ -311,7 +287,7 @@ def api_reparacion_movimientos_export():
             "scanned_by", "comentarios",
         ]
         widths = [12, 10, 9, 30, 16, 22, 9, 18, 18, 14, 7, 7, 14, 24]
-        return _excel_response(
+        return excel_response(
             items, headers, keys, widths,
             sheet="Movimientos Reparacion", filename="movimientos_reparacion_smd",
         )
@@ -375,7 +351,7 @@ def api_reparacion_defectos_export():
         headers = ["Defecto", "Etapa Deteccion", "# Registros", "Qty Total"]
         keys = ["defect_type", "etapa_deteccion", "registros", "qty_total"]
         widths = [28, 18, 14, 12]
-        return _excel_response(
+        return excel_response(
             items, headers, keys, widths,
             sheet="Defectos Reparacion", filename="defectos_reparacion_smd",
         )
@@ -384,41 +360,6 @@ def api_reparacion_defectos_export():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-# ---------------------------------------------------------------------------
-# Helper: generar respuesta Excel (estilo ILSAN)
-# ---------------------------------------------------------------------------
-
-
-def _excel_response(rows, headers, keys, widths, sheet, filename):
-    """Construye un .xlsx con encabezados ILSAN y lo devuelve como descarga."""
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = sheet[:31]  # Excel limita el nombre de hoja a 31 chars.
-
-    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-    header_font = Font(color="FFFFFF", bold=True)
-
-    for col_idx, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col_idx, value=header)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal="center")
-
-    for row_idx, row in enumerate(rows, 2):
-        for col_idx, key in enumerate(keys, 1):
-            ws.cell(row=row_idx, column=col_idx, value=row.get(key, ""))
-
-    for col_idx, width in enumerate(widths, 1):
-        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = width
-
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return Response(
-        output.getvalue(),
-        mimetype=_XLSX_MIME,
-        headers={"Content-Disposition": f'attachment; filename="{filename}.xlsx"'},
-    )
+# La generacion del .xlsx vive en app/api/shared/excel.py (excel_response),
+# compartida con inventario_reparacion_assy, stations_qa y
+# historial_operadores_maquina.

@@ -81,6 +81,10 @@
     <link id="ppms-iqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/ppms_iqc.css', v='20260605a') }}">
     <link id="ppms-lqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/ppms_lqc.css', v='20260608d') }}">
     <link id="ppms-oqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/ppms_oqc.css', v='20260608d') }}">
+    <!-- WF_004: CSS persistente Control de maquinas de calidad (stations_qa). -->
+    <link id="stations-qa-css" rel="stylesheet" href="{{ url_for('static', filename='css/stations_qa.css', v='20260609d') }}">
+    <!-- WF_004: CSS persistente Historial de Operadores por Maquina (Control de resultados). -->
+    <link id="historial-operadores-maquina-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_operadores_maquina.css', v='20260610b') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -311,7 +315,7 @@
     <script src="{{ url_for('static', filename='js/lib/axios.min.js', v='20260526a') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js?v=20260520a"></script>
-    <script src="/static/js/scriptMain.js?v=20260526a"></script>
+    <script src="/static/js/scriptMain.js?v=20260609a"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -655,6 +659,8 @@
         <div id="ppms-iqc-unique-container" style="display: none;"></div>
         <div id="ppms-lqc-unique-container" style="display: none;"></div>
         <div id="ppms-oqc-unique-container" style="display: none;"></div>
+        <!-- WF_002: contenedor unico para Control de maquinas de calidad. -->
+        <div id="stations-qa-unique-container" style="display: none;"></div>
     </div>
 
     <!-- Contenedor específico para el contenido de Control de Resultados (LADO DERECHO) -->
@@ -690,6 +696,11 @@
 
         <!-- Contenedor especifico para Historial Vision % Pass/Fail -->
         <div id="historial-vision-pass-fail-unique-container" style="display: none;">
+            <!-- El contenido se cargara dinamicamente con AJAX -->
+        </div>
+
+        <!-- WF_002: Historial de Operadores por Maquina (Historial de maquinas calidad) -->
+        <div id="historial-operadores-maquina-unique-container" style="display: none;">
             <!-- El contenido se cargara dinamicamente con AJAX -->
         </div>
 
@@ -2889,6 +2900,21 @@ function hideAllMaterialContainers() {
                 if (container) container.style.display = 'block';
 
                 cargarContenidoDinamico('inventario-reparacion-smd-unique-container', '/control_resultados/inventario_reparacion_smd');
+            };
+
+            // WF_002: Historial de Operadores por Maquina (Control de resultados /
+            // Historial de maquinas calidad). Solo lectura de la vista
+            // historial_estaciones_qa.
+            window.mostrarHistorialOperadoresMaquina = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('historial-operadores-maquina-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('historial-operadores-maquina-unique-container', '/control_resultados/historial_operadores_maquina', () => {
+                    if (typeof window.inicializarHistorialOperadoresMaquina === 'function') {
+                        window.inicializarHistorialOperadoresMaquina('#hopm-module');
+                    }
+                });
             };
 
             // Inventario reparacion ASSY (Control de resultados / Control de inventario).

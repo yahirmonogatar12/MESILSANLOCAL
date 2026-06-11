@@ -87,10 +87,12 @@
                     <span class="sidebar-caret"></i><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMaquinascalidad">
+                    <!-- WF_001: sesiones de operadores en estaciones de calidad (vista historial_estaciones_qa). -->
                     <li class="sidebar-link" tabindex="0"
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
                             data-permiso-seccion="Historial de maquinas calidad"
-                            data-permiso-boton="Historial de maquina EOL">Historial de maquina EOL</li>
+                            data-permiso-boton="Historial de Operadores por Maquina"
+                            onclick="window.parent.mostrarHistorialOperadoresMaquina ? window.parent.mostrarHistorialOperadoresMaquina() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-operadores-maquina-unique-container', '/control_resultados/historial_operadores_maquina') : window.location.href='/control_resultados/historial_operadores_maquina')">Historial de Operadores por Máquina</li>
                     <li class="sidebar-link" tabindex="0"
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
                             data-permiso-seccion="Historial de maquinas calidad"
