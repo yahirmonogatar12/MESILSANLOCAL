@@ -2,17 +2,30 @@
    admin_permisos.css — estilos específicos del Gestor de Permisos.
    Depende de admin-base.css (tokens, reduced-motion, body).
    ===================================================================== */
+/* Esta pantalla no usa scroll de página: el panel y la sidebar tienen su propio
+   scroll interno y están limitados al viewport. Fijamos la altura y quitamos el
+   overflow del documento para que no aparezca la barra de scroll global.
+   (Reglas seguras aquí: admin_permisos.css solo se carga en esta página.) */
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
 .container-fluid {
     max-width: 1560px;
+    height: 100vh;
     margin: 0 auto;
-    /* Sin padding-top: el header arranca pegado a top:0 y no se desplaza
-       al empezar el scroll. El espacio superior lo da el fondo del body. */
+    /* Sin padding-top: el header arranca pegado a top:0. El espacio superior lo
+       da el fondo del body. padding-bottom para que el panel no toque el borde. */
     padding: 0 1.25rem 1.25rem;
 }
 
 /* ---------- Header ----------
-   sticky con top:0; como no hay padding por encima dentro del container,
-   queda fijo desde el primer pixel (no "viaja" al iniciar el scroll). */
+   sticky en top:0, con un respiro visible bajo él (--gap-head) hasta el
+   encabezado del panel. La lista que pasa por ese respiro al scrollear se
+   recorta en el borde superior del panel (ver .main-panel), no se tapa. */
+:root { --gap-head: 1.1rem; }
+
 .page-header {
     position: sticky;
     top: 0;
@@ -22,20 +35,7 @@
     border-radius: 0 0 var(--r-lg) var(--r-lg);
     border-top: none;
     padding: 1.1rem 1.35rem;
-    margin-bottom: 1.1rem;
     box-shadow: var(--shadow-md);
-}
-/* Tapa la franja entre el header y el encabezado del panel (el margin de
-   1.1rem) con fondo sólido, para que el contenido no se asome al scrollear.
-   No altera el layout, así que nada se mueve. */
-.page-header::after {
-    content: "";
-    position: absolute;
-    left: -1.35rem;
-    right: -1.35rem;
-    top: 100%;
-    height: 1.2rem;
-    background: var(--bg-base);
 }
 
 .page-title {
@@ -117,6 +117,7 @@
     grid-template-columns: minmax(270px, 320px) minmax(0, 1fr);
     gap: 1rem;
     align-items: start;
+    margin-top: var(--gap-head); /* respiro visible bajo el header */
 }
 
 .roles-sidebar,
@@ -132,7 +133,7 @@
     padding: 1rem;
     position: sticky;
     top: var(--stick-top, 1rem);
-    max-height: calc(100vh - var(--stick-top, 1rem) - 1rem);
+    max-height: calc(100vh - var(--stick-top, 1rem) - 1.25rem);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -214,6 +215,7 @@
     font-size: 0.9rem;
     font-weight: 700;
     color: var(--text-strong);
+    min-width: 0; /* permite que .role-name-text trunque con ellipsis */
 }
 .role-name i { flex-shrink: 0; }
 /* El nombre se trunca con ellipsis si no cabe */
@@ -280,18 +282,27 @@
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* ---------- Panel principal ----------
-   overflow: clip (no hidden) para no anular el position:sticky del
-   encabezado del panel. */
-.main-panel { overflow: clip; }
-
-/* Encabezado del panel: resumen + filtros + stats fijos al hacer scroll.
-   Se pega bajo el header global (--stick-top lo calcula el JS). */
-.panel-sticky-head {
+   El panel tiene altura limitada al viewport y es un contenedor flex en columna:
+   el encabezado (filtros/stats) queda fijo arriba y SOLO la lista scrollea
+   dentro, recortándose en los bordes del panel (overflow: hidden). Así la lista
+   desaparece de verdad al subir, sin taparla ni dejar que cruce el respiro.
+   El sticky superior es la altura del header + el respiro (--stick-top, vía JS). */
+.main-panel {
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     position: sticky;
     top: var(--stick-top, 1rem);
-    z-index: 20;
+    max-height: calc(100vh - var(--stick-top, 1rem) - 1.25rem);
+}
+
+/* Encabezado del panel (resumen + filtros + stats): cabecera fija del flex. */
+.panel-sticky-head {
+    flex: 0 0 auto;
+    z-index: 1;
     background: var(--surface-2);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
 }
 
 .role-summary {
@@ -441,10 +452,17 @@ textarea.form-control { height: auto; }
 
 /* ---------- Contenedor de permisos ---------- */
 .permissions-container {
+    flex: 1 1 auto;
+    overflow-y: auto;
     padding: 1rem 1.25rem 1.25rem;
     background: var(--surface-1);
-    min-height: 520px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
 }
+.permissions-container::-webkit-scrollbar { width: 9px; }
+.permissions-container::-webkit-scrollbar-track { background: transparent; }
+.permissions-container::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
+.permissions-container::-webkit-scrollbar-thumb:hover { background: var(--accent-strong); }
 .permission-grid {
     display: flex;
     flex-direction: column;
@@ -499,6 +517,9 @@ textarea.form-control { height: auto; }
     background: var(--surface-3);
     transition: border-color var(--ease), background-color var(--ease);
 }
+/* La columna de contenido debe poder encogerse (min-width:0) para que el
+   texto largo haga wrap en vez de empujar el toggle fuera de la tarjeta. */
+.permission-item > div:first-child { min-width: 0; }
 .permission-item + .permission-item { margin-top: 0.5rem; }
 .permission-item:hover { border-color: var(--line-strong); }
 .permission-item.enabled {
@@ -511,7 +532,13 @@ textarea.form-control { height: auto; }
 }
 
 .permission-header { display: block; margin: 0; }
-.permission-title { font-size: 0.88rem; font-weight: 700; color: var(--text-strong); }
+.permission-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
 
 .permission-meta {
     display: flex;
@@ -520,8 +547,12 @@ textarea.form-control { height: auto; }
     margin-top: 0.38rem;
     font-size: 0.75rem;
     color: var(--text-muted);
+    min-width: 0;
 }
-.permission-path { display: flex; align-items: flex-start; gap: 0.3rem; line-height: 1.35; }
+.permission-path { display: flex; align-items: flex-start; gap: 0.3rem; line-height: 1.35; min-width: 0; }
+/* El texto dentro del path se encoge y hace wrap, no empuja */
+.permission-path > span:not(.permission-badge) { min-width: 0; overflow-wrap: anywhere; }
+.permission-path i { flex-shrink: 0; }
 .permission-badge {
     display: inline-block;
     background: var(--surface-4);
@@ -627,11 +658,18 @@ input:checked + .slider:before { transform: translateX(22px); }
 .modal .form-text { color: var(--text-muted); }
 .badge { background-color: var(--accent) !important; color: #06182f; }
 
-/* ---------- Responsive ---------- */
+/* ---------- Responsive ----------
+   En layout apilado (1 columna) restauramos el scroll de página: el panel ya no
+   ocupa el viewport completo, así que el contenido se ve scrolleando la página
+   normalmente. El "sin scroll global" solo aplica al layout de escritorio. */
 @media (max-width: 1100px) {
+    html, body { height: auto; overflow: auto; }
+    .container-fluid { height: auto; }
     .permissions-shell { grid-template-columns: 1fr; }
     .roles-sidebar { position: static; max-height: none; }
     #rolesContainer { max-height: 360px; }
+    .main-panel { position: static; max-height: none; overflow: visible; }
+    .permissions-container { overflow: visible; }
     .filter-section { grid-template-columns: 1fr 1fr; }
     .stats-cluster { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
 }

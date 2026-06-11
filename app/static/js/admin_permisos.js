@@ -11,30 +11,42 @@ let allDropdowns = [];
 let rolePermissions = {};
 let filteredPermissions = [];
 
-// Inicializar la aplicación
-document.addEventListener('DOMContentLoaded', async function() {
-    updateStickyOffset();
-    await Promise.all([loadRoles(), loadDropdowns()]);
-    updateStats([]);
-});
-
-// Mide la altura real del header global y la expone como --stick-top, para
-// que la sidebar y el encabezado del panel se peguen justo debajo de él
-// (altura + margin inferior, para que el bloque NO se desplace al scrollear).
+// Mide la altura del header global + el respiro (--gap-head) y lo expone como
+// --stick-top, para que el encabezado del panel y la sidebar se anclen DEBAJO
+// del respiro: queda el espacio visible bajo el header, el bloque no se mueve al
+// scrollear, y la franja del respiro la cubre la banda del header (::after).
 function updateStickyOffset() {
+    const root = document.documentElement;
     const header = document.querySelector('.page-header');
     if (!header) return;
-    const marginBottom = parseFloat(getComputedStyle(header).marginBottom) || 0;
-    const offset = Math.round(header.offsetHeight + marginBottom);
-    document.documentElement.style.setProperty('--stick-top', offset + 'px');
+    const h = header.getBoundingClientRect().height;
+    if (!h) return; // no fijar 0 si aún no hay layout
+    // El respiro = el margin-top del shell (getComputedStyle lo da en px y no
+    // depende del estado de scroll, a diferencia de medir posiciones relativas).
+    const shell = document.querySelector('.permissions-shell');
+    const gap = shell ? parseFloat(getComputedStyle(shell).marginTop) || 0 : 0;
+    root.style.setProperty('--stick-top', Math.ceil(h + gap) + 'px');
 }
 
+// El script se carga con defer al final del body: el .page-header ya existe,
+// así que medimos de inmediato (sin esperar ningún evento). Reintentamos en los
+// siguientes frames por si la altura aún no es definitiva (fuentes/iconos).
+updateStickyOffset();
+requestAnimationFrame(updateStickyOffset);
+window.addEventListener('load', updateStickyOffset);
 window.addEventListener('resize', updateStickyOffset);
 // El header puede reflujar cuando los botones cambian de fila en pantallas medianas.
 if ('ResizeObserver' in window) {
     const headerEl = document.querySelector('.page-header');
     if (headerEl) new ResizeObserver(updateStickyOffset).observe(headerEl);
 }
+
+// Inicializar la aplicación
+document.addEventListener('DOMContentLoaded', async function() {
+    updateStickyOffset();
+    await Promise.all([loadRoles(), loadDropdowns()]);
+    updateStats([]);
+});
 
 function escapeHtml(value) {
     return String(value ?? '')
