@@ -845,6 +845,15 @@
         let rolePermissions = {};
         let filteredPermissions = [];
 
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // Inicializar la aplicación
         document.addEventListener('DOMContentLoaded', function() {
             loadRoles();
@@ -1336,31 +1345,35 @@
                 
                 permissionElement.innerHTML = `
                     <div class="permission-header">
-                        <div class="permission-title">${displayBoton}</div>
+                        <div class="permission-title">${escapeHtml(displayBoton)}</div>
                         <label class="permission-toggle">
-                            <input type="checkbox" ${permission.activo ? 'checked' : ''} 
-                                onchange="togglePermission('${permission.pagina}', '${permission.seccion}', '${permission.boton}', this.checked)">
+                            <input type="checkbox" class="permission-toggle-input" ${permission.activo ? 'checked' : ''}>
                             <span class="slider"></span>
                         </label>
                     </div>
                     <div class="permission-meta">
                         <div class="permission-path">
                             <i class="fas fa-folder me-1"></i>
-                            <span class="permission-badge">${permission.pagina.replace('LISTA_', '')}</span>
+                            <span class="permission-badge">${escapeHtml(permission.pagina.replace('LISTA_', ''))}</span>
                             ${permission.boton === 'Crear ECO' ? '<span class="permission-badge">Acción ECO</span>' : ''}
                         </div>
                         <div class="permission-path">
                             <i class="fas fa-layer-group me-1"></i>
-                            <span>${permission.seccion}</span>
+                            <span>${escapeHtml(permission.seccion)}</span>
                         </div>
                         ${displayDescripcion ? `
                             <div class="permission-path">
                                 <i class="fas fa-info-circle me-1"></i>
-                                <span>${displayDescripcion}</span>
+                                <span>${escapeHtml(displayDescripcion)}</span>
                             </div>
                         ` : ''}
                     </div>
                 `;
+
+                const toggleInput = permissionElement.querySelector('.permission-toggle-input');
+                toggleInput.addEventListener('change', function() {
+                    togglePermission(permission.pagina, permission.seccion, permission.boton, this.checked);
+                });
                 
                 grid.appendChild(permissionElement);
             });
