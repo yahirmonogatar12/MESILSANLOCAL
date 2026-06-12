@@ -34,6 +34,7 @@ from typing import Any, Dict, List
 from flask import Blueprint, jsonify, render_template, request, session
 
 from app.api.shared import execute_query
+from app.api.shared.model_catalog import ensure_ks_part_catalog_for_model, ensure_raw_model_for_smd
 
 import logging
 logger = logging.getLogger(__name__)
@@ -280,9 +281,18 @@ def api_create():
 
         query = f"INSERT INTO `{TABLE_NAME}` ({colnames}) VALUES ({placeholders})"
         execute_query(query, values)
+        raw_parent_result = ensure_raw_model_for_smd(
+            payload,
+            user_name=current_user,
+        )
+        catalog_result = ensure_ks_part_catalog_for_model(
+            payload,
+            source_table=TABLE_NAME,
+            user_name=current_user,
+        )
 
         logger.info(f"Registro creado por usuario: {current_user}")
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "raw_parent": raw_parent_result, "catalog": catalog_result})
     except Exception as e:
         logger.error(f"Error creando registro: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -320,8 +330,20 @@ def api_update(rowhash: str):
 
         query = f"UPDATE `{TABLE_NAME}` SET {set_expr} WHERE " + " AND ".join(where_parts) + " LIMIT 1"
         execute_query(query, values)
+        merged = dict(original_norm)
+        merged.update(changes)
+        current_user = get_current_user()
+        raw_parent_result = ensure_raw_model_for_smd(
+            merged,
+            user_name=current_user,
+        )
+        catalog_result = ensure_ks_part_catalog_for_model(
+            merged,
+            source_table=TABLE_NAME,
+            user_name=current_user,
+        )
 
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "raw_parent": raw_parent_result, "catalog": catalog_result})
     except Exception as e:
         logger.error(f"Error actualizando registro: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500

@@ -8,25 +8,66 @@
 <div id="smt-main-container-unique-smt" class="smt-container">
     <!-- Variable oculta para capturar usuario logueado -->
     <input type="hidden" id="currentUser-smt" value="{{ usuario if usuario else '' }}" />
-    
-    <div class="smt-toolbar">
-        <input id="smtSearchInput-smt" type="text" class="smt-search-input" placeholder="Buscar en tabla... (ESC para limpiar)" oninput="filterTable()" />
-        <button class="smt-btn crear" onclick="openCreate()">Registrar</button>
-        <button class="smt-btn" onclick="refreshTable()">Actualizar</button>
-    </div>
 
-    <div class="smt-table-container">
-        <table id="smtTable-smt" class="smt-table">
-            <thead>
-                <tr id="smtTableHeader-smt">
+    <section class="filters-card smt-filters-card">
+        <div class="card-header">
+            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+            <h3>Control de modelos SMT</h3>
+            <span id="smtRecordCount-smt" class="record-count">0 registros</span>
+        </div>
+
+        <div class="smt-toolbar">
+            <div class="filter-group smt-search-group">
+                <label for="smtSearchInput-smt">
+                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    Buscar
+                </label>
+                <input id="smtSearchInput-smt" type="text" class="smt-search-input" placeholder="Part no, modelo, linea..." oninput="filterTable()" />
+            </div>
+            <button class="smt-btn smt-btn-primary" onclick="refreshTable()" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12a9 9 0 11-2.64-6.36"></path>
+                    <path d="M21 3v6h-6"></path>
+                </svg>
+                Actualizar
+            </button>
+            <button class="smt-btn crear" onclick="openCreate()" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"></path>
+                </svg>
+                Registrar
+            </button>
+        </div>
+    </section>
+
+    <section class="results-card smt-results-card">
+        <div class="card-header">
+            <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>
+                <path d="M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                <path d="M9 12h6M9 16h6"></path>
+            </svg>
+            <h3>Configuraciones por linea</h3>
+            <span id="smtTableInfo-smt" class="smt-table-info">Doble click para editar</span>
+        </div>
+
+        <div class="smt-table-container table-wrap">
+            <table id="smtTable-smt" class="smt-table">
+                <thead>
+                    <tr id="smtTableHeader-smt">
+                        <!-- Se cargará dinámicamente -->
+                    </tr>
+                </thead>
+                <tbody id="smtTableBody-smt">
                     <!-- Se cargará dinámicamente -->
-                </tr>
-            </thead>
-            <tbody id="smtTableBody-smt">
-                <!-- Se cargará dinámicamente -->
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
 <!-- Modal -->
@@ -51,13 +92,14 @@
     </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/resizable_columns.js', v='20260611c') }}"></script>
 <script>
 // ====== WF_004: Garantizar CSS del modulo en <head> ======
 // El CSS esta en MainTemplate.html, pero si este template se carga
 // directo (sin pasar por MainTemplate), inyectarlo aqui.
 (function ensureModuleStyles() {
     const id = 'control-modelos-smt-css';
-    const version = '20260522a';
+    const version = '20260611b';
     const href = '/static/css/control_modelos_smt.css?v=' + version;
     let link = document.getElementById(id);
     if (link) {
@@ -107,6 +149,7 @@
             
             updateTableHTML(data.columns, data.rows);
             initializeRowCache();
+            updateSmtCounters(data.rows.length, data.rows.length);
             
             hideLoadingModal();
             
@@ -168,6 +211,7 @@
             
             updateTableHTML(data.columns, data.rows);
             initializeRowCache();
+            updateSmtCounters(data.rows.length, data.rows.length);
             
             hideLoadingModal();
             
@@ -190,6 +234,30 @@
             th.textContent = col;
             thead.appendChild(th);
         });
+        if (window.MesColumnResizer) {
+            window.MesColumnResizer.setup({
+                table: document.getElementById('smtTable-smt'),
+                wrap: '.smt-table-container',
+                storageKeyPrefix: 'smt-column-widths:raw_smd',
+                defaultWidth(label, index) {
+                    const normalized = String(label || '').toLowerCase();
+                    if (index === 0 || normalized.includes('linea')) return 118;
+                    if (normalized.includes('part_no')) return 155;
+                    if (normalized.includes('model')) return 165;
+                    if (normalized.includes('main') || normalized.includes('display')) return 130;
+                    if (normalized.includes('usuario')) return 120;
+                    return 96;
+                },
+                minWidth(label, index) {
+                    const normalized = String(label || '').toLowerCase();
+                    if (index === 0 || normalized.includes('linea')) return 90;
+                    if (normalized.includes('part_no')) return 118;
+                    if (normalized.includes('model')) return 120;
+                    if (normalized.includes('usuario')) return 96;
+                    return 72;
+                },
+            });
+        }
         
         // Actualizar filas
         tbody.innerHTML = '';
@@ -202,6 +270,7 @@
             td.innerHTML = '<em>Sin datos para mostrar.</em>';
             tr.appendChild(td);
             tbody.appendChild(tr);
+            updateSmtCounters(0, 0);
             return;
         }
         
@@ -224,6 +293,8 @@
             
             tbody.appendChild(tr);
         });
+
+        updateSmtCounters(rows.length, rows.length);
     }
 
     function initializeRowCache() {
@@ -250,6 +321,7 @@
                 row.style.display = '';
                 visibleCount++;
             });
+            updateSmtCounters(allRows.length, allRows.length);
             return;
         }
 
@@ -263,6 +335,24 @@
                 row.style.display = 'none';
             }
         });
+        updateSmtCounters(allRows.length, visibleCount);
+    }
+
+    function updateSmtCounters(totalCount, visibleCount) {
+        const recordCount = document.getElementById('smtRecordCount-smt');
+        const tableInfo = document.getElementById('smtTableInfo-smt');
+        const total = Number(totalCount || 0);
+        const visible = Number(visibleCount || 0);
+        const searchValue = (document.getElementById('smtSearchInput-smt')?.value || '').trim();
+
+        if (recordCount) {
+            recordCount.textContent = searchValue ? `${visible} de ${total} registros` : `${total} registros`;
+        }
+        if (tableInfo) {
+            tableInfo.textContent = searchValue
+                ? `Filtrado por "${searchValue}" - doble click para editar`
+                : 'Doble click para editar';
+        }
     }
 
     // Funciones del modal

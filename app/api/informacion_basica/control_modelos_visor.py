@@ -36,6 +36,7 @@ import traceback
 from flask import Blueprint, jsonify, render_template, request, session
 
 from app.api.shared import execute_query, login_requerido
+from app.api.shared.model_catalog import ensure_ks_part_catalog_for_model
 
 import logging
 logger = logging.getLogger(__name__)
@@ -369,8 +370,19 @@ def api_mysql_update():
         result = execute_query(update_sql, params, fetch="none")
 
         if result is not False:
+            merged_data = dict(original_data)
+            merged_data.update(new_data)
+            catalog_result = ensure_ks_part_catalog_for_model(
+                merged_data,
+                source_table=table,
+                user_name=session.get("nombre_completo", session.get("usuario", "Sistema")),
+            )
             return jsonify(
-                {"success": True, "message": "Registro actualizado exitosamente"}
+                {
+                    "success": True,
+                    "message": "Registro actualizado exitosamente",
+                    "catalog": catalog_result,
+                }
             )
         else:
             return jsonify({"error": "No se pudo actualizar el registro"}), 500
@@ -445,7 +457,16 @@ def api_mysql_create():
         result = execute_query(insert_sql, values, fetch="none")
 
         if result is not False:
-            return jsonify({"success": True, "message": "Registro creado exitosamente"})
+            catalog_result = ensure_ks_part_catalog_for_model(
+                insert_data,
+                source_table=table,
+                user_name=session.get("nombre_completo", session.get("usuario", "Sistema")),
+            )
+            return jsonify({
+                "success": True,
+                "message": "Registro creado exitosamente",
+                "catalog": catalog_result,
+            })
         else:
             return jsonify({"error": "No se pudo crear el registro"}), 500
 

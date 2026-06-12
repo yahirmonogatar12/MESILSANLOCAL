@@ -6,7 +6,7 @@
 // inyectarlo aqui como red de seguridad.
 (function ensureModuleStyles() {
   const id = 'visor-mysql-css';
-  const version = '20260522a';
+  const version = '20260611b';
   const href = '/static/css/visor_mysql.css?v=' + version;
   let link = document.getElementById(id);
   if (link) {
@@ -24,7 +24,7 @@
 
 (() => {
   const RX = {
-    table: "raw", // Siempre usar tabla raw
+    table: (window.IX_BOOT && window.IX_BOOT.table) || "raw", // Siempre usar tabla raw por defecto
     columns: [], 
     rows: [], 
     allRows: [], // Todos los datos del servidor para filtro local
@@ -84,6 +84,7 @@
   function render() {
     const thead = $("ix-thead");
     const tbody = $("ix-tbody");
+    const table = $("ix-table");
     
     if (!RX.columns.length) {
       thead.innerHTML = '<tr><th>Sin columnas</th></tr>';
@@ -92,8 +93,38 @@
     }
     
     // Generar encabezados
-    const headerCells = RX.columns.map(col => `<th>${col}</th>`).join("");
+    const escapeAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const headerCells = RX.columns.map(col => `<th title="${escapeAttr(col)}">${escapeAttr(col)}</th>`).join("");
     thead.innerHTML = `<tr>${headerCells}</tr>`;
+    if (table && window.MesColumnResizer) {
+      window.MesColumnResizer.setup({
+        table,
+        wrap: "#ix-table-wrap",
+        storageKeyPrefix: `ix-column-widths:${RX.table}`,
+        defaultWidth(label, index) {
+          const normalized = String(label || "").toLowerCase();
+          if (index === 0 || normalized.includes("part_no")) return 150;
+          if (normalized.includes("sub_assy")) return 170;
+          if (normalized.includes("model")) return 165;
+          if (normalized.includes("project")) return 145;
+          if (normalized.includes("main")) return 135;
+          if (normalized.includes("cantidad")) return 126;
+          if (normalized.includes("persona")) return 118;
+          if (normalized.includes("usuario")) return 112;
+          if (normalized.includes("hash")) return 155;
+          return 96;
+        },
+        minWidth(label, index) {
+          const normalized = String(label || "").toLowerCase();
+          if (index === 0 || normalized.includes("part_no")) return 118;
+          if (normalized.includes("sub_assy")) return 125;
+          if (normalized.includes("model")) return 118;
+          if (normalized.includes("project")) return 105;
+          if (normalized.includes("hash")) return 110;
+          return 72;
+        },
+      });
+    }
     
     // Generar filas con doble click para editar
     if (RX.rows.length > 0) {
@@ -117,6 +148,8 @@
       }).join("");
       
       tbody.innerHTML = bodyRows;
+    } else {
+      tbody.innerHTML = `<tr><td class="ix-no-data" colspan="${RX.columns.length}">Sin modelos para mostrar.</td></tr>`;
     }
     
     // Update counters
@@ -509,25 +542,26 @@ class RawEditModal {
   injectStyles() {
     const styles = `
     <style>
-    /* Modal de Edición RAW - Estilo del Sistema */
+    /* Modal de Edicion RAW - estilo alineado con ICT */
     .raw-edit-modal {
       position: fixed !important;
       top: 50% !important;
       left: 50% !important;
       transform: translate(-50%, -50%) scale(0.7) !important;
-      width: 90% !important;
-      max-width: 800px !important;
-      max-height: 80vh !important;
-      background: #4a5568 !important;
-      border: 2px solid #2d3748 !important;
+      width: min(920px, 96vw) !important;
+      max-width: 920px !important;
+      max-height: 90vh !important;
+      background: linear-gradient(135deg, var(--ilsan-dark-secondary, #40424f) 0%, #2d2d3f 100%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
       z-index: 9999999 !important;
       display: none !important;
       flex-direction: column !important;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
+      font-family: "LG regular", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
       opacity: 0 !important;
-      transition: all 0.3s ease !important;
-      border-radius: 8px !important;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
+      transition: opacity 0.2s ease, transform 0.2s ease !important;
+      border-radius: 16px !important;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+      overflow: hidden !important;
     }
 
     .raw-edit-modal.open {
@@ -547,6 +581,7 @@ class RawEditModal {
       z-index: 9999998 !important;
       opacity: 0 !important;
       transition: opacity 0.3s ease !important;
+      backdrop-filter: blur(6px) !important;
     }
 
     .modal-overlay.active {
@@ -554,51 +589,55 @@ class RawEditModal {
       opacity: 1 !important;
     }
 
-    .modal-header {
-      background-color: #2d3748 !important;
-      color: #e2e8f0 !important;
-      padding: 20px !important;
+    .raw-edit-modal .modal-header {
+      background: rgba(255, 255, 255, 0.02) !important;
+      color: var(--ilsan-text-light, #f3f6fb) !important;
+      padding: 16px 20px !important;
       display: flex !important;
       justify-content: space-between !important;
       align-items: center !important;
-      border-bottom: 2px solid #1a202c !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
     }
 
-    .modal-header h3 {
+    .raw-edit-modal .modal-header h3 {
       margin: 0 !important;
-      font-size: 16px !important;
-      font-weight: 400 !important;
-      color: #e2e8f0 !important;
+      font-size: 1rem !important;
+      font-weight: 700 !important;
+      color: var(--ilsan-text-light, #f3f6fb) !important;
     }
 
     .btn-close-modal {
-      background: none !important;
-      border: none !important;
-      color: #e2e8f0 !important;
-      font-size: 18px !important;
+      background: rgba(231, 76, 60, 0.1) !important;
+      border: 1px solid rgba(231, 76, 60, 0.3) !important;
+      color: #e74c3c !important;
+      font-size: 14px !important;
       cursor: pointer !important;
-      padding: 8px !important;
-      border-radius: 0 !important;
-      transition: background-color 0.3s ease !important;
-      width: 36px !important;
-      height: 36px !important;
+      padding: 0 !important;
+      border-radius: 8px !important;
+      transition: background-color 0.2s ease, transform 0.2s ease !important;
+      width: 32px !important;
+      height: 32px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
     }
 
     .btn-close-modal:hover {
-      background-color: #1a202c !important;
+      background: rgba(231, 76, 60, 0.2) !important;
+      transform: rotate(90deg) !important;
     }
 
-    .modal-body {
+    .raw-edit-modal .modal-body {
       flex: 1 !important;
       overflow-y: auto !important;
-      padding: 20px !important;
-      background: #3a4556;
+      padding: 16px 20px !important;
+      background: transparent !important;
     }
 
     .form-fields {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
     }
 
     .form-group {
@@ -607,37 +646,40 @@ class RawEditModal {
     }
 
     .form-label {
-      color: #cbd5e0;
+      color: var(--ilsan-text-light, #f3f6fb);
       margin-bottom: 5px;
-      font-size: 13px;
-      font-weight: 400;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
     }
 
-    .form-control {
-      background-color: #2d3748;
-      border: 1px solid #5e9ed6;
-      color: #e2e8f0;
-      padding: 8px 12px;
-      border-radius: 0;
-      font-size: 14px;
-      height: 36px;
-      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    .raw-edit-modal .form-control {
+      background: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      color: var(--ilsan-text-light, #f3f6fb) !important;
+      padding: 6px 8px !important;
+      border-radius: 5px !important;
+      font-size: 0.8rem !important;
+      height: 32px !important;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
     }
 
-    .form-control:focus {
+    .raw-edit-modal .form-control:focus {
       outline: none;
-      border-color: #63b3ed;
-      box-shadow: 0 0 0 1px #63b3ed;
+      border-color: var(--ilsan-accent-blue, #3498db) !important;
+      background: rgba(255, 255, 255, 0.05) !important;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15) !important;
     }
 
     .form-control::placeholder {
       color: #718096;
     }
 
-    .form-control.readonly-field {
-      background-color: #1a202c;
-      border-color: #4a5568;
-      color: #a0aec0;
+    .raw-edit-modal .form-control.readonly-field {
+      background: rgba(0, 0, 0, 0.18) !important;
+      border-color: rgba(255, 255, 255, 0.06) !important;
+      color: var(--ilsan-text-gray, #95a5a6) !important;
       cursor: not-allowed;
     }
 
@@ -646,14 +688,14 @@ class RawEditModal {
       box-shadow: none;
     }
 
-    .form-control.numeric-field {
-      border-left: 3px solid #5e9ed6;
+    .raw-edit-modal .form-control.numeric-field {
+      border-left: 3px solid var(--ilsan-accent-blue, #3498db) !important;
     }
 
-    .modal-footer {
-      background: #2d3748;
-      padding: 20px;
-      border-top: 2px solid #1a202c;
+    .raw-edit-modal .modal-footer {
+      background: rgba(255, 255, 255, 0.02) !important;
+      padding: 14px 20px 18px !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -670,46 +712,47 @@ class RawEditModal {
     }
 
     .modal-footer .btn {
-      padding: 8px 24px;
-      border-radius: 0;
-      font-size: 14px;
-      font-weight: 400;
-      transition: all 0.3s ease;
+      min-height: 34px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
       border: none;
-      height: 36px;
       cursor: pointer;
     }
 
     .modal-footer .btn-secondary {
-      background-color: #4a5568;
-      color: #e2e8f0;
-      border: 1px solid #2d3748;
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: 0;
     }
 
     .modal-footer .btn-secondary:hover {
-      background-color: #2d3748;
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.16);
     }
 
     .modal-footer .btn-primary {
-      background-color: #5e9ed6;
-      color: #1a202c;
-      border: 1px solid #5e9ed6;
+      background: linear-gradient(135deg, var(--ilsan-accent-blue, #3498db) 0%, var(--ilsan-accent-dark-blue, #20688c) 100%);
+      color: #ffffff;
+      border: 0;
     }
 
     .modal-footer .btn-primary:hover {
-      background-color: #63b3ed;
-      border-color: #63b3ed;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(52, 152, 219, 0.3);
     }
 
     .modal-footer .btn-danger {
-      background-color: #e53e3e;
+      background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
       color: #fff;
-      border: 1px solid #e53e3e;
+      border: 0;
     }
 
     .modal-footer .btn-danger:hover {
-      background-color: #c53030;
-      border-color: #c53030;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(231, 76, 60, 0.28);
     }
 
     .modal-footer .btn:disabled {
@@ -730,16 +773,16 @@ class RawEditModal {
     }
 
     .modal-body::-webkit-scrollbar-track {
-      background: #2d3748;
+      background: var(--ilsan-dark-header, #172a46);
     }
 
     .modal-body::-webkit-scrollbar-thumb {
-      background: #4a5568;
-      border-radius: 0;
+      background: linear-gradient(180deg, var(--ilsan-accent-blue, #3498db), var(--ilsan-accent-dark-blue, #20688c));
+      border-radius: 10px;
     }
 
     .modal-body::-webkit-scrollbar-thumb:hover {
-      background: #5e9ed6;
+      background: var(--ilsan-accent-blue, #3498db);
     }
 
     /* Bloquear interacción con el body cuando modal está activo */
