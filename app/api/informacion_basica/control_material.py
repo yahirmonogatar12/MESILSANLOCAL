@@ -57,6 +57,10 @@ MONEDA_DEFAULT = "USD"
 # en el log via logger.exception.
 ERROR_INTERNO = "Error interno del servidor."
 
+# Maximo representable por costo_unitario_material DECIMAL(12,4). Validar antes
+# de insertar evita que MySQL aborte con "Out of range value".
+MAX_COSTO = Decimal("99999999.9999")
+
 # Limite de la columna materiales.vendedor (varchar(100)). El string unido
 # ", ".join(vendedores) debe caber para no truncar la lista que lee Flutter.
 VENDEDOR_COLUMN_MAX = 100
@@ -145,7 +149,10 @@ def _parse_costo(value):
         return None, "El costo debe ser un numero valido."
     if dec < 0:
         return None, "El costo no puede ser negativo."
-    return dec.quantize(Decimal("0.0001")), None
+    dec = dec.quantize(Decimal("0.0001"))
+    if dec > MAX_COSTO:
+        return None, "El costo excede el maximo permitido (99,999,999.9999)."
+    return dec, None
 
 
 def _split_vendedores(vendedor_str):
@@ -220,21 +227,27 @@ def _costos_vigentes(cursor, numeros_parte=None):
     Devuelve dict numero_parte -> {vendedor_lower: {vendedor, costo, moneda,
     usuario_registro, fecha_registro}}.
     """
-    sql = """
+    # El filtro va DENTRO del subquery: restringe el GROUP BY al subconjunto
+    # de materiales listados en vez de agregar todo el historial. Aprovecha el
+    # indice idx_mcost_parte_vendedor (numero_parte(191), vendedor, id).
+    params = []
+    where_sub = ""
+    if numeros_parte:
+        placeholders = ", ".join(["%s"] * len(numeros_parte))
+        where_sub = f"WHERE numero_parte IN ({placeholders})"
+        params = list(numeros_parte)
+
+    sql = f"""
         SELECT mc.numero_parte, mc.vendedor, mc.costo_unitario_material,
                mc.moneda, mc.usuario_registro, mc.fecha_registro
         FROM material_costos mc
         JOIN (
             SELECT numero_parte, vendedor, MAX(id) AS max_id
             FROM material_costos
+            {where_sub}
             GROUP BY numero_parte, vendedor
         ) ult ON ult.max_id = mc.id
     """
-    params = []
-    if numeros_parte:
-        placeholders = ", ".join(["%s"] * len(numeros_parte))
-        sql += f" WHERE mc.numero_parte IN ({placeholders})"
-        params = list(numeros_parte)
 
     cursor.execute(sql, params)
     resultado = {}
@@ -534,10 +547,13 @@ def catalogos():
     cursor = dict_cursor(conn)
     try:
         def _distinct(columna):
+            # Solo materiales activos: los dados de baja no deben aparecer en
+            # los datalists/filtros (consistente con el listado).
             cursor.execute(
                 f"""
                 SELECT DISTINCT {columna} AS v FROM materiales
-                WHERE {columna} IS NOT NULL AND {columna} <> ''
+                WHERE activo = 1
+                  AND {columna} IS NOT NULL AND {columna} <> ''
                 ORDER BY {columna} ASC LIMIT 500
                 """
             )

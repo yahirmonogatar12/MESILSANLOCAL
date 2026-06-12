@@ -12,6 +12,7 @@
   const API_BASE = "/api/informacion_basica/control_material";
   const API_MATERIALES = `${API_BASE}/materiales`;
   const MONEDAS = ["USD", "MXN", "KRW"]; // fallback; la fuente real es /catalogos
+  const MAX_COSTO = 99999999.9999; // tope de DECIMAL(12,4) en material_costos
 
   let records = [];
   let catalogos = { clasificaciones: [], propiedades: [], unidades_empaque: [], unidades_medida: [], monedas: MONEDAS };
@@ -306,6 +307,9 @@
       const costoNum = Number(costoRaw);
       if (costoRaw !== "" && (!Number.isFinite(costoNum) || costoNum < 0)) {
         throw new Error(`El costo de "${vendedor}" debe ser un número válido mayor o igual a 0.`);
+      }
+      if (costoNum > MAX_COSTO) {
+        throw new Error(`El costo de "${vendedor}" excede el máximo permitido (99,999,999.9999).`);
       }
       const moneda = r.querySelector(".cmat-vendor-moneda").value || "USD";
       vendedores.push({ vendedor, costo: costoRaw === "" ? "0" : costoRaw, moneda });
