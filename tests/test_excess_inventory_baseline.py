@@ -34,3 +34,14 @@ def test_resolver_usa_numero_de_parte_mas_largo():
     )
 
     assert result == "EBR80757422"
+
+
+def test_resolver_detecta_acq_embebido_en_codigo_largo():
+    from app.api.pda.excess_inventory import resolve_part_number_from_scan_code
+
+    result = resolve_part_number_from_scan_code(
+        "ACQ30372850922602190026",
+        ["ACQ30372850"],
+    )
+
+    assert result == "ACQ30372850"
