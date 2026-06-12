@@ -149,9 +149,14 @@ def _parse_costo(value):
         return None, "El costo debe ser un numero valido."
     if dec < 0:
         return None, "El costo no puede ser negativo."
-    dec = dec.quantize(Decimal("0.0001"))
+    # Validar el maximo ANTES de quantize: para valores con demasiados digitos
+    # quantize() lanzaria InvalidOperation (excede la precision del contexto).
     if dec > MAX_COSTO:
         return None, "El costo excede el maximo permitido (99,999,999.9999)."
+    try:
+        dec = dec.quantize(Decimal("0.0001"))
+    except InvalidOperation:
+        return None, "El costo debe tener un formato valido."
     return dec, None
 
 
