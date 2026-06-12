@@ -606,10 +606,11 @@ def cargar_template():
 # `cargar_configuracion_usuario` y `guardar_configuracion_usuario` se eliminaron tambien.
 
 
-# Limpieza 2026-06-12: /informacion_basica/control_de_material eliminada junto con
-# su template (INFORMACION BASICA/CONTROL_DE_MATERIAL.html), control_material.css y
-# material-edit-drawer.js. El modulo se reconstruira desde cero; el boton del sidebar
-# muestra un stub definido en MainTemplate.html (mostrarControlMaterialInfo).
+# Limpieza 2026-06-12: el modulo legacy de Control de material se elimino y se
+# reconstruyo desde cero como blueprint en
+# app/api/informacion_basica/control_material.py (CRUD WF_001-WF_005 sobre
+# `materiales` + costos por vendedor en `material_costos`). La ruta del fragmento
+# es /informacion_basica/control_de_material; no vive en routes.py.
 
 
 # Rutas para cargar contenido dinámicamente (AJAX)

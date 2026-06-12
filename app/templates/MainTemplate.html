@@ -84,6 +84,8 @@
     <link id="stations-qa-css" rel="stylesheet" href="{{ url_for('static', filename='css/stations_qa.css', v='20260609d') }}">
     <!-- WF_004: CSS persistente Historial de Operadores por Maquina (Control de resultados). -->
     <link id="historial-operadores-maquina-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_operadores_maquina.css', v='20260610b') }}">
+    <!-- WF_004: CSS persistente Control de material (Informacion Basica). -->
+    <link id="control-material-info-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_material_info.css', v='20260612a') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -2622,19 +2624,26 @@ function hideAllMaterialContainers() {
             };
 
             // Control de material para Informacion Basica.
-            // Limpieza 2026-06-12: el modulo anterior (CONTROL_DE_MATERIAL.html +
-            // control_material.css + material-edit-drawer.js + ruta
-            // /informacion_basica/control_de_material) fue eliminado para
-            // reconstruirlo desde cero. Stub temporal para que el boton del
-            // sidebar siga funcionando sin errores.
+            // Reconstruido 2026-06-12 (WF_001-WF_005): modulo CRUD AJAX servido
+            // por app/api/informacion_basica/control_material.py. Sigue el patron
+            // de mostrarControlBOMInfo (cargarContenidoDinamico + interceptor de
+            // tabs). El JS del fragmento es control_material_info.js.
             window.mostrarControlMaterialInfo = function() {
                 prepararPanelInformacionBasica();
 
                 const container = document.getElementById('control-material-info-container');
                 if (container) {
-                    container.classList.add('visible');
                     container.style.display = 'block';
-                    container.innerHTML = '<div style="padding: 40px; text-align: center; color: #aab4c0;"><h3>Control de material</h3><p>Módulo en reconstrucción.</p></div>';
+                    container.style.width = '100%';
+
+                    cargarContenidoDinamico('control-material-info-container', '/informacion_basica/control_de_material', () => {
+                        if (typeof window.initializeControlMaterialInfoEventListeners === 'function') {
+                            window.initializeControlMaterialInfoEventListeners();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error cargando Control de material de Información Básica:', error);
+                    });
                 }
             };
 

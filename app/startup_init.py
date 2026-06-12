@@ -69,6 +69,7 @@ def run_startup_init():
     )
     from .api.control_produccion.trazabilidad import crear_tabla_trazabilidad
     from .api.control_produccion.metal_mask import init_metal_mask_tables
+    from .api.informacion_basica.control_material import crear_tabla_material_costos
 
     log("Iniciando init_db()")
     init_db()
@@ -122,6 +123,10 @@ def run_startup_init():
     log("Iniciando init_metal_mask_tables()")
     init_metal_mask_tables()
     log("init_metal_mask_tables() completado")
+
+    log("Iniciando crear_tabla_material_costos()")
+    crear_tabla_material_costos()
+    log("crear_tabla_material_costos() completado")
 
     _start_workers_only()
 

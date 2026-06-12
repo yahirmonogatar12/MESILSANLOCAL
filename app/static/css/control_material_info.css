@@ -1,0 +1,723 @@
+/* Control de material (Informacion Basica) - Tema ILSAN.
+ * WF_004: cargado persistente desde MainTemplate.html y asegurado por JS.
+ * Mismo lenguaje visual que stations_qa.css: tarjetas redondeadas,
+ * card-header con icono, botones con gradiente, tabla con encabezado sticky.
+ */
+
+/* ========== CONTENEDOR PRINCIPAL ========== */
+.cmat-page {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+}
+
+.cmat-page * {
+    box-sizing: border-box;
+}
+
+/* ========== TARJETAS (CARDS) ========== */
+.cmat-card {
+    background: var(--ilsan-dark-secondary);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    width: 100%;
+    animation: cmatFadeInUp 0.5s ease;
+}
+
+@keyframes cmatFadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.cmat-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-wrap: wrap;
+}
+
+.cmat-card-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--ilsan-accent-blue);
+    flex-shrink: 0;
+}
+
+.cmat-card-header h3 {
+    color: var(--ilsan-text-light);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+}
+
+.cmat-record-count {
+    color: var(--ilsan-text-gray);
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px 10px;
+    border-radius: 16px;
+    white-space: nowrap;
+}
+
+.cmat-record-count strong {
+    color: var(--ilsan-text-light);
+    font-weight: 700;
+}
+
+/* ========== FILTROS / FORMULARIO ========== */
+.cmat-filters {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 10px;
+    row-gap: 10px;
+    padding: 12px 18px 16px;
+    align-items: flex-end;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.cmat-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cmat-filter-group label {
+    color: var(--ilsan-text-light);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cmat-input-icon {
+    width: 12px;
+    height: 12px;
+    color: var(--ilsan-accent-blue);
+}
+
+.cmat-filter-group input,
+.cmat-filter-group select {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    width: 180px;
+}
+
+.cmat-filter-group--search input {
+    width: 280px;
+}
+
+.cmat-filter-group select option {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 8px;
+}
+
+.cmat-filter-group input:focus,
+.cmat-filter-group select:focus {
+    outline: none;
+    border-color: var(--ilsan-accent-blue);
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.cmat-filter-group input::placeholder {
+    color: var(--ilsan-text-gray);
+}
+
+/* ========== MODAL ========== */
+.cmat-modal {
+    display: flex;
+    position: fixed;
+    z-index: 15000;
+    inset: 0;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(6px);
+    animation: cmatFadeIn 0.3s ease;
+}
+
+.cmat-modal[hidden] {
+    display: none;
+}
+
+@keyframes cmatFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.cmat-modal-content {
+    background: linear-gradient(135deg, var(--ilsan-dark-secondary) 0%, #2d2d3f 100%);
+    margin: auto;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    width: 95%;
+    max-width: 720px;
+    max-height: 92vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: cmatSlideDown 0.3s ease;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes cmatSlideDown {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.cmat-modal-header {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cmat-modal-title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cmat-modal-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--ilsan-accent-blue);
+}
+
+.cmat-modal-header h3 {
+    color: var(--ilsan-text-light);
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.cmat-form {
+    padding: 16px 20px 20px;
+}
+
+.cmat-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+
+.cmat-form-grid .cmat-filter-group input,
+.cmat-form-grid .cmat-filter-group select {
+    width: 100%;
+}
+
+.cmat-form-full {
+    grid-column: 1 / -1;
+}
+
+.cmat-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* ========== EDITOR DE VENDEDORES ========== */
+.cmat-vendors-section {
+    margin-top: 16px;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.cmat-vendors-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.cmat-vendors-title {
+    color: var(--ilsan-text-light);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.cmat-vendors-cols {
+    display: grid;
+    grid-template-columns: 1fr 140px 100px 34px;
+    gap: 8px;
+    padding: 0 2px 6px;
+}
+
+.cmat-vendors-cols span {
+    color: var(--ilsan-text-gray);
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.cmat-vendor-row {
+    display: grid;
+    grid-template-columns: 1fr 140px 100px 34px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.cmat-vendor-row input,
+.cmat-vendor-row select {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    width: 100%;
+}
+
+.cmat-vendor-row input:focus,
+.cmat-vendor-row select:focus {
+    outline: none;
+    border-color: var(--ilsan-accent-blue);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.cmat-vendor-row select option {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.cmat-vendors-hint {
+    margin: 8px 2px 0;
+    color: var(--ilsan-text-gray);
+    font-size: 0.72rem;
+}
+
+/* ========== HISTORIAL ========== */
+.cmat-historial-body {
+    padding: 16px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cmat-historial-table-wrap {
+    max-height: 50vh;
+}
+
+/* ========== BOTONES ========== */
+.cmat-btn-primary {
+    background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    min-width: 110px;
+    align-self: flex-end;
+}
+
+.cmat-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.cmat-btn-primary:active {
+    transform: translateY(0);
+}
+
+.cmat-btn-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.cmat-btn-new {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+    white-space: nowrap;
+}
+
+.cmat-btn-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.4);
+}
+
+.cmat-btn-new:active {
+    transform: translateY(0);
+}
+
+.cmat-btn-new svg {
+    width: 14px;
+    height: 14px;
+}
+
+.cmat-btn-header {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.cmat-btn-header:hover {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: rgba(52, 152, 219, 0.45);
+}
+
+.cmat-btn-header svg {
+    width: 14px;
+    height: 14px;
+}
+
+.cmat-btn-ghost {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    align-self: flex-end;
+}
+
+.cmat-btn-ghost:hover {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: rgba(52, 152, 219, 0.45);
+}
+
+.cmat-close-btn {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    color: var(--ilsan-accent-red);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.cmat-close-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.cmat-close-btn:hover,
+.cmat-close-btn:focus {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.5);
+    transform: rotate(90deg);
+}
+
+button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ========== TABLA ========== */
+.cmat-table-wrap {
+    position: relative;
+    max-height: clamp(360px, 60vh, 780px);
+    min-height: clamp(220px, 40vh, 520px);
+    overflow: auto;
+    border-radius: 0 0 16px 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ilsan-accent-blue) var(--ilsan-dark-tertiary);
+}
+
+.cmat-table-wrap::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.cmat-table-wrap::-webkit-scrollbar-track {
+    background: var(--ilsan-dark-tertiary);
+    border-radius: 10px;
+    margin: 4px;
+}
+
+.cmat-table-wrap::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--ilsan-accent-blue), var(--ilsan-accent-dark-blue));
+    border-radius: 10px;
+    border: 2px solid var(--ilsan-dark-tertiary);
+}
+
+.cmat-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--ilsan-dark-secondary);
+}
+
+.cmat-table th,
+.cmat-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.cmat-table td.cmat-cell-left {
+    text-align: left;
+}
+
+.cmat-table thead th {
+    background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
+    color: var(--ilsan-text-light);
+    position: sticky;
+    top: 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.3px;
+    z-index: 10;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.cmat-table tbody td {
+    color: var(--ilsan-text-secondary);
+    background-color: var(--ilsan-dark-secondary);
+    transition: background-color 0.2s ease;
+    vertical-align: middle;
+}
+
+.cmat-table tbody tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+.cmat-table tbody tr:hover td {
+    background-color: var(--ilsan-hover);
+}
+
+.cmat-code {
+    font-family: "Consolas", "Courier New", monospace;
+    font-weight: 600;
+    color: var(--ilsan-accent-blue);
+    white-space: nowrap;
+}
+
+/* Badge de costo por vendedor */
+.cmat-cost-badge {
+    display: inline-block;
+    margin: 1px 2px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(39, 174, 96, 0.15);
+    color: #2ecc71;
+    border: 1px solid rgba(39, 174, 96, 0.35);
+    white-space: nowrap;
+}
+
+.cmat-actions-col {
+    width: 130px;
+}
+
+.cmat-row-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.cmat-icon-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 0.85rem;
+    padding: 0;
+}
+
+.cmat-icon-btn:hover {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: rgba(52, 152, 219, 0.45);
+    color: var(--ilsan-accent-blue);
+}
+
+.cmat-icon-btn.cmat-danger:hover {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.45);
+    color: var(--ilsan-accent-red);
+}
+
+.cmat-empty {
+    text-align: center;
+    padding: 3rem !important;
+    color: var(--ilsan-text-gray);
+    font-size: 0.9rem;
+}
+
+/* ========== INDICADOR DE CARGA ========== */
+.cmat-table-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(20, 24, 36, 0.92), rgba(28, 32, 48, 0.85));
+    backdrop-filter: blur(2px);
+    color: var(--ilsan-text-light);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.cmat-table-loading[hidden] {
+    display: none;
+}
+
+.cmat-table-loading span {
+    font-size: 0.85rem;
+}
+
+.cmat-spinner {
+    width: 36px;
+    height: 36px;
+    border: 4px solid rgba(52, 152, 219, 0.2);
+    border-top: 4px solid var(--ilsan-accent-blue);
+    border-radius: 50%;
+    animation: cmatSpin 1s linear infinite;
+}
+
+@keyframes cmatSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ========== TOAST ========== */
+.cmat-toast {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 16000;
+    max-width: min(420px, calc(100vw - 36px));
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.82rem;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+    animation: cmatFadeInUp 0.3s ease;
+}
+
+.cmat-toast--success {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+}
+
+.cmat-toast--error {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.cmat-toast--info {
+    background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .cmat-page {
+        padding: 16px 16px 32px;
+        gap: 12px;
+    }
+
+    .cmat-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cmat-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cmat-filter-group,
+    .cmat-filter-group input,
+    .cmat-filter-group select,
+    .cmat-filter-group--search input {
+        width: 100%;
+        max-width: none;
+    }
+
+    .cmat-vendors-cols,
+    .cmat-vendor-row {
+        grid-template-columns: 1fr 100px 80px 30px;
+    }
+
+    .cmat-btn-primary,
+    .cmat-btn-ghost {
+        width: 100%;
+    }
+
+    .cmat-table-wrap {
+        max-height: 45vh;
+    }
+
+    .cmat-table th,
+    .cmat-table td {
+        font-size: 0.75rem;
+        padding: 6px 4px;
+    }
+}
