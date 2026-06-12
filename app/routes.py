@@ -606,15 +606,10 @@ def cargar_template():
 # `cargar_configuracion_usuario` y `guardar_configuracion_usuario` se eliminaron tambien.
 
 
-@app.route("/informacion_basica/control_de_material")
-@login_requerido
-def control_de_material_ajax():
-    """Ruta para cargar dinámicamente el contenido de Control de Material"""
-    try:
-        return render_template("INFORMACION BASICA/CONTROL_DE_MATERIAL.html")
-    except Exception as e:
-        logger.error(f"Error al cargar template Control de Material: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Limpieza 2026-06-12: /informacion_basica/control_de_material eliminada junto con
+# su template (INFORMACION BASICA/CONTROL_DE_MATERIAL.html), control_material.css y
+# material-edit-drawer.js. El modulo se reconstruira desde cero; el boton del sidebar
+# muestra un stub definido en MainTemplate.html (mostrarControlMaterialInfo).
 
 
 # Rutas para cargar contenido dinámicamente (AJAX)

@@ -775,7 +775,8 @@ document.addEventListener("DOMContentLoaded", function () {
   // mismo archivo por las versiones reales. Eliminadas para simplificar.
   // Las versiones activas estan ~linea 3700+ y usan _mostrarModuloCalidad().
 
-  // NOTA: mostrarControlMaterialInfo está definida en MainTemplate.html con AJAX
+  // NOTA: mostrarControlMaterialInfo está definida en MainTemplate.html (stub
+  // temporal desde la limpieza 2026-06-12; el módulo se reconstruirá).
   // No redefinir aquí para evitar conflictos
 
 // Limpieza 2026-05-27: mostrarControlOperacionLineaSMT eliminado (modulo descartado)

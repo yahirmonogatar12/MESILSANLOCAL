@@ -870,67 +870,7 @@ def api_material_admin_history_export(tipo):
         return jsonify({"error": str(e)}), 500
 
 
-# =============================
-# POST /guardar_material  (alta de material via drawer en CONTROL_DE_MATERIAL)
-# =============================
-# Migracion 2026-05-27: ruta reintegrada en su blueprint (antes vivia suelta en
-# routes.py y fue eliminada en alguna limpieza dejando el caller huerfano).
-# Consumidor: app/static/js/material-edit-drawer.js:984 (drawer "Nuevo registro")
-# que manda payload camelCase y espera {success, message?, error?}.
-#
-# La firma del backend `guardar_material(data, usuario_registro)` espera
-# snake_case, asi que hacemos el mapeo aqui.
-
-_DRAWER_FIELD_MAP = {
-    "codigoMaterial": "codigo_material",
-    "numeroParte": "numero_parte",
-    "propiedadMaterial": "propiedad_material",
-    "classification": "classification",
-    "especificacionMaterial": "especificacion_material",
-    "unidadEmpaque": "unidad_empaque",
-    "ubicacionMaterial": "ubicacion_material",
-    "vendedor": "vendedor",
-    "prohibidoSacar": "prohibido_sacar",
-    "reparable": "reparable",
-    "nivelMsl": "nivel_msl",
-    "espesorMsl": "espesor_msl",
-}
-
-
-@bp.route("/guardar_material", methods=["POST"])
-@login_requerido
-def guardar_material_route():
-    """Alta de material desde el drawer en CONTROL_DE_MATERIAL (Control de material).
-
-    Recibe JSON con campos camelCase desde material-edit-drawer.js y delega
-    en `app.db_mysql.guardar_material` (que espera snake_case).
-    """
-    # Late import para no acoplar el blueprint a db_mysql al cargarse.
-    from app.db_mysql import guardar_material
-
-    try:
-        payload = request.get_json(silent=True) or {}
-        if not isinstance(payload, dict):
-            return jsonify({"success": False, "error": "Payload invalido"}), 400
-
-        # Mapear camelCase -> snake_case. Aceptar tambien snake_case por si algun
-        # caller lo manda asi (compat).
-        data = {}
-        for src_key, dst_key in _DRAWER_FIELD_MAP.items():
-            if src_key in payload:
-                data[dst_key] = payload[src_key]
-            elif dst_key in payload:
-                data[dst_key] = payload[dst_key]
-
-        if not data.get("numero_parte"):
-            return jsonify({"success": False, "error": "numero_parte requerido"}), 400
-
-        usuario = session.get("usuario") or "SISTEMA"
-        ok = guardar_material(data, usuario_registro=usuario)
-        if not ok:
-            return jsonify({"success": False, "error": "Error al guardar material en base de datos"}), 500
-
-        return jsonify({"success": True, "message": "Material registrado correctamente"})
-    except Exception as exc:
-        logger.error(f"Error en guardar_material_route: {exc}\n{traceback.format_exc()}")
-        return jsonify({"success": False, "error": str(exc)}), 500
+# Limpieza 2026-06-12: POST /guardar_material eliminado. Su unico consumidor era
+# material-edit-drawer.js (drawer "Nuevo registro" de CONTROL_DE_MATERIAL.html),
+# borrado junto con ese modulo para reconstruirlo desde cero. La funcion de BD
+# `app.db_mysql.guardar_material` sigue existiendo para el modulo nuevo.

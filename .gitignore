@@ -85,3 +85,4 @@ app/graphify-out/
 .codegraph/
 .cursor/
 .cursor/rules/
+.codex_temp/

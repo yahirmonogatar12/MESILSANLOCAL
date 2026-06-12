@@ -39,7 +39,6 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/styleHeader.css">
     <link rel="stylesheet" href="/static/css/responsive-mobile.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/control_material.css', v='20260520a') }}">
     <link id="control-bom-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_bom.css', v='20260522a') }}">
     <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260522a') }}">
     <link id="material-admin-inventory-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_admin_inventory.css', v='20260520j') }}">
@@ -2622,7 +2621,12 @@ function hideAllMaterialContainers() {
                 if (container) container.style.display = 'block';
             };
 
-            // Control de material para Informacion Basica (cumple WF_002)
+            // Control de material para Informacion Basica.
+            // Limpieza 2026-06-12: el modulo anterior (CONTROL_DE_MATERIAL.html +
+            // control_material.css + material-edit-drawer.js + ruta
+            // /informacion_basica/control_de_material) fue eliminado para
+            // reconstruirlo desde cero. Stub temporal para que el boton del
+            // sidebar siga funcionando sin errores.
             window.mostrarControlMaterialInfo = function() {
                 prepararPanelInformacionBasica();
 
@@ -2630,28 +2634,7 @@ function hideAllMaterialContainers() {
                 if (container) {
                     container.classList.add('visible');
                     container.style.display = 'block';
-                    container.style.visibility = 'visible';
-                    container.style.opacity = '1';
-                    container.style.width = '100%';
-                    container.style.maxWidth = 'none';
-                    container.style.margin = '0';
-                    container.style.padding = '0';
-
-                    // Cargar el contenido dinámicamente del endpoint específico
-                    cargarContenidoDinamico('control-material-info-container', '/informacion_basica/control_de_material?v=20260520c')
-                        .then(() => {
-                            container.classList.add('visible');
-                            container.style.display = 'block';
-                            container.style.visibility = 'visible';
-                            container.style.opacity = '1';
-                            if (typeof window.initializeControlMaterialEventListeners === 'function') {
-                                window.initializeControlMaterialEventListeners();
-                            }
-                        })
-                        .catch(error => {
-                            console.error(' Error cargando Control de Material de Información Básica:', error);
-                            container.innerHTML = '<div class="error-message"><h3>Error al cargar el contenido</h3><p>No se pudo cargar Control de Material. Por favor, intente nuevamente.</p></div>';
-                        });
+                    container.innerHTML = '<div style="padding: 40px; text-align: center; color: #aab4c0;"><h3>Control de material</h3><p>Módulo en reconstrucción.</p></div>';
                 }
             };
 
