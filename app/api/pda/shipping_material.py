@@ -138,6 +138,14 @@ def is_return_exit_movement(return_quantity, loss_quantity, reason=None, movemen
     )
 
 
+def return_movement_net_quantity(return_quantity, loss_quantity, reason=None, movement_type=None):
+    return_qty = normalize_integer(return_quantity) or 0
+    loss_qty = normalize_integer(loss_quantity) or 0
+    if is_return_exit_movement(return_qty, loss_qty, reason, movement_type):
+        return -loss_qty
+    return return_qty - loss_qty
+
+
 def normalize_departure_code(raw_value):
     value = normalize_search(raw_value)
     return value.upper() if value else ""
@@ -1332,6 +1340,101 @@ def load_fifo_layers(cursor, part_number):
     return cursor.fetchall()
 
 
+def load_return_fifo_layers(cursor, part_number, period_start=None):
+    params = [part_number]
+    period_filter = ""
+    if period_start:
+        period_filter = "AND COALESCE(movement_at, created_at) >= %s"
+        params.append(period_start)
+
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          entry_folio,
+          available_quantity,
+          movement_at,
+          zone_code,
+          location_code
+        FROM `{SHIPPING_TABLES['entries']}`
+        WHERE part_number = %s
+          AND available_quantity > 0
+          AND COALESCE(is_fifo_layer_only, 0) = 1
+          AND COALESCE(reference_code, '') LIKE 'RETORNO:%%'
+          {period_filter}
+        ORDER BY movement_at ASC, id ASC
+        FOR UPDATE
+        """,
+        tuple(params),
+    )
+    return cursor.fetchall()
+
+
+def get_return_period_start(cursor, part_number, reference_at=None):
+    if reference_at:
+        cursor.execute(
+            f"""
+            SELECT MAX(closed_at) AS period_start
+            FROM `{SHIPPING_TABLES['inventory_closures']}`
+            WHERE part_number = %s
+              AND closed_at <= %s
+            """,
+            (part_number, reference_at),
+        )
+    else:
+        cursor.execute(
+            f"""
+            SELECT MAX(closed_at) AS period_start
+            FROM `{SHIPPING_TABLES['inventory_closures']}`
+            WHERE part_number = %s
+            """,
+            (part_number,),
+        )
+
+    row = cursor.fetchone() or {}
+    return row.get("period_start")
+
+
+def get_return_available_quantity(cursor, part_number, reference_at=None):
+    period_start = get_return_period_start(cursor, part_number, reference_at)
+    lower_bound = period_start or "1000-01-01"
+    upper_bound = reference_at or to_sql_datetime()
+
+    cursor.execute(
+        f"""
+        SELECT
+          COALESCE(SUM(
+            CASE
+              WHEN COALESCE(loss_quantity, 0) > 0
+               AND (
+                COALESCE(return_quantity, 0) <= COALESCE(loss_quantity, 0)
+                OR LOWER(COALESCE(reason, '')) LIKE %s
+                OR LOWER(COALESCE(reason, '')) LIKE %s
+               )
+              THEN -COALESCE(loss_quantity, 0)
+              ELSE COALESCE(return_quantity, 0) - COALESCE(loss_quantity, 0)
+            END
+          ), 0) AS available_quantity
+        FROM `{SHIPPING_TABLES['returns']}`
+        WHERE part_number = %s
+          AND COALESCE(movement_at, created_at) >= %s
+          AND COALESCE(movement_at, created_at) <= %s
+        """,
+        (
+            "%salida retorno%",
+            "%salida de retorno%",
+            part_number,
+            lower_bound,
+            upper_bound,
+        ),
+    )
+    row = cursor.fetchone() or {}
+    return {
+        "available_quantity": normalize_integer(row.get("available_quantity")) or 0,
+        "period_start": period_start,
+    }
+
+
 def build_fifo_allocations(layers, requested_quantity):
     remaining = requested_quantity
     allocations = []
@@ -2227,6 +2330,7 @@ def rebuild_part_inventory_state(cursor, part_number):
                         "zone_code": movement.get("zone_code"),
                         "location_code": movement.get("location_code"),
                         "movement_at": movement_at,
+                        "source": "entry",
                     }
                 )
 
@@ -2237,12 +2341,11 @@ def rebuild_part_inventory_state(cursor, part_number):
         if movement_type == "return":
             return_quantity = normalize_integer(movement.get("return_quantity")) or 0
             loss_quantity = normalize_integer(movement.get("loss_quantity")) or 0
-            is_return_exit = is_return_exit_movement(
+            net_quantity = return_movement_net_quantity(
                 return_quantity,
                 loss_quantity,
                 movement.get("reason"),
             )
-            net_quantity = -loss_quantity if is_return_exit else return_quantity - loss_quantity
             previous_quantity = current_quantity
             new_quantity = previous_quantity + net_quantity
 
@@ -2330,11 +2433,14 @@ def rebuild_part_inventory_state(cursor, part_number):
                         or inventory.get("catalog_zone_code"),
                         "location_code": movement.get("location_code"),
                         "movement_at": movement_at,
+                        "source": "return",
                     }
                 )
             elif net_quantity < 0:
                 remaining_quantity = abs(net_quantity)
                 for layer in layer_queue:
+                    if layer.get("source") != "return":
+                        continue
                     available_quantity = normalize_integer(layer.get("available_quantity")) or 0
                     if remaining_quantity <= 0:
                         break
@@ -4165,28 +4271,45 @@ def create_return():
                 }
             ), 404
 
+        movement_at = to_sql_datetime(data.get("returnedAt"))
         previous_quantity = normalize_integer(inventory.get("current_quantity")) or 0
-        net_quantity = return_quantity - loss_quantity
+        net_quantity = return_movement_net_quantity(
+            return_quantity,
+            loss_quantity,
+            reason_text,
+            movement_type,
+        )
         new_quantity = previous_quantity + net_quantity
-        if is_return_exit and new_quantity < 0:
-            conn.rollback()
-            return jsonify(
-                {
-                    "success": False,
-                    "error": "No hay inventario suficiente para registrar la salida de retorno",
-                }
-            ), 400
+        return_balance = {"available_quantity": 0, "period_start": None}
         fifo_plan = {"allocations": []}
         if is_return_exit:
+            return_balance = get_return_available_quantity(
+                cursor,
+                inventory["part_number"],
+                movement_at,
+            )
+            available_return_quantity = return_balance["available_quantity"]
+            if loss_quantity > available_return_quantity:
+                conn.rollback()
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": "No hay inventario suficiente para registrar la salida de retorno",
+                        "availableReturnQuantity": available_return_quantity,
+                    }
+                ), 400
             fifo_plan = build_fifo_allocations(
-                load_fifo_layers(cursor, inventory["part_number"]),
+                load_return_fifo_layers(
+                    cursor,
+                    inventory["part_number"],
+                    return_balance.get("period_start"),
+                ),
                 loss_quantity,
             )
         available_quantity = resolve_available_layer_quantity(
             previous_quantity,
             net_quantity,
         )
-        movement_at = to_sql_datetime(data.get("returnedAt"))
         return_folio = generate_movement_folio("EMB-RET")
 
         update_inventory_snapshot(

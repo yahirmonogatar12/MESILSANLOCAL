@@ -96,6 +96,23 @@ def resolve_catalog_snapshot(cursor, part_number):
     return cursor.fetchone()
 
 
+def resolve_catalog_snapshot_from_scan_context(cursor, part_number, *scan_values):
+    catalog = resolve_catalog_snapshot(cursor, part_number)
+    if catalog:
+        return normalize_part_number(part_number), catalog
+
+    catalog_snapshots = fetch_shipping_catalog_snapshots(cursor)
+    for value in scan_values:
+        resolved_part_number = resolve_part_number_from_scan_code(
+            value,
+            catalog_snapshots.keys(),
+        )
+        if resolved_part_number and resolved_part_number in catalog_snapshots:
+            return resolved_part_number, catalog_snapshots[resolved_part_number]
+
+    return normalize_part_number(part_number), None
+
+
 def fetch_shipping_catalog_snapshots(cursor):
     cursor.execute(
         f"""
@@ -422,7 +439,13 @@ def create_excess_piece():
                 }
             ), 409
 
-        catalog = resolve_catalog_snapshot(cursor, part_number)
+        part_number, catalog = resolve_catalog_snapshot_from_scan_context(
+            cursor,
+            part_number,
+            scan_code,
+            raw_code,
+            part_number,
+        )
         if not catalog:
             conn.rollback()
             return jsonify(
