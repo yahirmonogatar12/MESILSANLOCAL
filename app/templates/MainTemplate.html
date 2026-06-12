@@ -42,6 +42,8 @@
     <link id="control-bom-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_bom.css', v='20260522a') }}">
     <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260522a') }}">
     <link id="material-admin-inventory-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_admin_inventory.css', v='20260520j') }}">
+    <link id="material-invoices-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_invoices.css', v='20260612a') }}">
+    <link id="inventory-valuation-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventory_valuation.css', v='20260612a') }}">
     <!-- WF_004: CSS compartidos por modulos AJAX (Control de resultados / Control de proceso) -->
     <link id="ilsan-theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/ilsan-theme.css', v='20260522a') }}">
     <link id="ict-css" rel="stylesheet" href="{{ url_for('static', filename='css/ict.css', v='20260522a') }}">
@@ -85,7 +87,7 @@
     <!-- WF_004: CSS persistente Historial de Operadores por Maquina (Control de resultados). -->
     <link id="historial-operadores-maquina-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_operadores_maquina.css', v='20260610b') }}">
     <!-- WF_004: CSS persistente Control de material (Informacion Basica). -->
-    <link id="control-material-info-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_material_info.css', v='20260612a') }}">
+    <link id="control-material-info-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_material_info.css', v='20260612e') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -316,7 +318,7 @@
     <script src="{{ url_for('static', filename='js/lib/axios.min.js', v='20260526a') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js?v=20260520a"></script>
-    <script src="/static/js/scriptMain.js?v=20260609a"></script>
+    <script src="/static/js/scriptMain.js?v=20260612a"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -456,6 +458,12 @@
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="longterm-inventory-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
+        <div id="material-invoices-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
+        <div id="inventory-valuation-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="registro-material-container" style="display: none;">
@@ -2262,6 +2270,8 @@
             const materialSustitutoContainer = document.getElementById('material-sustituto-container');
             const consultarPepsContainer = document.getElementById('consultar-peps-container');
             const longtermInventoryContainer = document.getElementById('longterm-inventory-unique-container');
+            const materialInvoicesContainer = document.getElementById('material-invoices-unique-container');
+            const inventoryValuationContainer = document.getElementById('inventory-valuation-unique-container');
             const registroMaterialContainer = document.getElementById('registro-material-container');
             const historialInventarioContainer = document.getElementById('historial-inventario-container');
             const inventarioRollosSMDContainer = document.getElementById('inventario-rollos-smd-container');
@@ -2357,6 +2367,8 @@ function hideAllMaterialContainers() {
     if (materialSustitutoContainer) materialSustitutoContainer.style.display = 'none';
     if (consultarPepsContainer) consultarPepsContainer.style.display = 'none';
     if (longtermInventoryContainer) longtermInventoryContainer.style.display = 'none';
+    if (materialInvoicesContainer) materialInvoicesContainer.style.display = 'none';
+    if (inventoryValuationContainer) inventoryValuationContainer.style.display = 'none';
     if (registroMaterialContainer) registroMaterialContainer.style.display = 'none';
     if (historialInventarioContainer) historialInventarioContainer.style.display = 'none';
     if (inventarioRollosSMDContainer) inventarioRollosSMDContainer.style.display = 'none';
@@ -2981,6 +2993,30 @@ function hideAllMaterialContainers() {
 
             window.mostrarLongtermInventory = function() {
                 window.mostrarInventarioActual();
+            };
+
+            window.mostrarMaterialInvoices = function() {
+                prepararPanelSeccion('material');
+                const container = document.getElementById('material-invoices-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('material-invoices-unique-container', '/material/invoices', () => {
+                    if (typeof window.initMaterialInvoices === 'function') {
+                        window.initMaterialInvoices();
+                    }
+                });
+            };
+
+            window.mostrarInventoryValuation = function() {
+                prepararPanelSeccion('material');
+                const container = document.getElementById('inventory-valuation-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('inventory-valuation-unique-container', '/material/inventory_valuation', () => {
+                    if (typeof window.initInventoryValuation === 'function') {
+                        window.initInventoryValuation();
+                    }
+                });
             };
 
             // Funcion global para mostrar Historial de cambio de material SMT.

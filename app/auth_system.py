@@ -410,7 +410,10 @@ class AuthSystem:
             ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de salidas', 'Acceso al historial de salidas de material'),
             ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de retornos', 'Acceso al historial de retornos de material'),
             ('LISTA_DE_MATERIALES', 'Control de material', 'Inventario actual', 'Acceso al inventario actual de material'),
-            
+            # WF_001 (2026-06-12): seed modulos Facturas/Invoice y Valorizacion de inventario.
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Facturas / Invoice', 'Acceso a facturas / invoice de material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Valorización de inventario', 'Acceso a valorización de inventario de material'),
+
             # LISTA DE MATERIALES - Control de material MSL
             ('LISTA_DE_MATERIALES', 'Control de material MSL', 'Control total de material', 'Acceso al control total de material MSL'),
             ('LISTA_DE_MATERIALES', 'Control de material MSL', 'Control de entrada y salida de material', 'Control de entrada y salida de material MSL'),

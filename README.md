@@ -31,6 +31,7 @@ Crear un archivo `.env` en la raíz de `MESILSANLOCAL/` con:
 - MYSQL_USER=...
 - MYSQL_PASSWORD=...
 - SECRET_KEY=alguna_clave_secreta
+- MES_FORCE_STARTUP_INIT=0 (opcional, para evitar inicialización forzada de tablas en cada arranque)
 
 Notas:
 - También se acepta `MYSQL_USERNAME` como alternativa a `MYSQL_USER`.

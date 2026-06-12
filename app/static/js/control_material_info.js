@@ -8,9 +8,11 @@
   "use strict";
 
   const STYLESHEET_ID = "control-material-info-css";
-  const STYLESHEET_HREF = "/static/css/control_material_info.css?v=20260612a";
+  const STYLESHEET_HREF = "/static/css/control_material_info.css?v=20260612e";
   const API_BASE = "/api/informacion_basica/control_material";
   const API_MATERIALES = `${API_BASE}/materiales`;
+  const API_IMPORT_ORIGINALES = `${API_BASE}/numeros-originales/import`;
+  const API_PREVIEW_ORIGINALES = `${API_BASE}/numeros-originales/preview`;
   const MONEDAS = ["USD", "MXN", "KRW"]; // fallback; la fuente real es /catalogos
   const MAX_COSTO = 99999999.9999; // tope de DECIMAL(12,4) en material_costos
 
@@ -18,6 +20,7 @@
   let catalogos = { clasificaciones: [], propiedades: [], unidades_empaque: [], unidades_medida: [], monedas: MONEDAS };
   let savingMaterial = false; // anti doble-submit del formulario
   let loadSeq = 0; // secuencia de carga: descarta respuestas viejas
+  let lastOriginalPreview = null;
 
   function ensureStylesheet() {
     const existing = document.getElementById(STYLESHEET_ID);
@@ -53,6 +56,18 @@
       exportBtn: root.querySelector("#cmat-export"),
       refresh: root.querySelector("#cmat-refresh"),
       create: root.querySelector("#cmat-new"),
+      openOriginalImport: root.querySelector("#cmat-open-original-import"),
+      originalImportPanel: root.querySelector("#cmat-original-import-panel"),
+      originalImportForm: root.querySelector("#cmat-original-import-form"),
+      originalImportFile: root.querySelector("#cmat-original-import-file"),
+      originalImportType: root.querySelector("#cmat-original-import-type"),
+      originalImportMessage: root.querySelector("#cmat-original-import-message"),
+      originalImportClose: root.querySelector("#cmat-original-import-close"),
+      originalImportCancel: root.querySelector("#cmat-original-import-cancel"),
+      originalImportPreviewBtn: root.querySelector("#cmat-original-preview-btn"),
+      originalImportApply: root.querySelector("#cmat-original-import-apply"),
+      originalPreviewSummary: root.querySelector("#cmat-original-preview-summary"),
+      originalPreviewTbody: root.querySelector("#cmat-original-preview-tbody"),
       loading: root.querySelector("#cmat-loading"),
       tbody: root.querySelector("#cmat-tbody"),
       total: root.querySelector("#cmat-total"),
@@ -61,6 +76,7 @@
       form: root.querySelector("#cmat-form"),
       formTitle: root.querySelector("#cmat-form-title"),
       np: root.querySelector("#cmat-np"),
+      aliasesInvoice: root.querySelector("#cmat-aliases-invoice"),
       propiedad: root.querySelector("#cmat-propiedad"),
       clasificacion: root.querySelector("#cmat-clasificacion"),
       especificacion: root.querySelector("#cmat-especificacion"),
@@ -96,23 +112,41 @@
     }, 4200);
   }
 
+  function setInlineMessage(node, message, type) {
+    if (!node) return;
+    if (!message) {
+      node.hidden = true;
+      node.textContent = "";
+      node.classList.remove("success", "error", "info");
+      return;
+    }
+    node.textContent = message;
+    node.classList.remove("success", "error", "info");
+    node.classList.add(type || "info");
+    node.hidden = false;
+  }
+
   function setLoading(elements, loading) {
     if (elements.loading) elements.loading.hidden = !loading;
     elements.root.classList.toggle("is-loading", loading);
     elements.root.querySelectorAll("button, input, select").forEach((el) => {
       const inOpenModal =
         (elements.formPanel && !elements.formPanel.hidden && elements.formPanel.contains(el)) ||
-        (elements.historialPanel && !elements.historialPanel.hidden && elements.historialPanel.contains(el));
+        (elements.historialPanel && !elements.historialPanel.hidden && elements.historialPanel.contains(el)) ||
+        (elements.originalImportPanel && !elements.originalImportPanel.hidden && elements.originalImportPanel.contains(el));
       if (inOpenModal) return;
       el.disabled = loading;
     });
   }
 
   async function fetchJson(url, options) {
-    const headers = {
-      "Content-Type": "application/json",
-      ...(options && options.headers ? options.headers : {}),
-    };
+    const isFormData = options && options.body instanceof FormData;
+    const headers = isFormData
+      ? { ...(options && options.headers ? options.headers : {}) }
+      : {
+          "Content-Type": "application/json",
+          ...(options && options.headers ? options.headers : {}),
+        };
     const response = await fetch(url, {
       credentials: "same-origin",
       ...(options || {}),
@@ -184,7 +218,7 @@
   function renderTable(elements) {
     elements.total.textContent = String(records.length);
     if (!records.length) {
-      elements.tbody.innerHTML = '<tr><td colspan="11" class="cmat-empty">Sin materiales registrados</td></tr>';
+      elements.tbody.innerHTML = '<tr><td colspan="12" class="cmat-empty">Sin materiales registrados</td></tr>';
       return;
     }
     elements.tbody.innerHTML = records
@@ -192,6 +226,7 @@
         (row) => `
           <tr>
             <td><span class="cmat-code">${esc(row.numero_parte)}</span></td>
+            <td class="cmat-cell-left" title="${esc(row.numeros_parte_original_text || "")}">${esc(row.numeros_parte_original_text || "—")}</td>
             <td>${esc(row.propiedad_material || "—")}</td>
             <td>${esc(row.clasificacion || "—")}</td>
             <td class="cmat-cell-left">${esc(row.especificacion_material || "—")}</td>
@@ -322,6 +357,7 @@
   function resetForm(elements) {
     elements.np.value = "";
     elements.np.readOnly = false;
+    elements.aliasesInvoice.value = "";
     elements.propiedad.value = "";
     elements.clasificacion.value = "";
     elements.especificacion.value = "";
@@ -336,6 +372,7 @@
       elements.formTitle.textContent = "Editar material";
       elements.np.value = record.numero_parte || "";
       elements.np.readOnly = true; // numero_parte es PK
+      elements.aliasesInvoice.value = record.numeros_parte_original_global_text || "";
       elements.propiedad.value = record.propiedad_material || "";
       elements.clasificacion.value = record.clasificacion || "";
       elements.especificacion.value = record.especificacion_material || "";
@@ -373,6 +410,7 @@
     const isEdit = elements.np.readOnly;
     const payload = {
       numero_parte: elements.np.value.trim(),
+      numeros_parte_original: elements.aliasesInvoice.value.trim(),
       propiedad_material: elements.propiedad.value.trim(),
       clasificacion: elements.clasificacion.value.trim(),
       especificacion_material: elements.especificacion.value.trim(),
@@ -422,6 +460,157 @@
     });
     notify("Material dado de baja.", "success");
     await loadMateriales(elements);
+  }
+
+  function resetOriginalImport(elements) {
+    lastOriginalPreview = null;
+    elements.originalImportForm.reset();
+    elements.originalImportApply.disabled = true;
+    setInlineMessage(elements.originalImportMessage, "", "info");
+    elements.originalPreviewSummary.hidden = true;
+    elements.originalPreviewSummary.innerHTML = "";
+    elements.originalPreviewTbody.innerHTML = '<tr><td colspan="5" class="cmat-empty">Genera un preview antes de importar</td></tr>';
+  }
+
+  function openOriginalImport(elements) {
+    resetOriginalImport(elements);
+    elements.originalImportPanel.hidden = false;
+    elements.originalImportFile.focus();
+  }
+
+  function closeOriginalImport(elements) {
+    elements.originalImportPanel.hidden = true;
+    resetOriginalImport(elements);
+  }
+
+  function originalImportPayload(elements) {
+    const file = elements.originalImportFile?.files?.[0];
+    if (!file) {
+      throw new Error("Selecciona un Excel de números originales.");
+    }
+    const payload = new FormData();
+    payload.append("file", file);
+    const tipo = elements.originalImportType?.value.trim();
+    if (tipo) payload.append("tipo", tipo);
+    return payload;
+  }
+
+  function setOriginalImportBusy(elements, busy) {
+    [
+      elements.originalImportFile,
+      elements.originalImportType,
+      elements.originalImportClose,
+      elements.originalImportCancel,
+      elements.originalImportPreviewBtn,
+      elements.originalImportApply,
+    ].forEach((node) => {
+      if (node) node.disabled = busy;
+    });
+    if (!busy) {
+      elements.originalImportApply.disabled = !lastOriginalPreview || Number(lastOriginalPreview.importables || 0) <= 0;
+    }
+  }
+
+  function renderOriginalPreview(elements, data) {
+    lastOriginalPreview = data;
+    const cards = [
+      ["Detectados", data.total_detectados || 0],
+      ["Importables", data.importables || 0],
+      ["Nuevos", data.nuevos || 0],
+      ["Actualizados", data.actualizados || 0],
+      ["Sin cambio", data.sin_cambio || 0],
+      ["Reactivados", data.reactivados || 0],
+      ["Conflictos", data.conflictos || data.omitidos_conflicto || 0],
+      ["Omitidos", data.omitidos || 0],
+      ["Sin parte sistema", data.omitidos_sistema || 0],
+    ];
+    elements.originalPreviewSummary.innerHTML = cards
+      .map(([label, value]) => `<span><strong>${esc(value)}</strong>${esc(label)}</span>`)
+      .join("");
+    elements.originalPreviewSummary.hidden = false;
+
+    const rows = data.preview || [];
+    if (!rows.length) {
+      elements.originalPreviewTbody.innerHTML = '<tr><td colspan="5" class="cmat-empty">Sin filas para mostrar</td></tr>';
+    } else {
+      elements.originalPreviewTbody.innerHTML = rows
+        .map((row) => `
+          <tr>
+            <td><span class="cmat-code">${esc(row.numero_parte_original)}</span></td>
+            <td><span class="cmat-code">${esc(row.numero_parte_sistema)}</span></td>
+            <td>${esc(row.tipo || "—")}</td>
+            <td><span class="cmat-status-badge cmat-status-${esc(row.estatus)}">${esc(row.estatus)}</span></td>
+            <td class="cmat-cell-left">${esc(row.detalle || "")}</td>
+          </tr>
+        `)
+        .join("");
+    }
+    elements.originalImportApply.disabled = Number(data.importables || 0) <= 0;
+  }
+
+  async function previewNumerosOriginales(elements) {
+    let payload;
+    try {
+      payload = originalImportPayload(elements);
+    } catch (error) {
+      setInlineMessage(elements.originalImportMessage, error.message, "error");
+      return;
+    }
+    setLoading(elements, true);
+    setOriginalImportBusy(elements, true);
+    setInlineMessage(elements.originalImportMessage, "Generando preview...", "info");
+    try {
+      const data = await fetchJson(API_PREVIEW_ORIGINALES, {
+        method: "POST",
+        body: payload,
+      });
+      renderOriginalPreview(elements, data);
+      setInlineMessage(elements.originalImportMessage, "Preview generado. Revisa los cambios antes de importar.", "success");
+    } catch (error) {
+      lastOriginalPreview = null;
+      elements.originalImportApply.disabled = true;
+      setInlineMessage(elements.originalImportMessage, error.message || "No fue posible generar el preview.", "error");
+    } finally {
+      setOriginalImportBusy(elements, false);
+      setLoading(elements, false);
+    }
+  }
+
+  async function importNumerosOriginales(elements) {
+    if (!lastOriginalPreview) {
+      setInlineMessage(elements.originalImportMessage, "Genera un preview antes de importar.", "error");
+      return;
+    }
+    let payload;
+    try {
+      payload = originalImportPayload(elements);
+    } catch (error) {
+      setInlineMessage(elements.originalImportMessage, error.message, "error");
+      return;
+    }
+    setLoading(elements, true);
+    setOriginalImportBusy(elements, true);
+    setInlineMessage(elements.originalImportMessage, "Importando equivalencias...", "info");
+    try {
+      const data = await fetchJson(API_IMPORT_ORIGINALES, {
+        method: "POST",
+        body: payload,
+      });
+      const message =
+        `Importados: ${data.importados || 0}. ` +
+        `Omitidos: ${data.omitidos || 0}. ` +
+        `Sin parte sistema: ${data.omitidos_sistema || 0}.`;
+      setInlineMessage(elements.originalImportMessage, message, "success");
+      renderOriginalPreview(elements, data);
+      lastOriginalPreview = null;
+      elements.originalImportApply.disabled = true;
+      await loadMateriales(elements);
+    } catch (error) {
+      setInlineMessage(elements.originalImportMessage, error.message || "No fue posible importar el Excel.", "error");
+    } finally {
+      setOriginalImportBusy(elements, false);
+      setLoading(elements, false);
+    }
   }
 
   // ===================== Historial de costos =====================
@@ -491,6 +680,27 @@
       window.open(buildListUrl(elements, `${API_BASE}/export`), "_blank");
     });
     elements.create.addEventListener("click", () => openForm(elements));
+    elements.openOriginalImport.addEventListener("click", () => openOriginalImport(elements));
+    elements.originalImportForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      previewNumerosOriginales(elements);
+    });
+    elements.originalImportApply.addEventListener("click", () => importNumerosOriginales(elements));
+    elements.originalImportClose.addEventListener("click", () => closeOriginalImport(elements));
+    elements.originalImportCancel.addEventListener("click", () => closeOriginalImport(elements));
+    elements.originalImportPanel.addEventListener("click", (event) => {
+      if (event.target === elements.originalImportPanel) closeOriginalImport(elements);
+    });
+    const clearOriginalPreview = () => {
+        lastOriginalPreview = null;
+        elements.originalImportApply.disabled = true;
+        elements.originalPreviewSummary.hidden = true;
+        elements.originalPreviewSummary.innerHTML = "";
+        elements.originalPreviewTbody.innerHTML = '<tr><td colspan="5" class="cmat-empty">Genera un preview antes de importar</td></tr>';
+        setInlineMessage(elements.originalImportMessage, "", "info");
+    };
+    elements.originalImportFile.addEventListener("change", clearOriginalPreview);
+    elements.originalImportType.addEventListener("input", clearOriginalPreview);
 
     // Formulario
     elements.cancel.addEventListener("click", () => closeForm(elements));
@@ -544,6 +754,7 @@
         const el = getElements(root);
         if (el.formPanel && !el.formPanel.hidden) closeForm(el);
         else if (el.historialPanel && !el.historialPanel.hidden) closeHistorial(el);
+        else if (el.originalImportPanel && !el.originalImportPanel.hidden) closeOriginalImport(el);
       });
     }
   }
@@ -551,7 +762,11 @@
   function validarElementos(elements) {
     const requeridos = [
       "filters", "search", "clasificacionFilter", "tbody", "total",
-      "formPanel", "form", "np", "especificacion", "vendedoresRows",
+      "openOriginalImport", "originalImportPanel", "originalImportForm",
+      "originalImportFile", "originalImportMessage", "originalImportClose",
+      "originalImportCancel", "originalImportPreviewBtn", "originalImportApply",
+      "originalPreviewSummary", "originalPreviewTbody",
+      "formPanel", "form", "np", "aliasesInvoice", "especificacion", "vendedoresRows",
       "addVendor", "historialPanel", "historialTbody",
     ];
     const faltantes = requeridos.filter((k) => !elements[k]);

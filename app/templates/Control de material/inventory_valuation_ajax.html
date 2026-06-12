@@ -1,0 +1,133 @@
+<div id="inv-valuation-page" class="inv-valuation-page">
+    <div class="inv-valuation-header">
+        <div>
+            <h2>Valorización de inventario</h2>
+            <span>Costo vigente por lote, fuente de costo y valor total.</span>
+        </div>
+        <div class="inv-valuation-actions">
+            <button id="inv-valuation-refresh" class="inv-valuation-btn" type="button">Actualizar</button>
+            <button id="inv-valuation-export" class="inv-valuation-btn success" type="button">Exportar Excel</button>
+        </div>
+    </div>
+
+    <div class="inv-valuation-toolbar">
+        <label>
+            Numero de parte
+            <input id="inv-valuation-part" type="text" autocomplete="off" placeholder="Buscar parte">
+        </label>
+        <label>
+            Codigo recibido
+            <input id="inv-valuation-code" type="text" autocomplete="off" placeholder="Etiqueta">
+        </label>
+        <label>
+            Pallet
+            <input id="inv-valuation-pallet" type="text" autocomplete="off" placeholder="1, 01, PALLET 1">
+        </label>
+        <label>
+            Fuente
+            <select id="inv-valuation-source">
+                <option value="">Todas</option>
+                <option value="INVOICE">INVOICE</option>
+                <option value="CONTROL_MATERIAL">CONTROL_MATERIAL</option>
+                <option value="SIN_COSTO">SIN_COSTO</option>
+            </select>
+        </label>
+        <label class="inv-valuation-check">
+            <input id="inv-valuation-include-zero" type="checkbox">
+            Incluir stock cero
+        </label>
+        <button id="inv-valuation-search" class="inv-valuation-btn primary" type="button">Consultar</button>
+    </div>
+
+    <div id="inv-valuation-message" class="inv-valuation-message" hidden></div>
+
+    <section class="inv-valuation-summary" id="inv-valuation-summary"></section>
+
+    <section class="inv-valuation-backfill">
+        <div>
+            <strong>Backfill de costos</strong>
+            <span>Simula o aplica costo historico solo al inventario actual con stock; no sobrescribe INVOICE.</span>
+        </div>
+        <div class="inv-valuation-actions">
+            <button id="inv-valuation-backfill-dry" class="inv-valuation-btn" type="button">Simular</button>
+            <button id="inv-valuation-backfill-apply" class="inv-valuation-btn warning" type="button">Aplicar costos</button>
+        </div>
+    </section>
+
+    <div class="inv-valuation-table-wrap">
+        <table class="inv-valuation-table">
+            <thead>
+                <tr>
+                    <th>Codigo recibido</th>
+                    <th>Parte</th>
+                    <th>Lote</th>
+                    <th>Pallet</th>
+                    <th>Vendedor</th>
+                    <th>Stock</th>
+                    <th>Unidad</th>
+                    <th>Costo</th>
+                    <th>Moneda</th>
+                    <th>Valor</th>
+                    <th>Fuente</th>
+                    <th>Estimado</th>
+                    <th>Invoice</th>
+                </tr>
+            </thead>
+            <tbody id="inv-valuation-body"></tbody>
+        </table>
+    </div>
+
+    <div class="inv-valuation-footer">
+        <span id="inv-valuation-count">Total Rows: 0</span>
+        <div class="inv-valuation-pagination">
+            <button id="inv-valuation-prev" class="inv-valuation-btn small" type="button">Anterior</button>
+            <span id="inv-valuation-page-label">Pagina 1</span>
+            <button id="inv-valuation-next" class="inv-valuation-btn small" type="button">Siguiente</button>
+            <select id="inv-valuation-page-size">
+                <option value="100">100</option>
+                <option value="500" selected>500</option>
+                <option value="1000">1000</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="inv-valuation-loading" class="inv-valuation-loading" hidden>Cargando...</div>
+
+    <div id="inv-valuation-preview-modal" class="inv-valuation-modal" role="dialog" aria-modal="true" aria-labelledby="inv-valuation-preview-title" hidden>
+        <div class="inv-valuation-modal-panel">
+            <div class="inv-valuation-modal-head">
+                <div>
+                    <h3 id="inv-valuation-preview-title">Simulación de costos</h3>
+                    <span id="inv-valuation-preview-subtitle">Cambios que se aplicarán al inventario actual.</span>
+                </div>
+                <button id="inv-valuation-preview-close" class="inv-valuation-btn small" type="button">Cerrar</button>
+            </div>
+            <div id="inv-valuation-preview-stats" class="inv-valuation-preview-stats"></div>
+            <div id="inv-valuation-preview-note" class="inv-valuation-preview-note" hidden></div>
+            <div class="inv-valuation-preview-table-wrap">
+                <table class="inv-valuation-preview-table">
+                    <thead>
+                        <tr>
+                            <th>Codigo recibido</th>
+                            <th>Parte</th>
+                            <th>Lote</th>
+                            <th>Pallet</th>
+                            <th>Vendedor</th>
+                            <th>Stock</th>
+                            <th>Costo</th>
+                            <th>Moneda</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inv-valuation-preview-body"></tbody>
+                </table>
+            </div>
+            <div class="inv-valuation-modal-actions">
+                <button id="inv-valuation-preview-cancel" class="inv-valuation-btn" type="button">Cancelar</button>
+                <button id="inv-valuation-preview-apply" class="inv-valuation-btn warning" type="button">Aplicar costos</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/inventory_valuation.js', v='20260612d') }}"></script>

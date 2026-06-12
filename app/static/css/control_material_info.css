@@ -123,6 +123,53 @@
     width: 280px;
 }
 
+.cmat-filter-group--file input {
+    width: 260px;
+}
+
+.cmat-import-card .cmat-card-header h3 {
+    flex: 0 1 auto;
+}
+
+.cmat-import-form {
+    align-items: flex-end;
+}
+
+.cmat-inline-message {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ilsan-text-light);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cmat-inline-message[hidden] {
+    display: none;
+}
+
+.cmat-inline-message.success {
+    color: #2ecc71;
+    background: rgba(39, 174, 96, 0.12);
+    border-color: rgba(39, 174, 96, 0.35);
+}
+
+.cmat-inline-message.error {
+    color: #ffb4aa;
+    background: rgba(231, 76, 60, 0.14);
+    border-color: rgba(231, 76, 60, 0.35);
+}
+
+.cmat-inline-message.info {
+    color: var(--ilsan-text-light);
+    background: rgba(52, 152, 219, 0.14);
+    border-color: rgba(52, 152, 219, 0.35);
+}
+
 .cmat-filter-group select option {
     background-color: #ffffff;
     color: #000000;
@@ -176,6 +223,10 @@
     overflow: auto;
     display: flex;
     flex-direction: column;
+}
+
+.cmat-import-modal-content {
+    max-width: 1040px;
 }
 
 @keyframes cmatSlideDown {
@@ -236,6 +287,93 @@
     justify-content: flex-end;
     gap: 8px;
     margin-top: 16px;
+}
+
+.cmat-original-import-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cmat-original-import-form .cmat-inline-message {
+    width: 100%;
+}
+
+.cmat-preview-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.cmat-preview-summary[hidden] {
+    display: none;
+}
+
+.cmat-preview-summary span {
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--ilsan-text-gray);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.cmat-preview-summary strong {
+    color: var(--ilsan-text-light);
+    font-size: 1rem;
+    line-height: 1.1;
+}
+
+.cmat-preview-table-wrap {
+    min-height: 220px;
+    max-height: 38vh;
+    border-radius: 8px;
+}
+
+.cmat-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 82px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ilsan-text-light);
+    white-space: nowrap;
+}
+
+.cmat-status-NUEVO,
+.cmat-status-REACTIVAR {
+    color: #2ecc71;
+    background: rgba(39, 174, 96, 0.13);
+    border-color: rgba(39, 174, 96, 0.35);
+}
+
+.cmat-status-ACTUALIZAR {
+    color: #f1c40f;
+    background: rgba(241, 196, 15, 0.13);
+    border-color: rgba(241, 196, 15, 0.35);
+}
+
+.cmat-status-SIN_CAMBIO {
+    color: var(--ilsan-text-gray);
+}
+
+.cmat-status-OMITIDO,
+.cmat-status-CONFLICTO {
+    color: #ffb4aa;
+    background: rgba(231, 76, 60, 0.14);
+    border-color: rgba(231, 76, 60, 0.35);
 }
 
 /* ========== EDITOR DE VENDEDORES ========== */
@@ -693,9 +831,14 @@ button:disabled {
         grid-template-columns: 1fr;
     }
 
+    .cmat-preview-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .cmat-filter-group,
     .cmat-filter-group input,
     .cmat-filter-group select,
+    .cmat-filter-group--file input,
     .cmat-filter-group--search input {
         width: 100%;
         max-width: none;

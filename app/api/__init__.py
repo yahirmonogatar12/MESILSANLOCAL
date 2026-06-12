@@ -79,6 +79,9 @@ _MODULOS_REGISTRADOS = [
     # WF_001-WF_004 (2026-06-12): reconstruccion Control de material (Info Basica)
     "informacion_basica.control_material",
     "control_material.material_admin",
+    # WF_001-WF_005 (2026-06-12): invoices de material y valorizacion por lote
+    "control_material.material_invoices",
+    "control_material.inventory_valuation",
     # control_calidad.smt_historial_simple DEBE ir antes que smt_historial:
     # ambos definen /api/historial_smt_data y Flask deja responder al primero
     # registrado (preserva comportamiento legacy de smt_routes_date_fixed.py).

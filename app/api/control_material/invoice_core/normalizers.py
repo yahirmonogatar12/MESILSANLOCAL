@@ -1,0 +1,89 @@
+"""Normalizacion y serializacion comun para invoices/costing."""
+
+import re
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+
+def normalizar_pallet_no(value):
+    """Normaliza pallet: 1, 01, PALLET 1, Pallet-01 -> 1."""
+    if value is None:
+        return ""
+    if isinstance(value, Decimal):
+        value = int(value) if value == value.to_integral_value() else value
+    text = str(value).strip()
+    if not text:
+        return ""
+    text = text.replace("\u00a0", " ")
+    match = re.search(r"(\d+)", text)
+    if match:
+        return str(int(match.group(1)))
+    text = re.sub(r"(?i)\bpallet\b", "", text)
+    text = re.sub(r"[\s\-_]+", "", text).strip().upper()
+    return text
+
+
+def normalizar_numero_parte(value):
+    if value is None:
+        return ""
+    text = str(value).replace("\u00a0", " ").strip()
+    text = re.sub(r"\s+", "", text)
+    return text.upper()
+
+
+def raw_text(value):
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, date):
+        return value.strftime("%Y-%m-%d")
+    if isinstance(value, Decimal):
+        return format(value, "f")
+    return str(value).strip()
+
+
+def decimal_or_zero(value):
+    raw = raw_text(value)
+    if not raw:
+        return Decimal("0.0000")
+    cleaned = raw.upper()
+    cleaned = cleaned.replace(",", "")
+    cleaned = cleaned.replace("$", "")
+    cleaned = cleaned.replace("USD", "").replace("MXN", "").replace("KRW", "")
+    cleaned = cleaned.strip()
+    if cleaned.startswith("(") and cleaned.endswith(")"):
+        cleaned = f"-{cleaned[1:-1]}"
+    try:
+        return Decimal(cleaned).quantize(Decimal("0.0001"))
+    except (InvalidOperation, ValueError):
+        return Decimal("0.0000")
+
+
+def decimal_str(value, places="0.0000"):
+    if value in (None, ""):
+        return None
+    try:
+        return str(Decimal(str(value)).quantize(Decimal(places)))
+    except (InvalidOperation, ValueError):
+        return str(value)
+
+
+def json_value(value):
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, date):
+        return value.strftime("%Y-%m-%d")
+    return value
+
+
+def row_to_json(row):
+    return {k: json_value(v) for k, v in (row or {}).items()}
+
+# Compatibilidad interna temporal con nombres previos al refactor.
+_raw_text = raw_text
+_decimal_or_zero = decimal_or_zero
+_decimal_str = decimal_str
+_json_value = json_value
+_row_to_json = row_to_json

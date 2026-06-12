@@ -24,6 +24,14 @@
                             data-permiso-pagina="LISTA_DE_MATERIALES"
                             data-permiso-seccion="Control de material"
                             data-permiso-boton="Inventario actual">Inventario actual</li>
+                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarMaterialInvoices ? window.parent.mostrarMaterialInvoices() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('material-invoices-unique-container', '/material/invoices') : window.location.href='/material/invoices')"
+                            data-permiso-pagina="LISTA_DE_MATERIALES"
+                            data-permiso-seccion="Control de material"
+                            data-permiso-boton="Facturas / Invoice">Facturas / Invoice</li>
+                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarInventoryValuation ? window.parent.mostrarInventoryValuation() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('inventory-valuation-unique-container', '/material/inventory_valuation') : window.location.href='/material/inventory_valuation')"
+                            data-permiso-pagina="LISTA_DE_MATERIALES"
+                            data-permiso-seccion="Control de material"
+                            data-permiso-boton="Valorización de inventario">Valorización de inventario</li>
                     </ul>
                 </li>
                 <li class="sidebar-section">
@@ -87,4 +95,3 @@
         }
     });
 </script>
-

@@ -63,6 +63,12 @@ document.addEventListener("DOMContentLoaded", function () {
   const longtermInventoryContainer = document.getElementById(
     "longterm-inventory-unique-container",
   );
+  const materialInvoicesContainer = document.getElementById(
+    "material-invoices-unique-container",
+  );
+  const inventoryValuationContainer = document.getElementById(
+    "inventory-valuation-unique-container",
+  );
   const registroMaterialContainer = document.getElementById(
     "registro-material-container",
   );
@@ -128,6 +134,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (materialSustitutoContainer) materialSustitutoContainer.style.display = "none";
     if (consultarPepsContainer) consultarPepsContainer.style.display = "none";
     if (longtermInventoryContainer) longtermInventoryContainer.style.display = "none";
+    if (materialInvoicesContainer) materialInvoicesContainer.style.display = "none";
+    if (inventoryValuationContainer) inventoryValuationContainer.style.display = "none";
     if (registroMaterialContainer) registroMaterialContainer.style.display = "none";
     if (historialInventarioContainer) historialInventarioContainer.style.display = "none";
     if (ajusteNumeroContainer) ajusteNumeroContainer.style.display = "none";

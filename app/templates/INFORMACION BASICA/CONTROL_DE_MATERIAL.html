@@ -23,7 +23,7 @@
           </svg>
           Buscar
         </label>
-        <input id="cmat-search" type="search" autocomplete="off" placeholder="Número de parte, especificación o vendedor...">
+        <input id="cmat-search" type="search" autocomplete="off" placeholder="Número de parte, número original, especificación o vendedor...">
       </div>
 
       <div class="cmat-filter-group">
@@ -69,6 +69,11 @@
           <div class="cmat-filter-group">
             <label for="cmat-np">Número de parte</label>
             <input id="cmat-np" type="text" maxlength="512" required autocomplete="off" placeholder="Ej. EBR12345">
+          </div>
+
+          <div class="cmat-filter-group">
+            <label for="cmat-aliases-invoice">Número de parte original</label>
+            <input id="cmat-aliases-invoice" type="text" maxlength="1024" autocomplete="off" placeholder="Números originales separados por coma">
           </div>
 
           <div class="cmat-filter-group">
@@ -174,6 +179,71 @@
     </div>
   </div>
 
+  <!-- Modal de carga masiva de equivalencias -->
+  <div id="cmat-original-import-panel" class="cmat-modal" hidden>
+    <div class="cmat-modal-content cmat-import-modal-content" role="dialog" aria-modal="true" aria-labelledby="cmat-original-import-title">
+      <div class="cmat-modal-header">
+        <div class="cmat-modal-title-group">
+          <svg class="cmat-modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4"></path>
+            <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path>
+          </svg>
+          <h3 id="cmat-original-import-title">Importar números originales</h3>
+        </div>
+        <button id="cmat-original-import-close" class="cmat-close-btn" type="button" title="Cerrar" aria-label="Cerrar importación">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <form id="cmat-original-import-form" class="cmat-form cmat-original-import-form" autocomplete="off">
+        <div class="cmat-form-grid">
+          <div class="cmat-filter-group cmat-filter-group--file">
+            <label for="cmat-original-import-file">Excel de equivalencias</label>
+            <input id="cmat-original-import-file" name="file" type="file" accept=".xlsx,.xlsm,.xltx,.xltm">
+          </div>
+          <div class="cmat-filter-group">
+            <label for="cmat-original-import-type">Tipo por defecto</label>
+            <input id="cmat-original-import-type" name="tipo" type="text" maxlength="255" autocomplete="off" placeholder="Si el Excel no trae tipo">
+          </div>
+        </div>
+        <div id="cmat-original-import-message" class="cmat-inline-message" hidden></div>
+        <div id="cmat-original-preview-summary" class="cmat-preview-summary" hidden></div>
+        <div class="cmat-table-wrap cmat-preview-table-wrap">
+          <table class="cmat-table" aria-label="Preview de números originales">
+            <thead>
+              <tr>
+                <th>Número original</th>
+                <th>Parte sistema</th>
+                <th>Tipo</th>
+                <th>Estatus</th>
+                <th>Detalle</th>
+              </tr>
+            </thead>
+            <tbody id="cmat-original-preview-tbody">
+              <tr><td colspan="5" class="cmat-empty">Genera un preview antes de importar</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cmat-form-actions">
+          <button class="cmat-btn-ghost" type="button" id="cmat-original-import-cancel">Cancelar</button>
+          <button class="cmat-btn-header" type="submit" id="cmat-original-preview-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 5h18M3 12h18M3 19h18"></path>
+            </svg>
+            Preview
+          </button>
+          <button class="cmat-btn-primary" type="button" id="cmat-original-import-apply" disabled>
+            <svg class="cmat-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 13l4 4L19 7"></path>
+            </svg>
+            Importar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Tarjeta de resultados -->
   <div class="cmat-card">
     <div class="cmat-card-header">
@@ -182,6 +252,13 @@
       </svg>
       <h3>Materiales Registrados</h3>
       <span class="cmat-record-count"><strong id="cmat-total">0</strong> materiales</span>
+      <button id="cmat-open-original-import" class="cmat-btn-header" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3v12m0 0l-4-4m4 4l4-4"></path>
+          <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path>
+        </svg>
+        Importar números originales
+      </button>
       <button id="cmat-export" class="cmat-btn-new" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3"></path>
@@ -210,6 +287,7 @@
         <thead>
           <tr>
             <th>Número de parte</th>
+            <th>Número de parte original</th>
             <th>Propiedad</th>
             <th>Clasificación</th>
             <th>Especificación</th>
@@ -224,7 +302,7 @@
         </thead>
         <tbody id="cmat-tbody">
           <tr>
-            <td colspan="11" class="cmat-empty">Sin datos cargados</td>
+            <td colspan="12" class="cmat-empty">Sin datos cargados</td>
           </tr>
         </tbody>
       </table>
@@ -239,4 +317,4 @@
 
 </section>
 
-<script src="{{ url_for('static', filename='js/control_material_info.js', v='20260612a') }}"></script>
+<script src="{{ url_for('static', filename='js/control_material_info.js', v='20260612e') }}"></script>
