@@ -182,3 +182,22 @@ def test_validate_system_parts_packing_usa_match():
     validate_system_parts(_MaterialesCursor(), records, "numero_parte_sistema", "MATCH")
 
     assert records[0]["estado_match"] == "MATCH"
+
+
+def test_validate_system_parts_encuentra_por_parte_base_sin_version():
+    # El codigo trae version y/o lote (EAX66946005-1.0, EAX66946005-1.0-2026...)
+    # pero materiales tiene la base. Debe resolver a la base y tomar el UOM,
+    # probando los prefijos por guion del mas largo al mas corto.
+    records = [
+        {"numero_parte_sistema": "EAX66946005-1.0", "uom": "EA"},
+        {"numero_parte_sistema": "EAX66946005-1.4", "uom": "EA"},
+        {"numero_parte_sistema": "EAX66946005-1.0-202601090001", "uom": "EA"},
+    ]
+
+    validate_system_parts(_MaterialesCursor(), records, "numero_parte_sistema", "DIRECTO")
+
+    for record in records:
+        assert record["numero_parte_sistema"] == "EAX66946005"
+        assert record["estado_match"] == "DIRECTO"
+        assert record["uom"] == "MTR"
+    assert "base" in records[0]["mensaje_match"].lower()

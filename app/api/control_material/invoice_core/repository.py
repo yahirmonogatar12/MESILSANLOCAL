@@ -122,6 +122,14 @@ def packing_available_locked(cursor, packing_line_id):
     return packing, total, total - used
 
 def candidate_lots_for_packing(cursor, invoice, packing):
+    # El packing trae la parte BASE (resuelta por validate_system_parts), pero en
+    # almacen cma.numero_parte puede traer version/lote (EAX66946005-1.0). Se
+    # acepta igualdad con la base o que empiece por "base-" (con sufijo). No se
+    # usa el primer segmento a ciegas para no romper partes que legitimamente
+    # llevan guion (en ese caso packing.numero_parte_sistema ya es el codigo
+    # completo y la igualdad exacta funciona). El pallet debe coincidir: los
+    # lotes con pallet distinto se reportan aparte (mismatched_pallet_lots).
+    base = packing.get("numero_parte_sistema") or ""
     cursor.execute(
         """
         SELECT cma.codigo_material_recibido
@@ -131,14 +139,43 @@ def candidate_lots_for_packing(cursor, invoice, packing):
          AND active.estado = 'APLICADO'
         WHERE cma.numero_invoice = %s
           AND cma.pallet_no = %s
-          AND cma.numero_parte = %s
+          AND (cma.numero_parte = %s OR cma.numero_parte LIKE %s)
           AND active.id IS NULL
           AND (cma.cancelado = 0 OR cma.cancelado IS NULL)
         ORDER BY cma.fecha_recibo ASC, cma.id ASC
         """,
-        (invoice["numero_invoice"], packing.get("pallet_no"), packing.get("numero_parte_sistema")),
+        (invoice["numero_invoice"], packing.get("pallet_no"), base, f"{base}-%"),
     )
     return [row["codigo_material_recibido"] for row in (cursor.fetchall() or [])]
+
+
+def mismatched_pallet_lots_for_packing(cursor, invoice, packing):
+    """Lotes de la misma invoice+parte cuyo PALLET no coincide con el packing.
+
+    Son lotes que llegaron pero en un pallet distinto (o sin pallet). NO se
+    auto-aplican: se reportan como diferencia para revision manual, porque
+    aplicar a ciegas mezclaria el costo entre pallets. Devuelve filas con
+    codigo y el pallet real del lote para mostrarlo en el reporte.
+    """
+    base = packing.get("numero_parte_sistema") or ""
+    pallet = packing.get("pallet_no")
+    cursor.execute(
+        """
+        SELECT cma.codigo_material_recibido, cma.pallet_no AS pallet_lote
+        FROM control_material_almacen cma
+        LEFT JOIN material_invoice_lot_links active
+          ON active.codigo_material_recibido = cma.codigo_material_recibido
+         AND active.estado = 'APLICADO'
+        WHERE cma.numero_invoice = %s
+          AND (cma.numero_parte = %s OR cma.numero_parte LIKE %s)
+          AND active.id IS NULL
+          AND (cma.cancelado = 0 OR cma.cancelado IS NULL)
+          AND (cma.pallet_no IS NULL OR cma.pallet_no = '' OR cma.pallet_no <> %s)
+        ORDER BY cma.fecha_recibo ASC, cma.id ASC
+        """,
+        (invoice["numero_invoice"], base, f"{base}-%", pallet),
+    )
+    return cursor.fetchall() or []
 
 
 # Compatibilidad con nombres previos al refactor.
@@ -147,3 +184,4 @@ _recalculate_packing_state = recalculate_packing_state
 _recalculate_invoice_state = recalculate_invoice_state
 _packing_available_locked = packing_available_locked
 _candidate_lots_for_packing = candidate_lots_for_packing
+_mismatched_pallet_lots_for_packing = mismatched_pallet_lots_for_packing

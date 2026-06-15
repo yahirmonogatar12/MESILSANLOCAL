@@ -1,6 +1,6 @@
 (function () {
   const STYLE_ID = "material-invoices-css";
-  const STYLE_VERSION = "20260615g";
+  const STYLE_VERSION = "20260615s";
   const STYLE_HREF = `/static/css/material_invoices.css?v=${STYLE_VERSION}`;
 
   const state = {
@@ -11,6 +11,10 @@
     viewerWorkbook: null,
     viewerSheet: null,
     pendingUpload: null,
+    // Lote pendiente de confirmar en pallet distinto (modal de linkeo).
+    pendingPalletLink: null,
+    // Copia de los datos renderizados para exportar a Excel sin volver al backend.
+    data: { invoices: [], lines: [], packing: [], links: [] },
   };
 
   function ensureModuleStyles() {
@@ -126,9 +130,25 @@
     const params = new URLSearchParams();
     const q = el("mat-invoice-search")?.value.trim();
     const estado = el("mat-invoice-state")?.value;
+    const desde = el("mat-invoice-date-from")?.value;
+    const hasta = el("mat-invoice-date-to")?.value;
     if (q) params.set("q", q);
     if (estado) params.set("estado", estado);
+    if (desde) params.set("fecha_inicio", desde);
+    if (hasta) params.set("fecha_fin", hasta);
     return params;
+  }
+
+  function clearFilters() {
+    if (el("mat-invoice-search")) el("mat-invoice-search").value = "";
+    if (el("mat-invoice-state")) el("mat-invoice-state").value = "";
+    // Las fechas vuelven al dia de hoy (default inyectado por el servidor),
+    // no a vacio, para mantener el filtro centrado en el dia actual.
+    const from = el("mat-invoice-date-from");
+    const to = el("mat-invoice-date-to");
+    if (from) from.value = from.dataset.defaultDate || "";
+    if (to) to.value = to.dataset.defaultDate || "";
+    loadInvoices();
   }
 
   async function loadInvoices() {
@@ -147,6 +167,7 @@
 
   function renderInvoiceList(rows) {
     const body = el("mat-invoice-list-body");
+    state.data.invoices = rows;
     if (!body) return;
     if (!rows.length) {
       body.innerHTML = `<tr><td colspan="9">No hay invoices cargadas.</td></tr>`;
@@ -184,7 +205,6 @@
       state.selectedInvoice = data.invoice;
       renderDetail(data);
       el("mat-invoice-detail").hidden = false;
-      el("mat-invoice-export").disabled = false;
       await loadInvoices();
     } catch (err) {
       setMessage("mat-invoice-upload-message", `Error al cargar detalle: ${err.message}`);
@@ -209,6 +229,7 @@
 
   function renderLines(rows) {
     const body = el("mat-invoice-lines-body");
+    state.data.lines = rows;
     if (!body) return;
     if (!rows.length) {
       body.innerHTML = `<tr><td colspan="9">Sin lineas.</td></tr>`;
@@ -229,13 +250,36 @@
 
   function renderPacking(rows) {
     const body = el("mat-invoice-packing-body");
+    state.data.packing = rows;
     if (!body) return;
     if (!rows.length) {
       body.innerHTML = `<tr><td colspan="13">Sin packing.</td></tr>`;
       return;
     }
-    body.innerHTML = rows.map((row) => `<tr>
-      <td>${numberText(row.line_no)}</td>
+    // Las diferencias de pallet van primero (requieren atencion); el resto
+    // conserva su orden. Array.sort es estable, asi que no altera lo demas.
+    const ordered = rows.slice().sort((a, b) => {
+      const da = a.estado_match === "DIFERENCIA_PALLET" ? 0 : 1;
+      const db = b.estado_match === "DIFERENCIA_PALLET" ? 0 : 1;
+      return da - db;
+    });
+    body.innerHTML = ordered.map((row) => {
+      // Filas de material llegado en pallet inesperado: se resaltan y ofrecen
+      // un boton para confirmar/linkear a un packing parcial de la misma parte.
+      const diff = row.estado_match === "DIFERENCIA_PALLET";
+      const accion = diff
+        ? `<button type="button" class="mat-invoice-btn small warning mat-invoice-link-pallet"
+             data-lote="${escapeHtml(row.ejemplo_codigo)}"
+             data-pallet="${escapeHtml(row.pallet_no)}"
+             data-parte="${escapeHtml(row.numero_parte_sistema)}">Confirmar/linkear</button>`
+        : escapeHtml(row.mensaje_match);
+      // Flecha desplegable solo cuando el packing tiene lotes aplicados.
+      const tieneLotes = Array.isArray(row.lotes) && row.lotes.length;
+      const toggle = tieneLotes
+        ? `<button type="button" class="mat-invoice-lote-toggle" data-toggle-lotes="${escapeHtml(row.id)}" aria-expanded="false" title="Ver lotes aplicados">▶</button> `
+        : "";
+      const fila = `<tr class="${diff ? "mat-invoice-row-diff" : ""}">
+      <td>${toggle}${numberText(row.line_no)}</td>
       <td>${escapeHtml(row.pallet_no_original)}</td>
       <td>${escapeHtml(row.pallet_no)}</td>
       <td title="${escapeHtml(row.numero_parte_sistema)}">${escapeHtml(row.numero_parte_sistema)}</td>
@@ -247,31 +291,76 @@
       <td>${numberText(row.kg)}</td>
       <td>${numberText(row.cbm)}</td>
       <td>${statusBadge(row.estado_match)}</td>
-      <td title="${escapeHtml(row.mensaje_match)}">${escapeHtml(row.mensaje_match)}</td>
-    </tr>`).join("");
+      <td title="${escapeHtml(row.mensaje_match)}">${accion}</td>
+    </tr>`;
+      return fila + renderPackingLotes(row.id, row.lotes);
+    }).join("");
+  }
+
+  // Sub-filas: desglose de los lotes aplicados a un packing line. Conserva la
+  // trazabilidad de que pallet real llego cada cantidad. Las que llegaron en
+  // pallet distinto se marcan con su pallet recibido vs esperado + nota.
+  // Arrancan ocultas; se despliegan con la flecha del packing line.
+  function renderPackingLotes(parentId, lotes) {
+    if (!Array.isArray(lotes) || !lotes.length) return "";
+    return lotes.map((l) => {
+      const palletDistinto = l.pallet_recibido != null && l.pallet_recibido !== "";
+      let palletCell = "";
+      if (palletDistinto) {
+        const tip = `Llego en pallet ${l.pallet_recibido} (esperado ${l.pallet_esperado || "?"})` +
+          (l.nota_aplicacion ? ` — ${l.nota_aplicacion}` : "");
+        palletCell = `<span class="mat-invoice-status DIFERENCIA" title="${escapeHtml(tip)}">pallet ${escapeHtml(l.pallet_recibido)}</span>`;
+      }
+      return `<tr class="mat-invoice-lote-row${palletDistinto ? " mat-invoice-row-diff" : ""}" data-lotes-of="${escapeHtml(parentId)}" hidden>
+        <td></td>
+        <td></td>
+        <td>${palletCell}</td>
+        <td colspan="2" title="${escapeHtml(l.codigo_material_recibido)}">↳ ${escapeHtml(l.codigo_material_recibido)}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td>${numberText(l.cantidad_aplicada)}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td title="${escapeHtml(l.nota_aplicacion)}">${escapeHtml(l.nota_aplicacion || "")}</td>
+      </tr>`;
+    }).join("");
   }
 
   function renderLinks(rows) {
     const body = el("mat-invoice-links-body");
+    state.data.links = rows;
     if (!body) return;
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="9">Sin links.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="10">Sin links.</td></tr>`;
       return;
     }
-    body.innerHTML = rows.map((row) => `<tr>
+    body.innerHTML = rows.map((row) => {
+      // Registro de pallet distinto: esperado -> recibido + nota.
+      let pallet = "";
+      if (row.pallet_recibido || row.pallet_esperado) {
+        const txt = `${row.pallet_recibido || "?"} (esperado ${row.pallet_esperado || "?"})`;
+        const tip = row.nota_aplicacion ? `${txt} — ${row.nota_aplicacion}` : txt;
+        pallet = `<span class="mat-invoice-status DIFERENCIA" title="${escapeHtml(tip)}">${escapeHtml(txt)}</span>`;
+      }
+      return `<tr>
       <td>${escapeHtml(row.id)}</td>
       <td title="${escapeHtml(row.codigo_material_recibido)}">${escapeHtml(row.codigo_material_recibido)}</td>
       <td title="${escapeHtml(row.numero_parte_sistema)}">${escapeHtml(row.numero_parte_sistema)}</td>
       <td>${numberText(row.cantidad_aplicada)}</td>
       <td>${numberText(row.costo_unitario)} ${escapeHtml(row.moneda)}</td>
+      <td>${pallet}</td>
       <td>${statusBadge(row.estado)}</td>
       <td>${escapeHtml(row.usuario_aplicacion)}</td>
       <td>${escapeHtml(row.fecha_aplicacion)}</td>
       <td>${escapeHtml(row.usuario_desaplicado)}</td>
-    </tr>`).join("");
+    </tr>`;
+    }).join("");
   }
 
   function closePreview() {
+    setPreviewLoading(false);
     hideModal("mat-invoice-preview");
     state.pendingUpload = null;
   }
@@ -351,10 +440,36 @@
     }).join("");
   }
 
+  // Activa/desactiva el estado "cargando" dentro del modal de preview:
+  // el loader global vive fuera del modal (z-index del modal lo tapa),
+  // asi que mostramos el progreso en el propio boton de confirmar.
+  function setPreviewLoading(active) {
+    const confirmBtn = el("mat-invoice-preview-confirm");
+    const cancelBtns = document.querySelectorAll("#mat-invoice-preview [data-preview-close]");
+    if (confirmBtn) {
+      if (active) {
+        if (!confirmBtn.dataset.label) confirmBtn.dataset.label = confirmBtn.textContent;
+        confirmBtn.disabled = true;
+        confirmBtn.classList.add("is-loading");
+        confirmBtn.textContent = "Cargando...";
+      } else {
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove("is-loading");
+        if (confirmBtn.dataset.label) {
+          confirmBtn.textContent = confirmBtn.dataset.label;
+          delete confirmBtn.dataset.label;
+        }
+      }
+    }
+    cancelBtns.forEach((btn) => { btn.disabled = active; });
+  }
+
   // Paso 2: confirma y carga de verdad usando el FormData previsualizado.
   async function confirmUpload() {
     if (!state.pendingUpload) return;
     setLoading(true);
+    setPreviewLoading(true);
+    setMessage("mat-invoice-preview-message", "Cargando invoice, no cierres esta ventana...", "success");
     try {
       const data = await fetchJson("/api/material_admin/invoices/upload", {
         method: "POST",
@@ -372,6 +487,7 @@
         setMessage("mat-invoice-preview-message", `Error al cargar: ${err.message}`);
       }
     } finally {
+      setPreviewLoading(false);
       setLoading(false);
     }
   }
@@ -413,14 +529,112 @@
       const omitted = Number(data.omitidos || 0);
       const applied = Number(data.aplicados || 0);
       const unapplied = Number(data.links_desaplicados || data.unapply?.links_desaplicados || 0);
+      // Lotes que llegaron en un pallet distinto: se detectan pero no se aplican.
+      const palletDiffs = (data.skipped || []).filter((s) => s && s.pallet_mismatch);
+      let extra = "";
+      if (palletDiffs.length) {
+        const detalle = palletDiffs.slice(0, 8).map((s) =>
+          `${s.codigo_material_recibido} (pallet ${s.pallet_lote} vs ${s.pallet_packing})`
+        ).join(", ");
+        const mas = palletDiffs.length > 8 ? ` y ${palletDiffs.length - 8} mas` : "";
+        extra = ` ⚠️ ${palletDiffs.length} lote(s) con pallet distinto, no aplicados (revisar): ${detalle}${mas}.`;
+      }
       setMessage(
         "mat-invoice-detail-message",
-        `Estado: ${data.estado || ""}. Aplicados: ${applied}. Omitidos: ${omitted}. Desaplicados: ${unapplied}.`,
-        "success"
+        `Estado: ${data.estado || ""}. Aplicados: ${applied}. Omitidos: ${omitted}. Desaplicados: ${unapplied}.${extra}`,
+        palletDiffs.length ? "" : "success"
       );
       await loadDetail(state.selectedInvoiceId);
     } catch (err) {
       setMessage("mat-invoice-detail-message", `Error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function closePalletLink() {
+    hideModal("mat-invoice-pallet-link");
+    state.pendingPalletLink = null;
+  }
+
+  // Abre el modal para confirmar un lote que llego en pallet distinto y elegir
+  // a que packing parcial (de la misma parte) linkearlo.
+  async function openPalletLink(codigo, palletRecibido, parte) {
+    if (!state.selectedInvoiceId || !codigo) return;
+    state.pendingPalletLink = { codigo };
+    const modal = openModal("mat-invoice-pallet-link");
+    if (!modal) return;
+    const subtitle = el("mat-invoice-pallet-link-subtitle");
+    const target = el("mat-invoice-pallet-link-target");
+    const note = el("mat-invoice-pallet-link-note");
+    if (subtitle) subtitle.textContent = "Cargando...";
+    if (target) target.innerHTML = "";
+    if (note) note.value = "";
+    setMessage("mat-invoice-pallet-link-message", "");
+    try {
+      const params = new URLSearchParams({ codigo_material_recibido: codigo });
+      const data = await fetchJson(
+        `/api/material_admin/invoices/${state.selectedInvoiceId}/partial-packing?${params.toString()}`
+      );
+      const records = data.records || [];
+      if (subtitle) {
+        subtitle.textContent =
+          `Lote ${codigo} · parte ${data.numero_parte_sistema || parte || ""} · ` +
+          `llego en pallet ${data.pallet_recibido || palletRecibido || "?"} · ` +
+          `cantidad ${numberText(data.cantidad_lote)}`;
+      }
+      if (!records.length) {
+        setMessage("mat-invoice-pallet-link-message",
+          "No hay packing lines parciales de esta parte para linkear.");
+        if (target) target.innerHTML = `<option value="">(sin opciones)</option>`;
+        return;
+      }
+      if (target) {
+        target.innerHTML = records.map((r) =>
+          `<option value="${escapeHtml(r.id)}">Packing #${escapeHtml(r.line_no)} · pallet ${escapeHtml(r.pallet_no)} · ` +
+          `pendiente ${numberText(r.cantidad_pendiente)} de ${numberText(r.cantidad_packing)}</option>`
+        ).join("");
+      }
+    } catch (err) {
+      if (subtitle) subtitle.textContent = "";
+      setMessage("mat-invoice-pallet-link-message", `No se pudo cargar: ${err.message}`);
+    }
+  }
+
+  async function confirmPalletLink() {
+    const pending = state.pendingPalletLink;
+    const target = el("mat-invoice-pallet-link-target");
+    const note = el("mat-invoice-pallet-link-note");
+    if (!pending || !target?.value) {
+      setMessage("mat-invoice-pallet-link-message", "Selecciona un packing destino.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await fetchJson(`/api/material_admin/invoices/${state.selectedInvoiceId}/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{
+            codigo_material_recibido: pending.codigo,
+            packing_line_id: Number(target.value),
+            permitir_pallet_distinto: true,
+            nota_aplicacion: note?.value?.trim() || "Material recibido en pallet distinto",
+          }],
+        }),
+      });
+      const applied = Number(data.aplicados || 0);
+      if (applied > 0) {
+        closePalletLink();
+        setMessage("mat-invoice-detail-message",
+          `Lote ${pending.codigo} linkeado (llego en pallet distinto, registrado).`, "success");
+        await loadDetail(state.selectedInvoiceId);
+      } else {
+        const motivo = (data.skipped && data.skipped[0]?.error) || "No se pudo aplicar.";
+        setMessage("mat-invoice-pallet-link-message", motivo);
+      }
+    } catch (err) {
+      setMessage("mat-invoice-pallet-link-message", `Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -462,6 +676,156 @@
     }
     if (typeof window.XLSX === "undefined") {
       throw new Error("La libreria de Excel no se cargo.");
+    }
+  }
+
+  // Definicion de columnas por tabla: [encabezado, accessor]. El accessor
+  // devuelve el valor crudo para el Excel (numeros como numero, no texto).
+  function numericCell(value) {
+    if (value === null || value === undefined || value === "") return "";
+    const n = Number(value);
+    return Number.isFinite(n) ? n : value;
+  }
+
+  const EXPORT_TABLES = {
+    invoices: {
+      sheet: "Invoices",
+      file: () => "invoices",
+      get rows() { return state.data.invoices; },
+      columns: [
+        ["Invoice", (r) => r.numero_invoice],
+        ["Estado", (r) => r.estado],
+        ["Tipo", (r) => r.tipo],
+        ["Lineas", (r) => numericCell(r.total_lineas)],
+        ["Packing", (r) => numericCell(r.total_packing)],
+        ["Links", (r) => numericCell(r.links_activos)],
+        ["Fecha", (r) => r.fecha_carga],
+        ["Archivo", (r) => r.archivo_nombre || r.archivo_ruta || ""],
+      ],
+    },
+    lines: {
+      sheet: "Lineas",
+      file: () => `lineas_${state.selectedInvoice?.numero_invoice || state.selectedInvoiceId}`,
+      get rows() { return state.data.lines; },
+      columns: [
+        ["No.", (r) => numericCell(r.line_no)],
+        ["Parte raw", (r) => r.raw_part_num],
+        ["Parte sistema", (r) => r.numero_parte_sistema],
+        ["Descripcion", (r) => r.descripcion],
+        ["Cantidad", (r) => numericCell(r.cantidad)],
+        ["UOM", (r) => r.uom],
+        ["Costo unit.", (r) => numericCell(r.costo_unitario)],
+        ["Total", (r) => numericCell(r.costo_total)],
+        ["Estado", (r) => r.estado_match],
+      ],
+    },
+    packing: {
+      sheet: "Packing",
+      file: () => `packing_${state.selectedInvoice?.numero_invoice || state.selectedInvoiceId}`,
+      get rows() { return state.data.packing; },
+      // Hoja principal: resumen, una fila por packing (sin bulto de lotes).
+      columns: [
+        ["No.", (r) => numericCell(r.line_no)],
+        ["Pallet raw", (r) => r.pallet_no_original],
+        ["Pallet", (r) => r.pallet_no],
+        ["Parte sistema", (r) => r.numero_parte_sistema],
+        ["Cantidad", (r) => numericCell(r.cantidad_packing)],
+        ["Entradas", (r) => numericCell(r.entradas_recibidas)],
+        ["Cant. entrada", (r) => numericCell(r.cantidad_recibida)],
+        ["Pend. entrada", (r) => numericCell(r.cantidad_pendiente_entrada)],
+        ["Aplicado", (r) => numericCell(r.cantidad_aplicada_activa)],
+        ["KG", (r) => numericCell(r.kg)],
+        ["CBM", (r) => numericCell(r.cbm)],
+        ["Estado", (r) => r.estado_match],
+        ["Mensaje", (r) => r.mensaje_match],
+      ],
+      // Hoja adicional "Detallado": una fila por lote aplicado, con el detalle
+      // de pallet recibido/esperado para conservar la trazabilidad.
+      extraSheets: [{
+        name: "Detallado",
+        rows: () => state.data.packing.flatMap((p) =>
+          (Array.isArray(p.lotes) ? p.lotes : []).map((l) => ({ packing: p, lote: l }))
+        ),
+        columns: [
+          ["No. packing", (x) => numericCell(x.packing.line_no)],
+          ["Pallet packing", (x) => x.packing.pallet_no],
+          ["Parte sistema", (x) => x.packing.numero_parte_sistema],
+          ["Cantidad packing", (x) => numericCell(x.packing.cantidad_packing)],
+          ["Lote aplicado", (x) => x.lote.codigo_material_recibido],
+          ["Cant. lote", (x) => numericCell(x.lote.cantidad_aplicada)],
+          ["Pallet recibido", (x) => x.lote.pallet_recibido],
+          ["Pallet esperado", (x) => x.lote.pallet_esperado],
+          ["Nota pallet", (x) => x.lote.nota_aplicacion],
+        ],
+      }],
+    },
+    links: {
+      sheet: "Links",
+      file: () => `links_${state.selectedInvoice?.numero_invoice || state.selectedInvoiceId}`,
+      get rows() { return state.data.links; },
+      columns: [
+        ["ID", (r) => numericCell(r.id)],
+        ["Codigo recibido", (r) => r.codigo_material_recibido],
+        ["Parte", (r) => r.numero_parte_sistema],
+        ["Cantidad", (r) => numericCell(r.cantidad_aplicada)],
+        ["Costo", (r) => numericCell(r.costo_unitario)],
+        ["Moneda", (r) => r.moneda],
+        ["Pallet recibido", (r) => r.pallet_recibido],
+        ["Pallet esperado", (r) => r.pallet_esperado],
+        ["Nota pallet", (r) => r.nota_aplicacion],
+        ["Estado", (r) => r.estado],
+        ["Aplicado por", (r) => r.usuario_aplicacion],
+        ["Fecha aplicacion", (r) => r.fecha_aplicacion],
+        ["Desaplicado por", (r) => r.usuario_desaplicado],
+      ],
+    },
+  };
+
+  // Limpia un nombre para usarlo como archivo (sin caracteres invalidos).
+  function safeFileName(value) {
+    return String(value || "export").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 100);
+  }
+
+  async function exportTable(key) {
+    const def = EXPORT_TABLES[key];
+    if (!def) return;
+    const rows = def.rows || [];
+    if (!rows.length) {
+      setMessage("mat-invoice-detail-message", "No hay datos para exportar.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await ensureSheetJs();
+      // Convierte (columns, rows) en una matriz [encabezados, ...filas].
+      const toAoa = (columns, dataRows) => {
+        const aoa = [columns.map(([title]) => title)];
+        (dataRows || []).forEach((row) => {
+          aoa.push(columns.map(([, accessor]) => {
+            const value = accessor(row);
+            return value === null || value === undefined ? "" : value;
+          }));
+        });
+        return aoa;
+      };
+      const wb = window.XLSX.utils.book_new();
+      // Hoja principal (resumen).
+      window.XLSX.utils.book_append_sheet(
+        wb, window.XLSX.utils.aoa_to_sheet(toAoa(def.columns, rows)), def.sheet
+      );
+      // Hojas adicionales (p.ej. "Detallado") para no recargar la principal.
+      (def.extraSheets || []).forEach((extra) => {
+        const extraRows = typeof extra.rows === "function" ? extra.rows() : (extra.rows || []);
+        window.XLSX.utils.book_append_sheet(
+          wb, window.XLSX.utils.aoa_to_sheet(toAoa(extra.columns, extraRows)), extra.name
+        );
+      });
+      const fecha = new Date().toISOString().slice(0, 10);
+      window.XLSX.writeFile(wb, `${safeFileName(def.file())}_${fecha}.xlsx`);
+    } catch (err) {
+      setMessage("mat-invoice-detail-message", `No se pudo exportar: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -590,6 +954,26 @@
         closePreview();
         return;
       }
+      const linkPalletBtn = target.closest(".mat-invoice-link-pallet");
+      if (linkPalletBtn) {
+        event.preventDefault();
+        openPalletLink(
+          linkPalletBtn.getAttribute("data-lote"),
+          linkPalletBtn.getAttribute("data-pallet"),
+          linkPalletBtn.getAttribute("data-parte")
+        );
+        return;
+      }
+      if (target.closest("#mat-invoice-pallet-link-confirm")) {
+        event.preventDefault();
+        confirmPalletLink();
+        return;
+      }
+      if (target.closest("[data-pallet-link-close]")) {
+        event.preventDefault();
+        closePalletLink();
+        return;
+      }
       const deleteBtn = target.closest("[data-delete-invoice-id]");
       if (deleteBtn) {
         event.preventDefault();
@@ -640,11 +1024,15 @@
         loadInvoices();
         return;
       }
-      if (target.closest("#mat-invoice-export")) {
+      if (target.closest("#mat-invoice-clear-filters")) {
         event.preventDefault();
-        if (state.selectedInvoiceId) {
-          window.location.href = `/api/material_admin/invoices/${state.selectedInvoiceId}/export`;
-        }
+        clearFilters();
+        return;
+      }
+      const exportBtn = target.closest("[data-export]");
+      if (exportBtn) {
+        event.preventDefault();
+        exportTable(exportBtn.getAttribute("data-export"));
         return;
       }
       if (target.closest("#mat-invoice-apply-auto")) {
@@ -663,6 +1051,17 @@
         postAction("unapply", { motivo_desaplicado: motivo });
         return;
       }
+      const loteToggle = target.closest("[data-toggle-lotes]");
+      if (loteToggle) {
+        event.preventDefault();
+        const parentId = loteToggle.getAttribute("data-toggle-lotes");
+        const subRows = document.querySelectorAll(`#mat-invoice-packing-body [data-lotes-of="${CSS.escape(parentId)}"]`);
+        const expandir = loteToggle.getAttribute("aria-expanded") !== "true";
+        subRows.forEach((tr) => { tr.hidden = !expandir; });
+        loteToggle.setAttribute("aria-expanded", expandir ? "true" : "false");
+        loteToggle.textContent = expandir ? "▼" : "▶";
+        return;
+      }
       const tabButton = target.closest("#mat-invoice-page .mat-invoice-tab");
       if (tabButton?.dataset.tab) {
         event.preventDefault();
@@ -674,7 +1073,9 @@
     document.body.addEventListener("change", (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
-      if (target.id === "mat-invoice-state") {
+      if (target.id === "mat-invoice-state"
+          || target.id === "mat-invoice-date-from"
+          || target.id === "mat-invoice-date-to") {
         loadInvoices();
       }
       if (target.id === "mat-invoice-viewer-sheets") {
@@ -693,7 +1094,9 @@
 
     document.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
-      if (!el("mat-invoice-preview")?.hidden) {
+      if (!el("mat-invoice-pallet-link")?.hidden) {
+        closePalletLink();
+      } else if (!el("mat-invoice-preview")?.hidden) {
         closePreview();
       } else if (!el("mat-invoice-viewer")?.hidden) {
         closeViewer();
@@ -712,10 +1115,11 @@
     state.viewerInvoiceId = null;
     state.viewerWorkbook = null;
     state.pendingUpload = null;
+    state.pendingPalletLink = null;
     hideModal("mat-invoice-viewer");
     hideModal("mat-invoice-preview");
+    hideModal("mat-invoice-pallet-link");
     if (el("mat-invoice-detail")) el("mat-invoice-detail").hidden = true;
-    if (el("mat-invoice-export")) el("mat-invoice-export").disabled = true;
     loadInvoices();
   };
 })();

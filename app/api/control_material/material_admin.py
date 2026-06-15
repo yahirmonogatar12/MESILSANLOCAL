@@ -485,9 +485,17 @@ def _material_admin_history_rows(tipo, args, export=False):
               cma.estado_desecho,
               cma.vendedor,
               cma.cancelado,
-              cma.usuario_registro
+              cma.usuario_registro,
+              ilc.costo_unitario AS costo_unitario,
+              CASE
+                WHEN ilc.costo_unitario IS NULL THEN NULL
+                ELSE ilc.costo_unitario * COALESCE(cma.cantidad_actual, 0)
+              END AS costo_total,
+              ilc.moneda AS moneda_costo
             FROM control_material_almacen cma
             LEFT JOIN materiales m ON cma.numero_parte = m.numero_parte
+            LEFT JOIN inventario_lote_costos ilc
+              ON ilc.codigo_material_recibido = cma.codigo_material_recibido
             WHERE 1=1
         """
         date_field = "cma.fecha_recibo"
@@ -514,6 +522,9 @@ def _material_admin_history_rows(tipo, args, export=False):
             "vendedor": "cma.vendedor",
             "cancelado": "CASE WHEN cma.cancelado IN (1, '1', TRUE) THEN 'Si' ELSE 'No' END",
             "usuario_registro": "cma.usuario_registro",
+            "costo_unitario": "ilc.costo_unitario",
+            "costo_total": "ilc.costo_unitario * COALESCE(cma.cantidad_actual, 0)",
+            "moneda_costo": "ilc.moneda",
         }
     elif tipo == "salidas":
         query = """
@@ -697,6 +708,16 @@ def _material_admin_excel_response(filename, sheet_name, headers, rows):
             if field == "version":
                 cell.value = "" if value in (None, "") else str(value)
                 cell.number_format = "@"
+            elif field in ("costo_unitario", "costo_total"):
+                # Costos: conservar decimales (no truncar a int como el resto).
+                if value in (None, ""):
+                    cell.value = ""
+                else:
+                    try:
+                        cell.value = float(Decimal(str(value).replace(",", "")))
+                        cell.number_format = "#,##0.0000"
+                    except Exception:
+                        cell.value = value
             elif value not in (None, ""):
                 try:
                     numeric_value = Decimal(str(value).replace(",", ""))
@@ -823,6 +844,9 @@ def api_material_admin_history_export(tipo):
             ("material_importacion_local", "Material Consignado"),
             ("estado_desecho", "Disposicion"),
             ("cancelado", "Cancelled"),
+            ("costo_unitario", "Costo Unitario"),
+            ("costo_total", "Costo Total"),
+            ("moneda_costo", "Moneda"),
         ],
         "salidas": [
             ("fecha_salida", "Fecha de Salida"),

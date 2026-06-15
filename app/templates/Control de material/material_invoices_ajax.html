@@ -6,7 +6,7 @@
         </div>
         <div class="mat-invoice-header-actions">
             <button id="mat-invoice-refresh" class="mat-invoice-btn" type="button">Actualizar</button>
-            <button id="mat-invoice-export" class="mat-invoice-btn success" type="button" disabled>Exportar</button>
+            <button id="mat-invoice-export" class="mat-invoice-btn success" type="button" data-export="invoices">Exportar lista</button>
         </div>
     </div>
 
@@ -41,6 +41,7 @@
                     Estado
                     <select id="mat-invoice-state">
                         <option value="">Todos</option>
+                        <option value="PENDIENTES">Solo pendientes</option>
                         <option value="VALIDADA">VALIDADA</option>
                         <option value="CON_DIFERENCIAS">CON_DIFERENCIAS</option>
                         <option value="PARCIALMENTE_APLICADA">PARCIALMENTE_APLICADA</option>
@@ -48,7 +49,16 @@
                         <option value="CANCELADA">CANCELADA</option>
                     </select>
                 </label>
+                <label>
+                    Desde
+                    <input id="mat-invoice-date-from" type="date" value="{{ fecha_hoy }}" data-default-date="{{ fecha_hoy }}">
+                </label>
+                <label>
+                    Hasta
+                    <input id="mat-invoice-date-to" type="date" value="{{ fecha_hoy }}" data-default-date="{{ fecha_hoy }}">
+                </label>
                 <button id="mat-invoice-search-btn" class="mat-invoice-btn" type="button">Consultar</button>
+                <button id="mat-invoice-clear-filters" class="mat-invoice-btn" type="button">Limpiar</button>
             </div>
             <div class="mat-invoice-table-wrap compact">
                 <table class="mat-invoice-table">
@@ -93,6 +103,9 @@
         <div id="mat-invoice-detail-message" class="mat-invoice-message" hidden></div>
 
         <div id="mat-invoice-tab-lines" class="mat-invoice-tab-panel">
+            <div class="mat-invoice-table-toolbar">
+                <button class="mat-invoice-btn success small" type="button" data-export="lines">Exportar Excel</button>
+            </div>
             <div class="mat-invoice-table-wrap">
                 <table class="mat-invoice-table">
                     <thead>
@@ -114,6 +127,9 @@
         </div>
 
         <div id="mat-invoice-tab-packing" class="mat-invoice-tab-panel" hidden>
+            <div class="mat-invoice-table-toolbar">
+                <button class="mat-invoice-btn success small" type="button" data-export="packing">Exportar Excel</button>
+            </div>
             <div class="mat-invoice-table-wrap">
                 <table class="mat-invoice-table">
                     <thead>
@@ -139,6 +155,9 @@
         </div>
 
         <div id="mat-invoice-tab-links" class="mat-invoice-tab-panel" hidden>
+            <div class="mat-invoice-table-toolbar">
+                <button class="mat-invoice-btn success small" type="button" data-export="links">Exportar Excel</button>
+            </div>
             <div class="mat-invoice-table-wrap">
                 <table class="mat-invoice-table">
                     <thead>
@@ -148,6 +167,7 @@
                             <th>Parte</th>
                             <th>Cantidad</th>
                             <th>Costo</th>
+                            <th>Pallet</th>
                             <th>Estado</th>
                             <th>Aplicado por</th>
                             <th>Fecha aplicacion</th>
@@ -222,6 +242,38 @@
             </div>
         </div>
     </div>
+
+    <div id="mat-invoice-pallet-link" class="mat-invoice-viewer" hidden>
+        <div class="mat-invoice-viewer-backdrop" data-pallet-link-close></div>
+        <div class="mat-invoice-viewer-dialog mat-invoice-dialog-compact" role="dialog" aria-modal="true">
+            <div class="mat-invoice-viewer-head">
+                <div>
+                    <h3>Confirmar material en pallet distinto</h3>
+                    <span id="mat-invoice-pallet-link-subtitle"></span>
+                </div>
+                <div class="mat-invoice-header-actions">
+                    <button id="mat-invoice-pallet-link-confirm" class="mat-invoice-btn primary" type="button">Confirmar y linkear</button>
+                    <button class="mat-invoice-btn" type="button" data-pallet-link-close>Cancelar</button>
+                </div>
+            </div>
+            <div class="mat-invoice-form-body">
+                <div id="mat-invoice-pallet-link-message" class="mat-invoice-message" hidden></div>
+                <p class="mat-invoice-pallet-link-help">
+                    Selecciona el packing line (parcial) al que pertenece este material.
+                    Quedara registrado que llego en un pallet distinto.
+                </p>
+                <label class="mat-invoice-pallet-link-field">
+                    Linkear a packing
+                    <select id="mat-invoice-pallet-link-target" class="mat-invoice-viewer-select"></select>
+                </label>
+                <label class="mat-invoice-pallet-link-field">
+                    Nota / motivo
+                    <input id="mat-invoice-pallet-link-note" type="text" maxlength="255"
+                           placeholder="Ej. movido de pallet 1 a 2 en almacen">
+                </label>
+            </div>
+        </div>
+    </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260615g') }}"></script>
+<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260615s') }}"></script>

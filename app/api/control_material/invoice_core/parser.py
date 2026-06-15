@@ -15,6 +15,7 @@ from app.api.control_material.invoice_core.normalizers import (
     normalizar_numero_parte,
     normalizar_pallet_no,
     raw_text,
+    version_parte,
 )
 
 INVOICE_CONVERTED_SHEET_NAME = "INVOICE(CONVERTED)"
@@ -418,10 +419,15 @@ def _parse_converted_sheet(sheet):
             total = (unit * qty).quantize(Decimal("0.0001"))
 
         invoice_part = normalizar_numero_parte(part_raw)
-        # Part Sys ya viene resuelto en la hoja; si falta, se usa la parte raw
-        # y la resolucion por alias del backend hara el resto.
+        # Part Sys ya viene resuelto en la hoja; si falta, se usa la parte raw.
+        # El usuario apila el codigo como parte-version-lote (ej.
+        # EAX66946005-1.0-...), pero materiales/almacen/costos usan la parte base.
+        # No se pre-corta aqui: validate_system_parts (con acceso a materiales)
+        # resuelve la base real probando los prefijos por guion. La version queda
+        # disponible aparte y en raw_part_num.
         sys_raw = raw_text(_cell(row, header.get("part_sys")))
         system_part = normalizar_numero_parte(sys_raw) or invoice_part
+        parte_version = version_parte(sys_raw) or version_parte(part_raw)
         item = raw_text(_cell(row, header.get("item")))
         spec = raw_text(_cell(row, header.get("spec")))
         uom = raw_text(_cell(row, header.get("uom")))

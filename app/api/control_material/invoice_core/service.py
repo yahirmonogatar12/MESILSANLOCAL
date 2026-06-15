@@ -28,8 +28,10 @@ from app.api.control_material.invoice_core.matcher import (
 )
 from app.api.control_material.invoice_core.normalizers import (
     decimal_or_zero,
+    json_value,
     normalizar_numero_parte,
     normalizar_pallet_no,
+    prefijos_por_guion,
     raw_text,
     row_to_json,
 )
@@ -37,6 +39,7 @@ from app.api.control_material.invoice_core.parser import parse_invoice_workbook
 from app.api.control_material.invoice_core.repository import (
     candidate_lots_for_packing,
     fetch_invoice,
+    mismatched_pallet_lots_for_packing,
     packing_available_locked,
     recalculate_invoice_state,
     recalculate_packing_state,
@@ -75,15 +78,28 @@ def list_invoices(args):
     try:
         q = sanitizar_texto(args.get("q"), 120)
         estado = sanitizar_texto(args.get("estado"), 40).upper()
+        fecha_inicio = sanitizar_texto(args.get("fecha_inicio"), 10)
+        fecha_fin = sanitizar_texto(args.get("fecha_fin"), 10)
         params = []
         where = ["1=1"]
         if q:
             where.append("(mi.numero_invoice LIKE %s OR COALESCE(mi.tipo, '') LIKE %s OR mi.archivo_nombre LIKE %s)")
             like = f"%{q}%"
             params.extend([like, like, like])
-        if estado in ESTADOS_INVOICE:
+        # "PENDIENTES": invoices que aun no estan completamente aplicadas ni
+        # canceladas (lo que falta por conciliar/aplicar). El resto filtra por
+        # el estado exacto.
+        if estado == "PENDIENTES":
+            where.append("mi.estado NOT IN ('APLICADA', 'CANCELADA')")
+        elif estado in ESTADOS_INVOICE:
             where.append("mi.estado = %s")
             params.append(estado)
+        if fecha_inicio:
+            where.append("mi.fecha_carga >= %s")
+            params.append(f"{fecha_inicio} 00:00:00")
+        if fecha_fin:
+            where.append("mi.fecha_carga <= %s")
+            params.append(f"{fecha_fin} 23:59:59")
 
         cursor.execute(
             f"""
@@ -483,6 +499,91 @@ def get_invoice_detail(invoice_id):
             (invoice["numero_invoice"], invoice["numero_invoice"], invoice_id, invoice_id),
         )
         packing = [row_to_json(r) for r in (cursor.fetchall() or [])]
+
+        # Lotes aplicados a cada packing line (para desglosar en sub-filas y
+        # conservar la trazabilidad: que pallet real llego, cuanto y la nota si
+        # vino de un pallet distinto).
+        cursor.execute(
+            """
+            SELECT
+              packing_line_id,
+              codigo_material_recibido,
+              cantidad_aplicada,
+              pallet_esperado,
+              pallet_recibido,
+              nota_aplicacion
+            FROM material_invoice_lot_links
+            WHERE invoice_id = %s AND estado = 'APLICADO'
+            ORDER BY packing_line_id, id
+            """,
+            (invoice_id,),
+        )
+        lotes_por_packing = {}
+        for r in (cursor.fetchall() or []):
+            lote = row_to_json(r)
+            lotes_por_packing.setdefault(lote.get("packing_line_id"), []).append(lote)
+        for pl in packing:
+            pl["lotes"] = lotes_por_packing.get(pl.get("id"), [])
+
+        # Filas extra "DIFERENCIA_PALLET": material que llego para esta invoice
+        # con un pallet CONCRETO que no corresponde a ningun packing line del
+        # Excel (parte+pallet). Son lotes recibidos en un pallet inesperado; se
+        # muestran para revision (no se aplican solos). Se EXCLUYEN los lotes sin
+        # pallet (NULL/vacio): esos estan pendientes de asignar pallet, no son una
+        # diferencia de pallet. La parte se compara por base (primer segmento).
+        cursor.execute(
+            """
+            SELECT
+              SUBSTRING_INDEX(cma.numero_parte, '-', 1) AS numero_parte_sistema,
+              cma.pallet_no,
+              cma.pallet_no_original,
+              COUNT(*) AS entradas_recibidas,
+              SUM(COALESCE(cma.cantidad_actual, 0)) AS cantidad_recibida,
+              MIN(cma.codigo_material_recibido) AS ejemplo_codigo
+            FROM control_material_almacen cma
+            WHERE cma.numero_invoice = %s
+              AND (cma.cancelado = 0 OR cma.cancelado IS NULL)
+              AND cma.pallet_no IS NOT NULL AND cma.pallet_no <> ''
+              AND NOT EXISTS (
+                SELECT 1 FROM material_invoice_lot_links active
+                WHERE active.codigo_material_recibido = cma.codigo_material_recibido
+                  AND active.estado = 'APLICADO'
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM material_invoice_packing_lines mipl
+                WHERE mipl.invoice_id = %s
+                  AND mipl.numero_parte_sistema = SUBSTRING_INDEX(cma.numero_parte, '-', 1)
+                  AND mipl.pallet_no <=> cma.pallet_no
+              )
+            GROUP BY numero_parte_sistema, cma.pallet_no, cma.pallet_no_original
+            ORDER BY numero_parte_sistema, cma.pallet_no
+            """,
+            (invoice["numero_invoice"], invoice_id),
+        )
+        for r in (cursor.fetchall() or []):
+            row = row_to_json(r)
+            pallet_txt = row.get("pallet_no") or "(sin pallet)"
+            packing.append({
+                "id": None,
+                "line_no": None,
+                "pallet_no_original": row.get("pallet_no_original"),
+                "pallet_no": row.get("pallet_no"),
+                "numero_parte_sistema": row.get("numero_parte_sistema"),
+                "cantidad_packing": None,
+                "entradas_recibidas": row.get("entradas_recibidas"),
+                "cantidad_recibida": row.get("cantidad_recibida"),
+                "cantidad_pendiente_entrada": None,
+                "cantidad_aplicada_activa": None,
+                "kg": None,
+                "cbm": None,
+                "estado_match": "DIFERENCIA_PALLET",
+                "ejemplo_codigo": row.get("ejemplo_codigo"),
+                "mensaje_match": (
+                    f"Material recibido en pallet {pallet_txt} sin packing line "
+                    f"que lo espere (ej. {row.get('ejemplo_codigo')}). Revisar."
+                ),
+            })
+
         cursor.execute(
             """
             SELECT *
@@ -554,6 +655,79 @@ def get_invoice_candidates(invoice_id, args):
         return {"success": True, "records": [row_to_json(r) for r in (cursor.fetchall() or [])]}, 200
     except Exception as exc:
         logger.exception("Error candidatos invoice %s: %s", invoice_id, exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def get_partial_packing_for_part(invoice_id, args):
+    """Packing lines de la MISMA parte que un lote, con cantidad pendiente.
+
+    Sirve para elegir a cual packing parcial linkear un lote que llego en un
+    pallet distinto (material movido entre pallets). Recibe el codigo del lote
+    en `args` y devuelve los packing lines de su parte base con su pendiente.
+    """
+    codigo = sanitizar_texto(args.get("codigo_material_recibido"), 255)
+    conn, cursor, error = _db()
+    if error:
+        return error
+    try:
+        invoice = fetch_invoice(cursor, invoice_id)
+        if not invoice:
+            return {"success": False, "error": "Invoice no encontrada."}, 404
+        if not codigo:
+            return {"success": False, "error": "codigo_material_recibido requerido."}, 400
+
+        lot = fetch_lot_row(cursor, codigo)
+        if not lot:
+            return {"success": False, "error": "Lote no encontrado."}, 404
+        base = prefijos_por_guion(lot.get("numero_parte_sistema"))
+        base = base[-1] if base else ""
+
+        # Packing lines de esa parte (base) con su cantidad ya aplicada y el
+        # pendiente. Se ofrecen los que aun tienen pendiente (> 0).
+        cursor.execute(
+            """
+            SELECT
+              mipl.id,
+              mipl.line_no,
+              mipl.pallet_no,
+              mipl.numero_parte_sistema,
+              mipl.cantidad_packing,
+              mipl.invoice_line_id,
+              mipl.estado_match,
+              COALESCE(aplicado.cantidad_aplicada_activa, 0) AS cantidad_aplicada_activa,
+              GREATEST(mipl.cantidad_packing - COALESCE(aplicado.cantidad_aplicada_activa, 0), 0) AS cantidad_pendiente
+            FROM material_invoice_packing_lines mipl
+            LEFT JOIN (
+                SELECT packing_line_id, SUM(cantidad_aplicada) AS cantidad_aplicada_activa
+                FROM material_invoice_lot_links
+                WHERE invoice_id = %s AND estado = 'APLICADO'
+                GROUP BY packing_line_id
+            ) aplicado ON aplicado.packing_line_id = mipl.id
+            WHERE mipl.invoice_id = %s
+              AND mipl.numero_parte_sistema = %s
+              AND mipl.invoice_line_id IS NOT NULL
+              AND mipl.estado_match NOT IN ('SIN_ALIAS','SIN_LINEA','DIFERENCIA')
+            HAVING cantidad_pendiente > 0
+            ORDER BY
+              CASE WHEN mipl.pallet_no REGEXP '^[0-9]+$' THEN CAST(mipl.pallet_no AS UNSIGNED) ELSE 999999 END,
+              mipl.pallet_no, mipl.line_no
+            """,
+            (invoice_id, invoice_id, base),
+        )
+        records = [row_to_json(r) for r in (cursor.fetchall() or [])]
+        return {
+            "success": True,
+            "codigo_material_recibido": codigo,
+            "pallet_recibido": lot.get("pallet_no") or lot.get("pallet_no_original"),
+            "numero_parte_sistema": base,
+            "cantidad_lote": json_value(lot.get("cantidad_lote")),
+            "records": records,
+        }, 200
+    except Exception as exc:
+        logger.exception("Error packing parcial invoice %s: %s", invoice_id, exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:
         cursor.close()
@@ -657,11 +831,30 @@ def _apply_one_locked(cursor, invoice, item, usuario, fecha):
         return {"success": False, "codigo_material_recibido": codigo, "error": "Lote no encontrado en control_material_almacen."}
 
     lot_pallet = normalizar_pallet_no(lot.get("pallet_no") or lot.get("pallet_no_original"))
+    packing_pallet = packing.get("pallet_no") or ""
     if lot.get("numero_invoice") != invoice.get("numero_invoice"):
         return {"success": False, "codigo_material_recibido": codigo, "error": "El numero_invoice del lote no coincide."}
-    if lot_pallet != (packing.get("pallet_no") or ""):
-        return {"success": False, "codigo_material_recibido": codigo, "error": "El pallet del lote no coincide."}
-    if normalizar_numero_parte(lot.get("numero_parte_sistema")) != normalizar_numero_parte(packing.get("numero_parte_sistema")):
+    # Override de pallet: el material llego completo pero en un pallet distinto
+    # (p.ej. lo movieron). Si el usuario lo confirma (permitir_pallet_distinto),
+    # se aplica igual y se deja registro (pallet esperado/recibido + nota).
+    pallet_distinto = lot_pallet != packing_pallet
+    permitir_pallet_distinto = bool(item.get("permitir_pallet_distinto"))
+    if pallet_distinto and not permitir_pallet_distinto:
+        return {
+            "success": False,
+            "codigo_material_recibido": codigo,
+            "error": "El pallet del lote no coincide.",
+            "pallet_mismatch": True,
+            "pallet_lote": lot_pallet,
+            "pallet_packing": packing_pallet,
+        }
+    # El lote en almacen puede traer la parte con version/lote
+    # (EAX66946005-1.0), mientras que el packing ya esta normalizado a la base.
+    # Se comparan por su parte base (ultimo prefijo por guion) para que cuadren.
+    def _base(valor):
+        prefijos = prefijos_por_guion(valor)
+        return prefijos[-1] if prefijos else ""
+    if _base(lot.get("numero_parte_sistema")) != _base(packing.get("numero_parte_sistema")):
         return {"success": False, "codigo_material_recibido": codigo, "error": "La parte del lote no coincide."}
 
     cantidad = decimal_or_zero(item.get("cantidad_aplicada"))
@@ -677,13 +870,18 @@ def _apply_one_locked(cursor, invoice, item, usuario, fecha):
             "cantidad_disponible": str(available),
         }
 
+    # Solo se registra el detalle de pallet cuando hubo override (llego distinto).
+    nota = sanitizar_texto(item.get("nota_aplicacion"), 255) if pallet_distinto else None
+    pallet_esperado = packing_pallet if pallet_distinto else None
+    pallet_recibido = lot_pallet if pallet_distinto else None
     cursor.execute(
         """
         INSERT INTO material_invoice_lot_links (
             invoice_id, invoice_line_id, packing_line_id, codigo_material_recibido,
             numero_parte_sistema, cantidad_aplicada, costo_unitario, moneda,
-            usuario_aplicacion, fecha_aplicacion, usuario_registro, fecha_registro, estado
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'APLICADO')
+            usuario_aplicacion, fecha_aplicacion, usuario_registro, fecha_registro, estado,
+            pallet_esperado, pallet_recibido, nota_aplicacion
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'APLICADO', %s, %s, %s)
         """,
         (
             invoice["id"],
@@ -698,6 +896,9 @@ def _apply_one_locked(cursor, invoice, item, usuario, fecha):
             fecha,
             usuario,
             fecha,
+            pallet_esperado,
+            pallet_recibido,
+            nota,
         ),
     )
     link_id = cursor.lastrowid
@@ -750,6 +951,20 @@ def _auto_apply_invoice(cursor, invoice, usuario, fecha):
                 fecha,
             )
             (applied if result.get("success") else skipped).append(result)
+        # Lotes que llegaron en un pallet distinto (o sin pallet): se detectan y
+        # se reportan como diferencia para revision manual, NO se auto-aplican.
+        for lote in mismatched_pallet_lots_for_packing(cursor, invoice, packing):
+            pallet_lote = lote.get("pallet_lote") or "(sin pallet)"
+            skipped.append({
+                "success": False,
+                "codigo_material_recibido": lote["codigo_material_recibido"],
+                "packing_line_id": packing["id"],
+                "pallet_mismatch": True,
+                "pallet_packing": packing.get("pallet_no"),
+                "pallet_lote": pallet_lote,
+                "error": f"Pallet no coincide: lote en pallet {pallet_lote}, "
+                         f"packing en pallet {packing.get('pallet_no')}. Revisar manualmente.",
+            })
     return applied, skipped
 
 
@@ -884,6 +1099,11 @@ def reapply_invoice(invoice_id, data):
             usuario,
             fecha,
         )
+        # Re-concilia packing <-> invoice lines antes de reaplicar: la
+        # conciliacion solo se calculaba al cargar, asi que invoices viejas
+        # quedaban con estados (DIFERENCIA/SIN_LINEA) que reaplicar no corregia.
+        # Sin links activos (recien desaplicados) es seguro recalcularla.
+        assign_packing_lines(cursor, invoice_id)
         applied, skipped = _apply_items_or_auto(cursor, invoice, data, usuario, fecha)
         estado = recalculate_invoice_state(cursor, invoice_id)
         conn.commit()
@@ -955,12 +1175,14 @@ def resolve_invoice_file(invoice_id):
 
 
 def delete_invoice(invoice_id):
-    """Borra una invoice solo si NO tiene ningun link de lote.
+    """Borra una invoice solo si NO tiene links APLICADO (activos).
 
-    Cualquier link (APLICADO o DESAPLICADO) bloquea el borrado, porque
-    representa lotes costeados desde esta invoice y eliminarla romperia la
-    trazabilidad de costos del inventario. Borra lineas, packing, el registro
-    y el Excel guardado en disco.
+    Un link APLICADO representa un lote costeado desde esta invoice; borrarla
+    romperia la trazabilidad de costos del inventario, asi que bloquea. Los
+    links DESAPLICADO son historico inerte (la invoice ya fue desaplicada) y NO
+    bloquean: se borran junto con la invoice. Para borrar, primero hay que
+    'Desaplicar' (revierte los costos). Borra links, lineas, packing, el
+    registro y el Excel guardado en disco.
     """
     conn, cursor, error = _db()
     if error:
@@ -977,26 +1199,29 @@ def delete_invoice(invoice_id):
             conn.rollback()
             return {"success": False, "error": "Invoice no encontrada."}, 404
 
+        # Solo bloquean los links APLICADO (activos): esos afectan costos. Los
+        # DESAPLICADO ya no tocan inventario y se limpian al borrar.
         cursor.execute(
-            "SELECT COUNT(*) AS total FROM material_invoice_lot_links WHERE invoice_id = %s",
+            "SELECT COUNT(*) AS total FROM material_invoice_lot_links WHERE invoice_id = %s AND estado = 'APLICADO'",
             (invoice_id,),
         )
-        total_links = (cursor.fetchone() or {}).get("total") or 0
-        if total_links:
+        links_activos = (cursor.fetchone() or {}).get("total") or 0
+        if links_activos:
             conn.rollback()
             return (
                 {
                     "success": False,
                     "error": (
                         "No se puede eliminar: la invoice tiene "
-                        f"{total_links} link(s) de lote. Desaplica y limpia los links primero."
+                        f"{links_activos} link(s) de lote APLICADOS. Desaplica primero."
                     ),
-                    "links": total_links,
+                    "links": links_activos,
                 },
                 409,
             )
 
         archivo_ruta = invoice.get("archivo_ruta")
+        cursor.execute("DELETE FROM material_invoice_lot_links WHERE invoice_id = %s", (invoice_id,))
         cursor.execute("DELETE FROM material_invoice_packing_lines WHERE invoice_id = %s", (invoice_id,))
         cursor.execute("DELETE FROM material_invoice_lines WHERE invoice_id = %s", (invoice_id,))
         cursor.execute("DELETE FROM material_invoices WHERE id = %s", (invoice_id,))

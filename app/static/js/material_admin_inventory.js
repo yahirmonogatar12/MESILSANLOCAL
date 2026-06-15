@@ -1,6 +1,6 @@
 (function () {
   const STYLE_ID = "material-admin-inventory-css";
-  const STATIC_VERSION = "20260520j";
+  const STATIC_VERSION = "20260615a";
   const STYLE_HREF = `/static/css/material_admin_inventory.css?v=${STATIC_VERSION}`;
   const COLUMN_WIDTHS_PREFIX = "materialAdminColumnWidths:";
   const COLUMN_FILTERS_PREFIX = "materialAdminColumnFilters:";
@@ -97,6 +97,9 @@
       ["fecha_recibo", "Fecha recibo"],
       ["fecha_recibo_hora", "Hora"],
       ["vendedor", "Vendedor"],
+      ["costo_unitario", "Costo unit."],
+      ["costo_total", "Costo total"],
+      ["moneda_costo", "Moneda"],
       ["cancelado", "Cancelado"],
       ["usuario_registro", "Registrado por"],
     ],
@@ -171,6 +174,18 @@
     const n = Number(value);
     if (!Number.isFinite(n)) return escapeHtml(value);
     return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  }
+
+  // Costos: 4 decimales. Vacio ('') cuando el lote aun no tiene costo aplicado.
+  function formatMoney(value) {
+    if (value === null || value === undefined || value === "") return "";
+    const n = Number(value);
+    if (!Number.isFinite(n)) return escapeHtml(value);
+    return n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  }
+
+  function isMoneyField(field) {
+    return field === "costo_unitario" || field === "costo_total";
   }
 
   function todayIso() {
@@ -299,6 +314,9 @@
       total_salida: 108,
       lotes_distintos: 92,
       lotes_con_stock: 116,
+      costo_unitario: 104,
+      costo_total: 116,
+      moneda_costo: 76,
     };
     if (fixedWidths[field]) return fixedWidths[field];
     if (field.includes("codigo") || field.includes("warehousing")) return 172;
@@ -471,7 +489,9 @@
           return `<td data-field="${ROW_NUMBER_FIELD}" class="mat-admin-row-number">${rowNumberOffset(tableKey) + rowIndex + 1}</td>`;
         }
         const rawValue = getCellValue(row, field);
-        const value = isNumericField(field) ? formatNumber(rawValue) : escapeHtml(rawValue);
+        const value = isMoneyField(field)
+          ? formatMoney(rawValue)
+          : (isNumericField(field) ? formatNumber(rawValue) : escapeHtml(rawValue));
         const canDrilldown = tableKey.startsWith("inventory:summary") && (field === "numero_parte" || field === "numero_parte_base");
         const className = canDrilldown ? " class=\"mat-admin-drilldown-cell\"" : "";
         const title = canDrilldown ? "Doble clic para ver detalle" : rawValue;

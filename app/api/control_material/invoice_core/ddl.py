@@ -232,6 +232,12 @@ def init_material_invoice_tables():
         ("fecha_aplicacion", "fecha_aplicacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"),
         ("usuario_aplicacion", "usuario_aplicacion VARCHAR(255) NOT NULL DEFAULT 'SISTEMA'"),
         ("motivo_desaplicado", "motivo_desaplicado VARCHAR(255) NULL"),
+        # Registro cuando el material llego en un pallet distinto al esperado
+        # por el packing (p.ej. lo movieron de un pallet a otro). Quedan ambos
+        # pallets y una nota para auditoria.
+        ("pallet_esperado", "pallet_esperado VARCHAR(50) NULL"),
+        ("pallet_recibido", "pallet_recibido VARCHAR(50) NULL"),
+        ("nota_aplicacion", "nota_aplicacion VARCHAR(255) NULL"),
     ):
         _ensure_column("material_invoice_lot_links", name, definition)
     if not _ddl_fetch_one("SHOW COLUMNS FROM material_invoice_lot_links LIKE %s", ("activo_key",)):

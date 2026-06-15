@@ -12,6 +12,7 @@ from app.api.control_material.invoice_core.service import (
     delete_invoice,
     get_invoice_candidates,
     get_invoice_detail,
+    get_partial_packing_for_part,
     list_invoices,
     preview_invoice,
     reapply_invoice,
@@ -20,6 +21,7 @@ from app.api.control_material.invoice_core.service import (
     upload_invoice,
 )
 from app.api.shared import login_requerido, requiere_permiso_dropdown
+from app.api.shared.datetime_helpers import obtener_fecha_mexico
 
 bp = Blueprint("material_invoices", __name__)
 
@@ -39,7 +41,11 @@ def _json_result(result):
 @login_requerido
 @requiere_permiso_dropdown(*PERMISO_INVOICES)
 def material_invoices_ajax():
-    return render_template("Control de material/material_invoices_ajax.html")
+    # Fecha de hoy (zona Mexico) para inicializar los filtros de fecha.
+    return render_template(
+        "Control de material/material_invoices_ajax.html",
+        fecha_hoy=obtener_fecha_mexico(),
+    )
 
 
 @bp.route("/api/material_admin/invoices", methods=["GET"])
@@ -82,6 +88,15 @@ def api_delete_invoice(invoice_id):
 @requiere_permiso_dropdown(*PERMISO_INVOICES)
 def api_invoice_candidates(invoice_id):
     return _json_result(get_invoice_candidates(invoice_id, request.args))
+
+
+@bp.route("/api/material_admin/invoices/<int:invoice_id>/partial-packing", methods=["GET"])
+@login_requerido
+@requiere_permiso_dropdown(*PERMISO_INVOICES)
+def api_invoice_partial_packing(invoice_id):
+    """Packing lines parciales de la parte de un lote, para linkear un lote que
+    llego en pallet distinto a un packing parcial."""
+    return _json_result(get_partial_packing_for_part(invoice_id, request.args))
 
 
 @bp.route("/api/material_admin/invoices/<int:invoice_id>/apply", methods=["POST"])

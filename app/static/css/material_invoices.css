@@ -150,6 +150,31 @@
     padding: 0 8px;
 }
 
+.mat-invoice-btn.is-loading {
+    padding-left: 28px;
+    position: relative;
+}
+
+.mat-invoice-btn.is-loading::before {
+    animation: mat-invoice-spin 0.7s linear infinite;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    border-radius: 50%;
+    border-top-color: #ffffff;
+    content: "";
+    height: 12px;
+    left: 10px;
+    margin-top: -6px;
+    position: absolute;
+    top: 50%;
+    width: 12px;
+}
+
+@keyframes mat-invoice-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .mat-invoice-alias-panel {
     margin-bottom: 8px;
 }
@@ -208,6 +233,58 @@
     background: #2f80d8;
     color: #ffffff;
     font-weight: 700;
+}
+
+.mat-invoice-table-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 6px;
+}
+
+/* Modal compacto tipo formulario (no como el visor de Excel): alto automatico
+   segun el contenido y fondo oscuro del MES, igual que el resto de paneles. */
+.mat-invoice-viewer-dialog.mat-invoice-dialog-compact {
+    width: min(560px, 94vw);
+    height: auto;
+    max-height: 86vh;
+}
+
+.mat-invoice-form-body {
+    background: #263947;
+    color: #f3f6fb;
+    overflow: auto;
+    padding: 16px;
+}
+
+.mat-invoice-pallet-link-help {
+    color: #b8c3cf;
+    font-size: 12px;
+    margin: 0 0 14px;
+}
+
+.mat-invoice-pallet-link-field {
+    color: #cdd8e6;
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 14px;
+}
+
+.mat-invoice-pallet-link-field select,
+.mat-invoice-pallet-link-field input {
+    background: #2d3741;
+    border: 1px solid #20688c;
+    border-radius: 4px;
+    box-sizing: border-box;
+    color: #f3f6fb;
+    display: block;
+    font-size: 13px;
+    font-weight: 400;
+    height: 32px;
+    margin-top: 5px;
+    max-width: none;
+    padding: 4px 8px;
+    width: 100%;
 }
 
 .mat-invoice-table-wrap {
@@ -299,7 +376,8 @@
 .mat-invoice-status.CON_DIFERENCIAS,
 .mat-invoice-status.SIN_ALIAS,
 .mat-invoice-status.SIN_LINEA,
-.mat-invoice-status.DIFERENCIA {
+.mat-invoice-status.DIFERENCIA,
+.mat-invoice-status.DIFERENCIA_PALLET {
     background: #7a3535;
     border-color: #c45d5d;
 }
@@ -536,4 +614,30 @@
 .mat-invoice-row-diff td {
     background: #5a3a3a !important;
     color: #ffd9d9;
+}
+
+/* Sub-filas de desglose de lotes aplicados bajo un packing line. */
+.mat-invoice-lote-row td {
+    background: #223240;
+    color: #9fb1c2;
+    font-size: 10px;
+}
+
+.mat-invoice-lote-row.mat-invoice-row-diff td {
+    color: #ffd9d9;
+}
+
+/* Flecha para desplegar/colapsar las sub-filas de lotes. */
+.mat-invoice-lote-toggle {
+    background: transparent;
+    border: none;
+    color: #7fd4ff;
+    cursor: pointer;
+    font-size: 10px;
+    margin-right: 4px;
+    padding: 0;
+}
+
+.mat-invoice-lote-toggle:hover {
+    color: #ffffff;
 }
