@@ -33,6 +33,28 @@ def _drop_index_if_exists(table, key_name):
     if exists:
         execute_query(f"ALTER TABLE {table} DROP INDEX {key_name}")
 
+def _ensure_control_material_columns():
+    """Asegura columnas e índices usados por invoice/pallet en control_material_almacen."""
+    columnas = (
+        ("pallet_no_original", "pallet_no_original VARCHAR(50) NULL"),
+        ("pallet_no", "pallet_no VARCHAR(50) NULL"),
+        ("vendedor", "vendedor VARCHAR(100) NULL"),
+    )
+
+    for name, definition in columnas:
+        _ensure_column("control_material_almacen", name, definition)
+
+    _ensure_index(
+        "control_material_almacen",
+        "idx_cma_invoice_pallet",
+        "KEY idx_cma_invoice_pallet (numero_invoice, pallet_no)",
+    )
+
+    _ensure_index(
+        "control_material_almacen",
+        "idx_cma_parte_vendedor_fecha",
+        "KEY idx_cma_parte_vendedor_fecha (numero_parte(191), vendedor, fecha_recibo)",
+    )
 
 def init_material_invoice_tables():
     """Crea/actualiza tablas para invoice, packing, links y valorizacion."""
@@ -170,9 +192,6 @@ def init_material_invoice_tables():
     ):
         _ensure_column("material_invoice_packing_lines", name, definition)
 
-    # Catalogo de numeros de parte originales (aliases) retirado: ya no se usa.
-    # El Excel INVOICE(CONVERTED) trae el Part Sys y el UOM viene de materiales.
-    execute_query("DROP TABLE IF EXISTS material_part_aliases")
 
     execute_query(
         """
