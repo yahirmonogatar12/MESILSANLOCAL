@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+import os
 import re
 import unicodedata
 from decimal import Decimal
@@ -23,7 +24,7 @@ from app.api.control_material.invoice_core.constants import (
 from app.api.control_material.invoice_core.matcher import (
     assign_packing_lines,
     invoice_has_differences,
-    resolve_aliases,
+    validate_system_parts,
 )
 from app.api.control_material.invoice_core.normalizers import (
     decimal_or_zero,
@@ -40,6 +41,12 @@ from app.api.control_material.invoice_core.repository import (
     recalculate_invoice_state,
     recalculate_packing_state,
 )
+from app.api.control_material.invoice_core.storage import (
+    absolute_path,
+    build_relative_path,
+    delete_file,
+    save_file,
+)
 from app.api.shared import (
     conexion_o_error,
     dict_cursor,
@@ -48,37 +55,6 @@ from app.api.shared import (
 )
 
 logger = logging.getLogger(__name__)
-
-ORIGINAL_PART_HEADER_ALIASES = {
-    "ALIAS": "original",
-    "ALIASPARTNUM": "original",
-    "ALIASPARTNO": "original",
-    "PARTNUM": "original",
-    "PARTNO": "original",
-    "PARTNUMBER": "original",
-    "NUMEROPARTE": "original",
-    "NUMERODEPARTE": "original",
-    "PARTEINVOICE": "original",
-    "PARTEPROVEEDOR": "original",
-    "품번": "original",
-    "SISTEMA": "sistema",
-    "PARTSYS": "sistema",
-    "SYSTEMPART": "sistema",
-    "SYSTEMPARTNUM": "sistema",
-    "SYSTEMPARTNO": "sistema",
-    "NUMEROPARTESISTEMA": "sistema",
-    "NUMERODEPARTESISTEMA": "sistema",
-    "PARTESISTEMA": "sistema",
-    "전산품번": "sistema",
-    "TIPO": "tipo",
-    "TYPE": "tipo",
-    "TIPOMATERIAL": "tipo",
-    "TIPODEMATERIAL": "tipo",
-    "CLASE": "tipo",
-    "PROVEEDOR": "tipo",
-    "VENDOR": "tipo",
-    "SUPPLIER": "tipo",
-}
 
 
 def _usuario_actual():
@@ -90,92 +66,6 @@ def _db():
     if error_response:
         return None, None, ({"success": False, "error": "Base de datos no disponible"}, 503)
     return conn, dict_cursor(conn), None
-
-
-def _header_key(value):
-    text = raw_text(value).upper().replace("\u00a0", " ")
-    text = "".join(
-        char for char in unicodedata.normalize("NFKD", text)
-        if not unicodedata.combining(char)
-    )
-    return re.sub(r"[\s\.\-_/#:()]+", "", text)
-
-
-def _alias_header_map(row):
-    mapped = {}
-    for idx, cell in enumerate(row):
-        key = _header_key(cell.value)
-        field = ORIGINAL_PART_HEADER_ALIASES.get(key)
-        if field and field not in mapped:
-            mapped[field] = idx
-    return mapped
-
-
-def _alias_cell(row, idx):
-    if idx is None or idx >= len(row):
-        return ""
-    return raw_text(row[idx].value)
-
-
-def _parse_alias_workbook(file_bytes, include_conflicts=False):
-    from openpyxl import load_workbook
-
-    wb = load_workbook(BytesIO(file_bytes), data_only=True)
-    records = {}
-    conflicts = {}
-    conflicted_keys = set()
-    skipped = 0
-    for sheet in wb.worksheets:
-        header = None
-        for row in sheet.iter_rows(min_row=1, max_row=min(sheet.max_row or 1, 50)):
-            mapped = _alias_header_map(row)
-            if "original" in mapped and "sistema" in mapped:
-                header = {"row": row[0].row, "mapped": mapped}
-                break
-        if not header:
-            continue
-        mapped = header["mapped"]
-        for row in sheet.iter_rows(min_row=header["row"] + 1):
-            numero_parte_original = normalizar_numero_parte(_alias_cell(row, mapped.get("original")))
-            sistema = normalizar_numero_parte(_alias_cell(row, mapped.get("sistema")))
-            tipo = sanitizar_texto(_alias_cell(row, mapped.get("tipo")), 255)
-            if not numero_parte_original and not sistema:
-                continue
-            if not numero_parte_original or not sistema:
-                skipped += 1
-                continue
-            key = (numero_parte_original, tipo or "")
-            if key in conflicted_keys:
-                conflict = conflicts[key]
-                if sistema not in conflict["sistemas"]:
-                    conflict["sistemas"].append(sistema)
-                conflict["filas"].append(row[0].row)
-                continue
-            existing = records.get(key)
-            if existing and existing["numero_parte_sistema"] != sistema:
-                conflicted_keys.add(key)
-                conflicts[key] = {
-                    "numero_parte_original": numero_parte_original,
-                    "tipo": tipo or "",
-                    "sistemas": [existing["numero_parte_sistema"], sistema],
-                    "filas": [existing.get("_row_no"), row[0].row],
-                    "detalle": "Mismo numero original + tipo apunta a varios sistemas",
-                }
-                records.pop(key, None)
-                continue
-            records[key] = {
-                "numero_parte_original": numero_parte_original,
-                "numero_parte_sistema": sistema,
-                "tipo": tipo or "",
-                "_row_no": row[0].row,
-            }
-    clean_records = [
-        {k: v for k, v in record.items() if k != "_row_no"}
-        for record in records.values()
-    ]
-    if include_conflicts:
-        return clean_records, skipped, list(conflicts.values())
-    return clean_records, skipped
 
 
 def list_invoices(args):
@@ -222,6 +112,99 @@ def list_invoices(args):
         conn.close()
 
 
+def preview_invoice(files, form):
+    """Parsea el Excel y devuelve lo que se cargaria, sin tocar la BD de invoices.
+
+    Valida las partes contra materiales (UOM y existencia) y detecta si la
+    invoice ya esta cargada (por numero o por hash), para mostrarlo en el modal.
+    """
+    uploaded = files.get("file") or files.get("archivo")
+    if not uploaded:
+        return {"success": False, "error": "Archivo requerido."}, 400
+
+    filename = secure_filename(uploaded.filename or "invoice.xlsx")
+    file_bytes = uploaded.read()
+    if not file_bytes:
+        return {"success": False, "error": "El archivo esta vacio."}, 400
+
+    try:
+        parsed = parse_invoice_workbook(file_bytes, filename)
+    except Exception as exc:
+        logger.exception("Error leyendo invoice (preview) desde %s: %s", filename, exc)
+        return {"success": False, "error": "No se pudo leer el Excel de la invoice."}, 400
+
+    numero_invoice = sanitizar_texto(
+        form.get("numero_invoice") or parsed.get("numero_invoice_sugerido"),
+        255,
+    )
+    if not parsed["invoice_lines"]:
+        detail = " ".join(parsed.get("warnings") or [])
+        message = "No se detectaron lineas de invoice en la hoja INVOICE(CONVERTED)."
+        return {"success": False, "error": f"{message} {detail}".strip()}, 400
+
+    file_hash = hashlib.sha256(file_bytes).hexdigest()
+    conn, cursor, error = _db()
+    if error:
+        return error
+    try:
+        # Valida partes contra materiales (UOM + existencia) sin persistir.
+        validate_system_parts(cursor, parsed["invoice_lines"], "numero_parte_sistema", "DIRECTO")
+
+        # Detecta duplicado por numero o por hash de archivo.
+        duplicado = None
+        cursor.execute("SELECT id FROM material_invoices WHERE numero_invoice = %s LIMIT 1", (numero_invoice,))
+        row = cursor.fetchone()
+        if row:
+            duplicado = {"motivo": "NUMERO_INVOICE", "invoice_id": row["id"]}
+        else:
+            cursor.execute("SELECT id FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1", (file_hash,))
+            row = cursor.fetchone()
+            if row:
+                duplicado = {"motivo": "ARCHIVO_HASH", "invoice_id": row["id"]}
+
+        total_monto = sum((r.get("costo_total") or Decimal("0.0000")) for r in parsed["invoice_lines"])
+        sin_parte = sum(1 for r in parsed["invoice_lines"] if r.get("estado_match") == "SIN_ALIAS")
+        lines = [
+            {
+                "line_no": r.get("line_no"),
+                "pallet_no": next(
+                    (p.get("pallet_no") for p in parsed["packing_lines"] if p.get("line_no") == r.get("line_no")),
+                    "",
+                ),
+                "raw_part_num": r.get("raw_part_num"),
+                "numero_parte_sistema": r.get("numero_parte_sistema"),
+                "descripcion": r.get("descripcion"),
+                "cantidad": str(r.get("cantidad")),
+                "uom": r.get("uom") or "",
+                "costo_unitario": str(r.get("costo_unitario")),
+                "costo_total": str(r.get("costo_total")),
+                "estado_match": r.get("estado_match"),
+            }
+            for r in parsed["invoice_lines"]
+        ]
+        return (
+            {
+                "success": True,
+                "numero_invoice": numero_invoice,
+                "fuente_hoja": parsed.get("fuente_hoja"),
+                "total_lineas": len(parsed["invoice_lines"]),
+                "total_packing": len(parsed["packing_lines"]),
+                "total_monto": str(total_monto),
+                "partes_sin_sistema": sin_parte,
+                "duplicado": duplicado,
+                "warnings": parsed.get("warnings") or [],
+                "lines": lines,
+            },
+            200,
+        )
+    except Exception as exc:
+        logger.exception("Error en preview de invoice: %s", exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def upload_invoice(files, form):
     uploaded = files.get("file") or files.get("archivo")
     if not uploaded:
@@ -246,13 +229,14 @@ def upload_invoice(files, form):
         return {"success": False, "error": "numero_invoice requerido."}, 400
     if not parsed["invoice_lines"]:
         detail = " ".join(parsed.get("warnings") or [])
-        message = "No se detectaron lineas de invoice en la hoja INVOICE(total)."
+        message = "No se detectaron lineas de invoice en la hoja INVOICE(CONVERTED)."
         return {"success": False, "error": f"{message} {detail}".strip()}, 400
 
     file_hash = hashlib.sha256(file_bytes).hexdigest()
     conn, cursor, error = _db()
     if error:
         return error
+    archivo_ruta = None
     try:
         cursor.execute("SELECT id FROM material_invoices WHERE numero_invoice = %s LIMIT 1", (numero_invoice,))
         existing = cursor.fetchone()
@@ -284,23 +268,37 @@ def upload_invoice(files, form):
 
         usuario = _usuario_actual()
         fecha = obtener_fecha_hora_mexico()
+
+        # Guarda el Excel original renombrado por numero de invoice y ordenado
+        # por fecha (AAAA/MM). Se escribe antes del INSERT; si la transaccion
+        # falla, el except borra el archivo huerfano.
+        archivo_ruta = build_relative_path(numero_invoice, file_hash, fecha)
+        _, archivo_size = save_file(file_bytes, archivo_ruta)
+
         cursor.execute("START TRANSACTION")
-        resolve_aliases(cursor, parsed["invoice_lines"], tipo, "numero_parte_sistema")
-        resolve_aliases(cursor, parsed["packing_lines"], tipo, "numero_parte_sistema")
+        # El Excel ya trae el numero de parte en sistema (Part Sys); solo se
+        # valida su existencia en materiales (ya no se usa la tabla de aliases).
+        # invoice_lines usa estado 'DIRECTO'; packing_lines usa 'MATCH' (ENUMs distintos).
+        validate_system_parts(cursor, parsed["invoice_lines"], "numero_parte_sistema", "DIRECTO")
+        validate_system_parts(cursor, parsed["packing_lines"], "numero_parte_sistema", "MATCH")
 
         total_monto = sum((r.get("costo_total") or Decimal("0.0000")) for r in parsed["invoice_lines"])
         cursor.execute(
             """
             INSERT INTO material_invoices (
-                numero_invoice, tipo, archivo_nombre, archivo_hash_sha256,
+                numero_invoice, tipo, archivo_nombre, archivo_ruta,
+                archivo_size, archivo_mime, archivo_hash_sha256,
                 estado, moneda, total_lineas, total_packing, total_monto,
                 usuario_carga, fecha_carga
-            ) VALUES (%s, %s, %s, %s, 'BORRADOR', %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'BORRADOR', %s, %s, %s, %s, %s, %s)
             """,
             (
                 numero_invoice,
                 tipo or None,
                 filename,
+                archivo_ruta,
+                archivo_size,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 file_hash,
                 MONEDA_DEFAULT,
                 len(parsed["invoice_lines"]),
@@ -338,6 +336,8 @@ def upload_invoice(files, form):
         )
     except Exception as exc:
         conn.rollback()
+        if archivo_ruta:
+            delete_file(archivo_ruta)
         logger.exception("Error cargando invoice: %s", exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:
@@ -346,68 +346,80 @@ def upload_invoice(files, form):
 
 
 def _insert_invoice_lines(cursor, invoice_id, invoice_lines):
-    for line in invoice_lines:
-        cursor.execute(
-            """
-            INSERT INTO material_invoice_lines (
-                invoice_id, line_no, maker, origin, raw_part_num,
-                numero_parte_invoice, numero_parte_sistema, descripcion,
-                cantidad, uom, costo_unitario, costo_total, moneda,
-                raw_qty, raw_unit_cost, raw_total_cost, estado_match, mensaje_match
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                invoice_id,
-                line["line_no"],
-                line.get("maker"),
-                line.get("origin"),
-                line.get("raw_part_num"),
-                line["numero_parte_invoice"],
-                line["numero_parte_sistema"],
-                line.get("descripcion"),
-                str(line["cantidad"]),
-                line.get("uom"),
-                str(line["costo_unitario"]),
-                str(line["costo_total"]),
-                line.get("moneda") or MONEDA_DEFAULT,
-                line.get("raw_qty"),
-                line.get("raw_unit_cost"),
-                line.get("raw_total_cost"),
-                line.get("estado_match") or "PENDIENTE",
-                line.get("mensaje_match"),
-            ),
+    if not invoice_lines:
+        return
+    # executemany en lote: el driver colapsa las filas en un INSERT multi-fila,
+    # reduciendo los round-trips y acortando la ventana de la transaccion.
+    params = [
+        (
+            invoice_id,
+            line["line_no"],
+            line.get("maker"),
+            line.get("origin"),
+            line.get("raw_part_num"),
+            line["numero_parte_invoice"],
+            line["numero_parte_sistema"],
+            line.get("descripcion"),
+            str(line["cantidad"]),
+            line.get("uom"),
+            str(line["costo_unitario"]),
+            str(line["costo_total"]),
+            line.get("moneda") or MONEDA_DEFAULT,
+            line.get("raw_qty"),
+            line.get("raw_unit_cost"),
+            line.get("raw_total_cost"),
+            line.get("estado_match") or "PENDIENTE",
+            line.get("mensaje_match"),
         )
+        for line in invoice_lines
+    ]
+    cursor.executemany(
+        """
+        INSERT INTO material_invoice_lines (
+            invoice_id, line_no, maker, origin, raw_part_num,
+            numero_parte_invoice, numero_parte_sistema, descripcion,
+            cantidad, uom, costo_unitario, costo_total, moneda,
+            raw_qty, raw_unit_cost, raw_total_cost, estado_match, mensaje_match
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        params,
+    )
 
 
 def _insert_packing_lines(cursor, invoice_id, packing_lines):
-    for packing in packing_lines:
-        cursor.execute(
-            """
-            INSERT INTO material_invoice_packing_lines (
-                invoice_id, line_no, packing_no, raw_part_num,
-                numero_parte_packing, numero_parte_sistema, descripcion,
-                cantidad_packing, raw_qty, pallet_no_original, pallet_no,
-                kg, cbm, estado_match, mensaje_match
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                invoice_id,
-                packing["line_no"],
-                packing.get("packing_no"),
-                packing.get("raw_part_num"),
-                packing["numero_parte_packing"],
-                packing["numero_parte_sistema"],
-                packing.get("descripcion"),
-                str(packing["cantidad_packing"]),
-                packing.get("raw_qty"),
-                packing.get("pallet_no_original"),
-                packing.get("pallet_no"),
-                str(packing["kg"]) if packing.get("kg") is not None else None,
-                str(packing["cbm"]) if packing.get("cbm") is not None else None,
-                packing.get("estado_match") or "PENDIENTE",
-                packing.get("mensaje_match"),
-            ),
+    if not packing_lines:
+        return
+    params = [
+        (
+            invoice_id,
+            packing["line_no"],
+            packing.get("packing_no"),
+            packing.get("raw_part_num"),
+            packing["numero_parte_packing"],
+            packing["numero_parte_sistema"],
+            packing.get("descripcion"),
+            str(packing["cantidad_packing"]),
+            packing.get("raw_qty"),
+            packing.get("pallet_no_original"),
+            packing.get("pallet_no"),
+            str(packing["kg"]) if packing.get("kg") is not None else None,
+            str(packing["cbm"]) if packing.get("cbm") is not None else None,
+            packing.get("estado_match") or "PENDIENTE",
+            packing.get("mensaje_match"),
         )
+        for packing in packing_lines
+    ]
+    cursor.executemany(
+        """
+        INSERT INTO material_invoice_packing_lines (
+            invoice_id, line_no, packing_no, raw_part_num,
+            numero_parte_packing, numero_parte_sistema, descripcion,
+            cantidad_packing, raw_qty, pallet_no_original, pallet_no,
+            kg, cbm, estado_match, mensaje_match
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        params,
+    )
 
 
 def get_invoice_detail(invoice_id):
@@ -893,206 +905,110 @@ def reapply_invoice(invoice_id, data):
         conn.close()
 
 
-def list_aliases(args):
-    conn, cursor, error = _db()
-    if error:
-        return error
-    try:
-        q = sanitizar_texto(args.get("q"), 120)
-        include_inactive = str(args.get("include_inactive") or "").lower() in ("1", "true", "yes", "si", "on")
-        params = []
-        where = ["1=1"]
-        if not include_inactive:
-            where.append("a.activo = 1")
-        if q:
-            where.append("(a.numero_parte_original LIKE %s OR a.numero_parte_sistema LIKE %s OR COALESCE(a.tipo, '') LIKE %s)")
-            like = f"%{q}%"
-            params.extend([like, like, like])
+def resolve_invoice_file(invoice_id):
+    """Localiza el Excel original de una invoice en disco.
 
-        cursor.execute(
-            f"""
-            SELECT
-              a.*,
-              CASE WHEN m.numero_parte IS NULL THEN 0 ELSE 1 END AS sistema_existe
-            FROM material_part_aliases a
-            LEFT JOIN materiales m
-              ON m.numero_parte = a.numero_parte_sistema
-            WHERE {' AND '.join(where)}
-            ORDER BY a.activo DESC, a.numero_parte_original ASC, a.tipo ASC, a.id DESC
-            LIMIT 500
-            """,
-            params,
-        )
-        records = [row_to_json(row) for row in (cursor.fetchall() or [])]
-        return {"success": True, "records": records, "total": len(records)}, 200
-    except Exception as exc:
-        logger.exception("Error listando aliases: %s", exc)
-        return {"success": False, "error": ERROR_INTERNO}, 500
-    finally:
-        cursor.close()
-        conn.close()
-
-
-def _upsert_alias(cursor, numero_parte_original, sistema, tipo, usuario, fecha):
-    cursor.execute(
-        """
-        INSERT INTO material_part_aliases (
-            numero_parte_original, numero_parte_sistema, tipo,
-            usuario_registro, fecha_registro, activo
-        ) VALUES (%s, %s, %s, %s, %s, 1)
-        ON DUPLICATE KEY UPDATE
-            numero_parte_sistema = VALUES(numero_parte_sistema),
-            usuario_registro = VALUES(usuario_registro),
-            fecha_registro = VALUES(fecha_registro),
-            activo = 1
-        """,
-        (numero_parte_original, sistema, tipo or "", usuario, fecha),
-    )
-
-
-def _materiales_existentes(cursor, numeros_parte):
-    numeros = sorted({normalizar_numero_parte(numero) for numero in numeros_parte if numero})
-    existentes = set()
-    for idx in range(0, len(numeros), 500):
-        bloque = numeros[idx:idx + 500]
-        placeholders = ", ".join(["%s"] * len(bloque))
-        cursor.execute(
-            f"SELECT numero_parte FROM materiales WHERE numero_parte IN ({placeholders})",
-            tuple(bloque),
-        )
-        existentes.update(row["numero_parte"] for row in (cursor.fetchall() or []))
-    return existentes
-
-
-def create_alias(data):
-    numero_parte_original = normalizar_numero_parte(
-        data.get("numero_parte_original", data.get("alias_part_num"))
-    )
-    sistema = normalizar_numero_parte(data.get("numero_parte_sistema"))
-    tipo = sanitizar_texto(data.get("tipo") or data.get("proveedor"), 255)
-    if not numero_parte_original or not sistema:
-        return {"success": False, "error": "numero_parte_original y numero_parte_sistema son requeridos."}, 400
-
-    conn, cursor, error = _db()
-    if error:
-        return error
-    try:
-        if sistema not in _materiales_existentes(cursor, [sistema]):
-            return {
-                "success": False,
-                "error": f"El numero de parte sistema {sistema} no existe en materiales.",
-                "motivo": "PARTE_SISTEMA_NO_EXISTE",
-                "numero_parte_sistema": sistema,
-            }, 400
-        _upsert_alias(cursor, numero_parte_original, sistema, tipo, _usuario_actual(), obtener_fecha_hora_mexico())
-        conn.commit()
-        return {
-            "success": True,
-            "numero_parte_original": numero_parte_original,
-            "numero_parte_sistema": sistema,
-            "tipo": tipo,
-        }, 200
-    except Exception as exc:
-        conn.rollback()
-        logger.exception("Error creando alias: %s", exc)
-        return {"success": False, "error": ERROR_INTERNO}, 500
-    finally:
-        cursor.close()
-        conn.close()
-
-
-def import_aliases(files, form):
-    uploaded = files.get("file") or files.get("archivo")
-    if not uploaded:
-        return {"success": False, "error": "Archivo requerido."}, 400
-    filename = secure_filename(uploaded.filename or "aliases.xlsx")
-    file_bytes = uploaded.read()
-    if not file_bytes:
-        return {"success": False, "error": "El archivo esta vacio."}, 400
-
-    try:
-        records, skipped, conflicts = _parse_alias_workbook(file_bytes, include_conflicts=True)
-    except Exception as exc:
-        logger.exception("Error leyendo aliases desde %s: %s", filename, exc)
-        return {"success": False, "error": "No se pudo leer el Excel de equivalencias."}, 400
-
-    if not records:
-        return {"success": False, "error": "No se detectaron columnas de numero de parte original y parte sistema."}, 400
-
-    conn, cursor, error = _db()
-    if error:
-        return error
-    try:
-        usuario = _usuario_actual()
-        fecha = obtener_fecha_hora_mexico()
-        tipo_default = sanitizar_texto(form.get("tipo") or form.get("proveedor"), 255)
-        cursor.execute("START TRANSACTION")
-        materiales_existentes = _materiales_existentes(
-            cursor,
-            (record["numero_parte_sistema"] for record in records),
-        )
-        imported = 0
-        omitidos_sistema = []
-        for record in records:
-            if record["numero_parte_sistema"] not in materiales_existentes:
-                omitidos_sistema.append({
-                    "numero_parte_original": record["numero_parte_original"],
-                    "numero_parte_sistema": record["numero_parte_sistema"],
-                    "tipo": record.get("tipo") or tipo_default or "",
-                    "motivo": "PARTE_SISTEMA_NO_EXISTE",
-                })
-                continue
-            tipo = record.get("tipo") or tipo_default or ""
-            _upsert_alias(
-                cursor,
-                record["numero_parte_original"],
-                record["numero_parte_sistema"],
-                tipo,
-                usuario,
-                fecha,
-            )
-            imported += 1
-        conn.commit()
-        total_omitidos = skipped + len(omitidos_sistema) + len(conflicts)
-        return {
-            "success": True,
-            "archivo": filename,
-            "importados": imported,
-            "omitidos": total_omitidos,
-            "omitidos_excel": skipped,
-            "omitidos_sistema": len(omitidos_sistema),
-            "omitidos_conflicto": len(conflicts),
-            "conflictos_preview": conflicts[:50],
-            "omitidos_sistema_preview": omitidos_sistema[:50],
-            "total_detectados": len(records) + len(conflicts),
-        }, 200
-    except Exception as exc:
-        conn.rollback()
-        logger.exception("Error importando aliases: %s", exc)
-        return {"success": False, "error": ERROR_INTERNO}, 500
-    finally:
-        cursor.close()
-        conn.close()
-
-
-def deactivate_alias(alias_id):
+    Devuelve (info, status). info trae ruta absoluta y nombre de descarga.
+    """
     conn, cursor, error = _db()
     if error:
         return error
     try:
         cursor.execute(
             """
-            UPDATE material_part_aliases
-            SET activo = 0
+            SELECT numero_invoice, archivo_nombre, archivo_ruta, archivo_mime
+            FROM material_invoices
             WHERE id = %s
+            LIMIT 1
             """,
-            (alias_id,),
+            (invoice_id,),
         )
+        row = cursor.fetchone()
+        if not row:
+            return {"success": False, "error": "Invoice no encontrada."}, 404
+        if not row.get("archivo_ruta"):
+            return {"success": False, "error": "Esta invoice no tiene archivo guardado."}, 404
+
+        full = absolute_path(row["archivo_ruta"])
+        if not full or not os.path.isfile(full):
+            return {"success": False, "error": "El archivo no existe en el servidor."}, 404
+
+        download_name = row.get("archivo_nombre") or f"{row['numero_invoice']}.xlsx"
+        if not download_name.lower().endswith((".xlsx", ".xlsm")):
+            download_name = f"{download_name}.xlsx"
+        return (
+            {
+                "success": True,
+                "path": full,
+                "download_name": download_name,
+                "mimetype": row.get("archivo_mime")
+                or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            },
+            200,
+        )
+    except Exception as exc:
+        logger.exception("Error resolviendo archivo de invoice %s: %s", invoice_id, exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def delete_invoice(invoice_id):
+    """Borra una invoice solo si NO tiene ningun link de lote.
+
+    Cualquier link (APLICADO o DESAPLICADO) bloquea el borrado, porque
+    representa lotes costeados desde esta invoice y eliminarla romperia la
+    trazabilidad de costos del inventario. Borra lineas, packing, el registro
+    y el Excel guardado en disco.
+    """
+    conn, cursor, error = _db()
+    if error:
+        return error
+    archivo_ruta = None
+    try:
+        cursor.execute("START TRANSACTION")
+        cursor.execute(
+            "SELECT id, numero_invoice, archivo_ruta FROM material_invoices WHERE id = %s LIMIT 1 FOR UPDATE",
+            (invoice_id,),
+        )
+        invoice = cursor.fetchone()
+        if not invoice:
+            conn.rollback()
+            return {"success": False, "error": "Invoice no encontrada."}, 404
+
+        cursor.execute(
+            "SELECT COUNT(*) AS total FROM material_invoice_lot_links WHERE invoice_id = %s",
+            (invoice_id,),
+        )
+        total_links = (cursor.fetchone() or {}).get("total") or 0
+        if total_links:
+            conn.rollback()
+            return (
+                {
+                    "success": False,
+                    "error": (
+                        "No se puede eliminar: la invoice tiene "
+                        f"{total_links} link(s) de lote. Desaplica y limpia los links primero."
+                    ),
+                    "links": total_links,
+                },
+                409,
+            )
+
+        archivo_ruta = invoice.get("archivo_ruta")
+        cursor.execute("DELETE FROM material_invoice_packing_lines WHERE invoice_id = %s", (invoice_id,))
+        cursor.execute("DELETE FROM material_invoice_lines WHERE invoice_id = %s", (invoice_id,))
+        cursor.execute("DELETE FROM material_invoices WHERE id = %s", (invoice_id,))
         conn.commit()
-        return {"success": True}, 200
+
+        # Borra el Excel solo despues del commit (si falla, no es critico).
+        if archivo_ruta:
+            delete_file(archivo_ruta)
+        return {"success": True, "invoice_id": invoice_id, "numero_invoice": invoice.get("numero_invoice")}, 200
     except Exception as exc:
         conn.rollback()
-        logger.exception("Error desactivando alias %s: %s", alias_id, exc)
+        logger.exception("Error eliminando invoice %s: %s", invoice_id, exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:
         cursor.close()

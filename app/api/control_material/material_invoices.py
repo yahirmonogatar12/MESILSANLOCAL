@@ -4,19 +4,18 @@ La logica vive en `invoice_core/` y `costing_core/`; este archivo queda como
 adaptador HTTP del blueprint.
 """
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request, send_file
 
 from app.api.control_material.invoice_core.export import export_invoice
 from app.api.control_material.invoice_core.service import (
     apply_invoice,
-    create_alias,
-    deactivate_alias,
+    delete_invoice,
     get_invoice_candidates,
     get_invoice_detail,
-    import_aliases,
-    list_aliases,
     list_invoices,
+    preview_invoice,
     reapply_invoice,
+    resolve_invoice_file,
     unapply_invoice,
     upload_invoice,
 )
@@ -57,11 +56,25 @@ def api_upload_invoice():
     return _json_result(upload_invoice(request.files, request.form))
 
 
+@bp.route("/api/material_admin/invoices/preview", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(*PERMISO_INVOICES)
+def api_preview_invoice():
+    return _json_result(preview_invoice(request.files, request.form))
+
+
 @bp.route("/api/material_admin/invoices/<int:invoice_id>", methods=["GET"])
 @login_requerido
 @requiere_permiso_dropdown(*PERMISO_INVOICES)
 def api_invoice_detail(invoice_id):
     return _json_result(get_invoice_detail(invoice_id))
+
+
+@bp.route("/api/material_admin/invoices/<int:invoice_id>", methods=["DELETE"])
+@login_requerido
+@requiere_permiso_dropdown(*PERMISO_INVOICES)
+def api_delete_invoice(invoice_id):
+    return _json_result(delete_invoice(invoice_id))
 
 
 @bp.route("/api/material_admin/invoices/<int:invoice_id>/candidates", methods=["GET"])
@@ -92,6 +105,23 @@ def api_reapply_invoice(invoice_id):
     return _json_result(reapply_invoice(invoice_id, request.get_json(silent=True) or {}))
 
 
+@bp.route("/api/material_admin/invoices/<int:invoice_id>/file", methods=["GET"])
+@login_requerido
+@requiere_permiso_dropdown(*PERMISO_INVOICES)
+def api_invoice_file(invoice_id):
+    """Descarga/streamea el Excel original guardado de la invoice."""
+    info, status = resolve_invoice_file(invoice_id)
+    if status != 200:
+        return jsonify(info), status
+    as_attachment = request.args.get("download") in ("1", "true", "yes")
+    return send_file(
+        info["path"],
+        mimetype=info["mimetype"],
+        as_attachment=as_attachment,
+        download_name=info["download_name"],
+    )
+
+
 @bp.route("/api/material_admin/invoices/<int:invoice_id>/export", methods=["GET"])
 @login_requerido
 @requiere_permiso_dropdown(*PERMISO_INVOICES)
@@ -102,29 +132,3 @@ def api_invoice_export(invoice_id):
     return jsonify(payload), status
 
 
-@bp.route("/api/material_admin/invoices/aliases", methods=["POST"])
-@login_requerido
-@requiere_permiso_dropdown(*PERMISO_INVOICES)
-def api_create_alias():
-    return _json_result(create_alias(request.get_json(silent=True) or {}))
-
-
-@bp.route("/api/material_admin/invoices/aliases", methods=["GET"])
-@login_requerido
-@requiere_permiso_dropdown(*PERMISO_INVOICES)
-def api_list_aliases():
-    return _json_result(list_aliases(request.args))
-
-
-@bp.route("/api/material_admin/invoices/aliases/import", methods=["POST"])
-@login_requerido
-@requiere_permiso_dropdown(*PERMISO_INVOICES)
-def api_import_aliases():
-    return _json_result(import_aliases(request.files, request.form))
-
-
-@bp.route("/api/material_admin/invoices/aliases/<int:alias_id>", methods=["DELETE"])
-@login_requerido
-@requiere_permiso_dropdown(*PERMISO_INVOICES)
-def api_deactivate_alias(alias_id):
-    return _json_result(deactivate_alias(alias_id))

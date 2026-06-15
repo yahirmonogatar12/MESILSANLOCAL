@@ -34,140 +34,6 @@ def _drop_index_if_exists(table, key_name):
         execute_query(f"ALTER TABLE {table} DROP INDEX {key_name}")
 
 
-def _ensure_material_part_aliases_schema():
-    old_col = _ddl_fetch_one("SHOW COLUMNS FROM material_part_aliases LIKE %s", ("alias_part_num",))
-    new_col = _ddl_fetch_one("SHOW COLUMNS FROM material_part_aliases LIKE %s", ("numero_parte_original",))
-    if old_col and not new_col:
-        execute_query(
-            """
-            ALTER TABLE material_part_aliases
-            CHANGE COLUMN alias_part_num numero_parte_original VARCHAR(512) NOT NULL
-            """
-        )
-    elif not new_col:
-        execute_query(
-            """
-            ALTER TABLE material_part_aliases
-            ADD COLUMN numero_parte_original VARCHAR(512) NOT NULL DEFAULT ''
-            """
-        )
-    elif old_col:
-        execute_query(
-            """
-            UPDATE material_part_aliases
-            SET numero_parte_original = alias_part_num
-            WHERE (numero_parte_original IS NULL OR numero_parte_original = '')
-              AND alias_part_num IS NOT NULL
-              AND alias_part_num <> ''
-            """
-        )
-
-    _drop_index_if_exists("material_part_aliases", "uk_material_part_alias")
-
-    proveedor_col = _ddl_fetch_one("SHOW COLUMNS FROM material_part_aliases LIKE %s", ("proveedor",))
-    tipo_col = _ddl_fetch_one("SHOW COLUMNS FROM material_part_aliases LIKE %s", ("tipo",))
-    if proveedor_col or _index_columns("material_part_aliases", "uk_material_part_original") not in (
-        [],
-        ["numero_parte_original", "tipo"],
-    ):
-        _drop_index_if_exists("material_part_aliases", "uk_material_part_original")
-
-    if proveedor_col and not tipo_col:
-        execute_query(
-            """
-            ALTER TABLE material_part_aliases
-            CHANGE COLUMN proveedor tipo VARCHAR(255) NULL
-            """
-        )
-    elif proveedor_col and tipo_col:
-        execute_query(
-            """
-            UPDATE material_part_aliases
-            SET tipo = proveedor
-            WHERE (tipo IS NULL OR tipo = '')
-              AND proveedor IS NOT NULL
-              AND proveedor <> ''
-            """
-        )
-        execute_query("ALTER TABLE material_part_aliases DROP COLUMN proveedor")
-    elif not tipo_col:
-        execute_query("ALTER TABLE material_part_aliases ADD COLUMN tipo VARCHAR(255) NULL")
-
-    old_col_after_copy = _ddl_fetch_one("SHOW COLUMNS FROM material_part_aliases LIKE %s", ("alias_part_num",))
-    if old_col_after_copy:
-        execute_query("ALTER TABLE material_part_aliases DROP COLUMN alias_part_num")
-    _ensure_index(
-        "material_part_aliases",
-        "uk_material_part_original",
-        "UNIQUE KEY uk_material_part_original (numero_parte_original(191), tipo(100))",
-    )
-    _ensure_index(
-        "material_part_aliases",
-        "idx_material_part_original",
-        "KEY idx_material_part_original (numero_parte_original(191))",
-    )
-    _ensure_index(
-        "material_part_aliases",
-        "idx_material_part_alias_sistema",
-        "KEY idx_material_part_alias_sistema (numero_parte_sistema(191))",
-    )
-    _ensure_index(
-        "material_part_aliases",
-        "idx_material_part_tipo",
-        "KEY idx_material_part_tipo (tipo(100))",
-    )
-
-
-def _ensure_control_material_columns():
-    """Asegura las columnas que la captura de almacen usara para invoice/pallet."""
-    columnas = (
-        ("pallet_no_original", "pallet_no_original VARCHAR(50) NULL"),
-        ("pallet_no", "pallet_no VARCHAR(50) NULL"),
-        ("vendedor", "vendedor VARCHAR(100) NULL"),
-    )
-    for name, definition in columnas:
-        _ensure_column("control_material_almacen", name, definition)
-
-    _ensure_index(
-        "control_material_almacen",
-        "idx_cma_invoice_pallet",
-        "KEY idx_cma_invoice_pallet (numero_invoice, pallet_no)",
-    )
-    _ensure_index(
-        "control_material_almacen",
-        "idx_cma_parte_vendedor_fecha",
-        "KEY idx_cma_parte_vendedor_fecha (numero_parte(191), vendedor, fecha_recibo)",
-    )
-
-
-def ensure_material_part_aliases_table():
-    """Crea/migra material_part_aliases. Unico dueño de este DDL.
-
-    La llaman tanto init_material_invoice_tables() como el bootstrap de
-    Informacion Basica / Control de material (que expone el CRUD de
-    numeros de parte originales) para no duplicar la migracion.
-    """
-    execute_query(
-        """
-        CREATE TABLE IF NOT EXISTS material_part_aliases (
-            id BIGINT NOT NULL AUTO_INCREMENT,
-            numero_parte_original VARCHAR(512) NOT NULL,
-            numero_parte_sistema VARCHAR(512) NOT NULL,
-            tipo VARCHAR(255) NULL,
-            activo TINYINT NOT NULL DEFAULT 1,
-            usuario_registro VARCHAR(255) NOT NULL DEFAULT 'SISTEMA',
-            fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY uk_material_part_original (numero_parte_original(191), tipo(100)),
-            KEY idx_material_part_original (numero_parte_original(191)),
-            KEY idx_material_part_tipo (tipo(100)),
-            KEY idx_material_part_alias_sistema (numero_parte_sistema(191))
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        """
-    )
-    _ensure_material_part_aliases_schema()
-
-
 def init_material_invoice_tables():
     """Crea/actualiza tablas para invoice, packing, links y valorizacion."""
     _ensure_control_material_columns()
@@ -179,6 +45,9 @@ def init_material_invoice_tables():
             numero_invoice VARCHAR(255) NOT NULL,
             tipo VARCHAR(255) NULL,
             archivo_nombre VARCHAR(255) NULL,
+            archivo_ruta VARCHAR(512) NULL,
+            archivo_size BIGINT NULL,
+            archivo_mime VARCHAR(120) NULL,
             archivo_hash_sha256 VARCHAR(64) NOT NULL,
             estado ENUM(
                 'BORRADOR',
@@ -207,6 +76,9 @@ def init_material_invoice_tables():
     )
     invoice_columns = (
         ("tipo", "tipo VARCHAR(255) NULL"),
+        ("archivo_ruta", "archivo_ruta VARCHAR(512) NULL"),
+        ("archivo_size", "archivo_size BIGINT NULL"),
+        ("archivo_mime", "archivo_mime VARCHAR(120) NULL"),
         ("archivo_hash_sha256", "archivo_hash_sha256 VARCHAR(64) NOT NULL"),
         ("usuario_validacion", "usuario_validacion VARCHAR(255) NULL"),
         ("fecha_validacion", "fecha_validacion DATETIME NULL"),
@@ -298,7 +170,9 @@ def init_material_invoice_tables():
     ):
         _ensure_column("material_invoice_packing_lines", name, definition)
 
-    ensure_material_part_aliases_table()
+    # Catalogo de numeros de parte originales (aliases) retirado: ya no se usa.
+    # El Excel INVOICE(CONVERTED) trae el Part Sys y el UOM viene de materiales.
+    execute_query("DROP TABLE IF EXISTS material_part_aliases")
 
     execute_query(
         """

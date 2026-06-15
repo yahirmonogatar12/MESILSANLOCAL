@@ -17,14 +17,44 @@ from app.api.control_material.invoice_core.normalizers import (
     raw_text,
 )
 
+INVOICE_CONVERTED_SHEET_NAME = "INVOICE(CONVERTED)"
 INVOICE_TOTAL_SHEET_NAME = "INVOICE(total)"
 PACKING_ORIGINAL_SHEET_NAME = "PACKING LIST 원본"
 PART_EQUIVALENCE_SHEETS = ("Hoja1", "Sheet1")
 SUMMARY_PART_LABELS = {"COMMERCIAL", "NONCOMMERCIAL", "TOTAL", "SUBTOTAL"}
 
+# Mapeo fijo de encabezados de la hoja INVOICE(CONVERTED) (formato interno
+# ya conciliado: columna A = numero de invoice, fila 2 = encabezados).
+CONVERTED_HEADER_ALIASES = {
+    "TARIMA": "pallet",
+    "PALLET": "pallet",
+    "PARTNO": "raw_part_num",
+    "PARTNUM": "raw_part_num",
+    "PARTNUMBER": "raw_part_num",
+    "PARTSYS": "part_sys",
+    "PARTSYSTEM": "part_sys",
+    "ITEM": "item",
+    "SPEC": "spec",
+    "DESCRIPTION": "spec",
+    "QTY": "qty",
+    "QUANTITY": "qty",
+    "UOM": "uom",
+    "UNIT": "uom",
+    "UNIDAD": "uom",
+    "COSTOS": "unit_cost",
+    "COSTO": "unit_cost",
+    "UNITCOST": "unit_cost",
+    "TOTAL": "total_cost",
+    "TOTALCOST": "total_cost",
+}
+
 
 def _sheet_key(name):
     return re.sub(r"\s+", "", raw_text(name)).upper()
+
+
+def _is_invoice_converted_sheet(sheet):
+    return _sheet_key(sheet.title) == _sheet_key(INVOICE_CONVERTED_SHEET_NAME)
 
 
 def _is_invoice_total_sheet(sheet):
@@ -325,6 +355,121 @@ def _parse_packing_original_sheet(sheet, part_aliases=None):
     return records
 
 
+def _converted_invoice_number(sheet):
+    """Numero de invoice = primera celda de la hoja CONVERTED (A1)."""
+    return sanitizar_texto(sheet.cell(row=1, column=1).value, 255)
+
+
+def _find_converted_header(sheet):
+    for row in sheet.iter_rows(min_row=1, max_row=min(sheet.max_row or 1, 20)):
+        mapped = _map_header(row, CONVERTED_HEADER_ALIASES)
+        if "raw_part_num" in mapped and "qty" in mapped:
+            mapped["row_number"] = row[0].row
+            return mapped
+    return None
+
+
+def _parse_converted_sheet(sheet):
+    """Parsea INVOICE(CONVERTED): una sola tabla con parte, costo y tarima.
+
+    Devuelve (invoice_lines, packing_lines). La TARIMA actua como pallet y se
+    hereda por grupo cuando viene vacia. Cada fila valida produce a la vez una
+    invoice line (con costo) y una packing line (pallet+parte+cantidad), de modo
+    que la conciliacion packing existente funciona sin la hoja PACKING original.
+    """
+    header = _find_converted_header(sheet)
+    if not header:
+        return [], []
+
+    invoice_lines = []
+    packing_lines = []
+    line_no = 0
+    blank_streak = 0
+    current_pallet_raw = ""
+    start_row = header["row_number"] + 1
+
+    for row in sheet.iter_rows(min_row=start_row):
+        pallet_marker = raw_text(_cell(row, header.get("pallet")))
+        if pallet_marker:
+            current_pallet_raw = pallet_marker
+
+        part_raw = raw_text(_cell(row, header.get("raw_part_num")))
+        qty_raw = raw_text(_cell(row, header.get("qty")))
+        if not part_raw and not qty_raw and not pallet_marker:
+            blank_streak += 1
+            if blank_streak >= 8:
+                break
+            continue
+        blank_streak = 0
+
+        if not part_raw or _is_summary_part(part_raw):
+            continue
+
+        qty = decimal_or_zero(qty_raw)
+        if qty <= 0:
+            continue
+
+        line_no += 1
+        unit_raw = raw_text(_cell(row, header.get("unit_cost")))
+        total_raw = raw_text(_cell(row, header.get("total_cost")))
+        unit = decimal_or_zero(unit_raw)
+        total = decimal_or_zero(total_raw)
+        if total == 0 and unit != 0 and qty != 0:
+            total = (unit * qty).quantize(Decimal("0.0001"))
+
+        invoice_part = normalizar_numero_parte(part_raw)
+        # Part Sys ya viene resuelto en la hoja; si falta, se usa la parte raw
+        # y la resolucion por alias del backend hara el resto.
+        sys_raw = raw_text(_cell(row, header.get("part_sys")))
+        system_part = normalizar_numero_parte(sys_raw) or invoice_part
+        item = raw_text(_cell(row, header.get("item")))
+        spec = raw_text(_cell(row, header.get("spec")))
+        uom = raw_text(_cell(row, header.get("uom")))
+        descripcion = " ".join(part for part in (item, spec) if part).strip()
+        pallet_raw = current_pallet_raw
+
+        invoice_lines.append(
+            {
+                "line_no": line_no,
+                "maker": "",
+                "origin": "",
+                "raw_part_num": part_raw,
+                "numero_parte_invoice": invoice_part,
+                "numero_parte_sistema": system_part,
+                "descripcion": descripcion,
+                "cantidad": qty,
+                "uom": uom,
+                "costo_unitario": unit,
+                "costo_total": total,
+                "moneda": MONEDA_DEFAULT,
+                "raw_qty": qty_raw,
+                "raw_unit_cost": unit_raw,
+                "raw_total_cost": total_raw,
+                "estado_match": "PENDIENTE",
+                "mensaje_match": "",
+            }
+        )
+        packing_lines.append(
+            {
+                "line_no": line_no,
+                "packing_no": pallet_raw,
+                "raw_part_num": part_raw,
+                "numero_parte_packing": invoice_part,
+                "numero_parte_sistema": system_part,
+                "descripcion": descripcion,
+                "cantidad_packing": qty,
+                "raw_qty": qty_raw,
+                "pallet_no_original": pallet_raw,
+                "pallet_no": normalizar_pallet_no(pallet_raw),
+                "kg": None,
+                "cbm": None,
+                "estado_match": "PENDIENTE",
+                "mensaje_match": "",
+            }
+        )
+    return invoice_lines, packing_lines
+
+
 def _guess_invoice_number(wb, filename):
     for sheet in wb.worksheets:
         for row in sheet.iter_rows(max_row=30, max_col=12):
@@ -355,6 +500,31 @@ def parse_invoice_workbook(file_bytes, filename=""):
     packing_lines = []
     seen_headers = set()
     warnings = []
+
+    # Fuente principal: hoja INVOICE(CONVERTED), formato interno ya conciliado.
+    converted_sheet = next(
+        (sheet for sheet in wb.worksheets if _is_invoice_converted_sheet(sheet)),
+        None,
+    )
+    if converted_sheet is not None:
+        invoice_lines, packing_lines = _parse_converted_sheet(converted_sheet)
+        numero_invoice = (
+            _converted_invoice_number(converted_sheet)
+            or _guess_invoice_number(wb, filename)
+        )
+        if not invoice_lines:
+            warnings.append(
+                "La hoja INVOICE(CONVERTED) no contiene lineas validas."
+            )
+        return {
+            "numero_invoice_sugerido": numero_invoice,
+            "invoice_lines": invoice_lines,
+            "packing_lines": packing_lines,
+            "warnings": warnings,
+            "fuente_hoja": INVOICE_CONVERTED_SHEET_NAME,
+        }
+
+    # Fallback: formato anterior INVOICE(total) + PACKING LIST original.
     invoice_sheet_found = any(_is_invoice_total_sheet(sheet) for sheet in wb.worksheets)
     packing_original_found = any(_is_packing_original_sheet(sheet) for sheet in wb.worksheets)
     part_aliases = {}
@@ -390,13 +560,14 @@ def parse_invoice_workbook(file_bytes, filename=""):
                     )
                 )
     if not invoice_sheet_found:
-        warnings.append("No se encontro la hoja INVOICE(total).")
+        warnings.append("No se encontro la hoja INVOICE(CONVERTED) ni INVOICE(total).")
 
     return {
         "numero_invoice_sugerido": _guess_invoice_number(wb, filename),
         "invoice_lines": invoice_lines,
         "packing_lines": packing_lines,
         "warnings": warnings,
+        "fuente_hoja": INVOICE_TOTAL_SHEET_NAME,
     }
 
 

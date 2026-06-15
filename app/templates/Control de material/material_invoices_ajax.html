@@ -61,6 +61,8 @@
                             <th>Packing</th>
                             <th>Links</th>
                             <th>Fecha</th>
+                            <th>Excel</th>
+                            <th>Accion</th>
                         </tr>
                     </thead>
                     <tbody id="mat-invoice-list-body"></tbody>
@@ -68,70 +70,6 @@
             </div>
         </section>
     </div>
-
-    <section class="mat-invoice-panel mat-invoice-alias-panel">
-        <div class="mat-invoice-alias-head">
-            <div>
-                <h3>Equivalentes de partes</h3>
-                <span>Mapea el número de parte original en invoice/packing contra la parte del sistema.</span>
-            </div>
-            <div class="mat-invoice-header-actions">
-                <button id="mat-invoice-alias-refresh" class="mat-invoice-btn" type="button">Actualizar</button>
-            </div>
-        </div>
-
-        <form id="mat-invoice-alias-form" class="mat-invoice-alias-form" autocomplete="off">
-            <label>
-                Número de parte original
-                <input id="mat-invoice-alias-part" name="numero_parte_original" type="text" maxlength="512" placeholder="MED62371104">
-            </label>
-            <label>
-                Parte sistema
-                <input id="mat-invoice-alias-system" name="numero_parte_sistema" type="text" maxlength="512" placeholder="EAG64954207">
-            </label>
-            <label>
-                Tipo
-                <input id="mat-invoice-alias-type" name="tipo" type="text" maxlength="255" placeholder="Opcional">
-            </label>
-            <button class="mat-invoice-btn primary" type="submit">Guardar equivalente</button>
-        </form>
-
-        <div class="mat-invoice-alias-tools">
-            <label>
-                Buscar equivalente
-                <input id="mat-invoice-alias-search" type="text" autocomplete="off" placeholder="Número original, sistema o tipo">
-            </label>
-            <label class="mat-invoice-check">
-                <input id="mat-invoice-alias-include-inactive" type="checkbox">
-                Incluir inactivos
-            </label>
-            <button id="mat-invoice-alias-search-btn" class="mat-invoice-btn" type="button">Consultar</button>
-            <label>
-                Importar Excel
-                <input id="mat-invoice-alias-import-file" type="file" accept=".xlsx,.xlsm,.xltx,.xltm">
-            </label>
-            <button id="mat-invoice-alias-import-btn" class="mat-invoice-btn success" type="button">Importar</button>
-        </div>
-
-        <div id="mat-invoice-alias-message" class="mat-invoice-message" hidden></div>
-
-        <div class="mat-invoice-table-wrap aliases">
-            <table class="mat-invoice-table">
-                <thead>
-                    <tr>
-                        <th>Número de parte original</th>
-                        <th>Parte sistema</th>
-                        <th>Tipo</th>
-                        <th>Sistema existe</th>
-                        <th>Activo</th>
-                        <th>Fecha</th>
-                        <th>Accion</th>
-                    </tr>
-                </thead>
-                <tbody id="mat-invoice-alias-body"></tbody>
-            </table>
-        </div>
-    </section>
 
     <section id="mat-invoice-detail" class="mat-invoice-panel mat-invoice-detail" hidden>
         <div class="mat-invoice-detail-head">
@@ -223,6 +161,67 @@
     </section>
 
     <div id="mat-invoice-loading" class="mat-invoice-loading" hidden>Cargando...</div>
+
+    <div id="mat-invoice-viewer" class="mat-invoice-viewer" hidden>
+        <div class="mat-invoice-viewer-backdrop" data-viewer-close></div>
+        <div class="mat-invoice-viewer-dialog" role="dialog" aria-modal="true">
+            <div class="mat-invoice-viewer-head">
+                <div>
+                    <h3 id="mat-invoice-viewer-title">Visor de Excel</h3>
+                    <span id="mat-invoice-viewer-subtitle"></span>
+                </div>
+                <div class="mat-invoice-header-actions">
+                    <button id="mat-invoice-viewer-download" class="mat-invoice-btn success" type="button">Descargar Excel</button>
+                    <button class="mat-invoice-btn" type="button" data-viewer-close>Cerrar</button>
+                </div>
+            </div>
+            <div id="mat-invoice-viewer-message" class="mat-invoice-message" hidden></div>
+            <div id="mat-invoice-viewer-body" class="mat-invoice-viewer-body"></div>
+            <div class="mat-invoice-viewer-footer">
+                <div id="mat-invoice-viewer-tabs" class="mat-invoice-viewer-tabs"></div>
+                <label class="mat-invoice-viewer-jump">
+                    Ir a
+                    <select id="mat-invoice-viewer-sheets" class="mat-invoice-viewer-select"></select>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="mat-invoice-preview" class="mat-invoice-viewer" hidden>
+        <div class="mat-invoice-viewer-backdrop" data-preview-close></div>
+        <div class="mat-invoice-viewer-dialog" role="dialog" aria-modal="true">
+            <div class="mat-invoice-viewer-head">
+                <div>
+                    <h3>Previsualizar carga</h3>
+                    <span id="mat-invoice-preview-subtitle"></span>
+                </div>
+                <div class="mat-invoice-header-actions">
+                    <button id="mat-invoice-preview-confirm" class="mat-invoice-btn primary" type="button">Confirmar carga</button>
+                    <button class="mat-invoice-btn" type="button" data-preview-close>Cancelar</button>
+                </div>
+            </div>
+            <div id="mat-invoice-preview-message" class="mat-invoice-message" hidden></div>
+            <div class="mat-invoice-viewer-body">
+                <table class="mat-invoice-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Pallet</th>
+                            <th>Parte raw</th>
+                            <th>Parte sistema</th>
+                            <th>Descripcion</th>
+                            <th>Cantidad</th>
+                            <th>UOM</th>
+                            <th>Costo unit.</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mat-invoice-preview-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260612e') }}"></script>
+<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260615g') }}"></script>

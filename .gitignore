@@ -75,6 +75,8 @@ run_dev.py
 
 # Uploads
 app/static/uploads/
+# Excel originales de invoices (se guardan por numero/fecha en runtime)
+storage/
 .graphify_detect.json
 .graphify_ast.json
 .graphify_detect_selected.json

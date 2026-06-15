@@ -39,8 +39,6 @@ from app.api.shared import (
     requiere_permiso_dropdown,
     sanitizar_texto,
 )
-from app.api.control_material.invoice_core.normalizers import normalizar_numero_parte
-from app.api.control_material.invoice_core.service import _parse_alias_workbook
 from app.db_mysql import execute_query
 
 logger = logging.getLogger(__name__)
@@ -99,21 +97,7 @@ def crear_tabla_material_costos():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
     )
-    _crear_tabla_material_part_aliases()
     _asegurar_columnas_materiales()
-
-
-def _crear_tabla_material_part_aliases():
-    """Asegura el catalogo de equivalencias invoice/packing -> sistema.
-
-    El DDL/migracion vive en invoice_core.ddl (unico dueño); aqui solo se
-    delega para que el modulo funcione aunque init_material_invoice_tables()
-    no haya corrido aun. Import diferido para no acoplar el arranque.
-    """
-    from app.api.control_material.invoice_core.ddl import (
-        ensure_material_part_aliases_table,
-    )
-    ensure_material_part_aliases_table()
 
 
 def _asegurar_columnas_materiales():
@@ -307,288 +291,6 @@ def _costos_para_material(vigentes_np, vendedores):
     return costos
 
 
-def _aliases_por_material(cursor, numeros_parte):
-    """Aliases activos por parte sistema: todos y solo globales."""
-    if not numeros_parte:
-        return {}, {}
-    placeholders = ", ".join(["%s"] * len(numeros_parte))
-    cursor.execute(
-        f"""
-        SELECT numero_parte_original, numero_parte_sistema, tipo
-        FROM material_part_aliases
-        WHERE activo = 1
-          AND numero_parte_sistema IN ({placeholders})
-        ORDER BY numero_parte_original ASC, tipo ASC, id DESC
-        """,
-        list(numeros_parte),
-    )
-    todos = {}
-    globales = {}
-    for row in cursor.fetchall() or []:
-        numero_parte = row["numero_parte_sistema"]
-        alias = row["numero_parte_original"]
-        tipo = row.get("tipo") or ""
-        todos.setdefault(numero_parte, []).append(
-            f"{alias} ({tipo})" if tipo else alias
-        )
-        if not tipo:
-            globales.setdefault(numero_parte, []).append(alias)
-    return todos, globales
-
-
-def _parse_numeros_parte_original(value):
-    """Numeros originales globales separados por coma, punto y coma, tab o saltos."""
-    raw_items = value if isinstance(value, list) else re.split(r"[,;\n\r\t]+", str(value or ""))
-    aliases = []
-    vistos = set()
-    for raw in raw_items:
-        alias = normalizar_numero_parte(raw)
-        if not alias or alias in vistos:
-            continue
-        vistos.add(alias)
-        aliases.append(alias)
-    return aliases
-
-
-def _sync_numeros_parte_original(cursor, numero_parte, originales, usuario, fecha):
-    """Sincroniza numeros originales globales sin tocar registros por tipo."""
-    cursor.execute(
-        """
-        SELECT numero_parte_original
-        FROM material_part_aliases
-        WHERE numero_parte_sistema = %s
-          AND activo = 1
-          AND COALESCE(tipo, '') = ''
-        """,
-        (numero_parte,),
-    )
-    actuales = {row["numero_parte_original"] for row in (cursor.fetchall() or [])}
-    deseados = set(originales or [])
-
-    for original in actuales - deseados:
-        cursor.execute(
-            """
-            UPDATE material_part_aliases
-            SET activo = 0
-            WHERE numero_parte_original = %s
-              AND numero_parte_sistema = %s
-              AND COALESCE(tipo, '') = ''
-            """,
-            (original, numero_parte),
-        )
-
-    for original in sorted(deseados):
-        cursor.execute(
-            """
-            INSERT INTO material_part_aliases (
-                numero_parte_original, numero_parte_sistema, tipo,
-                usuario_registro, fecha_registro, activo
-            ) VALUES (%s, %s, '', %s, %s, 1)
-            ON DUPLICATE KEY UPDATE
-                numero_parte_sistema = VALUES(numero_parte_sistema),
-                usuario_registro = VALUES(usuario_registro),
-                fecha_registro = VALUES(fecha_registro),
-                activo = 1
-            """,
-            (original, numero_parte, usuario, fecha),
-        )
-
-
-def _materiales_existentes(cursor, numeros_parte):
-    numeros = sorted({normalizar_numero_parte(numero) for numero in numeros_parte if numero})
-    existentes = set()
-    for idx in range(0, len(numeros), 500):
-        bloque = numeros[idx:idx + 500]
-        placeholders = ", ".join(["%s"] * len(bloque))
-        cursor.execute(
-            f"""
-            SELECT numero_parte
-            FROM materiales
-            WHERE activo = 1
-              AND numero_parte IN ({placeholders})
-            """,
-            tuple(bloque),
-        )
-        existentes.update(row["numero_parte"] for row in (cursor.fetchall() or []))
-    return existentes
-
-
-def _upsert_numero_parte_original(cursor, original, sistema, tipo, usuario, fecha):
-    cursor.execute(
-        """
-        INSERT INTO material_part_aliases (
-            numero_parte_original, numero_parte_sistema, tipo,
-            usuario_registro, fecha_registro, activo
-        ) VALUES (%s, %s, %s, %s, %s, 1)
-        ON DUPLICATE KEY UPDATE
-            numero_parte_sistema = VALUES(numero_parte_sistema),
-            usuario_registro = VALUES(usuario_registro),
-            fecha_registro = VALUES(fecha_registro),
-            activo = 1
-        """,
-        (original, sistema, tipo or "", usuario, fecha),
-    )
-
-
-def _analizar_numeros_parte_original(cursor, records, skipped_excel, tipo_default, conflicts=None):
-    conflicts = conflicts or []
-    materiales_existentes = _materiales_existentes(
-        cursor,
-        (record["numero_parte_sistema"] for record in records),
-    )
-    originales = sorted({record["numero_parte_original"] for record in records})
-    existentes = {}
-    for idx in range(0, len(originales), 500):
-        bloque = originales[idx:idx + 500]
-        placeholders = ", ".join(["%s"] * len(bloque))
-        cursor.execute(
-            f"""
-            SELECT numero_parte_original, numero_parte_sistema,
-                   COALESCE(tipo, '') AS tipo, activo
-            FROM material_part_aliases
-            WHERE numero_parte_original IN ({placeholders})
-            """,
-            tuple(bloque),
-        )
-        for row in cursor.fetchall() or []:
-            existentes[(row["numero_parte_original"], row.get("tipo") or "")] = row
-
-    conflict_rows = []
-    for conflict in conflicts:
-        sistemas = conflict.get("sistemas") or []
-        filas = [str(row_no) for row_no in (conflict.get("filas") or []) if row_no]
-        detalle = conflict.get("detalle") or "Mismo numero original + tipo apunta a varios sistemas"
-        if filas:
-            detalle = f"{detalle}. Filas: {', '.join(filas)}"
-        conflict_rows.append(
-            {
-                "numero_parte_original": conflict.get("numero_parte_original") or "",
-                "numero_parte_sistema": " / ".join(sistemas),
-                "tipo": conflict.get("tipo") or "",
-                "estatus": "CONFLICTO",
-                "detalle": detalle,
-            }
-        )
-
-    rows = []
-    counts = {
-        "nuevos": 0,
-        "actualizados": 0,
-        "sin_cambio": 0,
-        "reactivados": 0,
-        "omitidos_sistema": 0,
-        "conflictos": len(conflicts),
-    }
-    importables_records = []
-    omitidos_sistema = []
-
-    for record in records:
-        original = record["numero_parte_original"]
-        sistema = record["numero_parte_sistema"]
-        tipo = record.get("tipo") or tipo_default or ""
-        existente = existentes.get((original, tipo))
-        estatus = "NUEVO"
-        detalle = "Se creara equivalencia"
-        importable = sistema in materiales_existentes
-
-        if not importable:
-            estatus = "OMITIDO"
-            detalle = "La parte sistema no existe activa en materiales"
-            counts["omitidos_sistema"] += 1
-            omitidos_sistema.append(
-                {
-                    "numero_parte_original": original,
-                    "numero_parte_sistema": sistema,
-                    "tipo": tipo,
-                    "motivo": "PARTE_SISTEMA_NO_EXISTE",
-                }
-            )
-        elif not existente:
-            counts["nuevos"] += 1
-        elif int(existente.get("activo") or 0) == 0:
-            estatus = "REACTIVAR"
-            detalle = "Se reactivara equivalencia"
-            if (existente.get("numero_parte_sistema") or "") != sistema:
-                detalle = f"Se reactivara y cambiara desde {existente.get('numero_parte_sistema') or ''}"
-            counts["reactivados"] += 1
-        elif (existente.get("numero_parte_sistema") or "") == sistema:
-            estatus = "SIN_CAMBIO"
-            detalle = "La equivalencia ya existe activa"
-            counts["sin_cambio"] += 1
-        else:
-            estatus = "ACTUALIZAR"
-            detalle = f"Cambiara desde {existente.get('numero_parte_sistema') or ''}"
-            counts["actualizados"] += 1
-
-        if importable:
-            importables_records.append({**record, "tipo": tipo})
-
-        rows.append(
-            {
-                "numero_parte_original": original,
-                "numero_parte_sistema": sistema,
-                "tipo": tipo,
-                "estatus": estatus,
-                "detalle": detalle,
-            }
-        )
-
-    rows = conflict_rows + rows
-    importables = len(importables_records)
-    total_omitidos = skipped_excel + counts["omitidos_sistema"] + counts["conflictos"]
-    return {
-        "total_detectados": len(records) + counts["conflictos"],
-        "importables": importables,
-        "omitidos": total_omitidos,
-        "omitidos_excel": skipped_excel,
-        "omitidos_sistema": counts["omitidos_sistema"],
-        "omitidos_conflicto": counts["conflictos"],
-        "nuevos": counts["nuevos"],
-        "actualizados": counts["actualizados"],
-        "sin_cambio": counts["sin_cambio"],
-        "reactivados": counts["reactivados"],
-        "conflictos": counts["conflictos"],
-        "conflictos_preview": conflicts[:50],
-        "preview": rows[:100],
-        "preview_total": len(rows),
-        "omitidos_sistema_preview": omitidos_sistema[:50],
-        "_importables_records": importables_records,
-    }
-
-
-def _leer_excel_numeros_originales(files):
-    uploaded = files.get("file") or files.get("archivo")
-    if not uploaded:
-        return None, None, None, None, (jsonify({"success": False, "error": "Archivo requerido."}), 400)
-
-    filename = secure_filename(uploaded.filename or "numeros_originales.xlsx")
-    file_bytes = uploaded.read()
-    if not file_bytes:
-        return None, None, None, None, (jsonify({"success": False, "error": "El archivo esta vacio."}), 400)
-
-    try:
-        records, skipped_excel, conflicts = _parse_alias_workbook(file_bytes, include_conflicts=True)
-    except Exception as exc:
-        logger.exception("Error leyendo numeros originales desde %s: %s", filename, exc)
-        return None, None, None, None, (
-            jsonify({"success": False, "error": "No se pudo leer el Excel de numeros originales."}),
-            400,
-        )
-
-    if not records and not conflicts:
-        return None, None, None, None, (
-            jsonify(
-                {
-                    "success": False,
-                    "error": "No se detectaron columnas de numero de parte original y parte sistema.",
-                }
-            ),
-            400,
-        )
-
-    return filename, records, skipped_excel, conflicts, None
-
-
 def _insertar_costos(cursor, numero_parte, costos, usuario, fecha):
     """Inserta una fila por cada vendedor con costo (siempre, para alta)."""
     for c in costos:
@@ -622,16 +324,10 @@ def _insertar_costos_si_cambiaron(cursor, numero_parte, costos, vigentes_np, usu
         )
 
 
-def _material_to_json(row, vigentes_np, aliases_np=None, aliases_global_np=None):
+def _material_to_json(row, vigentes_np):
     vendedores = _split_vendedores(row.get("vendedor"))
-    aliases = aliases_np or []
-    aliases_globales = aliases_global_np or []
     return {
         "numero_parte": row.get("numero_parte") or "",
-        "numeros_parte_original": aliases,
-        "numeros_parte_original_text": ", ".join(aliases),
-        "numeros_parte_original_global": aliases_globales,
-        "numeros_parte_original_global_text": ", ".join(aliases_globales),
         "propiedad_material": row.get("propiedad_material") or "",
         "clasificacion": row.get("clasificacion") or "",
         "especificacion_material": row.get("especificacion_material") or "",
@@ -667,9 +363,6 @@ def _fetch_material(cursor, numero_parte):
 def _payload_material():
     data = request.get_json(silent=True) or {}
     numero_parte = sanitizar_texto(data.get("numero_parte"), 512)
-    numeros_originales = _parse_numeros_parte_original(
-        data.get("numeros_parte_original", data.get("aliases_invoice"))
-    )
     propiedad = sanitizar_texto(data.get("propiedad_material"), 512)
     clasificacion = sanitizar_texto(data.get("clasificacion"), 512)
     especificacion = sanitizar_texto(data.get("especificacion_material"), 512)
@@ -687,7 +380,6 @@ def _payload_material():
 
     payload = {
         "numero_parte": numero_parte,
-        "numeros_parte_original": numeros_originales,
         "propiedad_material": propiedad,
         "clasificacion": clasificacion,
         "especificacion_material": especificacion,
@@ -725,18 +417,12 @@ def _build_filters():
                 especificacion_material LIKE %s OR
                 propiedad_material LIKE %s OR
                 clasificacion LIKE %s OR
-                vendedor LIKE %s OR
-                numero_parte IN (
-                    SELECT numero_parte_sistema
-                    FROM material_part_aliases
-                    WHERE activo = 1
-                      AND numero_parte_original LIKE %s
-                )
+                vendedor LIKE %s
             )
             """
         )
         like = f"%{q}%"
-        params.extend([like, like, like, like, like, like])
+        params.extend([like, like, like, like, like])
     if clasificacion:
         where.append("clasificacion = %s")
         params.append(clasificacion)
@@ -761,14 +447,8 @@ def _query_materiales(cursor):
     rows = cursor.fetchall() or []
     numeros = [r["numero_parte"] for r in rows]
     vigentes = _costos_vigentes(cursor, numeros) if numeros else {}
-    aliases, aliases_globales = _aliases_por_material(cursor, numeros) if numeros else ({}, {})
     return [
-        _material_to_json(
-            r,
-            vigentes.get(r["numero_parte"]),
-            aliases.get(r["numero_parte"]),
-            aliases_globales.get(r["numero_parte"]),
-        )
+        _material_to_json(r, vigentes.get(r["numero_parte"]))
         for r in rows
     ]
 
@@ -810,16 +490,10 @@ def detalle_material():
         if not row:
             return jsonify({"success": False, "error": "Material no encontrado"}), 404
         vigentes = _costos_vigentes(cursor, [numero_parte])
-        aliases, aliases_globales = _aliases_por_material(cursor, [numero_parte])
         return jsonify(
             {
                 "success": True,
-                "record": _material_to_json(
-                    row,
-                    vigentes.get(numero_parte),
-                    aliases.get(numero_parte),
-                    aliases_globales.get(numero_parte),
-                ),
+                "record": _material_to_json(row, vigentes.get(numero_parte)),
             }
         )
     except Exception as exc:
@@ -916,83 +590,6 @@ def catalogos():
         conn.close()
 
 
-@bp.route("/api/informacion_basica/control_material/numeros-originales/import", methods=["POST"])
-@login_requerido
-@requiere_permiso_dropdown(*PERMISO_MODULO)
-def import_numeros_parte_original():
-    """Carga masiva de equivalencias numero original -> numero sistema.
-
-    Pertenece al modulo de Informacion Basica / Control de material porque
-    estas equivalencias son catalogo maestro, no datos propios de una invoice.
-    """
-    filename, records, skipped_excel, conflicts, error = _leer_excel_numeros_originales(request.files)
-    if error:
-        return error
-
-    conn, error_response = conexion_o_error()
-    if error_response:
-        return error_response
-    cursor = dict_cursor(conn)
-    try:
-        usuario = _usuario_actual()
-        fecha = obtener_fecha_hora_mexico()
-        tipo_default = sanitizar_texto(request.form.get("tipo") or request.form.get("proveedor"), 255)
-        cursor.execute("START TRANSACTION")
-        analysis = _analizar_numeros_parte_original(cursor, records, skipped_excel, tipo_default, conflicts)
-        importados = 0
-        for record in analysis["_importables_records"]:
-            _upsert_numero_parte_original(
-                cursor,
-                record["numero_parte_original"],
-                record["numero_parte_sistema"],
-                record.get("tipo") or "",
-                usuario,
-                fecha,
-            )
-            importados += 1
-        conn.commit()
-        analysis.pop("_importables_records", None)
-        analysis["success"] = True
-        analysis["archivo"] = filename
-        analysis["importados"] = importados
-        return jsonify(analysis)
-    except Exception as exc:
-        conn.rollback()
-        logger.exception("Error importando numeros originales: %s", exc)
-        return jsonify({"success": False, "error": ERROR_INTERNO}), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-
-@bp.route("/api/informacion_basica/control_material/numeros-originales/preview", methods=["POST"])
-@login_requerido
-@requiere_permiso_dropdown(*PERMISO_MODULO)
-def preview_numeros_parte_original():
-    """Previsualiza la carga masiva sin escribir equivalencias."""
-    filename, records, skipped_excel, conflicts, error = _leer_excel_numeros_originales(request.files)
-    if error:
-        return error
-
-    conn, error_response = conexion_o_error()
-    if error_response:
-        return error_response
-    cursor = dict_cursor(conn)
-    try:
-        tipo_default = sanitizar_texto(request.form.get("tipo") or request.form.get("proveedor"), 255)
-        analysis = _analizar_numeros_parte_original(cursor, records, skipped_excel, tipo_default, conflicts)
-        analysis.pop("_importables_records", None)
-        analysis["success"] = True
-        analysis["archivo"] = filename
-        return jsonify(analysis)
-    except Exception as exc:
-        logger.exception("Error generando preview de numeros originales: %s", exc)
-        return jsonify({"success": False, "error": ERROR_INTERNO}), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-
 @bp.route("/api/informacion_basica/control_material/export", methods=["GET"])
 @login_requerido
 @requiere_permiso_dropdown(*PERMISO_MODULO)
@@ -1011,7 +608,6 @@ def export_materiales():
                 items.append(
                     {
                         "numero_parte": m["numero_parte"],
-                        "numero_parte_original": m["numeros_parte_original_text"],
                         "propiedad_material": m["propiedad_material"],
                         "clasificacion": m["clasificacion"],
                         "especificacion_material": m["especificacion_material"],
@@ -1025,16 +621,16 @@ def export_materiales():
                     }
                 )
         headers = [
-            "Numero de parte", "Numero de parte original", "Propiedad", "Clasificacion", "Especificacion",
+            "Numero de parte", "Propiedad", "Clasificacion", "Especificacion",
             "Unidad empaque", "Unidad medida", "Vendedor", "Costo", "Moneda",
             "Fecha registro", "Usuario",
         ]
         keys = [
-            "numero_parte", "numero_parte_original", "propiedad_material", "clasificacion",
+            "numero_parte", "propiedad_material", "clasificacion",
             "especificacion_material", "unidad_empaque", "unidad_medida",
             "vendedor", "costo", "moneda", "fecha_registro", "usuario_registro",
         ]
-        widths = [22, 26, 20, 18, 34, 14, 12, 18, 12, 8, 18, 16]
+        widths = [22, 20, 18, 34, 14, 12, 18, 12, 8, 18, 16]
         filename = f"control_material_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         return excel_response(
             items, headers, keys, widths,
@@ -1136,12 +732,10 @@ def create_material():
                 ),
             )
         _insertar_costos(cursor, payload["numero_parte"], payload["costos"], usuario, fecha)
-        _sync_numeros_parte_original(cursor, payload["numero_parte"], payload["numeros_parte_original"], usuario, fecha)
         conn.commit()
 
         row = _fetch_material(cursor, payload["numero_parte"])
         vigentes = _costos_vigentes(cursor, [payload["numero_parte"]])
-        aliases, aliases_globales = _aliases_por_material(cursor, [payload["numero_parte"]])
         return (
             jsonify(
                 {
@@ -1149,8 +743,6 @@ def create_material():
                     "record": _material_to_json(
                         row,
                         vigentes.get(payload["numero_parte"]),
-                        aliases.get(payload["numero_parte"]),
-                        aliases_globales.get(payload["numero_parte"]),
                     ),
                 }
             ),
@@ -1217,20 +809,16 @@ def update_material():
             cursor, payload["numero_parte"], payload["costos"],
             vigentes.get(payload["numero_parte"]), usuario, fecha,
         )
-        _sync_numeros_parte_original(cursor, payload["numero_parte"], payload["numeros_parte_original"], usuario, fecha)
         conn.commit()
 
         row = _fetch_material(cursor, payload["numero_parte"])
         vigentes = _costos_vigentes(cursor, [payload["numero_parte"]])
-        aliases, aliases_globales = _aliases_por_material(cursor, [payload["numero_parte"]])
         return jsonify(
             {
                 "success": True,
                 "record": _material_to_json(
                     row,
                     vigentes.get(payload["numero_parte"]),
-                    aliases.get(payload["numero_parte"]),
-                    aliases_globales.get(payload["numero_parte"]),
                 ),
             }
         )

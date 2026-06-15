@@ -2,63 +2,50 @@
 
 from app.api.control_material.invoice_core.normalizers import normalizar_numero_parte
 
-def resolve_aliases(cursor, records, tipo=None, part_key="numero_parte_sistema"):
+
+def validate_system_parts(cursor, records, part_key="numero_parte_sistema", estado_ok="DIRECTO"):
+    """Valida numero_parte_sistema (ya resuelto en el Excel) contra materiales.
+
+    No usa la tabla de aliases: la hoja INVOICE(CONVERTED) ya trae Part Sys.
+    Marca si la parte existe o no en el sistema (para detectar diferencias) y,
+    cuando existe, toma la unidad de medida (UOM) desde materiales para mantener
+    consistencia con el sistema en vez de depender del Excel.
+
+    `estado_ok` es el estado a usar cuando la parte existe, porque el ENUM de
+    estado_match difiere entre tablas: invoice_lines usa 'DIRECTO', packing_lines
+    usa 'MATCH'. Las inexistentes quedan en 'SIN_ALIAS' (valido en ambas).
+    """
     parts = sorted({normalizar_numero_parte(r.get(part_key)) for r in records if r.get(part_key)})
-    if not parts:
-        return
-
-    placeholders = ", ".join(["%s"] * len(parts))
-    tipo = tipo or ""
-    alias_params = parts + [tipo, tipo]
-    cursor.execute(
-        f"""
-        SELECT numero_parte_original, numero_parte_sistema, tipo
-        FROM material_part_aliases
-        WHERE activo = 1
-          AND numero_parte_original IN ({placeholders})
-          AND (tipo IS NULL OR tipo = '' OR tipo = %s)
-        ORDER BY
-          CASE
-            WHEN tipo = %s THEN 0
-            WHEN tipo IS NULL OR tipo = '' THEN 1
-            ELSE 2
-          END,
-          id DESC
-        """,
-        alias_params,
-    )
-    aliases = {}
-    for row in cursor.fetchall() or []:
-        aliases.setdefault(normalizar_numero_parte(row["numero_parte_original"]), row["numero_parte_sistema"])
-
-    cursor.execute(
-        f"""
-        SELECT numero_parte
-        FROM materiales
-        WHERE numero_parte IN ({placeholders})
-        """,
-        parts,
-    )
-    direct = {normalizar_numero_parte(row["numero_parte"]): row["numero_parte"] for row in cursor.fetchall() or []}
+    uom_por_parte = {}
+    if parts:
+        placeholders = ", ".join(["%s"] * len(parts))
+        cursor.execute(
+            f"""
+            SELECT numero_parte, unidad_medida
+            FROM materiales
+            WHERE numero_parte IN ({placeholders})
+            """,
+            parts,
+        )
+        for row in cursor.fetchall() or []:
+            uom_por_parte[normalizar_numero_parte(row["numero_parte"])] = row.get("unidad_medida")
 
     for record in records:
         raw_part = normalizar_numero_parte(record.get(part_key))
         if not raw_part:
             record["estado_match"] = "SIN_ALIAS"
             record["mensaje_match"] = "Sin numero de parte"
-            continue
-        if raw_part in aliases:
-            record["numero_parte_sistema"] = aliases[raw_part]
-            record["estado_match"] = "ALIAS" if "cantidad" in record else "MATCH"
-            record["mensaje_match"] = "Alias aplicado"
-        elif raw_part in direct:
-            record["numero_parte_sistema"] = direct[raw_part]
-            record["estado_match"] = "DIRECTO" if "cantidad" in record else "MATCH"
+        elif raw_part in uom_por_parte:
+            record["numero_parte_sistema"] = raw_part
+            record["estado_match"] = estado_ok
             record["mensaje_match"] = "Parte encontrada"
+            # UOM desde materiales (consistencia con el sistema).
+            if "uom" in record:
+                record["uom"] = uom_por_parte[raw_part] or record.get("uom") or ""
         else:
             record["numero_parte_sistema"] = raw_part
             record["estado_match"] = "SIN_ALIAS"
-            record["mensaje_match"] = "No existe alias/material en sistema"
+            record["mensaje_match"] = "La parte no existe en materiales"
 
 
 def assign_packing_lines(cursor, invoice_id):
@@ -130,6 +117,5 @@ def invoice_has_differences(cursor, invoice_id):
     return bool(row.get("diff_lines") or row.get("diff_packing"))
 
 # Compatibilidad con nombres previos al refactor.
-_resolve_aliases = resolve_aliases
 _assign_packing_lines = assign_packing_lines
 _invoice_has_differences = invoice_has_differences
