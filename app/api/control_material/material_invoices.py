@@ -17,6 +17,7 @@ from app.api.control_material.invoice_core.service import (
     preview_invoice,
     reapply_invoice,
     resolve_invoice_file,
+    set_invoice_closed,
     unapply_invoice,
     upload_invoice,
 )
@@ -81,6 +82,16 @@ def api_invoice_detail(invoice_id):
 @requiere_permiso_dropdown(*PERMISO_INVOICES)
 def api_delete_invoice(invoice_id):
     return _json_result(delete_invoice(invoice_id))
+
+
+@bp.route("/api/material_admin/invoices/<int:invoice_id>/close", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(*PERMISO_INVOICES)
+def api_close_invoice(invoice_id):
+    # cerrado=false reabre. Body: {"cerrado": true/false}
+    data = request.get_json(silent=True) or {}
+    cerrado = data.get("cerrado", True)
+    return _json_result(set_invoice_closed(invoice_id, cerrado))
 
 
 @bp.route("/api/material_admin/invoices/<int:invoice_id>/candidates", methods=["GET"])

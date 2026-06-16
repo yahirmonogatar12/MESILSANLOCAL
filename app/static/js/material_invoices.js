@@ -1,6 +1,6 @@
 (function () {
   const STYLE_ID = "material-invoices-css";
-  const STYLE_VERSION = "20260615s";
+  const STYLE_VERSION = "20260616c";
   const STYLE_HREF = `/static/css/material_invoices.css?v=${STYLE_VERSION}`;
 
   const state = {
@@ -134,8 +134,11 @@
     const hasta = el("mat-invoice-date-to")?.value;
     if (q) params.set("q", q);
     if (estado) params.set("estado", estado);
-    if (desde) params.set("fecha_inicio", desde);
-    if (hasta) params.set("fecha_fin", hasta);
+    // "Solo pendientes" ignora el rango de fechas: un invoice pendiente de dias
+    // anteriores sigue abierto y debe verse aunque no sea de hoy.
+    const soloPendientes = estado === "PENDIENTES";
+    if (!soloPendientes && desde) params.set("fecha_inicio", desde);
+    if (!soloPendientes && hasta) params.set("fecha_fin", hasta);
     return params;
   }
 
@@ -221,6 +224,13 @@
     if (subtitle) {
       subtitle.textContent = `${invoice.estado || ""} | ${invoice.tipo || ""} | ${invoice.archivo_nombre || ""}`;
     }
+    // El boton Cerrar refleja el estado: cerrado -> "Reabrir invoice".
+    const closeBtn = el("mat-invoice-close");
+    if (closeBtn) {
+      const cerrado = invoice.cerrado_manual == 1 || invoice.cerrado_manual === true;
+      closeBtn.textContent = cerrado ? "Reabrir invoice" : "Cerrar invoice";
+      closeBtn.dataset.cerrado = cerrado ? "1" : "0";
+    }
     renderLines(data.lines || []);
     renderPacking(data.packing || []);
     renderLinks(data.links || []);
@@ -278,6 +288,16 @@
       const toggle = tieneLotes
         ? `<button type="button" class="mat-invoice-lote-toggle" data-toggle-lotes="${escapeHtml(row.id)}" aria-expanded="false" title="Ver lotes aplicados">▶</button> `
         : "";
+      // Exceso: se aplico mas de lo facturado. Se resalta la celda Aplicado y
+      // se agrega un badge "EXCESO +N" junto al estado.
+      const exceso = row.cantidad_exceso != null && Number(row.cantidad_exceso) > 0
+        ? Number(row.cantidad_exceso) : 0;
+      const aplicadoCell = exceso
+        ? `<td class="mat-invoice-status DIFERENCIA" title="Aplicado ${numberText(row.cantidad_aplicada_activa)} sobre ${numberText(row.cantidad_packing)} facturado (+${numberText(exceso)})">${numberText(row.cantidad_aplicada_activa)}</td>`
+        : `<td>${numberText(row.cantidad_aplicada_activa)}</td>`;
+      const estadoCell = exceso
+        ? `${statusBadge(row.estado_match)} <span class="mat-invoice-status DIFERENCIA" title="Sobrante sobre lo facturado">EXCESO +${numberText(exceso)}</span>`
+        : statusBadge(row.estado_match);
       const fila = `<tr class="${diff ? "mat-invoice-row-diff" : ""}">
       <td>${toggle}${numberText(row.line_no)}</td>
       <td>${escapeHtml(row.pallet_no_original)}</td>
@@ -287,10 +307,10 @@
       <td>${numberText(row.entradas_recibidas)}</td>
       <td>${numberText(row.cantidad_recibida)}</td>
       <td>${numberText(row.cantidad_pendiente_entrada)}</td>
-      <td>${numberText(row.cantidad_aplicada_activa)}</td>
+      ${aplicadoCell}
       <td>${numberText(row.kg)}</td>
       <td>${numberText(row.cbm)}</td>
-      <td>${statusBadge(row.estado_match)}</td>
+      <td>${estadoCell}</td>
       <td title="${escapeHtml(row.mensaje_match)}">${accion}</td>
     </tr>`;
       return fila + renderPackingLotes(row.id, row.lotes);
@@ -734,6 +754,7 @@
         ["Cant. entrada", (r) => numericCell(r.cantidad_recibida)],
         ["Pend. entrada", (r) => numericCell(r.cantidad_pendiente_entrada)],
         ["Aplicado", (r) => numericCell(r.cantidad_aplicada_activa)],
+        ["Exceso", (r) => numericCell(r.cantidad_exceso)],
         ["KG", (r) => numericCell(r.kg)],
         ["CBM", (r) => numericCell(r.cbm)],
         ["Estado", (r) => r.estado_match],
@@ -1051,6 +1072,13 @@
         postAction("unapply", { motivo_desaplicado: motivo });
         return;
       }
+      const closeBtn = target.closest("#mat-invoice-close");
+      if (closeBtn) {
+        event.preventDefault();
+        const cerrar = closeBtn.dataset.cerrado !== "1"; // toggle
+        postAction("close", { cerrado: cerrar });
+        return;
+      }
       const loteToggle = target.closest("[data-toggle-lotes]");
       if (loteToggle) {
         event.preventDefault();
@@ -1120,6 +1148,8 @@
     hideModal("mat-invoice-preview");
     hideModal("mat-invoice-pallet-link");
     if (el("mat-invoice-detail")) el("mat-invoice-detail").hidden = true;
+    // Arrancar mostrando los pendientes (de cualquier fecha), no solo los de hoy.
+    if (el("mat-invoice-state")) el("mat-invoice-state").value = "PENDIENTES";
     loadInvoices();
   };
 })();

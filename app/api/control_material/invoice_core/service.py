@@ -524,6 +524,13 @@ def get_invoice_detail(invoice_id):
             lotes_por_packing.setdefault(lote.get("packing_line_id"), []).append(lote)
         for pl in packing:
             pl["lotes"] = lotes_por_packing.get(pl.get("id"), [])
+            # Exceso: se aplico mas de lo facturado en este packing line. No se
+            # marca en estado_match (enum compartido); se expone como dato para
+            # que el front lo resalte en la tabla.
+            cant_pack = decimal_or_zero(pl.get("cantidad_packing"))
+            cant_apl = decimal_or_zero(pl.get("cantidad_aplicada_activa"))
+            exceso = cant_apl - cant_pack
+            pl["cantidad_exceso"] = json_value(exceso) if exceso > 0 else None
 
         # Filas extra "DIFERENCIA_PALLET": material que llego para esta invoice
         # con un pallet CONCRETO que no corresponde a ningun packing line del
@@ -1234,6 +1241,37 @@ def delete_invoice(invoice_id):
     except Exception as exc:
         conn.rollback()
         logger.exception("Error eliminando invoice %s: %s", invoice_id, exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def set_invoice_closed(invoice_id, cerrado):
+    """Marca/desmarca el cierre manual de un invoice parcial.
+
+    Un invoice cerrado deja de aparecer como "abierto" en la entrada de material
+    (Control de almacen), aunque no este 100% aplicado. No toca costos ni links;
+    solo el flag cerrado_manual. Reversible con cerrado=False.
+    """
+    conn, cursor, error = _db()
+    if error:
+        return error
+    try:
+        cursor.execute(
+            "UPDATE material_invoices SET cerrado_manual = %s WHERE id = %s",
+            (1 if cerrado else 0, invoice_id),
+        )
+        if cursor.rowcount == 0:
+            cursor.execute("SELECT id FROM material_invoices WHERE id = %s", (invoice_id,))
+            if not cursor.fetchone():
+                conn.rollback()
+                return {"success": False, "error": "Invoice no encontrada."}, 404
+        conn.commit()
+        return {"success": True, "invoice_id": invoice_id, "cerrado_manual": 1 if cerrado else 0}, 200
+    except Exception as exc:
+        conn.rollback()
+        logger.exception("Error cerrando invoice %s: %s", invoice_id, exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:
         cursor.close()

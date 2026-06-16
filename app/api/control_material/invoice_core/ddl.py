@@ -104,6 +104,9 @@ def init_material_invoice_tables():
         ("archivo_hash_sha256", "archivo_hash_sha256 VARCHAR(64) NOT NULL"),
         ("usuario_validacion", "usuario_validacion VARCHAR(255) NULL"),
         ("fecha_validacion", "fecha_validacion DATETIME NULL"),
+        # Cierre manual de un invoice parcial: deja de aparecer como "abierto"
+        # en la entrada de material aunque no este 100% aplicado.
+        ("cerrado_manual", "cerrado_manual TINYINT NOT NULL DEFAULT 0"),
     )
     for name, definition in invoice_columns:
         _ensure_column("material_invoices", name, definition)
