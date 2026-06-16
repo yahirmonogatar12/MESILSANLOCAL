@@ -3389,7 +3389,6 @@ window.mostrarHistorialVisionPassFail = function () {
 
     const historialVisionPassFailContainer = document.getElementById(
       "historial-vision-pass-fail-unique-container",
-      "historial-operadores-maquina-unique-container",
     );
     if (!historialVisionPassFailContainer) {
       console.error(
@@ -3408,8 +3407,6 @@ window.mostrarHistorialVisionPassFail = function () {
     if (typeof window.cargarContenidoDinamico === "function") {
       window.cargarContenidoDinamico(
         "historial-vision-pass-fail-unique-container",
-        "historial-operadores-maquina-unique-container",
-      "historial-operadores-maquina-unique-container",
         "/historial_vision_pass_fail/ajax",
         () => {
           const intentarInicializarVisionPassFail = () => {
