@@ -5,8 +5,12 @@
   "use strict";
 
   const STYLESHEET_ID = "historial-operadores-maquina-css";
-  const STYLESHEET_HREF = "/static/css/historial_operadores_maquina.css?v=20260610b";
+  const STYLESHEET_HREF = "/static/css/historial_operadores_maquina.css?v=20260617a";
   const API_BASE = "/api/control_resultados/historial_operadores_maquina";
+
+  // Etiqueta y clase por estado; default "Cerrada" para Closed/AutoClosed.
+  const STATUS_TEXT = { Open: "En curso", Ajuste: "Ajuste" };
+  const STATUS_CLASS = { Open: "hopm-status--open", Ajuste: "hopm-status--ajuste" };
 
   let records = [];
 
@@ -122,9 +126,8 @@
     }
     elements.tbody.innerHTML = records
       .map((row) => {
-        const isOpen = row.estado === "Open";
-        const statusClass = isOpen ? "hopm-status--open" : "hopm-status--closed";
-        const statusText = isOpen ? "En curso" : "Cerrada";
+        const statusClass = STATUS_CLASS[row.estado] || "hopm-status--closed";
+        const statusText = STATUS_TEXT[row.estado] || "Cerrada";
         const usuarioTitle = row.username && row.username !== row.usuario
           ? ` title="Badge: ${esc(row.username)}"`
           : "";

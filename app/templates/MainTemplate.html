@@ -463,6 +463,9 @@
         <div id="material-invoices-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
+        <div id="material-compras-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
         <div id="inventory-valuation-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
@@ -2271,6 +2274,7 @@
             const consultarPepsContainer = document.getElementById('consultar-peps-container');
             const longtermInventoryContainer = document.getElementById('longterm-inventory-unique-container');
             const materialInvoicesContainer = document.getElementById('material-invoices-unique-container');
+            const materialComprasContainer = document.getElementById('material-compras-unique-container');
             const inventoryValuationContainer = document.getElementById('inventory-valuation-unique-container');
             const registroMaterialContainer = document.getElementById('registro-material-container');
             const historialInventarioContainer = document.getElementById('historial-inventario-container');
@@ -2368,6 +2372,7 @@ function hideAllMaterialContainers() {
     if (consultarPepsContainer) consultarPepsContainer.style.display = 'none';
     if (longtermInventoryContainer) longtermInventoryContainer.style.display = 'none';
     if (materialInvoicesContainer) materialInvoicesContainer.style.display = 'none';
+    if (materialComprasContainer) materialComprasContainer.style.display = 'none';
     if (inventoryValuationContainer) inventoryValuationContainer.style.display = 'none';
     if (registroMaterialContainer) registroMaterialContainer.style.display = 'none';
     if (historialInventarioContainer) historialInventarioContainer.style.display = 'none';
@@ -3003,6 +3008,18 @@ function hideAllMaterialContainers() {
                 cargarContenidoDinamico('material-invoices-unique-container', '/material/invoices', () => {
                     if (typeof window.initMaterialInvoices === 'function') {
                         window.initMaterialInvoices();
+                    }
+                });
+            };
+
+            window.mostrarMaterialCompras = function() {
+                prepararPanelSeccion('material');
+                const container = document.getElementById('material-compras-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('material-compras-unique-container', '/material/compras', () => {
+                    if (typeof window.initMaterialCompras === 'function') {
+                        window.initMaterialCompras();
                     }
                 });
             };

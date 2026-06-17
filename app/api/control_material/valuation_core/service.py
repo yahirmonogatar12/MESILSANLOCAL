@@ -220,14 +220,14 @@ def _backfill_summary(cursor):
           SUM(CASE WHEN COALESCE(ilc.fuente_costo, '') = 'INVOICE' THEN 1 ELSE 0 END) AS no_sobrescritos_invoice,
           SUM(
             CASE
-              WHEN COALESCE(ilc.fuente_costo, '') NOT IN ('INVOICE', 'CONTROL_MATERIAL')
+              WHEN COALESCE(ilc.fuente_costo, '') NOT IN ('INVOICE', 'LISTA_COMPRAS', 'CONTROL_MATERIAL')
                AND {_backfill_has_control_cost_sql()}
               THEN 1 ELSE 0
             END
           ) AS asignados_control_material,
           SUM(
             CASE
-              WHEN COALESCE(ilc.fuente_costo, '') NOT IN ('INVOICE', 'CONTROL_MATERIAL')
+              WHEN COALESCE(ilc.fuente_costo, '') NOT IN ('INVOICE', 'LISTA_COMPRAS', 'CONTROL_MATERIAL')
                AND NOT {_backfill_has_control_cost_sql()}
               THEN 1 ELSE 0
             END
@@ -268,7 +268,7 @@ def _backfill_candidate_rows(cursor, limit):
         {_backfill_cost_joins_sql()}
         WHERE il.stock_actual > 0
           AND (cma.cancelado = 0 OR cma.cancelado IS NULL)
-          AND COALESCE(ilc.fuente_costo, '') NOT IN ('INVOICE', 'CONTROL_MATERIAL')
+          AND COALESCE(ilc.fuente_costo, '') NOT IN ('INVOICE', 'LISTA_COMPRAS', 'CONTROL_MATERIAL')
           AND {_backfill_has_control_cost_sql()}
         ORDER BY cma.fecha_recibo ASC, cma.id ASC, il.codigo_material_recibido ASC
         LIMIT %s
@@ -301,7 +301,7 @@ def _backfill_preview_rows(cursor, limit):
         {_backfill_cost_joins_sql()}
         WHERE il.stock_actual > 0
           AND (cma.cancelado = 0 OR cma.cancelado IS NULL)
-          AND COALESCE(ilc.fuente_costo, '') NOT IN ('INVOICE', 'CONTROL_MATERIAL')
+          AND COALESCE(ilc.fuente_costo, '') NOT IN ('INVOICE', 'LISTA_COMPRAS', 'CONTROL_MATERIAL')
           AND {_backfill_has_control_cost_sql()}
         ORDER BY cma.fecha_recibo ASC, cma.id ASC, il.codigo_material_recibido ASC
         LIMIT %s

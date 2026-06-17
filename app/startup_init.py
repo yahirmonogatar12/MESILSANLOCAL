@@ -71,6 +71,7 @@ def run_startup_init():
     from .api.control_produccion.metal_mask import init_metal_mask_tables
     from .api.informacion_basica.control_material import crear_tabla_material_costos
     from .api.control_material.invoice_core.ddl import init_material_invoice_tables
+    from .api.control_material.compras_core.ddl import init_lista_compras_tables
 
     log("Iniciando init_db()")
     init_db()
@@ -132,6 +133,10 @@ def run_startup_init():
     log("Iniciando init_material_invoice_tables()")
     init_material_invoice_tables()
     log("init_material_invoice_tables() completado")
+
+    log("Iniciando init_lista_compras_tables()")
+    init_lista_compras_tables()
+    log("init_lista_compras_tables() completado")
 
     _start_workers_only()
 

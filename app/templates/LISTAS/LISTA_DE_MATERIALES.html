@@ -24,35 +24,27 @@
                             data-permiso-pagina="LISTA_DE_MATERIALES"
                             data-permiso-seccion="Control de material"
                             data-permiso-boton="Inventario actual">Inventario actual</li>
-                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarMaterialInvoices ? window.parent.mostrarMaterialInvoices() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('material-invoices-unique-container', '/material/invoices') : window.location.href='/material/invoices')"
-                            data-permiso-pagina="LISTA_DE_MATERIALES"
-                            data-permiso-seccion="Control de material"
-                            data-permiso-boton="Facturas / Invoice">Facturas / Invoice</li>
-                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarInventoryValuation ? window.parent.mostrarInventoryValuation() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('inventory-valuation-unique-container', '/material/inventory_valuation') : window.location.href='/material/inventory_valuation')"
-                            data-permiso-pagina="LISTA_DE_MATERIALES"
-                            data-permiso-seccion="Control de material"
-                            data-permiso-boton="Valorización de inventario">Valorización de inventario</li>
                     </ul>
                 </li>
                 <li class="sidebar-section">
                     <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMSL" aria-expanded="false">
                         <span class="sidebar-icon"></span>
-                        Control de material MSL
+                        Facturas
                         <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                     </button>
                     <ul class="collapse sidebar-dropdown-list" id="sidebarMSL">
-                        <li class="sidebar-link" tabindex="0"
+                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarMaterialInvoices ? window.parent.mostrarMaterialInvoices() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('material-invoices-unique-container', '/material/invoices') : window.location.href='/material/invoices')"
                             data-permiso-pagina="LISTA_DE_MATERIALES"
-                            data-permiso-seccion="Control de material MSL"
-                            data-permiso-boton="Control total de material">Control total de material</li>
-                        <li class="sidebar-link" tabindex="0"
+                            data-permiso-seccion="Control de material"
+                            data-permiso-boton="Facturas / Invoice">Invoice</li>
+                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarInventoryValuation ? window.parent.mostrarInventoryValuation() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('inventory-valuation-unique-container', '/material/inventory_valuation') : window.location.href='/material/inventory_valuation')"
                             data-permiso-pagina="LISTA_DE_MATERIALES"
-                            data-permiso-seccion="Control de material MSL"
-                            data-permiso-boton="Control de entrada y salida de material">Control de entrada y salida de material</li>
-                        <li class="sidebar-link" tabindex="0"
+                            data-permiso-seccion="Control de material"
+                            data-permiso-boton="Valorización de inventario">Valorización de inventario</li>
+                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarMaterialCompras ? window.parent.mostrarMaterialCompras() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('material-compras-unique-container', '/material/compras') : window.location.href='/material/compras')"
                             data-permiso-pagina="LISTA_DE_MATERIALES"
-                            data-permiso-seccion="Control de material MSL"
-                            data-permiso-boton="Estatus de material MSL">Estatus de material MSL</li>
+                            data-permiso-seccion="Control de material"
+                            data-permiso-boton="Lista de compras">Lista de compras</li>
                     </ul>
                 </li>
                 <li class="sidebar-section">

@@ -400,6 +400,12 @@ button:disabled {
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+.hopm-status--ajuste {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+    border: 1px solid rgba(241, 196, 15, 0.35);
+}
+
 .hopm-empty {
     text-align: center;
     padding: 3rem !important;

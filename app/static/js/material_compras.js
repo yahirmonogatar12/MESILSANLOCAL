@@ -1,0 +1,413 @@
+(function () {
+  // Reusa el CSS del modulo de invoices (clases mat-invoice-*).
+  const STYLE_ID = "material-invoices-css";
+  const STYLE_VERSION = "20260616c";
+  const STYLE_HREF = `/static/css/material_invoices.css?v=${STYLE_VERSION}`;
+
+  const state = {
+    selectedTransaccion: null,
+    pendingUpload: null,
+    data: { transacciones: [], lineas: [] },
+  };
+
+  function ensureModuleStyles() {
+    if (document.getElementById(STYLE_ID)) return;
+    const link = document.createElement("link");
+    link.id = STYLE_ID;
+    link.rel = "stylesheet";
+    link.href = STYLE_HREF;
+    document.head.appendChild(link);
+  }
+
+  function el(id) {
+    return document.getElementById(id);
+  }
+
+  // Modales viven en document.body (mismo patron que invoices).
+  function openModal(id) {
+    const modal = el(id);
+    if (!modal) return null;
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    modal.hidden = false;
+    modal.style.cssText = `
+      display: flex !important; position: fixed !important; top: 0 !important;
+      left: 0 !important; width: 100% !important; height: 100% !important;
+      background: rgba(0,0,0,0.6) !important; justify-content: center !important;
+      align-items: center !important; padding: 12px !important;
+      z-index: 2147483600 !important; opacity: 1 !important; visibility: visible !important;`;
+    return modal;
+  }
+
+  function hideModal(id) {
+    const modal = el(id);
+    if (!modal) return;
+    modal.style.cssText = "display: none !important;";
+    modal.hidden = true;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function numberText(value) {
+    if (value === null || value === undefined || value === "") return "";
+    const n = Number(value);
+    if (!Number.isFinite(n)) return escapeHtml(value);
+    return n.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  }
+
+  function statusBadge(value) {
+    const text = String(value || "");
+    return `<span class="mat-invoice-status ${escapeHtml(text)}">${escapeHtml(text)}</span>`;
+  }
+
+  function setMessage(targetId, message, type) {
+    const box = el(targetId);
+    if (!box) return;
+    if (!message) {
+      box.hidden = true;
+      box.textContent = "";
+      box.classList.remove("success");
+      return;
+    }
+    box.hidden = false;
+    box.textContent = message;
+    box.classList.toggle("success", type === "success");
+  }
+
+  function setLoading(active) {
+    const loader = el("mat-compras-loading");
+    if (loader) loader.hidden = !active;
+  }
+
+  async function fetchJson(url, options) {
+    const res = await fetch(url, { credentials: "same-origin", ...(options || {}) });
+    const ct = res.headers.get("content-type") || "";
+    const data = ct.includes("application/json") ? await res.json() : { error: await res.text() };
+    if (!res.ok || data.error || data.success === false) {
+      const err = new Error(data.message || data.error || `HTTP ${res.status}`);
+      err.payload = data;
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  function queryParams() {
+    const params = new URLSearchParams();
+    const q = el("mat-compras-search")?.value.trim();
+    const tipo = el("mat-compras-type-filter")?.value;
+    const desde = el("mat-compras-date-from")?.value;
+    const hasta = el("mat-compras-date-to")?.value;
+    if (q) params.set("q", q);
+    if (tipo) params.set("tipo", tipo);
+    if (desde) params.set("fecha_inicio", desde);
+    if (hasta) params.set("fecha_fin", hasta);
+    return params;
+  }
+
+  function clearFilters() {
+    if (el("mat-compras-search")) el("mat-compras-search").value = "";
+    if (el("mat-compras-type-filter")) el("mat-compras-type-filter").value = "";
+    if (el("mat-compras-date-from")) el("mat-compras-date-from").value = "";
+    if (el("mat-compras-date-to")) el("mat-compras-date-to").value = "";
+    loadTransacciones();
+  }
+
+  async function loadTransacciones() {
+    ensureModuleStyles();
+    setLoading(true);
+    setMessage("mat-compras-upload-message", "");
+    try {
+      const params = queryParams();
+      const data = await fetchJson(`/api/material_admin/compras/transacciones?${params.toString()}`);
+      state.data.transacciones = data.records || [];
+      renderTransacciones(state.data.transacciones);
+    } catch (err) {
+      setMessage("mat-compras-upload-message", `No se pudieron cargar las transacciones: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderTransacciones(rows) {
+    const body = el("mat-compras-list-body");
+    if (!body) return;
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="7" class="mat-invoice-empty">Sin resultados.</td></tr>`;
+      return;
+    }
+    body.innerHTML = rows
+      .map((r) => `
+        <tr data-transaccion="${escapeHtml(r.numero_transaccion)}" class="mat-invoice-row">
+          <td>${escapeHtml(r.numero_transaccion)}</td>
+          <td>${escapeHtml(r.tipo || "")}</td>
+          <td>${escapeHtml(r.proveedor || "")}</td>
+          <td>${numberText(r.num_partes)}</td>
+          <td>${numberText(r.num_lineas)}</td>
+          <td>${numberText(r.total_monto)}</td>
+          <td>${escapeHtml(r.fecha_compra || "")}</td>
+        </tr>`)
+      .join("");
+  }
+
+  async function loadDetail(numeroTransaccion) {
+    setLoading(true);
+    setMessage("mat-compras-detail-message", "");
+    try {
+      const url = `/api/material_admin/compras/transacciones/${encodeURIComponent(numeroTransaccion)}`;
+      const data = await fetchJson(url);
+      state.selectedTransaccion = numeroTransaccion;
+      state.data.lineas = data.lineas || [];
+      renderLineas(state.data.lineas);
+      const detail = el("mat-compras-detail");
+      if (detail) detail.hidden = false;
+      const title = el("mat-compras-detail-title");
+      if (title) title.textContent = `Transaccion ${numeroTransaccion}`;
+      const sub = el("mat-compras-detail-subtitle");
+      if (sub) sub.textContent = `${state.data.lineas.length} renglones`;
+      detail?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (err) {
+      setMessage("mat-compras-detail-message", `No se pudo abrir la transaccion: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderLineas(rows) {
+    const body = el("mat-compras-lineas-body");
+    if (!body) return;
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="14" class="mat-invoice-empty">Sin renglones.</td></tr>`;
+      return;
+    }
+    body.innerHTML = rows
+      .map((r) => `
+        <tr>
+          <td>${escapeHtml(r.numero_parte || "")}</td>
+          <td>${escapeHtml(r.numero_parte_sistema || "")}</td>
+          <td>${escapeHtml(r.descripcion || "")}</td>
+          <td>${escapeHtml(r.spec || "")}</td>
+          <td>${numberText(r.cantidad)}</td>
+          <td>${escapeHtml(r.moneda || "")}</td>
+          <td>${numberText(r.costo_unitario)}</td>
+          <td>${numberText(r.costo_total)}</td>
+          <td>${escapeHtml(r.proveedor || "")}</td>
+          <td>${escapeHtml(r.factura || "")}</td>
+          <td>${escapeHtml(r.modelo || "")}</td>
+          <td>${escapeHtml(r.categoria || "")}</td>
+          <td>${escapeHtml(r.fecha_compra || "")}</td>
+          <td>${statusBadge(r.estado_match)}</td>
+        </tr>`)
+      .join("");
+  }
+
+  // --- Carga (preview + confirmar) ---
+
+  async function openPreview(event) {
+    event.preventDefault();
+    const fileInput = el("mat-compras-upload-file");
+    const tipo = el("mat-compras-upload-type")?.value || "";
+    const file = fileInput?.files?.[0];
+    if (!file) {
+      setMessage("mat-compras-upload-message", "Selecciona un archivo Excel.");
+      return;
+    }
+    const form = new FormData();
+    form.append("file", file);
+    form.append("tipo", tipo);
+    setLoading(true);
+    setMessage("mat-compras-upload-message", "");
+    try {
+      const data = await fetchJson("/api/material_admin/compras/preview", { method: "POST", body: form });
+      state.pendingUpload = { file, tipo };
+      renderPreview(data);
+      openModal("mat-compras-preview");
+    } catch (err) {
+      setMessage("mat-compras-upload-message", `No se pudo previsualizar: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderPreview(data) {
+    const sub = el("mat-compras-preview-subtitle");
+    if (sub) {
+      sub.textContent =
+        `${data.tipo} · ${numberText(data.total_lineas)} renglones · ` +
+        `${numberText(data.total_transacciones)} transacciones · monto ${numberText(data.total_monto)}`;
+    }
+    setMessage(
+      "mat-compras-preview-message",
+      (data.warnings || []).join(" ") || "",
+    );
+    const body = el("mat-compras-preview-body");
+    if (!body) return;
+    body.innerHTML = (data.sample || [])
+      .map((r) => `
+        <tr>
+          <td>${escapeHtml(r.numero_transaccion || "")}</td>
+          <td>${escapeHtml(r.numero_parte || "")}</td>
+          <td>${escapeHtml(r.numero_parte_sistema || "")}</td>
+          <td>${escapeHtml(r.descripcion || "")}</td>
+          <td>${numberText(r.cantidad)}</td>
+          <td>${numberText(r.costo_unitario)}</td>
+          <td>${numberText(r.costo_total)}</td>
+          <td>${escapeHtml(r.fecha_compra || "")}</td>
+        </tr>`)
+      .join("");
+  }
+
+  async function confirmUpload() {
+    if (!state.pendingUpload) return;
+    const { file, tipo } = state.pendingUpload;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("tipo", tipo);
+    setLoading(true);
+    setMessage("mat-compras-preview-message", "");
+    try {
+      const data = await fetchJson("/api/material_admin/compras/upload", { method: "POST", body: form });
+      hideModal("mat-compras-preview");
+      state.pendingUpload = null;
+      const fileInput = el("mat-compras-upload-file");
+      if (fileInput) fileInput.value = "";
+      setMessage(
+        "mat-compras-upload-message",
+        `Cargado: ${data.total_lineas} renglones, ${data.total_transacciones} transacciones (${data.tipo}).`,
+        "success",
+      );
+      loadTransacciones();
+    } catch (err) {
+      const dup = err.payload?.duplicado;
+      setMessage("mat-compras-preview-message", dup ? "Este archivo ya fue cargado." : `No se pudo cargar: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // --- Export (SheetJS) ---
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureSheetJs() {
+    if (typeof window.XLSX !== "undefined") return;
+    try {
+      await loadScript("/static/js/lib/xlsx.full.min.js");
+    } catch (err) {
+      await loadScript("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js");
+    }
+    if (typeof window.XLSX === "undefined") throw new Error("La libreria de Excel no se cargo.");
+  }
+
+  function numericCell(value) {
+    if (value === null || value === undefined || value === "") return "";
+    const n = Number(value);
+    return Number.isFinite(n) ? n : value;
+  }
+
+  async function exportLineas() {
+    const rows = state.data.lineas || [];
+    if (!rows.length) {
+      setMessage("mat-compras-detail-message", "No hay datos para exportar.");
+      return;
+    }
+    const columns = [
+      ["Transaccion", (r) => r.numero_transaccion],
+      ["Parte", (r) => r.numero_parte],
+      ["Parte sistema", (r) => r.numero_parte_sistema],
+      ["Descripcion", (r) => r.descripcion],
+      ["Spec", (r) => r.spec],
+      ["Cantidad", (r) => numericCell(r.cantidad)],
+      ["Moneda", (r) => r.moneda],
+      ["P. Unit.", (r) => numericCell(r.costo_unitario)],
+      ["Total", (r) => numericCell(r.costo_total)],
+      ["Proveedor", (r) => r.proveedor],
+      ["Factura", (r) => r.factura],
+      ["Modelo", (r) => r.modelo],
+      ["Categoria", (r) => r.categoria],
+      ["Fecha", (r) => r.fecha_compra],
+      ["Estado", (r) => r.estado_match],
+    ];
+    setLoading(true);
+    try {
+      await ensureSheetJs();
+      const aoa = [columns.map(([title]) => title)];
+      rows.forEach((row) => aoa.push(columns.map(([, acc]) => {
+        const v = acc(row);
+        return v === null || v === undefined ? "" : v;
+      })));
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(aoa), "Compras");
+      const fecha = new Date().toISOString().slice(0, 10);
+      const name = `compras_${state.selectedTransaccion || "detalle"}_${fecha}.xlsx`.replace(/[^A-Za-z0-9._-]+/g, "_");
+      window.XLSX.writeFile(wb, name);
+    } catch (err) {
+      setMessage("mat-compras-detail-message", `No se pudo exportar: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // --- Listeners ---
+
+  let listenersAttached = false;
+  function attachListeners() {
+    if (listenersAttached) return;
+    listenersAttached = true;
+
+    document.addEventListener("submit", (e) => {
+      if (e.target && e.target.id === "mat-compras-upload-form") openPreview(e);
+    });
+
+    document.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!t) return;
+      if (t.id === "mat-compras-refresh" || t.id === "mat-compras-search-btn") {
+        loadTransacciones();
+      } else if (t.id === "mat-compras-clear-filters") {
+        clearFilters();
+      } else if (t.id === "mat-compras-preview-confirm") {
+        confirmUpload();
+      } else if (t.hasAttribute("data-preview-close")) {
+        hideModal("mat-compras-preview");
+      } else if (t.id === "mat-compras-detail-close") {
+        const detail = el("mat-compras-detail");
+        if (detail) detail.hidden = true;
+        state.selectedTransaccion = null;
+      } else if (t.dataset && t.dataset.export === "lineas") {
+        exportLineas();
+      } else {
+        const row = t.closest("tr[data-transaccion]");
+        if (row) loadDetail(row.dataset.transaccion);
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.target && e.target.id === "mat-compras-search") {
+        e.preventDefault();
+        loadTransacciones();
+      } else if (e.key === "Escape") {
+        hideModal("mat-compras-preview");
+      }
+    });
+  }
+
+  function initMaterialCompras() {
+    ensureModuleStyles();
+    attachListeners();
+    loadTransacciones();
+  }
+
+  window.initMaterialCompras = initMaterialCompras;
+})();

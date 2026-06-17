@@ -1,0 +1,152 @@
+<div id="mat-compras-page" class="mat-invoice-page">
+    <div class="mat-invoice-header">
+        <div>
+            <h2>Lista de compras</h2>
+            <span>Registro de compras por transaccion y precio fijo por parte.</span>
+        </div>
+        <div class="mat-invoice-header-actions">
+            <button id="mat-compras-refresh" class="mat-invoice-btn" type="button">Actualizar</button>
+        </div>
+    </div>
+
+    <div class="mat-invoice-layout">
+        <section class="mat-invoice-panel mat-invoice-upload">
+            <h3>Cargar lista</h3>
+            <form id="mat-compras-upload-form" autocomplete="off">
+                <label>
+                    Tipo
+                    <select id="mat-compras-upload-type" name="tipo">
+                        <option value="LG">LG</option>
+                        <option value="OVEN">OVEN</option>
+                    </select>
+                </label>
+                <label>
+                    Archivo Excel
+                    <input id="mat-compras-upload-file" name="file" type="file" accept=".xlsx,.xlsm,.xltx,.xltm">
+                </label>
+                <button class="mat-invoice-btn primary" type="submit">Cargar</button>
+            </form>
+            <div id="mat-compras-upload-message" class="mat-invoice-message" hidden></div>
+        </section>
+
+        <section class="mat-invoice-panel mat-invoice-list-panel">
+            <div class="mat-invoice-toolbar">
+                <label>
+                    Buscar
+                    <input id="mat-compras-search" type="text" autocomplete="off" placeholder="Transaccion, parte, proveedor">
+                </label>
+                <label>
+                    Tipo
+                    <select id="mat-compras-type-filter">
+                        <option value="">Todos</option>
+                        <option value="LG">LG</option>
+                        <option value="OVEN">OVEN</option>
+                    </select>
+                </label>
+                <label>
+                    Desde
+                    <input id="mat-compras-date-from" type="date" data-default-date="">
+                </label>
+                <label>
+                    Hasta
+                    <input id="mat-compras-date-to" type="date" data-default-date="">
+                </label>
+                <button id="mat-compras-search-btn" class="mat-invoice-btn" type="button">Consultar</button>
+                <button id="mat-compras-clear-filters" class="mat-invoice-btn" type="button">Limpiar</button>
+            </div>
+            <div class="mat-invoice-table-wrap compact">
+                <table class="mat-invoice-table">
+                    <thead>
+                        <tr>
+                            <th>Transaccion</th>
+                            <th>Tipo</th>
+                            <th>Proveedor</th>
+                            <th>Partes</th>
+                            <th>Lineas</th>
+                            <th>Monto</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mat-compras-list-body"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <section id="mat-compras-detail" class="mat-invoice-panel mat-invoice-detail" hidden>
+        <div class="mat-invoice-detail-head">
+            <div>
+                <h3 id="mat-compras-detail-title">Transaccion</h3>
+                <span id="mat-compras-detail-subtitle"></span>
+            </div>
+            <div class="mat-invoice-header-actions">
+                <button class="mat-invoice-btn success small" type="button" data-export="lineas">Exportar Excel</button>
+                <button id="mat-compras-detail-close" class="mat-invoice-btn" type="button">Cerrar</button>
+            </div>
+        </div>
+
+        <div id="mat-compras-detail-message" class="mat-invoice-message" hidden></div>
+
+        <div class="mat-invoice-table-wrap">
+            <table class="mat-invoice-table">
+                <thead>
+                    <tr>
+                        <th>Parte</th>
+                        <th>Parte sistema</th>
+                        <th>Descripcion</th>
+                        <th>Spec</th>
+                        <th>Cantidad</th>
+                        <th>Curr.</th>
+                        <th>P. Unit.</th>
+                        <th>Total</th>
+                        <th>Proveedor</th>
+                        <th>Factura</th>
+                        <th>Modelo</th>
+                        <th>Cat.</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="mat-compras-lineas-body"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <div id="mat-compras-loading" class="mat-invoice-loading" hidden>Cargando...</div>
+
+    <div id="mat-compras-preview" class="mat-invoice-viewer" hidden>
+        <div class="mat-invoice-viewer-backdrop" data-preview-close></div>
+        <div class="mat-invoice-viewer-dialog" role="dialog" aria-modal="true">
+            <div class="mat-invoice-viewer-head">
+                <div>
+                    <h3>Previsualizar carga</h3>
+                    <span id="mat-compras-preview-subtitle"></span>
+                </div>
+                <div class="mat-invoice-header-actions">
+                    <button id="mat-compras-preview-confirm" class="mat-invoice-btn primary" type="button">Confirmar carga</button>
+                    <button class="mat-invoice-btn" type="button" data-preview-close>Cancelar</button>
+                </div>
+            </div>
+            <div id="mat-compras-preview-message" class="mat-invoice-message" hidden></div>
+            <div class="mat-invoice-viewer-body">
+                <table class="mat-invoice-table">
+                    <thead>
+                        <tr>
+                            <th>Transaccion</th>
+                            <th>Parte</th>
+                            <th>Parte sistema</th>
+                            <th>Descripcion</th>
+                            <th>Cantidad</th>
+                            <th>P. Unit.</th>
+                            <th>Total</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mat-compras-preview-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/material_compras.js', v='20260616a') }}"></script>

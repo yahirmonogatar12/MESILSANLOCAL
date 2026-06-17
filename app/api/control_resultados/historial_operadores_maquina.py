@@ -45,7 +45,10 @@ _requiere_permiso = requiere_permiso_dropdown(
 )
 
 TIPOS = {"ICT", "FCT", "Packing"}
-ESTADOS = {"Open", "Closed"}
+ESTADOS = {"Open", "Closed", "AutoClosed", "Ajuste"}
+
+# Etiqueta legible por estado para el export; default "Cerrada".
+ESTADO_TEXTO = {"Open": "En curso", "Ajuste": "Ajuste", "AutoClosed": "Cerrada (auto)"}
 
 
 # Alias local del helper compartido (app/api/shared/request_helpers.py).
@@ -181,7 +184,7 @@ def export_historial_operadores_maquina():
         items = [
             {
                 **r,
-                "estado_texto": "En curso" if r["estado"] == "Open" else "Cerrada",
+                "estado_texto": ESTADO_TEXTO.get(r["estado"], "Cerrada"),
             }
             for r in records
         ]
