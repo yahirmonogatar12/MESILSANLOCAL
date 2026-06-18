@@ -271,7 +271,7 @@ class AuthSystem:
         
         for nombre, descripcion, nivel in roles_default:
             cursor.execute('''
-                INSERT OR IGNORE INTO roles (nombre, descripcion, nivel) 
+                INSERT IGNORE INTO roles (nombre, descripcion, nivel)
                 VALUES (%s, %s, %s)
             ''', (nombre, descripcion, nivel))
     
@@ -330,7 +330,7 @@ class AuthSystem:
         
         for modulo, accion, descripcion in permisos_default:
             cursor.execute('''
-                INSERT OR IGNORE INTO permisos (modulo, accion, descripcion) 
+                INSERT IGNORE INTO permisos (modulo, accion, descripcion)
                 VALUES (%s, %s, %s)
             ''', (modulo, accion, descripcion))
     
@@ -344,7 +344,7 @@ class AuthSystem:
             todos_permisos = cursor.fetchall()
             for permiso in todos_permisos:
                 cursor.execute('''
-                    INSERT OR IGNORE INTO rol_permisos (rol_id, permiso_id)
+                    INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
                     VALUES (%s, %s)
                 ''', (superadmin_id[0], permiso[0]))
         
@@ -359,7 +359,7 @@ class AuthSystem:
             permisos_admin = cursor.fetchall()
             for permiso in permisos_admin:
                 cursor.execute('''
-                    INSERT OR IGNORE INTO rol_permisos (rol_id, permiso_id)
+                    INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
                     VALUES (%s, %s)
                 ''', (admin_id[0], permiso[0]))
         
@@ -398,7 +398,7 @@ class AuthSystem:
                 permiso_id = cursor.fetchone()
                 if permiso_id:
                     cursor.execute('''
-                        INSERT OR IGNORE INTO rol_permisos (rol_id, permiso_id)
+                        INSERT IGNORE INTO rol_permisos (rol_id, permiso_id)
                         VALUES (%s, %s)
                     ''', (rol_id[0], permiso_id[0]))
     
@@ -564,7 +564,7 @@ class AuthSystem:
         
         for pagina, seccion, boton, descripcion in permisos_botones:
             cursor.execute('''
-                INSERT OR IGNORE INTO permisos_botones (pagina, seccion, boton, descripcion)
+                INSERT IGNORE INTO permisos_botones (pagina, seccion, boton, descripcion)
                 VALUES (%s, %s, %s, %s)
             ''', (pagina, seccion, boton, descripcion))
     
@@ -579,7 +579,7 @@ class AuthSystem:
             todos_permisos_botones = cursor.fetchall()
             for permiso in todos_permisos_botones:
                 cursor.execute('''
-                    INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                    INSERT IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
                     VALUES (%s, %s)
                 ''', (superadmin_id[0], permiso[0]))
         
@@ -594,7 +594,7 @@ class AuthSystem:
             permisos_admin_botones = cursor.fetchall()
             for permiso in permisos_admin_botones:
                 cursor.execute('''
-                    INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                    INSERT IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
                     VALUES (%s, %s)
                 ''', (admin_id[0], permiso[0]))
         
@@ -645,7 +645,7 @@ class AuthSystem:
             permisos_botones = cursor.fetchall()
             for permiso in permisos_botones:
                 cursor.execute('''
-                    INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                    INSERT IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
                     VALUES (%s, %s)
                 ''', (rol_id[0], permiso[0]))
     
