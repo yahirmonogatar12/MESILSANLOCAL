@@ -1550,7 +1550,7 @@ def actividad_reciente():
 def verificar_permisos_usuario():
     """Obtener todos los permisos de botones del usuario actual"""
     try:
-        username = session.get('username')
+        username = session.get('usuario')
         if not username:
             return jsonify({'error': 'Usuario no autenticado'}), 401
 
@@ -1599,12 +1599,13 @@ def verificar_permisos_usuario():
             }
         else:
             cursor.execute('''
-                SELECT DISTINCT rpb.pagina, rpb.seccion, rpb.boton
+                SELECT DISTINCT pb.pagina, pb.seccion, pb.boton
                 FROM usuarios_sistema u
                 JOIN usuario_roles ur ON u.id = ur.usuario_id
                 JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-                WHERE u.username = %s AND u.activo = 1
-                ORDER BY rpb.pagina, rpb.seccion, rpb.boton
+                JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+                WHERE u.username = %s AND u.activo = 1 AND pb.activo = 1
+                ORDER BY pb.pagina, pb.seccion, pb.boton
             ''', (username,))
 
             permisos_raw = cursor.fetchall()
