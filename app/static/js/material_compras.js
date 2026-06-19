@@ -7,6 +7,7 @@
   const state = {
     selectedTransaccion: null,
     pendingUpload: null,
+    inicialHecha: {},
     data: { transacciones: [], lineas: [] },
   };
 
@@ -99,10 +100,12 @@
     const params = new URLSearchParams();
     const q = el("mat-compras-search")?.value.trim();
     const tipo = el("mat-compras-type-filter")?.value;
+    const estado = el("mat-compras-estado-filter")?.value;
     const desde = el("mat-compras-date-from")?.value;
     const hasta = el("mat-compras-date-to")?.value;
     if (q) params.set("q", q);
     if (tipo) params.set("tipo", tipo);
+    if (estado) params.set("estado", estado);
     if (desde) params.set("fecha_inicio", desde);
     if (hasta) params.set("fecha_fin", hasta);
     return params;
@@ -111,9 +114,32 @@
   function clearFilters() {
     if (el("mat-compras-search")) el("mat-compras-search").value = "";
     if (el("mat-compras-type-filter")) el("mat-compras-type-filter").value = "";
+    if (el("mat-compras-estado-filter")) el("mat-compras-estado-filter").value = "";
     if (el("mat-compras-date-from")) el("mat-compras-date-from").value = "";
     if (el("mat-compras-date-to")) el("mat-compras-date-to").value = "";
     loadTransacciones();
+  }
+
+  // Consulta qué tipos ya tienen carga inicial para deshabilitar ese botón.
+  async function refreshInicialState() {
+    try {
+      const data = await fetchJson("/api/material_admin/compras/estado-inicial");
+      state.inicialHecha = data.inicial_hecha || {};
+    } catch (_) {
+      state.inicialHecha = {};
+    }
+    updateInicialButton();
+  }
+
+  function updateInicialButton() {
+    const btn = el("mat-compras-btn-inicial");
+    const tipo = el("mat-compras-upload-type")?.value;
+    if (!btn) return;
+    const hecha = !!state.inicialHecha[tipo];
+    btn.disabled = hecha;
+    btn.title = hecha
+      ? `Ya existe carga inicial para ${tipo}. Usa Actualizar.`
+      : "Carga histórica de una sola vez por tipo. Entra CERRADA: no aparece en almacén, solo para costear.";
   }
 
   async function loadTransacciones() {
@@ -136,7 +162,7 @@
     const body = el("mat-compras-list-body");
     if (!body) return;
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="7" class="mat-invoice-empty">Sin resultados.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="8" class="mat-invoice-empty">Sin resultados.</td></tr>`;
       return;
     }
     body.innerHTML = rows
@@ -144,6 +170,7 @@
         <tr data-transaccion="${escapeHtml(r.numero_transaccion)}" class="mat-invoice-row">
           <td>${escapeHtml(r.numero_transaccion)}</td>
           <td>${escapeHtml(r.tipo || "")}</td>
+          <td>${statusBadge(r.estado)}</td>
           <td>${escapeHtml(r.proveedor || "")}</td>
           <td>${numberText(r.num_partes)}</td>
           <td>${numberText(r.num_lineas)}</td>
@@ -180,7 +207,7 @@
     const body = el("mat-compras-lineas-body");
     if (!body) return;
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="14" class="mat-invoice-empty">Sin renglones.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="16" class="mat-invoice-empty">Sin renglones.</td></tr>`;
       return;
     }
     body.innerHTML = rows
@@ -191,6 +218,9 @@
           <td>${escapeHtml(r.descripcion || "")}</td>
           <td>${escapeHtml(r.spec || "")}</td>
           <td>${numberText(r.cantidad)}</td>
+          <td>${numberText(r.aplicado)}</td>
+          <td>${numberText(r.pendiente)}</td>
+          <td>${statusBadge(r.estado)}</td>
           <td>${escapeHtml(r.moneda || "")}</td>
           <td>${numberText(r.costo_unitario)}</td>
           <td>${numberText(r.costo_total)}</td>
@@ -199,15 +229,13 @@
           <td>${escapeHtml(r.modelo || "")}</td>
           <td>${escapeHtml(r.categoria || "")}</td>
           <td>${escapeHtml(r.fecha_compra || "")}</td>
-          <td>${statusBadge(r.estado_match)}</td>
         </tr>`)
       .join("");
   }
 
   // --- Carga (preview + confirmar) ---
 
-  async function openPreview(event) {
-    event.preventDefault();
+  async function openPreview(modo) {
     const fileInput = el("mat-compras-upload-file");
     const tipo = el("mat-compras-upload-type")?.value || "";
     const file = fileInput?.files?.[0];
@@ -218,12 +246,13 @@
     const form = new FormData();
     form.append("file", file);
     form.append("tipo", tipo);
+    form.append("modo", modo);
     setLoading(true);
     setMessage("mat-compras-upload-message", "");
     try {
       const data = await fetchJson("/api/material_admin/compras/preview", { method: "POST", body: form });
-      state.pendingUpload = { file, tipo };
-      renderPreview(data);
+      state.pendingUpload = { file, tipo, modo };
+      renderPreview(data, modo);
       openModal("mat-compras-preview");
     } catch (err) {
       setMessage("mat-compras-upload-message", `No se pudo previsualizar: ${err.message}`);
@@ -232,17 +261,25 @@
     }
   }
 
-  function renderPreview(data) {
+  function renderPreview(data, modo) {
     const sub = el("mat-compras-preview-subtitle");
     if (sub) {
+      const modoTxt = modo === "INICIAL" ? "Carga inicial (CERRADA)" : "Actualizar (ABIERTA)";
+      const nuevasTxt = data.transacciones_nuevas != null
+        ? ` · ${numberText(data.transacciones_nuevas)} nuevas / ${numberText(data.transacciones_existentes)} ya existen`
+        : "";
       sub.textContent =
-        `${data.tipo} · ${numberText(data.total_lineas)} renglones · ` +
-        `${numberText(data.total_transacciones)} transacciones · monto ${numberText(data.total_monto)}`;
+        `${data.tipo} · ${modoTxt} · ${numberText(data.total_lineas)} renglones · ` +
+        `${numberText(data.total_transacciones)} transacciones${nuevasTxt}`;
     }
-    setMessage(
-      "mat-compras-preview-message",
-      (data.warnings || []).join(" ") || "",
-    );
+    // Aviso si en ACTUALIZACION no hay transacciones nuevas, o si el inicial ya existe.
+    let aviso = (data.warnings || []).join(" ") || "";
+    if (data.bloqueado_inicial) {
+      aviso = `Ya existe carga inicial para ${data.tipo}. Usa Actualizar. ${aviso}`;
+    } else if (modo === "ACTUALIZACION" && data.transacciones_nuevas === 0) {
+      aviso = `No hay transacciones nuevas que agregar. ${aviso}`;
+    }
+    setMessage("mat-compras-preview-message", aviso.trim());
     const body = el("mat-compras-preview-body");
     if (!body) return;
     body.innerHTML = (data.sample || [])
@@ -262,10 +299,11 @@
 
   async function confirmUpload() {
     if (!state.pendingUpload) return;
-    const { file, tipo } = state.pendingUpload;
+    const { file, tipo, modo } = state.pendingUpload;
     const form = new FormData();
     form.append("file", file);
     form.append("tipo", tipo);
+    form.append("modo", modo);
     setLoading(true);
     setMessage("mat-compras-preview-message", "");
     try {
@@ -274,15 +312,19 @@
       state.pendingUpload = null;
       const fileInput = el("mat-compras-upload-file");
       if (fileInput) fileInput.value = "";
-      setMessage(
-        "mat-compras-upload-message",
-        `Cargado: ${data.total_lineas} renglones, ${data.total_transacciones} transacciones (${data.tipo}).`,
-        "success",
-      );
+      const estadoTxt = data.estado_lineas === "CERRADA" ? " (cerradas, histórico)" : " (abiertas, almacén)";
+      const msg = data.total_lineas === 0
+        ? "Sin transacciones nuevas que agregar."
+        : `Cargado: ${data.total_lineas} renglones, ${data.total_transacciones} transacciones (${data.tipo})${estadoTxt}.`;
+      setMessage("mat-compras-upload-message", msg, "success");
+      refreshInicialState();
       loadTransacciones();
     } catch (err) {
-      const dup = err.payload?.duplicado;
-      setMessage("mat-compras-preview-message", dup ? "Este archivo ya fue cargado." : `No se pudo cargar: ${err.message}`);
+      const p = err.payload || {};
+      let msg = `No se pudo cargar: ${err.message}`;
+      if (p.bloqueado_inicial) msg = p.message || "Ya existe una carga inicial para este tipo.";
+      else if (p.duplicado) msg = "Este archivo ya fue cargado.";
+      setMessage("mat-compras-preview-message", msg);
     } finally {
       setLoading(false);
     }
@@ -367,19 +409,23 @@
     listenersAttached = true;
 
     document.addEventListener("submit", (e) => {
-      if (e.target && e.target.id === "mat-compras-upload-form") openPreview(e);
+      if (e.target && e.target.id === "mat-compras-upload-form") e.preventDefault();
     });
 
     document.addEventListener("click", (e) => {
-      const t = e.target;
+      const t = e.target?.closest("button, tr[data-transaccion]") || e.target;
       if (!t) return;
-      if (t.id === "mat-compras-refresh" || t.id === "mat-compras-search-btn") {
+      if (t.id === "mat-compras-btn-inicial") {
+        openPreview("INICIAL");
+      } else if (t.id === "mat-compras-btn-actualizar") {
+        openPreview("ACTUALIZACION");
+      } else if (t.id === "mat-compras-refresh" || t.id === "mat-compras-search-btn") {
         loadTransacciones();
       } else if (t.id === "mat-compras-clear-filters") {
         clearFilters();
       } else if (t.id === "mat-compras-preview-confirm") {
         confirmUpload();
-      } else if (t.hasAttribute("data-preview-close")) {
+      } else if (t.hasAttribute && t.hasAttribute("data-preview-close")) {
         hideModal("mat-compras-preview");
       } else if (t.id === "mat-compras-detail-close") {
         const detail = el("mat-compras-detail");
@@ -387,10 +433,13 @@
         state.selectedTransaccion = null;
       } else if (t.dataset && t.dataset.export === "lineas") {
         exportLineas();
-      } else {
-        const row = t.closest("tr[data-transaccion]");
-        if (row) loadDetail(row.dataset.transaccion);
+      } else if (t.dataset && t.dataset.transaccion) {
+        loadDetail(t.dataset.transaccion);
       }
+    });
+
+    document.addEventListener("change", (e) => {
+      if (e.target && e.target.id === "mat-compras-upload-type") updateInicialButton();
     });
 
     document.addEventListener("keydown", (e) => {
@@ -406,6 +455,7 @@
   function initMaterialCompras() {
     ensureModuleStyles();
     attachListeners();
+    refreshInicialState();
     loadTransacciones();
   }
 

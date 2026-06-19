@@ -68,6 +68,7 @@ def init_lista_compras_tables():
         CREATE TABLE IF NOT EXISTS lista_compras_cargas (
             id BIGINT NOT NULL AUTO_INCREMENT,
             tipo VARCHAR(20) NOT NULL DEFAULT '',
+            modo ENUM('INICIAL','ACTUALIZACION') NOT NULL DEFAULT 'ACTUALIZACION',
             archivo_nombre VARCHAR(255) NULL,
             archivo_ruta VARCHAR(512) NULL,
             archivo_size BIGINT NULL,
@@ -85,6 +86,11 @@ def init_lista_compras_tables():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
     )
+    _ensure_column(
+        "lista_compras_cargas",
+        "modo",
+        "modo ENUM('INICIAL','ACTUALIZACION') NOT NULL DEFAULT 'ACTUALIZACION'",
+    )
 
     execute_query(
         """
@@ -93,6 +99,7 @@ def init_lista_compras_tables():
             carga_id BIGINT NOT NULL,
             tipo VARCHAR(20) NOT NULL DEFAULT '',
             numero_transaccion VARCHAR(255) NOT NULL,
+            estado ENUM('ABIERTA','CERRADA','APLICADA') NOT NULL DEFAULT 'ABIERTA',
             anio INT NULL,
             mes VARCHAR(20) NULL,
             fecha_compra DATE NULL,
@@ -118,7 +125,66 @@ def init_lista_compras_tables():
             KEY idx_lcl_carga (carga_id),
             KEY idx_lcl_transaccion (numero_transaccion),
             KEY idx_lcl_tipo (tipo),
+            KEY idx_lcl_estado (tipo, estado),
             KEY idx_lcl_trans_parte (numero_transaccion, numero_parte_sistema(120))
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+    # estado por parte: ABIERTA aparece en el selector y se va llenando con cada
+    # entrada; APLICADA = llegó al tope (cantidad comprada) y sale del selector;
+    # CERRADA = histórico (carga inicial), oculto, solo para costear.
+    _ensure_column(
+        "lista_compras_lineas",
+        "estado",
+        "estado ENUM('ABIERTA','CERRADA','APLICADA') NOT NULL DEFAULT 'ABIERTA'",
+    )
+    # Si la columna ya existía con el enum viejo (sin APLICADA), amplíalo.
+    estado_row = _ddl_fetch_one(
+        """
+        SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lista_compras_lineas'
+          AND COLUMN_NAME = 'estado'
+        """
+    )
+    if "APLICADA" not in ((estado_row or {}).get("COLUMN_TYPE") or ""):
+        execute_query(
+            "ALTER TABLE lista_compras_lineas MODIFY COLUMN estado "
+            "ENUM('ABIERTA','CERRADA','APLICADA') NOT NULL DEFAULT 'ABIERTA'"
+        )
+    _ensure_index(
+        "lista_compras_lineas",
+        "idx_lcl_estado",
+        "KEY idx_lcl_estado (tipo, estado)",
+    )
+
+    # Vínculo lote ↔ línea de transacción (espejo de material_invoice_lot_links).
+    # Cada lote recibido se aplica contra una parte de la transacción y acumula
+    # hasta el tope. activo_key (único) garantiza 1 transacción activa por lote.
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS lista_compras_lot_links (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            transaccion_linea_id BIGINT NOT NULL,
+            numero_transaccion VARCHAR(255) NOT NULL,
+            tipo VARCHAR(20) NOT NULL DEFAULT '',
+            codigo_material_recibido VARCHAR(255) NOT NULL,
+            numero_parte_sistema VARCHAR(512) NOT NULL,
+            cantidad_aplicada DECIMAL(18,4) NOT NULL DEFAULT 0,
+            costo_unitario DECIMAL(12,4) NULL,
+            moneda VARCHAR(10) NOT NULL DEFAULT 'USD',
+            usuario_aplicacion VARCHAR(255) NOT NULL DEFAULT 'SISTEMA',
+            fecha_aplicacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            estado ENUM('APLICADO','DESAPLICADO') NOT NULL DEFAULT 'APLICADO',
+            fecha_desaplicado DATETIME NULL,
+            usuario_desaplicado VARCHAR(255) NULL,
+            activo_key VARCHAR(255) GENERATED ALWAYS AS (
+                CASE WHEN estado = 'APLICADO' THEN codigo_material_recibido ELSE NULL END
+            ) STORED,
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_lcll_activo (activo_key),
+            KEY idx_lcll_linea (transaccion_linea_id),
+            KEY idx_lcll_transaccion (numero_transaccion),
+            KEY idx_lcll_codigo (codigo_material_recibido)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
     )

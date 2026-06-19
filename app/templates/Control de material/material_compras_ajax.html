@@ -24,7 +24,18 @@
                     Archivo Excel
                     <input id="mat-compras-upload-file" name="file" type="file" accept=".xlsx,.xlsm,.xltx,.xltm">
                 </label>
-                <button class="mat-invoice-btn primary" type="submit">Cargar</button>
+                <div class="mat-invoice-header-actions" style="margin-top:8px; gap:8px;">
+                    <button id="mat-compras-btn-inicial" class="mat-invoice-btn" type="button"
+                            data-modo="INICIAL"
+                            title="Carga histórica de una sola vez por tipo. Entra CERRADA: no aparece en almacén, solo para costear.">
+                        Carga inicial
+                    </button>
+                    <button id="mat-compras-btn-actualizar" class="mat-invoice-btn primary" type="button"
+                            data-modo="ACTUALIZACION"
+                            title="Agrega solo las transacciones nuevas. Entran ABIERTAS y aparecen en almacén.">
+                        Actualizar
+                    </button>
+                </div>
             </form>
             <div id="mat-compras-upload-message" class="mat-invoice-message" hidden></div>
         </section>
@@ -44,6 +55,14 @@
                     </select>
                 </label>
                 <label>
+                    Estado
+                    <select id="mat-compras-estado-filter">
+                        <option value="">Todos</option>
+                        <option value="ABIERTA">Abierta (almacén)</option>
+                        <option value="CERRADA">Cerrada (histórico)</option>
+                    </select>
+                </label>
+                <label>
                     Desde
                     <input id="mat-compras-date-from" type="date" data-default-date="">
                 </label>
@@ -60,6 +79,7 @@
                         <tr>
                             <th>Transaccion</th>
                             <th>Tipo</th>
+                            <th>Estado</th>
                             <th>Proveedor</th>
                             <th>Partes</th>
                             <th>Lineas</th>
@@ -95,7 +115,10 @@
                         <th>Parte sistema</th>
                         <th>Descripcion</th>
                         <th>Spec</th>
-                        <th>Cantidad</th>
+                        <th>Comprado</th>
+                        <th>Recibido</th>
+                        <th>Pendiente</th>
+                        <th>Estado</th>
                         <th>Curr.</th>
                         <th>P. Unit.</th>
                         <th>Total</th>
@@ -149,4 +172,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/material_compras.js', v='20260616a') }}"></script>
+<script src="{{ url_for('static', filename='js/material_compras.js', v='20260618a') }}"></script>

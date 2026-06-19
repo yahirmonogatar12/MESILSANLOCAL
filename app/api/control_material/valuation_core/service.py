@@ -76,6 +76,7 @@ def valuation_base_sql(where):
           COALESCE(ilc.pallet_no, cma.pallet_no) AS pallet_no,
           COALESCE(ilc.vendedor, cma.vendedor) AS vendedor,
           cma.numero_invoice,
+          cma.numero_transaccion,
           COALESCE(ilc.costo_unitario, 0) AS costo_unitario,
           COALESCE(ilc.moneda, %s) AS moneda,
           COALESCE(ilc.fuente_costo, 'SIN_COSTO') AS fuente_costo,

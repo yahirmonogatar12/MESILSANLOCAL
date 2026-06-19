@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, render_template, request, send_file
 
 from app.api.control_material.compras_core.service import (
     delete_carga,
+    estado_carga_inicial,
     get_transaccion_detail,
     list_cargas,
     list_transacciones,
@@ -79,6 +80,13 @@ def api_preview_compras():
 @requiere_permiso_dropdown(*PERMISO_COMPRAS)
 def api_list_cargas():
     return _json_result(list_cargas(request.args))
+
+
+@bp.route("/api/material_admin/compras/estado-inicial", methods=["GET"])
+@login_requerido
+@requiere_permiso_dropdown(*PERMISO_COMPRAS)
+def api_estado_inicial():
+    return _json_result(estado_carga_inicial(request.args))
 
 
 @bp.route("/api/material_admin/compras/cargas/<int:carga_id>", methods=["DELETE"])

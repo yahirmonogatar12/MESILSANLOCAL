@@ -89,6 +89,7 @@
       ["codigo_material_recibido", "Codigo recibido"],
       ["numero_lote_material", "Lote"],
       ["numero_invoice", "Invoice"],
+      ["numero_transaccion", "Transaccion"],
       ["iqc_status", "IQC Status"],
       ["in_quarantine", "Cuarentena"],
       ["cantidad_actual", "Cantidad"],

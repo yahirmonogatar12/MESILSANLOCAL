@@ -160,6 +160,7 @@
       <td>${sourceBadge(row.fuente_costo)}</td>
       <td>${String(row.es_estimado) === "0" ? "No" : "Si"}</td>
       <td>${escapeHtml(row.numero_invoice || row.invoice_id || "")}</td>
+      <td title="${escapeHtml(row.numero_transaccion)}">${escapeHtml(row.numero_transaccion || "")}</td>
     </tr>`).join("");
   }
 

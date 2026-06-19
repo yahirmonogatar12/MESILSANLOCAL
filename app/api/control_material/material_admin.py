@@ -474,6 +474,7 @@ def _material_admin_history_rows(tipo, args, export=False):
               cma.codigo_material_recibido,
               cma.numero_lote_material,
               cma.numero_invoice,
+              cma.numero_transaccion,
               cma.propiedad_material,
               cma.iqc_status,
               cma.en_cuarentena AS in_quarantine,
@@ -499,7 +500,7 @@ def _material_admin_history_rows(tipo, args, export=False):
             WHERE 1=1
         """
         date_field = "cma.fecha_recibo"
-        text_fields = ["cma.codigo_material_recibido", "cma.codigo_material", "cma.numero_parte", "cma.numero_lote_material", "cma.numero_invoice", "cma.ubicacion_salida", "m.ubicacion_material", "cma.especificacion", "cma.vendedor", "cma.usuario_registro"]
+        text_fields = ["cma.codigo_material_recibido", "cma.codigo_material", "cma.numero_parte", "cma.numero_lote_material", "cma.numero_invoice", "cma.numero_transaccion", "cma.ubicacion_salida", "m.ubicacion_material", "cma.especificacion", "cma.vendedor", "cma.usuario_registro"]
         order = "cma.fecha_recibo DESC, cma.id DESC"
         time_fields = {"fecha_recibo_hora": "fecha_recibo"}
         column_filter_fields = {
@@ -509,6 +510,7 @@ def _material_admin_history_rows(tipo, args, export=False):
             "codigo_material_recibido": "cma.codigo_material_recibido",
             "numero_lote_material": "cma.numero_lote_material",
             "numero_invoice": "cma.numero_invoice",
+            "numero_transaccion": "cma.numero_transaccion",
             "propiedad_material": "cma.propiedad_material",
             "iqc_status": "cma.iqc_status",
             "in_quarantine": "CASE WHEN cma.en_cuarentena IN (1, '1', TRUE) THEN 'Si' ELSE 'No' END",
