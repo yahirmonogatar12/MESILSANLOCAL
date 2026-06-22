@@ -1,0 +1,76 @@
+<!-- Gestión de roles (acotada por departamento) - Fragmento AJAX.
+     WF_004 CSS persistente en MainTemplate.html. JS: gestion_roles_depto.js. -->
+<div id="grd-container" class="grd-container">
+  <div id="grd-root" class="ict-page">
+
+    <div class="grd-layout">
+      <!-- Columna roles -->
+      <div class="filters-card grd-roles-card">
+        <div class="card-header">
+          <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"></path>
+          </svg>
+          <h3>Roles</h3>
+          <span id="grd-scope-hint" class="record-count"></span>
+        </div>
+        <div class="grd-roles-toolbar">
+          <button type="button" id="grd-btn-nuevo-rol" class="btn-primary">+ Nuevo rol</button>
+        </div>
+        <div id="grd-roles-list" class="grd-roles-list">
+          <span class="grd-muted">Cargando...</span>
+        </div>
+      </div>
+
+      <!-- Columna permisos -->
+      <div class="results-card grd-perms-card">
+        <div class="card-header">
+          <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4"></path>
+            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <h3 id="grd-perms-title">Selecciona un rol</h3>
+          <span id="grd-perms-count" class="record-count"></span>
+          <button type="button" id="grd-btn-editar-rol" class="btn-secondary" style="display:none;">Editar rol</button>
+          <button type="button" id="grd-btn-guardar-perms" class="btn-primary" style="display:none;">Guardar permisos</button>
+        </div>
+        <div id="grd-perms-body" class="grd-perms-body">
+          <div class="grd-empty">Elige un rol de la izquierda para ver y editar qué puede hacer.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal crear/editar rol -->
+  <div id="grd-modal" class="grd-modal" aria-hidden="true">
+    <div class="grd-modal-backdrop" data-grd-close></div>
+    <div class="grd-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="grd-modal-title">
+      <div class="grd-modal-header">
+        <h3 id="grd-modal-title">Nuevo rol</h3>
+        <button type="button" class="grd-modal-close" data-grd-close aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="grd-modal-body">
+        <div class="filter-group">
+          <label for="grd-rol-nombre">Nombre del rol</label>
+          <input type="text" id="grd-rol-nombre" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <label for="grd-rol-descripcion">Descripción</label>
+          <input type="text" id="grd-rol-descripcion" autocomplete="off">
+        </div>
+        <div class="filter-group" id="grd-rol-depto-group" style="display:none;">
+          <label for="grd-rol-departamento">Departamento</label>
+          <select id="grd-rol-departamento"></select>
+        </div>
+        <p class="grd-muted" id="grd-rol-depto-fijo"></p>
+      </div>
+      <div class="grd-modal-footer">
+        <button type="button" class="btn-secondary" data-grd-close>Cancelar</button>
+        <button type="button" id="grd-btn-guardar-rol" class="btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script defer src="{{ url_for('static', filename='js/gestion_roles_depto.js', v='20260619e') }}"></script>

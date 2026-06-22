@@ -1,0 +1,162 @@
+/* Gestión de roles por departamento. Tema ILSAN, scopeado a #grd-root. */
+
+/* Altura común de ambas columnas (roles y permisos). Responsive por viewport. */
+#grd-root.ict-page { width: 100%; display: flex; flex-direction: column; gap: 16px; flex: 1; --grd-alto: 70vh; }
+
+#grd-root .grd-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  align-items: stretch;   /* ambas columnas estiran a la misma altura */
+}
+@media (max-width: 900px) { #grd-root .grd-layout { grid-template-columns: 1fr; } }
+
+#grd-root .filters-card,
+#grd-root .results-card {
+  background: var(--ilsan-dark-secondary);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+/* Las dos tarjetas miden lo mismo y son columnas flex; el cuerpo llena el resto. */
+#grd-root .grd-roles-card,
+#grd-root .grd-perms-card {
+  display: flex;
+  flex-direction: column;
+  height: var(--grd-alto);
+}
+#grd-root .card-header {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+#grd-root .card-icon { width: 16px; height: 16px; color: var(--ilsan-accent-blue); flex-shrink: 0; }
+#grd-root .card-header h3 { color: var(--ilsan-text-light); font-size: 0.9rem; font-weight: 600; margin: 0; flex: 1; }
+#grd-root .record-count {
+  color: var(--ilsan-text-gray); font-size: 0.8rem; background: rgba(255, 255, 255, 0.05);
+  padding: 3px 10px; border-radius: 16px; white-space: nowrap;
+}
+#grd-root .grd-muted { color: var(--ilsan-text-gray); font-size: 0.82rem; }
+
+/* Roles */
+#grd-root .grd-roles-toolbar { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+#grd-root .grd-roles-list { padding: 8px; display: flex; flex-direction: column; gap: 4px; flex: 1; min-height: 0; overflow: auto; }
+#grd-root .grd-role-item {
+  padding: 9px 11px; border-radius: 7px; cursor: pointer; color: var(--ilsan-text-light);
+  border: 1px solid transparent; transition: all 0.15s ease;
+}
+#grd-root .grd-role-item:hover { background: rgba(255,255,255,0.04); }
+#grd-root .grd-role-item.active { background: rgba(52,152,219,0.15); border-color: var(--ilsan-accent-blue); }
+#grd-root .grd-role-name { font-weight: 600; font-size: 0.9rem; }
+#grd-root .grd-role-meta { font-size: 0.72rem; color: var(--ilsan-text-gray); margin-top: 2px; }
+
+/* Permisos: llena la tarjeta (misma altura que roles). Expandir/colapsar
+   dropdowns NO redimensiona el panel; solo scrollea internamente. */
+#grd-root .grd-perms-body { padding: 12px 14px; flex: 1; min-height: 0; overflow: auto; }
+#grd-root .grd-empty { color: var(--ilsan-text-gray); text-align: center; padding: 40px 10px; }
+
+/* Toolbar permisos */
+#grd-root .grd-perms-toolbar {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; gap: 8px; align-items: center;
+  background: var(--ilsan-dark-secondary);
+  padding: 4px 0 10px; margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+#grd-root .grd-perms-search {
+  flex: 1; background-color: rgba(255,255,255,0.04); color: var(--ilsan-text-light);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 7px 10px; font-size: 0.84rem;
+}
+#grd-root .grd-perms-search:focus { outline: none; border-color: var(--ilsan-accent-blue); box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+
+#grd-root .grd-mini-btn {
+  font-size: 0.72rem; padding: 4px 9px; border-radius: 12px; cursor: pointer;
+  background: rgba(255,255,255,0.06); color: #9fb3c8; border: 1px solid rgba(255,255,255,0.12);
+  white-space: nowrap; user-select: none; transition: all .12s ease;
+}
+#grd-root .grd-mini-btn:hover { border-color: var(--ilsan-accent-blue); color: #cfe3f5; }
+
+/* Acordeón por página */
+#grd-root .grd-pagina-group {
+  margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px; background: rgba(255,255,255,0.015); overflow: hidden;
+}
+#grd-root .grd-pagina-summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; background: rgba(255,255,255,0.02);
+}
+#grd-root .grd-pagina-summary::-webkit-details-marker { display: none; }
+#grd-root .grd-pagina-summary::before {
+  content: "\25B8"; color: #9fb3c8; transition: transform .15s ease; display: inline-block;
+}
+#grd-root .grd-pagina-group[open] > .grd-pagina-summary::before { transform: rotate(90deg); }
+#grd-root .grd-pagina-title {
+  color: var(--ilsan-accent-blue); font-size: 0.76rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.4px; flex: 1;
+}
+#grd-root .grd-pagina-count {
+  font-size: 0.72rem; color: var(--ilsan-text-gray);
+  background: rgba(255,255,255,0.06); padding: 2px 9px; border-radius: 12px;
+}
+
+#grd-root .grd-seccion { padding: 4px 12px 8px 22px; }
+#grd-root .grd-seccion-title {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  color: var(--ilsan-text-light); font-size: 0.78rem; font-weight: 600; margin: 8px 0 4px;
+}
+
+#grd-root .grd-perm-item {
+  display: flex; align-items: flex-start; gap: 9px; padding: 6px 8px;
+  color: var(--ilsan-text-light); font-size: 0.84rem; border-radius: 6px;
+  cursor: pointer; transition: background .1s ease;
+}
+#grd-root .grd-perm-item:hover { background: rgba(255,255,255,0.04); }
+#grd-root .grd-perm-item.on { background: rgba(52,152,219,0.10); }
+#grd-root .grd-perm-cb { margin-top: 2px; }
+#grd-root .grd-perm-text { display: flex; flex-direction: column; gap: 1px; }
+#grd-root .grd-perm-boton { font-weight: 600; }
+#grd-root .grd-perm-desc { font-size: 0.74rem; color: var(--ilsan-text-gray); }
+
+/* Botones */
+#grd-root .btn-primary,
+#grd-modal .btn-primary {
+  background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+  color: #fff; border: none; border-radius: 8px; padding: 8px 14px;
+  font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;
+}
+#grd-root .btn-primary:hover, #grd-modal .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(52,152,219,0.4); }
+#grd-root .btn-secondary,
+#grd-modal .btn-secondary {
+  background: rgba(255,255,255,0.05); color: var(--ilsan-text-light);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 14px;
+  font-size: 0.82rem; font-weight: 600; cursor: pointer;
+}
+#grd-root .btn-secondary:hover, #grd-modal .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+/* Modal */
+.grd-modal { position: fixed; inset: 0; z-index: 2147483600; display: none; align-items: center; justify-content: center; padding: 22px; }
+.grd-modal.is-open { display: flex; }
+.grd-modal-backdrop { position: absolute; inset: 0; background: rgba(9,12,20,0.76); }
+.grd-modal-dialog {
+  position: relative; width: min(520px, 96vw); max-height: 92vh; display: flex; flex-direction: column;
+  overflow: hidden; border: 1px solid rgba(52,152,219,0.42); border-radius: 10px;
+  background: var(--ilsan-dark-secondary); box-shadow: 0 24px 70px rgba(0,0,0,0.42);
+}
+.grd-modal-header { display: flex; align-items: center; padding: 12px 16px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); }
+.grd-modal-header h3 { color: var(--ilsan-text-light); font-size: 0.95rem; font-weight: 600; margin: 0; flex: 1; }
+.grd-modal-close { background: transparent; border: none; color: var(--ilsan-text-gray); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.grd-modal-close:hover { color: var(--ilsan-text-light); }
+.grd-modal-body { padding: 16px 18px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.grd-modal-body .filter-group { display: flex; flex-direction: column; gap: 4px; }
+.grd-modal-body label { color: var(--ilsan-text-light); font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+.grd-modal-body input, .grd-modal-body select {
+  background-color: rgba(255,255,255,0.03); color: var(--ilsan-text-light);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 5px; padding: 7px 9px; font-size: 0.85rem;
+}
+.grd-modal-body input:focus, .grd-modal-body select:focus {
+  outline: none; border-color: var(--ilsan-accent-blue); box-shadow: 0 0 0 3px rgba(52,152,219,0.15);
+}
+.grd-modal-body .grd-muted { color: var(--ilsan-text-gray); font-size: 0.78rem; margin: 0; }
+.grd-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 18px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); }

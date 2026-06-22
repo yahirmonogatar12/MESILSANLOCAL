@@ -70,6 +70,10 @@
     <link id="inventario-exceso-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_exceso.css', v='20260605c') }}">
     <!-- WF_004: CSS persistente Historial AOI (Control de resultados) -->
     <link id="control-historial-aoi-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_historial_aoi.css', v='20260527a') }}">
+    <!-- WF_004: CSS persistente Administracion de usuario por departamento (Informacion Basica) -->
+    <link id="admin-usuarios-depto-css" rel="stylesheet" href="{{ url_for('static', filename='css/admin_usuarios_depto.css', v='20260619c') }}">
+    <!-- WF_004: CSS persistente Gestion de roles por departamento (Informacion Basica) -->
+    <link id="gestion-roles-depto-css" rel="stylesheet" href="{{ url_for('static', filename='css/gestion_roles_depto.css', v='20260619d') }}">
     <!-- WF_004: CSS persistente modulos ICT (Control de resultados / Historial de maquinas calidad) -->
     <link id="ict-pass-fail-css" rel="stylesheet" href="{{ url_for('static', filename='css/ict-Pass-Fail.css', v='20260527a') }}">
     <link id="historial-cambios-parametros-ict-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_cambios_parametros_ict.css', v='20260527a') }}">
@@ -750,8 +754,7 @@
 
         <!-- Contenedores para cada opción del sidebar de Información Básica -->
         <div id="admin-usuario-info-container" style="display: none;">
-            <h2>Administracion de usuario</h2>
-            <p>Contenido para Administracion de usuario - Por implementar</p>
+            <!-- Contenido cargado dinámicamente por AJAX desde /admin-usuarios-depto -->
         </div>
 
         <div id="admin-menu-info-container" style="display: none;">
@@ -760,8 +763,7 @@
         </div>
 
         <div id="admin-autoridad-info-container" style="display: none;">
-            <h2>Administración de autoridad</h2>
-            <p>Contenido para Administración de autoridad - Por implementar</p>
+            <!-- Contenido cargado dinámicamente por AJAX desde /gestion-roles-depto -->
         </div>
 
         <div id="control-codigo-info-container" style="display: none;">
@@ -2547,7 +2549,14 @@ function hideAllMaterialContainers() {
             window.mostrarAdminUsuarioInfo = function() {
                 prepararPanelInformacionBasica();
                 const container = document.getElementById('admin-usuario-info-container');
-                if (container) container.style.display = 'block';
+                if (container) {
+                    container.style.display = 'block';
+                    if (typeof cargarContenidoDinamico === 'function') {
+                        cargarContenidoDinamico('admin-usuario-info-container', '/admin-usuarios-depto', function() {
+                            if (typeof window.aduInit === 'function') window.aduInit();
+                        });
+                    }
+                }
             };
 
             window.mostrarAdminMenuInfo = function() {
@@ -2559,7 +2568,14 @@ function hideAllMaterialContainers() {
             window.mostrarAdminAutoridadInfo = function() {
                 prepararPanelInformacionBasica();
                 const container = document.getElementById('admin-autoridad-info-container');
-                if (container) container.style.display = 'block';
+                if (container) {
+                    container.style.display = 'block';
+                    if (typeof cargarContenidoDinamico === 'function') {
+                        cargarContenidoDinamico('admin-autoridad-info-container', '/gestion-roles-depto', function() {
+                            if (typeof window.grdInit === 'function') window.grdInit();
+                        });
+                    }
+                }
             };
 
             window.mostrarControlCodigoInfo = function() {

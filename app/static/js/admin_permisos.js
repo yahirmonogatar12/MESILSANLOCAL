@@ -302,7 +302,8 @@ async function crearRol() {
     const data = {
         nombre: document.getElementById('nombreRol').value.trim(),
         descripcion: document.getElementById('descripcionRol').value.trim(),
-        nivel: parseInt(document.getElementById('nivelRol').value)
+        nivel: parseInt(document.getElementById('nivelRol').value),
+        departamento: document.getElementById('departamentoRol').value
     };
     
     // Validar datos
@@ -362,7 +363,8 @@ async function mostrarModalEditarRol(rolId) {
         document.getElementById('editNombreRol').value = role.nombre;
         document.getElementById('editDescripcionRol').value = role.descripcion;
         document.getElementById('editNivelRol').value = role.nivel;
-        
+        document.getElementById('editDepartamentoRol').value = role.departamento || '';
+
         // Mostrar/ocultar warning para roles del sistema
         const esSistema = role.nivel >= 8;
         const warningElement = document.getElementById('warningEditSistema');
@@ -386,7 +388,8 @@ async function actualizarRol() {
     const data = {
         nombre: document.getElementById('editNombreRol').value.trim(),
         descripcion: document.getElementById('editDescripcionRol').value.trim(),
-        nivel: parseInt(document.getElementById('editNivelRol').value)
+        nivel: parseInt(document.getElementById('editNivelRol').value),
+        departamento: document.getElementById('editDepartamentoRol').value
     };
     
     const rolId = document.getElementById('editRolId').value;
@@ -1058,7 +1061,273 @@ function showError(message) {
     toast.show();
 }
 
+// ===== Gestion de Departamentos =====
+async function mostrarModalDepartamentos() {
+    const modal = new bootstrap.Modal(document.getElementById('modalDepartamentos'));
+    modal.show();
+    await cargarDepartamentos();
+}
+
+async function cargarDepartamentos() {
+    const tbody = document.getElementById('departamentosTbody');
+    try {
+        const res = await fetch('/admin/listar_departamentos');
+        const data = await res.json();
+        if (data.error) { showError(data.error); return; }
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sin departamentos</td></tr>';
+            return;
+        }
+        tbody.innerHTML = '';
+        data.forEach(dep => {
+            const tr = document.createElement('tr');
+            const estado = dep.activo
+                ? '<span class="badge bg-success">Activo</span>'
+                : '<span class="badge bg-secondary">Inactivo</span>';
+            tr.innerHTML =
+                `<td>${escapeHtml(dep.nombre)}</td>` +
+                `<td class="text-center">${dep.total_usuarios}</td>` +
+                `<td class="text-center">${estado}</td>` +
+                `<td class="text-end">` +
+                  `<button class="btn btn-sm btn-outline-light dep-rename" title="Renombrar"><i class="fas fa-pen"></i></button> ` +
+                  `<button class="btn btn-sm btn-outline-warning dep-toggle" title="Activar/Desactivar"><i class="fas fa-power-off"></i></button> ` +
+                  `<button class="btn btn-sm btn-outline-danger dep-delete" title="Eliminar"><i class="fas fa-trash"></i></button>` +
+                `</td>`;
+            tr.querySelector('.dep-rename').addEventListener('click', () => renombrarDepartamento(dep.id, dep.nombre));
+            tr.querySelector('.dep-toggle').addEventListener('click', () => toggleDepartamento(dep.id, dep.activo));
+            tr.querySelector('.dep-delete').addEventListener('click', () => eliminarDepartamento(dep.id, dep.nombre));
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        showError('Error cargando departamentos: ' + err.message);
+    }
+}
+
+async function crearDepartamento() {
+    const input = document.getElementById('nuevoDepartamentoNombre');
+    const nombre = input.value.trim();
+    if (!nombre) { showError('Escribe un nombre'); return; }
+    try {
+        const res = await fetch('/admin/crear_departamento', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre })
+        });
+        const result = await res.json();
+        if (result.success) {
+            showSuccess(result.mensaje);
+            input.value = '';
+            await cargarDepartamentos();
+            await loadRoles();
+        } else {
+            showError(result.error || 'Error creando departamento');
+        }
+    } catch (err) {
+        showError('Error creando departamento: ' + err.message);
+    }
+}
+
+async function renombrarDepartamento(id, nombreActual) {
+    const nombre = prompt('Nuevo nombre del departamento:', nombreActual);
+    if (nombre === null) return;
+    if (!nombre.trim()) { showError('El nombre no puede estar vacío'); return; }
+    await guardarDepartamento(id, { nombre: nombre.trim() });
+}
+
+async function toggleDepartamento(id, activoActual) {
+    await guardarDepartamento(id, { activo: activoActual ? 0 : 1 });
+}
+
+async function guardarDepartamento(id, payload) {
+    try {
+        const res = await fetch(`/admin/actualizar_departamento/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.success) {
+            showSuccess(result.mensaje);
+            await cargarDepartamentos();
+            await loadRoles();
+        } else {
+            showError(result.error || 'Error actualizando departamento');
+        }
+    } catch (err) {
+        showError('Error actualizando departamento: ' + err.message);
+    }
+}
+
+async function eliminarDepartamento(id, nombre) {
+    if (!confirm(`¿Eliminar el departamento "${nombre}"?`)) return;
+    try {
+        const res = await fetch(`/admin/eliminar_departamento/${id}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (result.success) {
+            showSuccess(result.mensaje);
+            await cargarDepartamentos();
+        } else {
+            showError(result.error || 'Error eliminando departamento');
+        }
+    } catch (err) {
+        showError('Error eliminando departamento: ' + err.message);
+    }
+}
+
+// ===== Areas de cada permiso (N:M permiso <-> departamentos) =====
+let _areasPermisosData = [];
+
+async function mostrarModalAreasPermisos() {
+    const modal = new bootstrap.Modal(document.getElementById('modalAreasPermisos'));
+    modal.show();
+    await cargarAreasPermisos();
+}
+
+async function cargarAreasPermisos() {
+    const cont = document.getElementById('areasPermisosBody');
+    try {
+        const res = await fetch('/admin/api/permisos-departamentos');
+        const data = await res.json();
+        if (data.error) { showError(data.error); return; }
+        _areasPermisosData = data;
+        renderAreasPermisos('');
+    } catch (err) {
+        showError('Error cargando áreas de permisos: ' + err.message);
+    }
+}
+
+function _apDepChip(checked, dep, attrs) {
+    // Chip clicable (no checkbox). data-* en attrs.
+    const cls = checked ? 'ap-chip ap-chip-on' : 'ap-chip';
+    return `<span class="${cls}" ${attrs} data-dep="${escapeHtml(dep)}">${escapeHtml(dep)}</span>`;
+}
+
+function renderAreasPermisos(filtro) {
+    const cont = document.getElementById('areasPermisosBody');
+    const deps = window.ADU_DEPARTMENTS || [];
+    const f = (filtro || '').toLowerCase();
+    const rows = _areasPermisosData.filter(p =>
+        !f || `${p.pagina} ${p.seccion} ${p.boton}`.toLowerCase().includes(f));
+    if (!rows.length) {
+        cont.innerHTML = '<div class="text-center text-muted py-3">Sin resultados</div>';
+        return;
+    }
+
+    // Agrupar por pagina -> seccion
+    const porPagina = {};
+    rows.forEach(p => {
+        (porPagina[p.pagina] = porPagina[p.pagina] || {});
+        (porPagina[p.pagina][p.seccion] = porPagina[p.pagina][p.seccion] || []).push(p);
+    });
+
+    cont.innerHTML = '';
+    Object.keys(porPagina).forEach(pagina => {
+        const idsPagina = [];
+        Object.values(porPagina[pagina]).forEach(arr => arr.forEach(p => idsPagina.push(p.id)));
+
+        const det = document.createElement('details');
+        det.className = 'ap-group';
+        if (f) det.open = true;  // al buscar, expandir
+
+        // Header de pagina con chips de asignacion masiva.
+        const masivoChips = deps.map(dep =>
+            `<span class="ap-chip ap-chip-bulk" data-bulk-pagina="${escapeHtml(pagina)}" data-dep="${escapeHtml(dep)}">+ ${escapeHtml(dep)}</span>`
+        ).join('');
+        det.innerHTML =
+            `<summary class="ap-group-summary">
+                <span class="ap-group-title">${escapeHtml(pagina)} <span class="text-muted">(${idsPagina.length})</span></span>
+                <span class="ap-bulk">Aplicar a todo: ${masivoChips}</span>
+            </summary>`;
+
+        // Secciones y permisos
+        Object.keys(porPagina[pagina]).forEach(seccion => {
+            const secDiv = document.createElement('div');
+            secDiv.className = 'ap-seccion';
+            secDiv.innerHTML = `<div class="ap-seccion-title">${escapeHtml(seccion)}</div>`;
+            porPagina[pagina][seccion].forEach(p => {
+                const asignados = new Set(p.departamentos || []);
+                const chips = deps.map(dep =>
+                    _apDepChip(asignados.has(dep), dep, `data-permiso="${p.id}"`)
+                ).join('');
+                const row = document.createElement('div');
+                row.className = 'ap-perm-row';
+                row.innerHTML =
+                    `<span class="ap-perm-name">${escapeHtml(p.boton)}</span>` +
+                    `<span class="ap-perm-chips">${chips}</span>`;
+                secDiv.appendChild(row);
+            });
+            det.appendChild(secDiv);
+        });
+        cont.appendChild(det);
+    });
+}
+
+// Click en chip individual (toggle add/remove para 1 permiso).
+async function _apToggleChip(chipEl) {
+    const permisoId = parseInt(chipEl.dataset.permiso);
+    const dep = chipEl.dataset.dep;
+    const item = _areasPermisosData.find(p => p.id === permisoId);
+    if (!item) return;
+    const asignados = new Set(item.departamentos || []);
+    const accion = asignados.has(dep) ? 'remove' : 'add';
+    const ok = await _apMasivo([permisoId], dep, accion);
+    if (ok) {
+        if (accion === 'add') { asignados.add(dep); chipEl.classList.add('ap-chip-on'); }
+        else { asignados.delete(dep); chipEl.classList.remove('ap-chip-on'); }
+        item.departamentos = Array.from(asignados);
+    }
+}
+
+// Click en chip masivo de una pagina (agrega ese depto a TODOS sus permisos).
+async function _apBulkPagina(pagina, dep) {
+    const ids = _areasPermisosData.filter(p => p.pagina === pagina).map(p => p.id);
+    if (!ids.length) return;
+    const ok = await _apMasivo(ids, dep, 'add');
+    if (ok) {
+        _areasPermisosData.forEach(p => {
+            if (p.pagina === pagina) {
+                const s = new Set(p.departamentos || []); s.add(dep); p.departamentos = Array.from(s);
+            }
+        });
+        const search = document.getElementById('areasPermisoSearch');
+        renderAreasPermisos(search ? search.value : '');
+        showSuccess(`"${dep}" aplicado a ${ids.length} permisos de ${pagina}`);
+    }
+}
+
+async function _apMasivo(permisoIds, departamento, accion) {
+    try {
+        const res = await fetch('/admin/api/permiso-departamentos-masivo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ permiso_ids: permisoIds, departamento, accion })
+        });
+        const result = await res.json();
+        if (result.success) return true;
+        showError(result.error || 'Error guardando');
+        return false;
+    } catch (err) {
+        showError('Error guardando: ' + err.message);
+        return false;
+    }
+}
+
+// Delegacion: clicks de chips dentro del modal.
+document.addEventListener('click', function (e) {
+    const bulk = e.target.closest('.ap-chip-bulk');
+    if (bulk) { _apBulkPagina(bulk.dataset.bulkPagina, bulk.dataset.dep); return; }
+    const chip = e.target.closest('.ap-chip[data-permiso]');
+    if (chip) { _apToggleChip(chip); return; }
+});
+
+document.addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'areasPermisoSearch') renderAreasPermisos(e.target.value);
+});
+
 // Exponer a window las funciones llamadas desde onclick= en el HTML
+window.mostrarModalAreasPermisos = mostrarModalAreasPermisos;
+window.mostrarModalDepartamentos = mostrarModalDepartamentos;
+window.crearDepartamento = crearDepartamento;
 window.sincronizarPermisos = sincronizarPermisos;
 window.exportPermissions = exportPermissions;
 window.resetAllPermissions = resetAllPermissions;

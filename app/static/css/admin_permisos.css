@@ -685,3 +685,77 @@ input:checked + .slider:before { transform: translateX(22px); }
     .permission-toggle { justify-self: start; }
     .summary-progress { min-width: 0; }
 }
+
+/* ===== Modal "Áreas de cada permiso": acordeón + chips ===== */
+.ap-body { max-height: 58vh; overflow: auto; padding-right: 4px; }
+
+.ap-group {
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.02);
+}
+.ap-group-summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.ap-group-summary::-webkit-details-marker { display: none; }
+.ap-group-summary::before {
+    content: "\25B8";
+    margin-right: 6px;
+    color: #9fb3c8;
+    transition: transform .15s ease;
+    display: inline-block;
+}
+.ap-group[open] > .ap-group-summary::before { transform: rotate(90deg); }
+.ap-group-title { font-weight: 700; color: #e8eef5; }
+.ap-bulk { font-size: .78rem; color: #9fb3c8; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+.ap-seccion { padding: 4px 12px 10px 28px; }
+.ap-seccion-title {
+    color: #6db3ff;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    margin: 8px 0 4px;
+}
+.ap-perm-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    flex-wrap: wrap;
+}
+.ap-perm-name { color: #e8eef5; font-size: .85rem; }
+.ap-perm-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+
+.ap-chip {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 12px;
+    font-size: .72rem;
+    cursor: pointer;
+    user-select: none;
+    background: rgba(255,255,255,0.06);
+    color: #9fb3c8;
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: all .12s ease;
+    white-space: nowrap;
+}
+.ap-chip:hover { border-color: #3498db; color: #cfe3f5; }
+.ap-chip-on {
+    background: rgba(52,152,219,0.22);
+    color: #cfe9ff;
+    border-color: #3498db;
+}
+.ap-chip-bulk { background: rgba(241,196,15,0.12); color: #f1c40f; border-color: rgba(241,196,15,0.35); }
+.ap-chip-bulk:hover { background: rgba(241,196,15,0.22); }

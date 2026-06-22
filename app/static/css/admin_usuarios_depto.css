@@ -1,0 +1,329 @@
+/* Administración de usuario por departamento.
+   Reusa el patrón visual de los módulos del portal (tema ILSAN), scopeado a
+   #adu-root para no colisionar con otros módulos. Prefijo de IDs: adu- */
+
+#adu-root.ict-page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+/* ===== Tarjetas ===== */
+#adu-root .filters-card,
+#adu-root .results-card {
+  background: var(--ilsan-dark-secondary);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  width: 100%;
+}
+
+#adu-root .card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#adu-root .card-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--ilsan-accent-blue);
+  flex-shrink: 0;
+}
+
+#adu-root .card-header h3 {
+  color: var(--ilsan-text-light);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+#adu-root .record-count {
+  color: var(--ilsan-text-gray);
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 3px 10px;
+  border-radius: 16px;
+  white-space: nowrap;
+}
+
+/* ===== Filtros / campos del formulario ===== */
+#adu-filters {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  row-gap: 12px;
+  align-items: flex-end;
+  width: 100%;
+}
+
+#adu-modal .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#adu-modal .filter-group label {
+  color: var(--ilsan-text-light);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+#adu-modal #adu-pass-hint {
+  text-transform: none;
+  font-weight: 400;
+  color: var(--ilsan-text-gray);
+}
+
+#adu-modal .filter-group input[type="text"],
+#adu-modal .filter-group input[type="email"],
+#adu-modal .filter-group input[type="password"],
+#adu-modal .filter-group select {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--ilsan-text-light);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+  width: 180px;
+}
+
+#adu-modal .filter-group select option {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+#adu-modal .filter-group input:focus,
+#adu-modal .filter-group select:focus {
+  outline: none;
+  border-color: var(--ilsan-accent-blue);
+  background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+#adu-modal .filter-group select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#adu-modal .adu-activo-group { justify-content: flex-end; }
+#adu-modal .adu-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ilsan-text-light);
+  font-size: 0.8rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+/* ===== Roles ===== */
+#adu-modal .adu-roles-block {
+  margin-top: 4px;
+}
+#adu-modal .adu-roles-legend {
+  color: var(--ilsan-text-light);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
+#adu-modal #adu-roles-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  max-height: 150px;
+  overflow: auto;
+}
+#adu-modal #adu-roles-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ilsan-text-light);
+  font-size: 0.8rem;
+}
+#adu-modal .adu-muted { color: var(--ilsan-text-gray); font-size: 0.8rem; }
+
+/* ===== Botones ===== */
+#adu-root .btn-primary,
+#adu-modal .btn-primary {
+  background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+#adu-root .btn-primary:hover,
+#adu-modal .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4); }
+#adu-root .btn-icon,
+#adu-modal .btn-icon { width: 14px; height: 14px; }
+
+#adu-modal .btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ilsan-text-light);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+#adu-modal .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* ===== Buscador ===== */
+#adu-root .adu-buscar {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--ilsan-text-light);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  width: 200px;
+}
+#adu-root .adu-buscar:focus {
+  outline: none;
+  border-color: var(--ilsan-accent-blue);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+/* ===== Tabla ===== */
+#adu-root .table-wrap {
+  position: relative;
+  /* Altura fija responsive: no depende del contenido, no salta al abrir filas. */
+  height: clamp(300px, 50vh, 640px);
+  overflow: auto;
+  border-radius: 0 0 12px 12px;
+}
+#adu-root .table-wrap::-webkit-scrollbar { width: 12px; height: 12px; }
+#adu-root .table-wrap::-webkit-scrollbar-track { background: var(--ilsan-dark-tertiary); border-radius: 10px; }
+#adu-root .table-wrap::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--ilsan-accent-blue), var(--ilsan-accent-dark-blue));
+  border-radius: 10px;
+  border: 2px solid var(--ilsan-dark-tertiary);
+}
+
+#adu-root #adu-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+#adu-root #adu-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--ilsan-dark-tertiary);
+  color: var(--ilsan-text-light);
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+#adu-root #adu-table tbody td {
+  color: var(--ilsan-text-light);
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+#adu-root #adu-table tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+#adu-root #adu-table tbody tr:hover td { background: rgba(52, 152, 219, 0.08); }
+
+#adu-root .adu-badge { padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; }
+#adu-root .adu-badge.on { background: rgba(39, 174, 96, 0.18); color: #6fdc9b; }
+#adu-root .adu-badge.off { background: rgba(231, 76, 60, 0.18); color: #f08a80; }
+#adu-root .adu-link { color: var(--ilsan-accent-blue); cursor: pointer; font-weight: 600; }
+#adu-root .adu-link:hover { text-decoration: underline; }
+
+/* ===== Buscador / botón nuevo en el header de la tabla ===== */
+#adu-root #adu-scope-hint { background: transparent; }
+
+/* ===== Modal ===== */
+.adu-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+}
+.adu-modal.is-open { display: flex; }
+
+.adu-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 12, 20, 0.76);
+}
+
+.adu-modal-dialog {
+  position: relative;
+  width: min(720px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(52, 152, 219, 0.42);
+  border-radius: 10px;
+  background: var(--ilsan-dark-secondary);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.adu-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.adu-modal-header h3 {
+  color: var(--ilsan-text-light);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+.adu-modal-header .card-icon { width: 16px; height: 16px; color: var(--ilsan-accent-blue); }
+.adu-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--ilsan-text-gray);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.adu-modal-close:hover { color: var(--ilsan-text-light); }
+
+.adu-modal-body {
+  padding: 16px 18px;
+  overflow: auto;
+}
+
+.adu-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}

@@ -73,7 +73,12 @@ _MODULOS_REGISTRADOS = [
     "auth.sesion",
     "admin.permisos",
     "admin.usuarios",
+    "admin.departamentos",
     "informacion_basica.control_bom",
+    # WF_001-WF_005 (2026-06-19): Administracion de usuario acotada por departamento
+    "informacion_basica.admin_usuarios_depto",
+    # WF_001-WF_005 (2026-06-19): Gestion de roles acotada por departamento
+    "informacion_basica.gestion_roles_depto",
     "informacion_basica.control_modelos_smt",
     "informacion_basica.control_modelos_visor",
     # WF_001-WF_004 (2026-06-12): reconstruccion Control de material (Info Basica)

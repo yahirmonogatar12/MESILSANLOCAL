@@ -60,7 +60,13 @@ def requiere_superadmin_panel(f):
 @requiere_superadmin_panel
 def gestionar_permisos_dropdowns():
     """Pagina principal de gestion de permisos"""
-    return render_template("admin/gestionar_permisos_dropdowns.html")
+    from app.api.admin.departamentos import obtener_departamentos_activos
+
+    department_options = obtener_departamentos_activos()
+    return render_template(
+        "admin/gestionar_permisos_dropdowns.html",
+        department_options=department_options,
+    )
 
 
 @bp.route("/api/roles")
@@ -346,5 +352,77 @@ def disable_all_permissions():
             "message": f"{affected} permisos deshabilitados para {role}"
         })
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# === Departamentos por permiso (N:M) — solo superadmin ===
+
+@bp.route("/api/permisos-departamentos")
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso("sistema", "usuarios")
+@requiere_superadmin_panel
+def listar_permisos_departamentos():
+    """Lista permisos activos con la lista de departamentos de cada uno."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT pb.id, pb.pagina, pb.seccion, pb.boton,
+                   GROUP_CONCAT(pd.departamento) AS departamentos
+            FROM permisos_botones pb
+            LEFT JOIN permiso_departamentos pd ON pd.permiso_boton_id = pb.id
+            WHERE pb.activo = 1
+            GROUP BY pb.id
+            ORDER BY pb.pagina, pb.seccion, pb.boton
+        """)
+        out = []
+        for row in cursor.fetchall():
+            # El cursor de app.db devuelve dicts.
+            deps_raw = row["departamentos"] if row.get("departamentos") else ""
+            deps = deps_raw.split(",") if deps_raw else []
+            out.append({
+                "id": row["id"], "pagina": row["pagina"],
+                "seccion": row["seccion"], "boton": row["boton"],
+                "departamentos": deps,
+            })
+        conn.close()
+        return jsonify(out)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/permiso-departamentos-masivo", methods=["POST"])
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso("sistema", "usuarios")
+@requiere_superadmin_panel
+def permiso_departamentos_masivo():
+    """Agrega o quita un departamento a una lista de permisos de una vez."""
+    try:
+        data = request.get_json() or {}
+        permiso_ids = [int(x) for x in (data.get("permiso_ids") or [])]
+        departamento = (data.get("departamento") or "").strip()
+        accion = data.get("accion")  # 'add' | 'remove'
+        if not permiso_ids or not departamento or accion not in ("add", "remove"):
+            return jsonify({"error": "Parametros invalidos"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        placeholders = ",".join(["%s"] * len(permiso_ids))
+        if accion == "add":
+            for pid in permiso_ids:
+                cursor.execute(
+                    "INSERT IGNORE INTO permiso_departamentos (permiso_boton_id, departamento) VALUES (%s, %s)",
+                    (pid, departamento),
+                )
+        else:
+            cursor.execute(
+                f"DELETE FROM permiso_departamentos WHERE departamento = %s AND permiso_boton_id IN ({placeholders})",
+                (departamento, *permiso_ids),
+            )
+        conn.commit()
+        conn.close()
+        auth_system.invalidar_cache_permisos_botones()
+        return jsonify({"success": True, "mensaje": "Actualizado"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

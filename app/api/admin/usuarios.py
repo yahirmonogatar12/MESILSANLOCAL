@@ -102,14 +102,8 @@ except ImportError as e:
 
 bp = Blueprint("user_admin", __name__, url_prefix="/admin")
 
-DEFAULT_USER_DEPARTMENTS = [
-    'Almacén',
-    'Producción',
-    'Calidad',
-    'Administración',
-    'Sistemas',
-    'Gerencia',
-]
+# Los departamentos ahora viven en la tabla `departamentos`
+# (ver app/api/admin/departamentos.py -> obtener_departamentos_activos()).
 DEFAULT_USER_CARGOS = [
     'Almacenista',
     'Supervisor',
@@ -226,10 +220,8 @@ def get_dict_cursor(conn):
 def panel_administracion():
     """Panel principal de administracion de usuarios"""
     usuario = session.get('usuario')
-    department_options = _merge_catalog_values(
-        DEFAULT_USER_DEPARTMENTS,
-        AVAILABLE_DEPARTMENTS,
-    )
+    from app.api.admin.departamentos import obtener_departamentos_activos
+    department_options = obtener_departamentos_activos()
     cargo_options = _merge_catalog_values(
         DEFAULT_USER_CARGOS,
         AVAILABLE_CARGOS,
@@ -1755,10 +1747,11 @@ def crear_rol():
             return jsonify({'error': 'Ya existe un rol con ese nombre'}), 400
 
         try:
+            departamento = (data.get('departamento') or '').strip() or None
             cursor.execute('''
-                INSERT INTO roles (nombre, descripcion, nivel, activo)
-                VALUES (%s, %s, %s, 1)
-            ''', (data['nombre'], data['descripcion'], nivel))
+                INSERT INTO roles (nombre, descripcion, nivel, departamento, activo)
+                VALUES (%s, %s, %s, %s, 1)
+            ''', (data['nombre'], data['descripcion'], nivel, departamento))
 
             rol_id = cursor.lastrowid
 
@@ -1937,6 +1930,11 @@ def actualizar_rol(rol_id):
         nombre = data.get('nombre', rol_dict['nombre'])
         descripcion = data.get('descripcion', rol_dict['descripcion'])
         nivel = data.get('nivel', rol_dict['nivel'])
+        # departamento: '' -> NULL (transversal); ausente -> conserva el actual
+        if 'departamento' in data:
+            departamento = (data.get('departamento') or '').strip() or None
+        else:
+            departamento = rol_dict.get('departamento')
 
         if not nombre:
             return jsonify({'error': 'El nombre del rol es requerido'}), 400
@@ -1954,9 +1952,9 @@ def actualizar_rol(rol_id):
         try:
             cursor.execute('''
                 UPDATE roles
-                SET nombre = %s, descripcion = %s, nivel = %s
+                SET nombre = %s, descripcion = %s, nivel = %s, departamento = %s
                 WHERE id = %s
-            ''', (nombre, descripcion, nivel, rol_id))
+            ''', (nombre, descripcion, nivel, departamento, rol_id))
 
             usuario_actual = session.get('usuario')
             cambios = []

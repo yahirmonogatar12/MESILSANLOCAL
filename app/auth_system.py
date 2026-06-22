@@ -231,6 +231,30 @@ class AuthSystem:
                 )
             ''')
             
+            # Migracion idempotente: columna departamento en roles
+            # (usada por Administracion de usuario acotada por departamento).
+            cursor.execute('''
+                SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_NAME = 'roles' AND COLUMN_NAME = 'departamento'
+                  AND TABLE_SCHEMA = DATABASE()
+            ''')
+            fila = cursor.fetchone()
+            tiene_col = (fila['COUNT(*)'] if isinstance(fila, dict) else fila[0]) if fila else 0
+            if not tiene_col:
+                cursor.execute('ALTER TABLE roles ADD COLUMN departamento VARCHAR(255) NULL')
+
+            # Relacion N:M permiso<->departamentos: define que permisos puede
+            # repartir un admin de cada departamento (un permiso puede pertenecer
+            # a varios departamentos).
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS permiso_departamentos (
+                    permiso_boton_id INT NOT NULL,
+                    departamento VARCHAR(255) NOT NULL,
+                    PRIMARY KEY (permiso_boton_id, departamento),
+                    FOREIGN KEY (permiso_boton_id) REFERENCES permisos_botones(id) ON DELETE CASCADE
+                )
+            ''')
+
             # Insertar roles predeterminados
             self._crear_roles_default(cursor)
             
@@ -257,23 +281,24 @@ class AuthSystem:
     
     def _crear_roles_default(self, cursor):
         """Crear roles predeterminados"""
+        # departamento = NULL -> rol transversal (asignable por cualquier admin)
         roles_default = [
-            ('superadmin', 'Super Administrador con acceso total', 10),
-            ('admin', 'Administrador del sistema', 9),
-            ('supervisor_almacen', 'Supervisor de almacén', 8),
-            ('supervisor_produccion', 'Supervisor de producción', 7),
-            ('operador_almacen', 'Operador de almacén', 5),
-            ('operador_produccion', 'Operador de producción', 4),
-            ('calidad', 'Personal de calidad', 3),
-            ('consulta', 'Usuario de consulta', 2),
-            ('invitado', 'Usuario invitado', 1)
+            ('superadmin', 'Super Administrador con acceso total', 10, None),
+            ('admin', 'Administrador del sistema', 9, None),
+            ('supervisor_almacen', 'Supervisor de almacén', 8, 'Almacén'),
+            ('supervisor_produccion', 'Supervisor de producción', 7, 'Producción'),
+            ('operador_almacen', 'Operador de almacén', 5, 'Almacén'),
+            ('operador_produccion', 'Operador de producción', 4, 'Producción'),
+            ('calidad', 'Personal de calidad', 3, 'Calidad'),
+            ('consulta', 'Usuario de consulta', 2, None),
+            ('invitado', 'Usuario invitado', 1, None)
         ]
-        
-        for nombre, descripcion, nivel in roles_default:
+
+        for nombre, descripcion, nivel, departamento in roles_default:
             cursor.execute('''
-                INSERT IGNORE INTO roles (nombre, descripcion, nivel)
-                VALUES (%s, %s, %s)
-            ''', (nombre, descripcion, nivel))
+                INSERT IGNORE INTO roles (nombre, descripcion, nivel, departamento)
+                VALUES (%s, %s, %s, %s)
+            ''', (nombre, descripcion, nivel, departamento))
     
     def _crear_permisos_default(self, cursor):
         """Crear permisos predeterminados"""
