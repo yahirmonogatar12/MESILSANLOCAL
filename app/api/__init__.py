@@ -112,6 +112,9 @@ _MODULOS_REGISTRADOS = [
     # pcb_inventory_scan_prod (Control_produccion). Va despues de reparacion SMD.
     "control_resultados.inventario_reparacion_assy",
     "control_resultados.inventario_exceso",
+    # Trazabilidad de PCB: reporte solo-lectura que unifica ASSY/IMD/SMT
+    # (trazabilidad_material_pcb + _imd + _smt). Material<->PCB<->lote proveedor.
+    "control_resultados.trazabilidad_pcb",
     # WF_001-WF_004 (2026-06-09): Historial de Operadores por Maquina
     # (vista historial_estaciones_qa, solo lectura).
     "control_resultados.historial_operadores_maquina",

@@ -37,6 +37,37 @@
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
         catch (e) {}
     }
+
+    // Migracion de tabs que cambiaron de seccion navbar. Mueve la pestaña
+    // guardada de una seccion vieja a la nueva, para que no quede "atrapada"
+    // en la seccion anterior tras moverla en el menu. 2026-06-23: Trazabilidad
+    // de PCB paso de Control de resultados -> Control de reporte.
+    function migrarTabsMovidas() {
+        const MOVIDAS = [
+            { container: 'trazabilidad-pcb-unique-container',
+              de: 'Control de resultados', a: 'Control de reporte' },
+        ];
+        const state = readState();
+        let cambio = false;
+        for (const m of MOVIDAS) {
+            const orig = state[m.de];
+            if (!orig || !Array.isArray(orig.tabs)) continue;
+            const tab = orig.tabs.find(t => t.container === m.container);
+            if (!tab) continue;
+            // Quitar de la seccion vieja
+            orig.tabs = orig.tabs.filter(t => t.container !== m.container);
+            if (orig.active === m.container) {
+                orig.active = orig.tabs.length ? orig.tabs[orig.tabs.length - 1].container : null;
+            }
+            // Agregar a la nueva
+            if (!state[m.a]) state[m.a] = { tabs: [], active: null };
+            if (!state[m.a].tabs.find(t => t.container === m.container)) {
+                state[m.a].tabs.push(tab);
+            }
+            cambio = true;
+        }
+        if (cambio) writeState(state);
+    }
     function getNavTabActiva() {
         const btn = document.querySelector('.nav-button.active');
         return btn ? btn.id : null;
@@ -259,7 +290,12 @@
         'Control de producción': 'produccion-content-area',
         'Control de proceso': 'control-proceso-content-area',
         'Control de calidad': 'calidad-content-area',
-        'Control de resultados': 'control-resultados-content-area'
+        'Control de resultados': 'control-resultados-content-area',
+        // Control de reporte no tiene area propia; el div de Trazabilidad de PCB
+        // vive (en el DOM) dentro de control-resultados-content-area, asi que
+        // reporte usa esa misma area. La pestaña se asigna a reporte via
+        // migrarTabsMovidas/RESUELTOS_EXPLICITO (no por este mapa, que es ambiguo).
+        'Control de reporte': 'control-resultados-content-area'
     };
 
     // Cambio rapido entre tabs de secciones distintas SIN disparar
@@ -553,11 +589,24 @@
     // seccion correcta en base al *-content-area real del DOM.
     // ====================================================
     function migrarTabsACorrectaSeccion() {
+        // Primero: migraciones explicitas container->seccion (para modulos cuya
+        // area es compartida entre dos secciones, donde el mapeo por area es
+        // ambiguo). Ej: Trazabilidad de PCB en material-content-area pero
+        // pertenece a Control de reporte, no a Control de material.
+        migrarTabsMovidas();
+
         const state = readState();
         let cambio = false;
-        // areaId -> navTab (espejo invertido de SECCIONES_AREAS_MAP)
+        // areaId -> navTab (espejo invertido de SECCIONES_AREAS_MAP).
+        // Containers ya resueltos por migrarTabsMovidas se excluyen para que el
+        // mapeo por area (ambiguo si dos secciones comparten area) no los pise.
+        const RESUELTOS_EXPLICITO = new Set(['trazabilidad-pcb-unique-container']);
         const areaIdToNavTab = {};
         Object.entries(SECCIONES_AREAS_MAP).forEach(([navTab, areaId]) => {
+            // 'control-resultados-content-area' es de Control de resultados (su
+            // dueño historico); el modulo de reporte que la comparte se resuelve
+            // via migrarTabsMovidas, no por este mapa.
+            if (areaId === 'control-resultados-content-area' && navTab === 'Control de reporte') return;
             areaIdToNavTab[areaId] = navTab;
         });
 
@@ -565,6 +614,7 @@
             if (!seccion || !Array.isArray(seccion.tabs)) return;
             const tabsAMover = [];
             seccion.tabs = seccion.tabs.filter(tab => {
+                if (RESUELTOS_EXPLICITO.has(tab.container)) return true; // ya migrado arriba
                 const cont = document.getElementById(tab.container);
                 if (!cont) return true; // container no en DOM aun: dejarlo
                 const area = cont.closest('[id$="-content-area"]');

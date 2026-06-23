@@ -705,8 +705,13 @@ document.addEventListener("DOMContentLoaded", function () {
         materialContainer.style.display = "block";
         if (controlReporteContent)
           controlReporteContent.style.display = "block";
-        // FORZAR ocultar el área de material cuando no estés en Control de material
         materialContentArea.style.display = "none";
+        // Control de reporte tiene modulos (Trazabilidad de PCB) cuyo div vive
+        // dentro de control-resultados-content-area; se muestra esa area para
+        // que el modulo de reporte sea visible. El sistema de tabs decide que
+        // container mostrar dentro.
+        if (controlResultadosContentArea)
+          controlResultadosContentArea.style.display = "block";
       } else if (this.id === "Configuración de programa") {
         materialContainer.style.display = "block";
         configuracionProgramaContent.style.display = "block";

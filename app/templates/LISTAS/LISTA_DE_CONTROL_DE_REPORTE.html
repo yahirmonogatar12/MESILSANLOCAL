@@ -12,10 +12,13 @@
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_REPORTE" 
                             data-permiso-seccion="Product Tracking" 
                             data-permiso-boton="Production Tracking By Process">Production Tracking By Process</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_REPORTE" 
-                            data-permiso-seccion="Product Tracking" 
-                            data-permiso-boton="Using material By Product S/N">Using material By Product S/N</li>
+                    <!-- 'Using material By Product S/N' eliminado: su funcion la cubre Trazabilidad de PCB. -->
+                    <!-- Trazabilidad de PCB: reporte solo-lectura ASSY/IMD/SMT (movido desde Control de resultados). -->
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_REPORTE"
+                            data-permiso-seccion="Product Tracking"
+                            data-permiso-boton="Trazabilidad de PCB"
+                            onclick="window.parent.mostrarTrazabilidadPcb ? window.parent.mostrarTrazabilidadPcb() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('trazabilidad-pcb-unique-container', '/control_resultados/trazabilidad_pcb') : window.location.href='/control_resultados/trazabilidad_pcb')">Trazabilidad de PCB</li>
                 </ul>
             </li>
             <li class="sidebar-section">

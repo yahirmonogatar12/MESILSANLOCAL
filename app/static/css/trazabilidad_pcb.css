@@ -1,0 +1,313 @@
+/* Trazabilidad de PCB - WF_004 CSS persistente.
+ * Mismo look del portal (basado en inventario_reparacion_smd.css).
+ * Cargado desde MainTemplate.html con cache-busting ?v=20260623a.
+ * Fallback ensureModuleStyles() en trazabilidad-pcb.js. */
+
+.trazabilidad-pcb-container * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.trazabilidad-pcb-container {
+  font-family: 'LG regular', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #32323E;
+  color: lightgray;
+}
+
+.trazabilidad-pcb-container .container-trz {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.trazabilidad-pcb-container .header-trz {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #20688C;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.trazabilidad-pcb-container .header-trz h1 {
+  color: #ecf0f1;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.trazabilidad-pcb-container .tabs-trz {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.trazabilidad-pcb-container .tab-trz {
+  border: 1px solid #20688C;
+  background: #3C3940;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.trazabilidad-pcb-container .tab-trz.active {
+  background: #20688C;
+}
+
+.trazabilidad-pcb-container .panel-trz {
+  display: none;
+}
+
+.trazabilidad-pcb-container .panel-trz.active {
+  display: block;
+}
+
+/* Controles */
+.trazabilidad-pcb-container .controls-trz {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  background: #34334E;
+  border: 1px solid #20688C;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.trazabilidad-pcb-container .group-trz {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trazabilidad-pcb-container .label-trz {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #ecf0f1;
+  letter-spacing: .3px;
+}
+
+.trazabilidad-pcb-container .input-trz,
+.trazabilidad-pcb-container .select-trz {
+  background: #2c3e50;
+  color: lightgray;
+  border: 1px solid #34495e;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.trazabilidad-pcb-container .btn-trz {
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: 1px solid #20688C;
+  background: #3C3940;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  min-width: auto;
+  align-self: flex-end;
+}
+
+.trazabilidad-pcb-container .btn-trz:hover {
+  background: #2980b9;
+}
+
+.trazabilidad-pcb-container .btn-trz-export {
+  background: #456636;
+  border-color: #20688C;
+}
+
+.trazabilidad-pcb-container .btn-trz-export:hover {
+  background: #57803f;
+}
+
+.trazabilidad-pcb-container .status-trz {
+  margin-left: auto;
+  align-self: center;
+  background: #40424F;
+  border: 1px solid #5F6375;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+/* Tabla — sin scroll propio. El scroll lo lleva el area padre
+   (.control-resultados-content-area) para evitar barras anidadas. */
+.trazabilidad-pcb-container .table-container-trz {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid #5F6375;
+  background: #40424F;
+  scrollbar-width: thin;
+  scrollbar-color: #20688C #40424F;
+}
+
+.trazabilidad-pcb-container .table-container-trz::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.trazabilidad-pcb-container .table-container-trz::-webkit-scrollbar-track {
+  background: #40424F;
+  border-radius: 4px;
+}
+
+.trazabilidad-pcb-container .table-container-trz::-webkit-scrollbar-thumb {
+  background: #20688C;
+  border-radius: 4px;
+}
+
+.trazabilidad-pcb-container .table-container-trz::-webkit-scrollbar-thumb:hover {
+  background: #3498db;
+}
+
+.trazabilidad-pcb-container .table-trz {
+  width: 100%;
+  border-collapse: collapse;
+  background: #40424F;
+  font-size: 11px;
+}
+
+.trazabilidad-pcb-container .table-trz th {
+  background: #172A46;
+  color: #ecf0f1;
+  padding: 7px;
+  border: 1px solid #20688C;
+  position: sticky;
+  top: 0;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.trazabilidad-pcb-container .table-trz td {
+  padding: 6px;
+  border: 1px solid #5F6375;
+  color: lightgray;
+  white-space: nowrap;
+}
+
+.trazabilidad-pcb-container .table-trz tbody tr:hover td {
+  background: #485563;
+}
+
+/* Loader */
+.trazabilidad-pcb-container .loading-trz {
+  display: none;
+  text-align: center;
+  background: #40424F;
+  border-radius: 6px;
+  padding: 18px;
+  margin: 8px 0;
+}
+
+.trazabilidad-pcb-container .loading-trz.active {
+  display: block;
+}
+
+.trazabilidad-pcb-container .spinner-trz {
+  border: 3px solid #555;
+  border-top: 3px solid #00D4FF;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 8px;
+  animation: spin-trz 1s linear infinite;
+}
+
+@keyframes spin-trz {
+  to { transform: rotate(360deg); }
+}
+
+/* Badges de proceso (ASSY/IMD/SMT) y estado del material */
+.trazabilidad-pcb-container .trz-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+
+.trazabilidad-pcb-container .trz-badge.assy {
+  color: #3498db;
+  background: rgba(52, 152, 219, .12);
+  border: 1px solid rgba(52, 152, 219, .4);
+}
+.trazabilidad-pcb-container .trz-badge.imd {
+  color: #b07cff;
+  background: rgba(155, 89, 182, .12);
+  border: 1px solid rgba(155, 89, 182, .4);
+}
+.trazabilidad-pcb-container .trz-badge.smt {
+  color: #27ae60;
+  background: rgba(39, 174, 96, .12);
+  border: 1px solid rgba(39, 174, 96, .4);
+}
+
+.trazabilidad-pcb-container .trz-badge.ACTIVO {
+  color: #27ae60;
+  background: rgba(39, 174, 96, .1);
+  border: 1px solid rgba(39, 174, 96, .35);
+}
+.trazabilidad-pcb-container .trz-badge.AGOTADO {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, .1);
+  border: 1px solid rgba(231, 76, 60, .35);
+}
+.trazabilidad-pcb-container .trz-badge.REEMPLAZADO {
+  color: #f39c12;
+  background: rgba(243, 156, 18, .1);
+  border: 1px solid rgba(243, 156, 18, .35);
+}
+.trazabilidad-pcb-container .trz-badge.RETIRADO {
+  color: #95a5a6;
+  background: rgba(149, 165, 166, .1);
+  border: 1px solid rgba(149, 165, 166, .35);
+}
+
+/* Scrollbar global del modulo */
+.trazabilidad-pcb-container ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.trazabilidad-pcb-container ::-webkit-scrollbar-thumb {
+  background: #20688C;
+  border-radius: 3px;
+}
+
+.trazabilidad-pcb-container ::-webkit-scrollbar-track {
+  background: #40424F;
+}
+
+/* Historial de verificaciones */
+.trazabilidad-pcb-container .hist-title-trz {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ecf0f1;
+  font-size: 13px;
+  font-weight: 700;
+  border-bottom: 2px solid #20688C;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.trazabilidad-pcb-container .hist-count-trz {
+  background: #20688C;
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 9px;
+  font-size: 11px;
+}
+.trazabilidad-pcb-container .trz-res-ok { color: #27ae60; font-weight: 700; }
+.trazabilidad-pcb-container .trz-res-ng { color: #e74c3c; font-weight: 700; }
+
+@media(max-width: 900px) {
+  .trazabilidad-pcb-container .status-trz {
+    width: 100%;
+    order: 99;
+  }
+}

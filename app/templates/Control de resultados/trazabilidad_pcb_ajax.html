@@ -1,0 +1,170 @@
+<!-- Trazabilidad de PCB - Version AJAX (solo lectura) -->
+<!-- Unifica trazabilidad_material_pcb (ASSY) + _imd + _smt. CSS persistente en
+     app/static/css/trazabilidad_pcb.css (WF_004). JS: trazabilidad-pcb.js. -->
+<div id="trazabilidad-pcb-unique-container" class="trazabilidad-pcb-container">
+
+  <div class="tabs-trz">
+    <button class="tab-trz active" data-panel="pcb">Por PCB (QR / barcode)</button>
+    <button class="tab-trz" data-panel="materiales">Por lote de producción</button>
+    <button class="tab-trz" data-panel="proveedor">Por lote de proveedor (inversa)</button>
+  </div>
+
+  <!-- ===================== POR PCB (QR / BARCODE) ===================== -->
+  <section id="trz-panel-pcb" class="panel-trz active">
+    <div class="controls-trz">
+      <div class="group-trz">
+        <label class="label-trz">PCB (QR / barcode)</label>
+        <input type="text" id="trz-q-pcb" class="input-trz" style="min-width:340px"
+               placeholder="Escanea o pega el QR/barcode del PCB..." autofocus/>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">Proceso</label>
+        <select id="trz-q-proceso" class="select-trz">
+          <option value="">Todos</option>
+          <option value="ASSY">ASSY</option>
+          <option value="IMD">IMD</option>
+          <option value="SMT">SMT</option>
+        </select>
+      </div>
+      <button class="btn-trz" id="trz-q-buscar">Buscar</button>
+      <button class="btn-trz" id="trz-q-limpiar">Limpiar</button>
+      <button class="btn-trz btn-trz-export" id="trz-q-exportar">Exportar Excel</button>
+      <div class="status-trz" id="trz-q-status">Escanea un PCB</div>
+    </div>
+
+    <div id="trz-q-loading" class="loading-trz"><div class="spinner-trz"></div><p>Buscando materiales del PCB…</p></div>
+    <div class="table-container-trz">
+      <table class="table-trz" id="trz-q-table">
+        <thead>
+          <tr>
+            <th>Proceso</th><th>PCB (QR/Barcode)</th><th>Fecha</th><th>Lote Producción</th>
+            <th>Línea</th><th>No. Parte (PCB)</th><th>Material</th><th>Spec</th>
+            <th>Lote Proveedor</th><th>Posición</th><th>Refill</th>
+            <th>Cant. Ini</th><th>Restante</th><th>Qty/PCB</th><th>Contenedor</th>
+          </tr>
+        </thead>
+        <tbody id="trz-q-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Historial de Verificaciones del PCB (history_material_assy/_imd) -->
+    <div id="trz-q-hist-wrap" style="display:none; margin-top:14px;">
+      <div class="hist-title-trz">
+        <span>Historial de Verificaciones</span>
+        <span class="hist-count-trz" id="trz-q-hist-count">0</span>
+      </div>
+      <div class="table-container-trz">
+        <table class="table-trz" id="trz-q-hist-table">
+          <thead>
+            <tr>
+              <th>Hora</th><th>Contenedor</th><th>Material</th><th>Posición</th>
+              <th>Spec</th><th>Qty</th><th>Proveedor</th><th>Lote Proveedor</th><th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody id="trz-q-hist-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== POR LOTE DE PRODUCCION ===================== -->
+  <section id="trz-panel-materiales" class="panel-trz">
+    <div class="controls-trz">
+      <div class="group-trz">
+        <label class="label-trz">Proceso</label>
+        <select id="trz-m-proceso" class="select-trz">
+          <option value="">Todos</option>
+          <option value="ASSY">ASSY</option>
+          <option value="IMD">IMD</option>
+          <option value="SMT">SMT</option>
+        </select>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">Lote de producción</label>
+        <input type="text" id="trz-m-lote" class="input-trz" placeholder="LOT_NO..."/>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">No. Parte (PCB)</label>
+        <input type="text" id="trz-m-parte" class="input-trz" placeholder="part_no..."/>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">Material / Lote prov.</label>
+        <input type="text" id="trz-m-material" class="input-trz" placeholder="material o lote..."/>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">Desde</label>
+        <input type="date" id="trz-m-desde" class="input-trz"/>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">Hasta</label>
+        <input type="date" id="trz-m-hasta" class="input-trz"/>
+      </div>
+      <button class="btn-trz" id="trz-m-buscar">Consultar</button>
+      <button class="btn-trz" id="trz-m-limpiar">Limpiar</button>
+      <button class="btn-trz btn-trz-export" id="trz-m-exportar">Exportar Excel</button>
+      <div class="status-trz" id="trz-m-status">—</div>
+    </div>
+
+    <div id="trz-m-loading" class="loading-trz"><div class="spinner-trz"></div><p>Cargando trazabilidad…</p></div>
+    <div class="table-container-trz">
+      <table class="table-trz" id="trz-m-table">
+        <thead>
+          <tr>
+            <th>Proceso</th><th>Lote Producción</th><th>Línea</th><th>No. Parte (PCB)</th>
+            <th>Material</th><th>Lote Proveedor</th><th>Posición</th>
+            <th>Cant. Inicial</th><th>Consumido</th><th>Restante</th><th>PCBs</th>
+            <th>Estado</th><th>Inicio</th><th>Último PCB</th>
+          </tr>
+        </thead>
+        <tbody id="trz-m-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== POR LOTE DE PROVEEDOR ===================== -->
+  <section id="trz-panel-proveedor" class="panel-trz">
+    <div class="controls-trz">
+      <div class="group-trz">
+        <label class="label-trz">Proceso</label>
+        <select id="trz-p-proceso" class="select-trz">
+          <option value="">Todos</option>
+          <option value="ASSY">ASSY</option>
+          <option value="IMD">IMD</option>
+          <option value="SMT">SMT</option>
+        </select>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">Lote proveedor / Material *</label>
+        <input type="text" id="trz-p-material" class="input-trz" style="min-width:300px" placeholder="inicio del lote de proveedor o material (ej. 20260311B061)..."/>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">Desde</label>
+        <input type="date" id="trz-p-desde" class="input-trz"/>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">Hasta</label>
+        <input type="date" id="trz-p-hasta" class="input-trz"/>
+      </div>
+      <button class="btn-trz" id="trz-p-buscar">Consultar</button>
+      <button class="btn-trz" id="trz-p-limpiar">Limpiar</button>
+      <button class="btn-trz btn-trz-export" id="trz-p-exportar">Exportar Excel</button>
+      <div class="status-trz" id="trz-p-status">—</div>
+    </div>
+
+    <div id="trz-p-loading" class="loading-trz"><div class="spinner-trz"></div><p>Buscando PCBs del lote de proveedor…</p></div>
+    <div class="table-container-trz">
+      <table class="table-trz" id="trz-p-table">
+        <thead>
+          <tr>
+            <th>Proceso</th><th>PCB (QR/Barcode)</th><th>Fecha</th><th>Lote Proveedor</th>
+            <th>Material</th><th>Lote Producción</th><th>Línea</th><th>No. Parte (PCB)</th><th>Posición</th>
+          </tr>
+        </thead>
+        <tbody id="trz-p-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/trazabilidad-pcb.js', v='20260623g') }}"></script>

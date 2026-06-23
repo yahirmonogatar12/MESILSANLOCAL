@@ -64,6 +64,8 @@
     <link id="inventario-imd-terminado-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_imd_terminado.css', v='20260527a') }}">
     <!-- WF_004: CSS persistente Inventario reparacion SMD (Control de resultados / Control de inventario) -->
     <link id="inventario-reparacion-smd-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_reparacion_smd.css', v='20260605a') }}">
+    <!-- WF_004: CSS persistente Trazabilidad de PCB (Control de resultados / Control de inventario) -->
+    <link id="trazabilidad-pcb-css" rel="stylesheet" href="{{ url_for('static', filename='css/trazabilidad_pcb.css', v='20260623g') }}">
     <!-- WF_004: CSS persistente Inventario reparacion ASSY (Control de resultados / Control de inventario) -->
     <link id="inventario-reparacion-assy-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_reparacion_assy.css', v='20260605a') }}">
     <!-- WF_004: CSS persistente Inventario Exceso QA (Control de resultados / Control de inventario) -->
@@ -322,7 +324,7 @@
     <script src="{{ url_for('static', filename='js/lib/axios.min.js', v='20260526a') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js?v=20260520a"></script>
-    <script src="/static/js/scriptMain.js?v=20260612a"></script>
+    <script src="/static/js/scriptMain.js?v=20260623j"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -730,6 +732,11 @@
             <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
+        <!-- Trazabilidad de PCB (Control de inventario) - unifica ASSY/IMD/SMT -->
+        <div id="trazabilidad-pcb-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
         <!-- Inventario reparacion ASSY (Control de inventario) -->
         <div id="inventario-reparacion-assy-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
@@ -978,7 +985,7 @@
 
     <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
     <script src="../static/js/unified-dropdowns.js"></script>
-    <script src="../static/js/sidebar-tabs.js?v=20260525a"></script>
+    <script src="../static/js/sidebar-tabs.js?v=20260623j"></script>
 
     <!-- MOBILE LISTS HAMBURGER MENU -->
     <script src="../static/js/mobile-lists-hamburger.js"></script>
@@ -2925,6 +2932,29 @@ function hideAllMaterialContainers() {
                 if (container) container.style.display = 'block';
 
                 cargarContenidoDinamico('inventario-reparacion-smd-unique-container', '/control_resultados/inventario_reparacion_smd');
+            };
+
+            // Trazabilidad de PCB (Control de reporte / Product Tracking).
+            // Movido desde Control de resultados el 2026-06-23. Reporte solo-lectura
+            // que unifica trazabilidad ASSY (poller) + IMD + SMT.
+            window.mostrarTrazabilidadPcb = function() {
+                prepararPanelSeccion('reporte');
+                // El container vive (en el DOM) dentro de
+                // control-resultados-content-area, que prepararPanelSeccion('reporte')
+                // deja oculto. Lo mostramos explicitamente para que el modulo,
+                // aunque sea de la seccion reporte, sea visible.
+                const area = document.getElementById('control-resultados-content-area');
+                if (area) {
+                    area.classList.remove('mes-area-hidden');
+                    area.style.display = 'block';
+                    area.style.width = '100%';
+                }
+                const container = document.getElementById('trazabilidad-pcb-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('trazabilidad-pcb-unique-container', '/control_resultados/trazabilidad_pcb', () => {
+                    if (typeof window.loadTrazabilidadPcbData === 'function') window.loadTrazabilidadPcbData();
+                });
             };
 
             // WF_002: Historial de Operadores por Maquina (Control de resultados /
