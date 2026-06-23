@@ -384,10 +384,14 @@ def api_traza_por_proveedor_export():
 
 # Subconsulta base por proceso. ASSY/IMD desde el poller (con relleno_id e
 # input_main_id para enriquecer); SMT desde el detalle de triggers.
+# pcb_serial = barcode mostrado; pcb_raw_alt = la otra forma del codigo del PCB
+# (raw 'I...;MAIN;...' vs raw_barcode 'EBR...'). Se busca contra AMBOS porque el
+# operador puede pegar cualquiera de los dos.
 _UNION_DETALLE = """
     (
       SELECT 'ASSY' AS proceso, p.input_main_id,
              COALESCE(NULLIF(im.raw_barcode, ''), p.pcb_raw) AS pcb_serial,
+             p.pcb_raw AS pcb_raw_alt,
              p.pcb_ts AS ts, p.lot_no, p.linea, p.nparte AS part_no,
              p.material AS material_code, p.lote_proveedor AS numero_lote_material,
              p.codigo_material_recibido, p.posicion, p.contenedor AS container_id,
@@ -397,6 +401,7 @@ _UNION_DETALLE = """
       UNION ALL
       SELECT 'IMD', p.input_main_id,
              COALESCE(NULLIF(o.raw, ''), p.pcb_raw),
+             p.pcb_raw,
              p.pcb_ts, p.lot_no, p.linea, p.nparte,
              p.material, p.lote_proveedor,
              p.codigo_material_recibido, p.posicion, NULL,
@@ -404,7 +409,7 @@ _UNION_DETALLE = """
       FROM pcb_material_link_imd p
       JOIN output_imd o ON o.id = p.input_main_id
       UNION ALL
-      SELECT 'SMT', NULL, d.pcb_serial, d.ts, t.lot_no, t.linea, t.part_no,
+      SELECT 'SMT', NULL, d.pcb_serial, d.pcb_serial, d.ts, t.lot_no, t.linea, t.part_no,
              t.material_code, t.numero_lote_material, t.codigo_material_recibido,
              t.posicion, t.container_id, 'PRIMARY', NULL
       FROM consumo_material_detalle_smt d
@@ -434,8 +439,8 @@ def _query_por_pcb(limit):
     if not pcb:
         return []
 
-    where = ["d.pcb_serial LIKE %s"]
-    params = [f"%{pcb}%"]
+    where = ["(d.pcb_serial LIKE %s OR d.pcb_raw_alt LIKE %s)"]
+    params = [f"%{pcb}%", f"%{pcb}%"]
     if proceso in ("ASSY", "IMD", "SMT"):
         where.append("d.proceso = %s")
         params.append(proceso)
