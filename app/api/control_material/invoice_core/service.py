@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import unicodedata
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
 from flask import session
@@ -446,7 +446,25 @@ def get_invoice_detail(invoice_id):
         invoice = fetch_invoice(cursor, invoice_id)
         if not invoice:
             return {"success": False, "error": "Invoice no encontrada."}, 404
-        cursor.execute("SELECT * FROM material_invoice_lines WHERE invoice_id = %s ORDER BY line_no, id", (invoice_id,))
+        cursor.execute(
+            """
+            SELECT
+              mil.*,
+              COALESCE(aplicado.links_activos, 0) AS links_activos
+            FROM material_invoice_lines mil
+            LEFT JOIN (
+                SELECT invoice_line_id, COUNT(*) AS links_activos
+                FROM material_invoice_lot_links
+                WHERE invoice_id = %s
+                  AND estado = 'APLICADO'
+                GROUP BY invoice_line_id
+            ) aplicado
+              ON aplicado.invoice_line_id = mil.id
+            WHERE mil.invoice_id = %s
+            ORDER BY mil.line_no, mil.id
+            """,
+            (invoice_id, invoice_id),
+        )
         lines = [row_to_json(r) for r in (cursor.fetchall() or [])]
         cursor.execute(
             """
@@ -605,6 +623,297 @@ def get_invoice_detail(invoice_id):
         return {"success": True, "invoice": row_to_json(invoice), "lines": lines, "packing": packing, "links": links}, 200
     except Exception as exc:
         logger.exception("Error detalle invoice %s: %s", invoice_id, exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def _decimal_payload(value, field_name):
+    raw = raw_text(value)
+    if raw == "":
+        return Decimal("0.0000")
+    cleaned = raw.upper().replace(",", "").replace("$", "")
+    cleaned = cleaned.replace("USD", "").replace("MXN", "").replace("KRW", "").strip()
+    if cleaned.startswith("(") and cleaned.endswith(")"):
+        cleaned = f"-{cleaned[1:-1]}"
+    try:
+        return Decimal(cleaned).quantize(Decimal("0.0001"))
+    except (InvalidOperation, ValueError):
+        raise ValueError(f"{field_name} invalido.")
+
+
+def _int_payload(value, field_name):
+    raw = raw_text(value)
+    if raw == "":
+        return 0
+    try:
+        number = Decimal(raw)
+    except (InvalidOperation, ValueError):
+        raise ValueError(f"{field_name} invalido.")
+    if number != number.to_integral_value():
+        raise ValueError(f"{field_name} debe ser entero.")
+    return int(number)
+
+
+def update_invoice_line(invoice_id, line_id, data):
+    try:
+        nuevo_line_no = _int_payload(data.get("line_no"), "No.")
+        cantidad = _decimal_payload(data.get("cantidad"), "Cantidad")
+        costo_unitario = _decimal_payload(data.get("costo_unitario"), "Costo unitario")
+        costo_total = _decimal_payload(data.get("costo_total"), "Total")
+    except ValueError as exc:
+        return {"success": False, "error": str(exc)}, 400
+
+    raw_part = raw_text(data.get("raw_part_num"))[:512]
+    numero_parte_invoice = normalizar_numero_parte(raw_part)
+    nuevo_part_sys = normalizar_numero_parte(
+        data.get("numero_parte_sistema")
+        or data.get("part_sys")
+        or data.get("partSys")
+    )
+    descripcion = sanitizar_texto(data.get("descripcion"), 1024)
+    uom = sanitizar_texto(data.get("uom"), 50)
+
+    if nuevo_line_no <= 0:
+        return {"success": False, "error": "No. debe ser mayor a 0."}, 400
+    if not raw_part:
+        return {"success": False, "error": "Parte raw requerida."}, 400
+    if not numero_parte_invoice:
+        return {"success": False, "error": "Parte raw invalida."}, 400
+    if not nuevo_part_sys:
+        return {"success": False, "error": "Parte sistema requerida."}, 400
+    if cantidad <= 0:
+        return {"success": False, "error": "Cantidad debe ser mayor a 0."}, 400
+    if costo_unitario < 0 or costo_total < 0:
+        return {"success": False, "error": "Costos no pueden ser negativos."}, 400
+    if costo_total == 0 and costo_unitario > 0:
+        costo_total = (costo_unitario * cantidad).quantize(Decimal("0.0001"))
+
+    conn, cursor, error = _db()
+    if error:
+        return error
+    try:
+        cursor.execute("START TRANSACTION")
+        invoice = fetch_invoice(cursor, invoice_id, for_update=True)
+        if not invoice:
+            conn.rollback()
+            return {"success": False, "error": "Invoice no encontrada."}, 404
+        if invoice.get("estado") == "CANCELADA":
+            conn.rollback()
+            return {"success": False, "error": "No se puede editar una invoice cancelada."}, 400
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM material_invoice_lines
+            WHERE id = %s AND invoice_id = %s
+            LIMIT 1
+            FOR UPDATE
+            """,
+            (line_id, invoice_id),
+        )
+        line = cursor.fetchone()
+        if not line:
+            conn.rollback()
+            return {"success": False, "error": "Linea de invoice no encontrada."}, 404
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM material_invoice_lot_links
+            WHERE invoice_id = %s
+              AND invoice_line_id = %s
+              AND estado = 'APLICADO'
+            """,
+            (invoice_id, line_id),
+        )
+        links_linea = int((cursor.fetchone() or {}).get("total") or 0)
+        if links_linea:
+            conn.rollback()
+            return (
+                {
+                    "success": False,
+                    "error": (
+                        "No se puede editar esta linea: ya tiene "
+                        f"{links_linea} link(s) APLICADO."
+                    ),
+                    "links": links_linea,
+                },
+                409,
+            )
+
+        # En INVOICE(CONVERTED) la linea de invoice y packing nacen del mismo
+        # renglon. Si la parte estaba en SIN_ALIAS, packing_line_id puede seguir
+        # sin conciliacion; por eso tambien se busca por line_no + raw_part_num.
+        cursor.execute(
+            """
+            SELECT id
+            FROM material_invoice_packing_lines
+            WHERE invoice_id = %s
+              AND (
+                invoice_line_id = %s
+                OR (
+                  invoice_line_id IS NULL
+                  AND line_no = %s
+                  AND COALESCE(raw_part_num, '') = %s
+                )
+              )
+            FOR UPDATE
+            """,
+            (invoice_id, line_id, line.get("line_no"), line.get("raw_part_num") or ""),
+        )
+        packing_ids = [row["id"] for row in (cursor.fetchall() or [])]
+        if packing_ids:
+            placeholders = ", ".join(["%s"] * len(packing_ids))
+            cursor.execute(
+                f"""
+                SELECT COUNT(*) AS total
+                FROM material_invoice_lot_links
+                WHERE invoice_id = %s
+                  AND packing_line_id IN ({placeholders})
+                  AND estado = 'APLICADO'
+                """,
+                [invoice_id, *packing_ids],
+            )
+            links_packing = int((cursor.fetchone() or {}).get("total") or 0)
+            if links_packing:
+                conn.rollback()
+                return (
+                    {
+                        "success": False,
+                        "error": (
+                            "No se puede editar esta linea: su packing ya tiene "
+                            f"{links_packing} link(s) APLICADO."
+                        ),
+                        "links": links_packing,
+                    },
+                    409,
+                )
+
+        line_record = {
+            "numero_parte_sistema": nuevo_part_sys,
+            "uom": uom,
+        }
+        packing_record = {"numero_parte_sistema": nuevo_part_sys}
+        validate_system_parts(cursor, [line_record], "numero_parte_sistema", "DIRECTO")
+        validate_system_parts(cursor, [packing_record], "numero_parte_sistema", "MATCH")
+
+        cursor.execute(
+            """
+            UPDATE material_invoice_lines
+            SET line_no = %s,
+                raw_part_num = %s,
+                numero_parte_invoice = %s,
+                numero_parte_sistema = %s,
+                descripcion = %s,
+                cantidad = %s,
+                uom = %s,
+                costo_unitario = %s,
+                costo_total = %s,
+                raw_qty = %s,
+                raw_unit_cost = %s,
+                raw_total_cost = %s,
+                estado_match = %s,
+                mensaje_match = %s
+            WHERE id = %s AND invoice_id = %s
+            """,
+            (
+                nuevo_line_no,
+                raw_part,
+                numero_parte_invoice,
+                line_record["numero_parte_sistema"],
+                descripcion or None,
+                str(cantidad),
+                line_record.get("uom") or None,
+                str(costo_unitario),
+                str(costo_total),
+                raw_text(data.get("cantidad")),
+                raw_text(data.get("costo_unitario")),
+                raw_text(data.get("costo_total")),
+                line_record.get("estado_match") or "SIN_ALIAS",
+                line_record.get("mensaje_match") or None,
+                line_id,
+                invoice_id,
+            ),
+        )
+
+        if packing_ids:
+            placeholders = ", ".join(["%s"] * len(packing_ids))
+            packing_ok = packing_record.get("estado_match") == "MATCH"
+            cursor.execute(
+                f"""
+                UPDATE material_invoice_packing_lines
+                SET line_no = %s,
+                    raw_part_num = %s,
+                    numero_parte_packing = %s,
+                    numero_parte_sistema = %s,
+                    descripcion = %s,
+                    cantidad_packing = %s,
+                    raw_qty = %s,
+                    invoice_line_id = %s,
+                    estado_match = %s,
+                    mensaje_match = %s
+                WHERE invoice_id = %s
+                  AND id IN ({placeholders})
+                """,
+                [
+                    nuevo_line_no,
+                    raw_part,
+                    numero_parte_invoice,
+                    packing_record["numero_parte_sistema"],
+                    descripcion or None,
+                    str(cantidad),
+                    raw_text(data.get("cantidad")),
+                    line_id if packing_ok else None,
+                    packing_record.get("estado_match") or "SIN_ALIAS",
+                    (
+                        "Packing conciliado con invoice line"
+                        if packing_ok
+                        else packing_record.get("mensaje_match") or "La parte no existe en materiales"
+                    ),
+                    invoice_id,
+                    *packing_ids,
+                ],
+            )
+
+        cursor.execute(
+            """
+            UPDATE material_invoices mi
+            SET total_monto = (
+                SELECT COALESCE(SUM(costo_total), 0)
+                FROM material_invoice_lines
+                WHERE invoice_id = %s
+            )
+            WHERE mi.id = %s
+            """,
+            (invoice_id, invoice_id),
+        )
+        estado = recalculate_invoice_state(cursor, invoice_id)
+        conn.commit()
+        return (
+            {
+                "success": True,
+                "invoice_id": invoice_id,
+                "line_id": line_id,
+                "line_no": nuevo_line_no,
+                "raw_part_num": raw_part,
+                "numero_parte_sistema": line_record["numero_parte_sistema"],
+                "descripcion": descripcion,
+                "cantidad": str(cantidad),
+                "uom": line_record.get("uom") or "",
+                "costo_unitario": str(costo_unitario),
+                "costo_total": str(costo_total),
+                "estado_match": line_record.get("estado_match"),
+                "mensaje_match": line_record.get("mensaje_match"),
+                "packing_actualizados": len(packing_ids),
+                "estado": estado,
+            },
+            200,
+        )
+    except Exception as exc:
+        conn.rollback()
+        logger.exception("Error editando linea invoice %s linea %s: %s", invoice_id, line_id, exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:
         cursor.close()

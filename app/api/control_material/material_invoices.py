@@ -19,6 +19,7 @@ from app.api.control_material.invoice_core.service import (
     resolve_invoice_file,
     set_invoice_closed,
     unapply_invoice,
+    update_invoice_line,
     upload_invoice,
 )
 from app.api.shared import login_requerido, requiere_permiso_dropdown
@@ -82,6 +83,13 @@ def api_invoice_detail(invoice_id):
 @requiere_permiso_dropdown(*PERMISO_INVOICES)
 def api_delete_invoice(invoice_id):
     return _json_result(delete_invoice(invoice_id))
+
+
+@bp.route("/api/material_admin/invoices/<int:invoice_id>/lines/<int:line_id>", methods=["PATCH"])
+@login_requerido
+@requiere_permiso_dropdown(*PERMISO_INVOICES)
+def api_update_invoice_line(invoice_id, line_id):
+    return _json_result(update_invoice_line(invoice_id, line_id, request.get_json(silent=True) or {}))
 
 
 @bp.route("/api/material_admin/invoices/<int:invoice_id>/close", methods=["POST"])
@@ -156,5 +164,3 @@ def api_invoice_export(invoice_id):
     if status == 200 and not isinstance(payload, dict):
         return payload
     return jsonify(payload), status
-
-

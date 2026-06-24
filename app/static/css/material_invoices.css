@@ -249,6 +249,28 @@
     max-height: 86vh;
 }
 
+.mat-invoice-viewer-dialog.mat-invoice-dialog-wide {
+    width: min(760px, 94vw);
+    height: auto;
+    max-height: 86vh;
+}
+
+.mat-invoice-line-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 12px;
+}
+
+.mat-invoice-line-edit-grid .mat-invoice-pallet-link-field {
+    margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+    .mat-invoice-line-edit-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .mat-invoice-form-body {
     background: #263947;
     color: #f3f6fb;

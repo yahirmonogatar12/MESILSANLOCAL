@@ -120,6 +120,7 @@
                             <th>Costo unit.</th>
                             <th>Total</th>
                             <th>Estado</th>
+                            <th>Accion</th>
                         </tr>
                     </thead>
                     <tbody id="mat-invoice-lines-body"></tbody>
@@ -275,6 +276,59 @@
             </div>
         </div>
     </div>
+
+    <div id="mat-invoice-line-edit" class="mat-invoice-viewer" hidden>
+        <div class="mat-invoice-viewer-backdrop" data-line-edit-close></div>
+        <div class="mat-invoice-viewer-dialog mat-invoice-dialog-wide" role="dialog" aria-modal="true">
+            <div class="mat-invoice-viewer-head">
+                <div>
+                    <h3>Editar linea invoice</h3>
+                    <span id="mat-invoice-line-edit-subtitle"></span>
+                </div>
+                <div class="mat-invoice-header-actions">
+                    <button id="mat-invoice-line-edit-confirm" class="mat-invoice-btn primary" type="button">Guardar</button>
+                    <button class="mat-invoice-btn" type="button" data-line-edit-close>Cancelar</button>
+                </div>
+            </div>
+            <div class="mat-invoice-form-body">
+                <div id="mat-invoice-line-edit-message" class="mat-invoice-message" hidden></div>
+                <div class="mat-invoice-line-edit-grid">
+                    <label class="mat-invoice-pallet-link-field">
+                        No.
+                        <input id="mat-invoice-line-no" type="number" min="1" step="1" autocomplete="off">
+                    </label>
+                    <label class="mat-invoice-pallet-link-field">
+                        Parte raw
+                        <input id="mat-invoice-line-raw-part" type="text" maxlength="512" autocomplete="off">
+                    </label>
+                    <label class="mat-invoice-pallet-link-field">
+                        Parte sistema
+                        <input id="mat-invoice-line-part" type="text" maxlength="512" autocomplete="off">
+                    </label>
+                    <label class="mat-invoice-pallet-link-field">
+                        Descripcion
+                        <input id="mat-invoice-line-description" type="text" maxlength="1024" autocomplete="off">
+                    </label>
+                    <label class="mat-invoice-pallet-link-field">
+                        Cantidad
+                        <input id="mat-invoice-line-qty" type="number" min="0" step="0.0001" autocomplete="off">
+                    </label>
+                    <label class="mat-invoice-pallet-link-field">
+                        UOM
+                        <input id="mat-invoice-line-uom" type="text" maxlength="50" autocomplete="off">
+                    </label>
+                    <label class="mat-invoice-pallet-link-field">
+                        Costo unit.
+                        <input id="mat-invoice-line-unit-cost" type="number" min="0" step="0.0001" autocomplete="off">
+                    </label>
+                    <label class="mat-invoice-pallet-link-field">
+                        Total
+                        <input id="mat-invoice-line-total" type="number" min="0" step="0.0001" autocomplete="off">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260616c') }}"></script>
+<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260624b') }}"></script>

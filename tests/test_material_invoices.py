@@ -131,6 +131,7 @@ def test_material_invoice_blueprints_registran_rutas(app):
     assert "/api/material_admin/invoices/preview" in rules
     assert "/api/material_admin/invoices/<int:invoice_id>/apply" in rules
     assert "/api/material_admin/invoices/<int:invoice_id>/file" in rules
+    assert "/api/material_admin/invoices/<int:invoice_id>/lines/<int:line_id>" in rules
     # Las rutas de equivalentes/aliases ya no se exponen.
     assert "/api/material_admin/invoices/aliases" not in rules
 
@@ -140,6 +141,11 @@ def test_material_invoice_blueprints_registran_rutas(app):
         if str(rule) == "/api/material_admin/invoices/<int:invoice_id>":
             metodos_detalle |= set(rule.methods or [])
     assert "DELETE" in metodos_detalle
+    metodos_linea = set()
+    for rule in app.url_map.iter_rules():
+        if str(rule) == "/api/material_admin/invoices/<int:invoice_id>/lines/<int:line_id>":
+            metodos_linea |= set(rule.methods or [])
+    assert "PATCH" in metodos_linea
     assert "/api/material_admin/inventory/valuation" in rules
     assert "/api/material_admin/inventory/valuation/backfill" in rules
     # Las rutas de numeros de parte originales (aliases) se retiraron.

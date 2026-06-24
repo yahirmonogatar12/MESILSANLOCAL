@@ -1,6 +1,6 @@
 (function () {
   const STYLE_ID = "material-invoices-css";
-  const STYLE_VERSION = "20260616c";
+  const STYLE_VERSION = "20260624b";
   const STYLE_HREF = `/static/css/material_invoices.css?v=${STYLE_VERSION}`;
 
   const state = {
@@ -13,6 +13,7 @@
     pendingUpload: null,
     // Lote pendiente de confirmar en pallet distinto (modal de linkeo).
     pendingPalletLink: null,
+    pendingLineEdit: null,
     // Copia de los datos renderizados para exportar a Excel sin volver al backend.
     data: { invoices: [], lines: [], packing: [], links: [] },
   };
@@ -242,10 +243,15 @@
     state.data.lines = rows;
     if (!body) return;
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="9">Sin lineas.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="10">Sin lineas.</td></tr>`;
       return;
     }
-    body.innerHTML = rows.map((row) => `<tr>
+    body.innerHTML = rows.map((row) => {
+      const links = Number(row.links_activos || 0);
+      const editBtn = `<button type="button" class="mat-invoice-btn small mat-invoice-edit-line"
+        data-edit-line-id="${escapeHtml(row.id)}"
+        ${links > 0 ? "disabled title=\"Tiene links activos; no se puede editar\"" : ""}>Editar</button>`;
+      return `<tr>
       <td>${numberText(row.line_no)}</td>
       <td title="${escapeHtml(row.raw_part_num)}">${escapeHtml(row.raw_part_num)}</td>
       <td title="${escapeHtml(row.numero_parte_sistema)}">${escapeHtml(row.numero_parte_sistema)}</td>
@@ -255,7 +261,9 @@
       <td>${numberText(row.costo_unitario)}</td>
       <td>${numberText(row.costo_total)}</td>
       <td>${statusBadge(row.estado_match)}</td>
-    </tr>`).join("");
+      <td>${editBtn}</td>
+    </tr>`;
+    }).join("");
   }
 
   function renderPacking(rows) {
@@ -567,6 +575,95 @@
       await loadDetail(state.selectedInvoiceId);
     } catch (err) {
       setMessage("mat-invoice-detail-message", `Error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function closeLineEdit() {
+    hideModal("mat-invoice-line-edit");
+    state.pendingLineEdit = null;
+  }
+
+  function setInputValue(id, value) {
+    const input = el(id);
+    if (input) input.value = value ?? "";
+  }
+
+  function openLineEdit(lineId) {
+    if (!state.selectedInvoiceId || !lineId) return;
+    const row = state.data.lines.find((item) => Number(item.id) === Number(lineId));
+    if (!row) {
+      setMessage("mat-invoice-detail-message", "No se encontro la linea para editar.");
+      return;
+    }
+    state.pendingLineEdit = { lineId, row };
+    const modal = openModal("mat-invoice-line-edit");
+    if (!modal) return;
+    const subtitle = el("mat-invoice-line-edit-subtitle");
+    if (subtitle) subtitle.textContent = `Linea ${row.line_no || lineId}`;
+    setInputValue("mat-invoice-line-no", row.line_no);
+    setInputValue("mat-invoice-line-raw-part", row.raw_part_num);
+    setInputValue("mat-invoice-line-part", row.numero_parte_sistema);
+    setInputValue("mat-invoice-line-description", row.descripcion);
+    setInputValue("mat-invoice-line-qty", row.cantidad);
+    setInputValue("mat-invoice-line-uom", row.uom);
+    setInputValue("mat-invoice-line-unit-cost", row.costo_unitario);
+    setInputValue("mat-invoice-line-total", row.costo_total);
+    const partInput = el("mat-invoice-line-part");
+    if (partInput) {
+      setTimeout(() => {
+        partInput.focus();
+        partInput.select();
+      }, 0);
+    }
+    setMessage("mat-invoice-line-edit-message", "");
+  }
+
+  function lineEditPayload() {
+    return {
+      line_no: el("mat-invoice-line-no")?.value?.trim() || "",
+      raw_part_num: el("mat-invoice-line-raw-part")?.value?.trim() || "",
+      numero_parte_sistema: el("mat-invoice-line-part")?.value?.trim() || "",
+      descripcion: el("mat-invoice-line-description")?.value?.trim() || "",
+      cantidad: el("mat-invoice-line-qty")?.value?.trim() || "",
+      uom: el("mat-invoice-line-uom")?.value?.trim() || "",
+      costo_unitario: el("mat-invoice-line-unit-cost")?.value?.trim() || "",
+      costo_total: el("mat-invoice-line-total")?.value?.trim() || "",
+    };
+  }
+
+  async function saveLineEdit() {
+    const pending = state.pendingLineEdit;
+    const payload = lineEditPayload();
+    if (!pending) return;
+    if (!payload.raw_part_num || !payload.numero_parte_sistema || !payload.cantidad) {
+      setMessage("mat-invoice-line-edit-message", "Parte raw, Parte sistema y Cantidad son requeridos.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await fetchJson(
+        `/api/material_admin/invoices/${state.selectedInvoiceId}/lines/${pending.lineId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      closeLineEdit();
+      const extra = data.estado_match === "SIN_ALIAS"
+        ? " La parte no existe en materiales; queda marcada como diferencia."
+        : "";
+      setMessage(
+        "mat-invoice-detail-message",
+        `Linea actualizada. Parte sistema: ${data.numero_parte_sistema}. Packing actualizado: ${numberText(data.packing_actualizados)}.${extra}`,
+        data.estado_match === "SIN_ALIAS" ? "" : "success"
+      );
+      await loadDetail(state.selectedInvoiceId);
+    } catch (err) {
+      const msg = err.status === 409 ? (err.payload?.error || err.message) : err.message;
+      setMessage("mat-invoice-line-edit-message", `No se pudo guardar: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -995,6 +1092,22 @@
         closePalletLink();
         return;
       }
+      const editLineBtn = target.closest("[data-edit-line-id]");
+      if (editLineBtn) {
+        event.preventDefault();
+        openLineEdit(editLineBtn.getAttribute("data-edit-line-id"));
+        return;
+      }
+      if (target.closest("#mat-invoice-line-edit-confirm")) {
+        event.preventDefault();
+        saveLineEdit();
+        return;
+      }
+      if (target.closest("[data-line-edit-close]")) {
+        event.preventDefault();
+        closeLineEdit();
+        return;
+      }
       const deleteBtn = target.closest("[data-delete-invoice-id]");
       if (deleteBtn) {
         event.preventDefault();
@@ -1118,11 +1231,17 @@
         event.preventDefault();
         loadInvoices();
       }
+      if (target.closest("#mat-invoice-line-edit") && event.key === "Enter") {
+        event.preventDefault();
+        saveLineEdit();
+      }
     });
 
     document.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
-      if (!el("mat-invoice-pallet-link")?.hidden) {
+      if (!el("mat-invoice-line-edit")?.hidden) {
+        closeLineEdit();
+      } else if (!el("mat-invoice-pallet-link")?.hidden) {
         closePalletLink();
       } else if (!el("mat-invoice-preview")?.hidden) {
         closePreview();
@@ -1144,9 +1263,11 @@
     state.viewerWorkbook = null;
     state.pendingUpload = null;
     state.pendingPalletLink = null;
+    state.pendingLineEdit = null;
     hideModal("mat-invoice-viewer");
     hideModal("mat-invoice-preview");
     hideModal("mat-invoice-pallet-link");
+    hideModal("mat-invoice-line-edit");
     if (el("mat-invoice-detail")) el("mat-invoice-detail").hidden = true;
     // Arrancar mostrando los pendientes (de cualquier fecha), no solo los de hoy.
     if (el("mat-invoice-state")) el("mat-invoice-state").value = "PENDIENTES";
