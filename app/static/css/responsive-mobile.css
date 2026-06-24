@@ -151,24 +151,28 @@ body {
 
   /* Navegación móvil */
   .nav-buttons-container {
-    position: fixed;
-    top: var(--mobile-header-height);
+    /* !important: style.css tiene varios `position: relative !important` genericos
+       que pisan este fixed -> el drawer cae al flujo (top:80px lo manda fuera de pantalla). */
+    position: fixed !important;
+    top: var(--mobile-header-height) !important;
     left: -100%;
     width: 280px;
     height: calc(100vh - var(--mobile-header-height));
-    background-color: var(--secondary-color);
+    background-color: #32323E; /* --secondary-color es #28292dbb (alpha) -> drawer translucido = botones invisibles sobre el blur */
     transition: left 0.3s ease;
-    z-index: 999;
+    z-index: 999 !important;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     box-shadow: 2px 0 10px rgba(0,0,0,0.3);
     display: flex;
     flex-direction: column;
+    flex-wrap: nowrap; /* hereda wrap del base desktop -> en columna parte los botones a columnas fuera del drawer de 280px y se ven "vacios" */
+    align-items: stretch;
     padding: 0;
   }
 
   .nav-buttons-container.active {
-    left: 0;
+    left: 0 !important;
   }
 
   .nav-button {

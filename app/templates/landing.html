@@ -13,7 +13,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- ILSAN Theme -->
     <link href="{{ url_for('static', filename='css/ilsan-theme.css') }}" rel="stylesheet">
-    
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#01874C">
+
     <style>
         :root {
             --top-navbar-offset: 64px;
@@ -288,12 +291,23 @@
 
         .profile-modal-panel {
             width: min(100%, 580px);
+            max-height: calc(100vh - 3rem); /* nunca mas alto que el viewport */
+            display: flex;
+            flex-direction: column;
             background: #313544;
             color: #f4f7fb;
             border-radius: 18px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+        }
+
+        .profile-modal-header { flex: 0 0 auto; }
+
+        .profile-modal-body {
+            flex: 1 1 auto;
+            overflow-y: auto; /* el cuerpo scrollea cuando hay muchos campos */
+            -webkit-overflow-scrolling: touch;
         }
 
         .profile-modal-header {
@@ -1235,31 +1249,96 @@
         }
 
         @media (max-width: 768px) {
+            /* ===== Pantalla de desbloqueo (solo movil, solo SIN sesion) =====
+               El form .login-inline-form solo existe en el DOM cuando no hay sesion,
+               asi que body:has(...) detecta ese estado sin tocar HTML/JS. Ocultamos el
+               landing y convertimos la top-bar en una pantalla de login full-screen. */
+            body:has(.login-inline-form) .hero-banner,
+            body:has(.login-inline-form) .top-navbar,
+            body:has(.login-inline-form) .main-content,
+            body:has(.login-inline-form) .site-footer {
+                display: none;
+            }
+
+            body:has(.login-inline-form) .top-bar {
+                min-height: 100vh;
+                min-height: 100dvh;
+                flex-direction: column;
+                justify-content: center;
+                gap: 2.5rem;
+                border-bottom: none;
+            }
+
+            body:has(.login-inline-form) .top-bar-left {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.6rem;
+            }
+
+            body:has(.login-inline-form) .top-bar-logo {
+                height: 56px;
+            }
+
             .top-bar {
                 padding: 0.6rem 1.25rem;
-                justify-content: center;
+                /* con sesion: logo izquierda, avatar derecha (como desktop) */
+                justify-content: space-between;
                 gap: 1rem;
+                /* sticky + login-card alto = barra mas alta que el viewport y no se puede
+                   scrollear hasta el boton. En movil que fluya normal. */
+                position: static;
+            }
+
+            /* Login como tarjeta centrada y tactil en movil (solo SIN sesion) */
+            body:has(.login-inline-form) .top-bar-right {
+                width: 100%;
+                justify-content: center;
             }
 
             .login-inline-form {
                 width: 100%;
-                border-radius: 16px;
+                max-width: 360px;
+                margin: 0 auto;
+                border-radius: 18px;
                 flex-direction: column;
                 align-items: stretch;
-                padding: 0.75rem;
+                gap: 0.9rem;
+                padding: 1.4rem 1.25rem 1.25rem;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+            }
+
+            /* Avatar grande como encabezado de la tarjeta */
+            .login-inline-form .login-avatar {
+                width: 64px;
+                height: 64px;
+                font-size: 1.7rem;
+                margin: 0 auto 0.25rem;
             }
 
             .login-fields {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 0.75rem;
             }
 
             .login-inline-form input {
                 width: 100%;
+                min-height: 54px;
+                border-radius: 12px;
+                font-size: 16px; /* >=16px evita el zoom automatico de iOS al enfocar */
+                padding: 0.9rem 1rem;
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.18);
             }
 
             .login-submit {
                 width: 100%;
+                min-height: 54px;
+                border-radius: 12px;
+                font-size: 1.05rem;
+                margin-top: 0.25rem;
             }
 
             .navbar-brand-section {
@@ -1410,9 +1489,9 @@
             }
 
             .login-avatar {
-                width: 38px;
-                height: 38px;
-                font-size: 1.1rem;
+                width: 56px;
+                height: 56px;
+                font-size: 1.5rem;
             }
 
             /* Footer Mobile Adjustments */
@@ -1687,7 +1766,41 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
+
+    <!-- PWA: registro SW + boton instalar (movil y PC). El navegador solo dispara
+         beforeinstallprompt si NO esta instalada, asi que el boton se autogestiona. -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('/static/sw.js').catch(() => {}));
+        }
+        let landingDeferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            landingDeferredPrompt = e;
+            let btn = document.getElementById('pwa-install-btn');
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.id = 'pwa-install-btn';
+                btn.innerHTML = '<i class="fas fa-download"></i> Instalar app';
+                btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:3000;'
+                    + 'border:none;border-radius:999px;padding:0.8rem 1.3rem;color:#fff;font-weight:600;'
+                    + 'background:linear-gradient(135deg,#01874C,#016E3D);box-shadow:0 8px 22px rgba(0,0,0,.35);cursor:pointer;';
+                btn.addEventListener('click', async () => {
+                    if (!landingDeferredPrompt) return;
+                    landingDeferredPrompt.prompt();
+                    await landingDeferredPrompt.userChoice;
+                    landingDeferredPrompt = null;
+                    btn.remove();
+                });
+                document.body.appendChild(btn);
+            }
+        });
+        window.addEventListener('appinstalled', () => {
+            const b = document.getElementById('pwa-install-btn');
+            if (b) b.remove();
+        });
+    </script>
+
     <script>
         // User Avatar Dropdown Toggle
         document.addEventListener('DOMContentLoaded', function() {

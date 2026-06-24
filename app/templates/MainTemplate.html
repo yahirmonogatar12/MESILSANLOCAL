@@ -185,17 +185,20 @@
             font-size: 16px;
         }
 
-        /* Responsive para móviles */
+        /* Responsive para móviles: el Log out se mueve al fondo del drawer (JS)
+           y deja de ser fixed para no tapar la hamburguesa. */
         @media (max-width: 768px) {
             .logout-button-fixed {
-                top: 35px;
-                right: 10px;
-                padding: 6px 12px;
-                font-size: 12px;
+                position: static !important;
+                margin: auto 12px 16px;  /* auto-top lo empuja al fondo del drawer flex */
+                width: calc(100% - 24px);
+                justify-content: center;
+                padding: 14px;
+                font-size: 15px;
             }
 
             .logout-button-fixed i {
-                font-size: 14px;
+                font-size: 16px;
             }
         }
 
@@ -1128,15 +1131,15 @@
         });
 
         function showInstallButton() {
-            // Crear botón de instalación si no existe
-            if (!installButton && window.innerWidth <= 768) {
+            // Crear botón de instalación si no existe (movil y PC).
+            if (!installButton) {
                 installButton = document.createElement('button');
                 installButton.textContent = '📱 Instalar App';
                 installButton.className = 'btn btn-primary install-btn';
                 installButton.style.cssText = `
                     position: fixed;
                     bottom: 20px;
-                    right: 20px;
+                    left: 20px;
                     z-index: 1000;
                     border-radius: 25px;
                     padding: 10px 15px;
@@ -1304,6 +1307,27 @@
             function isMobile() {
                 return window.innerWidth <= 768;
             }
+
+            // .app-header tiene transform/contain permanentes (style.css ~1683): eso lo
+            // vuelve containing-block de su hijo #nav-container (position:fixed en movil),
+            // que queda anclado al header de 80px e invisible. En movil lo movemos al
+            // <body>; en desktop vuelve dentro del header (ahi va en flujo, no fixed).
+            const navHeaderHome = navContainer && navContainer.parentElement;
+            const logoutBtn = document.querySelector('.logout-button-fixed');
+            const logoutHome = logoutBtn && logoutBtn.parentElement;
+            function placeNavContainer() {
+                if (!navContainer || !navHeaderHome) return;
+                if (isMobile()) {
+                    if (navContainer.parentElement !== document.body) document.body.appendChild(navContainer);
+                    // Log out al final del drawer para que no tape la hamburguesa.
+                    if (logoutBtn && logoutBtn.parentElement !== navContainer) navContainer.appendChild(logoutBtn);
+                } else {
+                    if (navContainer.parentElement !== navHeaderHome) navHeaderHome.appendChild(navContainer);
+                    if (logoutBtn && logoutHome && logoutBtn.parentElement !== logoutHome) logoutHome.appendChild(logoutBtn);
+                }
+            }
+            placeNavContainer();
+            window.addEventListener('resize', placeNavContainer);
 
             // Función para cerrar menú principal
             function closeMenu() {
