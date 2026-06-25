@@ -158,6 +158,9 @@ body {
     left: -100%;
     width: 280px;
     height: calc(100vh - var(--mobile-header-height));
+    /* 100dvh = alto visible real en movil (descuenta barra de URL); con 100vh el
+       drawer crece detras de la barra del navegador y el fondo (Log out) no se alcanza. */
+    height: calc(100dvh - var(--mobile-header-height));
     background-color: #32323E; /* --secondary-color es #28292dbb (alpha) -> drawer translucido = botones invisibles sobre el blur */
     transition: left 0.3s ease;
     z-index: 999 !important;

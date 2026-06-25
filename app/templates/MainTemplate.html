@@ -190,11 +190,15 @@
         @media (max-width: 768px) {
             .logout-button-fixed {
                 position: static !important;
-                margin: auto 12px 16px;  /* auto-top lo empuja al fondo del drawer flex */
+                /* sin margin-top:auto: empujaba el boton fuera del area visible del drawer.
+                   Ahora va tras el ultimo boton y se alcanza al scrollear el menu. */
+                margin: 12px;
                 width: calc(100% - 24px);
+                flex: 0 0 auto;
                 justify-content: center;
                 padding: 14px;
                 font-size: 15px;
+                border-top: 1px solid rgba(255,255,255,0.12);
             }
 
             .logout-button-fixed i {
