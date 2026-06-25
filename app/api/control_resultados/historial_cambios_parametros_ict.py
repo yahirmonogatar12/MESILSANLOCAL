@@ -35,6 +35,10 @@ from decimal import Decimal
 from flask import Blueprint, jsonify, redirect, render_template, request
 
 from app.api.shared import excel_response, execute_query, login_requerido
+from app.api.shared.ict_helpers import (
+    _ict_load_operator_sessions,
+    _ict_resolve_adjuster,
+)
 from app.services.ict_lgd_parser import (
     IctLgdError,
     get_lgd_parameters_for_barcode,
@@ -392,6 +396,7 @@ def _ict_compute_parameter_changes(
 
     _ict_param_progress_set(progress_id, phase="consultando_db")
     source_rows = execute_query(sql, tuple(params), fetch="all") or []
+    operator_sessions = _ict_load_operator_sessions(jornada_start, jornada_end)
     warnings = []
     warnings_lock = threading.Lock()
 
@@ -528,6 +533,9 @@ def _ict_compute_parameter_changes(
                             "jornada": _ict_param_jornada_label(current["ts"]),
                             "hora_anterior": previous["ts"].strftime("%H:%M:%S"),
                             "hora_cambio": current["ts"].strftime("%H:%M:%S"),
+                            "operador": _ict_resolve_adjuster(
+                                operator_sessions, current["ts"], linea_value, ict_value_g
+                            ),
                             "ict": _ict_param_format_ict(linea_value, ict_value_g),
                             "ict_num": ict_value_g,
                             "linea": linea_value,
@@ -656,8 +664,8 @@ def ict_param_changes_api():
     except ValueError as e:
         return jsonify({"error": str(e), "rows": [], "warnings": [], "meta": {}}), 400
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint Cambios Parametros ICT")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/ict/param-changes/export")
@@ -688,12 +696,12 @@ def ict_param_changes_export():
         rows = payload.get("rows", [])
 
         headers = [
-            "Jornada", "Hora Anterior", "Hora Cambio", "ICT", "Linea",
+            "Jornada", "Hora Anterior", "Hora Cambio", "Tecnico", "ICT", "Linea",
             "No Parte", "Componente", "Parametro", "Valor Anterior",
             "Valor Nuevo", "Archivo Anterior", "Archivo Cambio",
         ]
         keys = [
-            "jornada", "hora_anterior", "hora_cambio", "ict", "linea",
+            "jornada", "hora_anterior", "hora_cambio", "operador", "ict", "linea",
             "no_parte", "componente", "parametro", "valor_anterior",
             "valor_nuevo", "archivo_anterior", "archivo_cambio",
         ]
@@ -701,7 +709,7 @@ def ict_param_changes_export():
         filename = f"cambios_parametros_ict_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         return excel_response(
             items, headers, keys,
-            widths=[12, 12, 12, 14, 8, 22, 25, 22, 20, 20, 48, 48],
+            widths=[12, 12, 12, 24, 14, 8, 22, 25, 22, 20, 20, 48, 48],
             sheet="Cambios Parametros ICT", filename=filename, freeze="A2",
         )
     except ValueError as e:
@@ -847,5 +855,5 @@ def ict_param_changes_detail():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint Cambios Parametros ICT")
+        return jsonify({"error": str(e)}), 500

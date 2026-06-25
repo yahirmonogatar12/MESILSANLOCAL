@@ -31,6 +31,7 @@ from flask import Blueprint, jsonify, redirect, render_template, request, send_f
 from app.api.shared import excel_response_ict, execute_query, login_requerido
 from app.api.shared.ict_helpers import (
     _append_indexable_text_filter,
+    _ict_attach_operator,
     _ict_format_row,
     _ict_load_local_parameters,
 )
@@ -166,6 +167,7 @@ def ict_data_api():
             offset = (page - 1) * per_page
             data_sql = select_cols + where_sql + " ORDER BY ts DESC LIMIT %s OFFSET %s"
             rows = execute_query(data_sql, tuple(params) + (per_page, offset), fetch="all") or []
+            _ict_attach_operator(rows)
 
             total_pages = (total + per_page - 1) // per_page if per_page else 0
             return jsonify({
@@ -179,10 +181,11 @@ def ict_data_api():
         # Modo legacy sin paginacion (retro-compatible)
         data_sql = select_cols + where_sql + " ORDER BY ts DESC LIMIT 500"
         rows = execute_query(data_sql, tuple(params), fetch="all") or []
+        _ict_attach_operator(rows)
         return jsonify([_ict_format_row(row) for row in rows])
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint ICT")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/ict/defects")
@@ -204,8 +207,8 @@ def ict_defects_api():
     except IctLgdError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint ICT")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/ict/export")
@@ -226,7 +229,7 @@ def export_ict_excel():
 
         sql = (
             "SELECT fecha, TIME(ts) AS hora, linea, ict, resultado, no_parte, barcode, "
-            "fuente_archivo, defect_code, defect_valor "
+            "ts, fuente_archivo, defect_code, defect_valor "
             "FROM history_ict WHERE 1=1"
         )
         params = []
@@ -261,14 +264,15 @@ def export_ict_excel():
 
         sql += " ORDER BY ts DESC LIMIT 500"
         rows = execute_query(sql, tuple(params), fetch="all") or []
+        _ict_attach_operator(rows)
 
         items = [_ict_format_row(row) for row in rows]
         headers = [
-            "Fecha", "Hora", "Linea", "ICT", "Resultado",
+            "Fecha", "Hora", "Linea", "ICT", "Resultado", "Operador",
             "No Parte", "Barcode", "Fuente", "Defect Code", "Defect Valor",
         ]
         keys = [
-            "fecha", "hora", "linea", "ict", "resultado",
+            "fecha", "hora", "linea", "ict", "resultado", "operador",
             "no_parte", "barcode", "fuente_archivo", "defect_code", "defect_valor",
         ]
         filename = f"historial_ict_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -283,8 +287,8 @@ def export_ict_excel():
     except IctLgdError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint ICT")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/ict/export-defects")
@@ -338,8 +342,8 @@ def export_ict_defects_excel():
     except IctLgdError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint ICT")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/ict/export-compare", methods=["POST"])
@@ -546,5 +550,5 @@ def export_ict_compare_excel():
     except IctLgdError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint ICT")
+        return jsonify({"error": str(e)}), 500

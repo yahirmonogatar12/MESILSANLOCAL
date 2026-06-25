@@ -219,6 +219,7 @@
       '<td class="cp-row-num">' + idx + '</td>' +
       '<td>' + escHtml(row.jornada || '') + '</td>' +
       '<td class="cp-col-hora-cambio">' + escHtml(horaCam) + '</td>' +
+      '<td>' + escHtml(row.operador || '') + '</td>' +
       '<td class="cp-col-ict">'  + escHtml(row.ict || '') + '</td>' +
       '<td title="' + escHtml(row.no_parte || row.std || '') + '">' + escHtml(row.no_parte || row.std || '') + '</td>' +
       '<td title="' + escHtml(row.componente || '') + '">' + escHtml(row.componente || '') + '</td>' +
@@ -234,8 +235,16 @@
   // Token incremental para descartar respuestas obsoletas si se disparan
   // varios fetch en paralelo (proteccion ante double-binding o re-clicks).
   var _requestSeq = 0;
+  // Carga en curso: al iniciar otra, se cancela esta (fetch + su polling),
+  // si no, el poll viejo sigue pintando progreso/datos sobre la nueva.
+  var _activeStopPoll = null;
+  var _activeAbort = null;
 
   function loadCambiosParametrosICT() {
+    // Cancelar la carga anterior antes de arrancar la nueva.
+    if (_activeStopPoll) { _activeStopPoll(); _activeStopPoll = null; }
+    if (_activeAbort) { _activeAbort.abort(); _activeAbort = null; }
+
     var params = buildParams();
     var ict = el('cp-filter-ict');
     if (!ict || !ict.value.trim()) {
@@ -271,10 +280,14 @@
     var tableEl = el('cp-params-table');
 
     var stopPoll = startProgressPolling(progressId);
+    _activeStopPoll = stopPoll;
+    var abort = new AbortController();
+    _activeAbort = abort;
 
     fetch('/api/ict/param-changes?' + params.toString(), {
       method: 'GET',
-      headers: { 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json' },
+      signal: abort.signal
     })
     .then(function (res) {
       return res.json().catch(function () {
@@ -317,6 +330,8 @@
       if (tbody) tbody.appendChild(frag);
     })
     .catch(function (err) {
+      // Cancelacion intencional (cambio de filtro/linea): no pintar error.
+      if (err && err.name === 'AbortError') return;
       if (mySeq !== _requestSeq) return;
       stopPoll();
       mostrarProgreso(false);

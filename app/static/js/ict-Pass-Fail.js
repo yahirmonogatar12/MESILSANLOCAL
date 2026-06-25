@@ -194,6 +194,8 @@ function renderHistorialIctPassFailHeader(mode) {
           "ICT",
           "Turno",
           "No. parte",
+          "Operador(es)",
+          "Tiempo ajuste",
           "Total real",
           "OK real",
           "Detect.",
@@ -210,6 +212,8 @@ function renderHistorialIctPassFailHeader(mode) {
           "ICT",
           "Turno",
           "No. parte",
+          "Operador(es)",
+          "Tiempo ajuste",
           "Total",
           "OK",
           "NG",
@@ -382,7 +386,7 @@ function renderHistorialIctPassFailTable(data) {
   }
 
   const mode = getIctPassFailMode();
-  const emptyColspan = mode === "detallado" ? 14 : 11;
+  const emptyColspan = mode === "detallado" ? 16 : 13;
   renderHistorialIctPassFailHeader(mode);
 
   if (!Array.isArray(data) || data.length === 0) {
@@ -393,12 +397,15 @@ function renderHistorialIctPassFailTable(data) {
 
   tbody.innerHTML = data
     .map((row, index) => {
+      const ajusteDetalle = row.ajuste_detalle ?? "";
       const commonCells = `
           <td>${escapeIctPassFailHtml(row.fecha ?? "")}</td>
           <td>${escapeIctPassFailHtml(row.linea ?? "")}</td>
           <td>${escapeIctPassFailHtml(row.ict ?? "")}</td>
           <td>${escapeIctPassFailHtml(row.turno ?? "")}</td>
-          <td>${escapeIctPassFailHtml(row.numero_parte ?? "")}</td>`;
+          <td>${escapeIctPassFailHtml(row.numero_parte ?? "")}</td>
+          <td title="${escapeIctPassFailHtml(row.operadores ?? "")}">${escapeIctPassFailHtml(row.operadores ?? "")}</td>
+          <td title="${escapeIctPassFailHtml(ajusteDetalle)}">${escapeIctPassFailHtml(row.ajuste_total ?? "")}${ajusteDetalle ? ` <span class="ict-pass-fail-rate-neutral">(${escapeIctPassFailHtml(ajusteDetalle)})</span>` : ""}</td>`;
 
       if (mode === "detallado") {
         const correctRate = Number(row.porcentaje_ok || 0);

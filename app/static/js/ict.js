@@ -320,6 +320,7 @@ function renderIctTable(data) {
       <td>${escapeHtml(row.linea)}</td>
       <td>${escapeHtml(row.ict)}</td>
       <td>${escapeHtml(row.resultado)}</td>
+      <td>${escapeHtml(row.operador)}</td>
       <td>${escapeHtml(row.no_parte)}</td>
       <td>${escapeHtml(row.barcode)}</td>
       <td>${escapeHtml(row.fuente_archivo)}</td>

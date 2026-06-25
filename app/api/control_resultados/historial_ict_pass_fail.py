@@ -27,7 +27,11 @@ from datetime import time as dt_time
 from flask import Blueprint, jsonify, redirect, render_template, request
 
 from app.api.shared import execute_query, login_requerido
-from app.api.shared.ict_helpers import _ict_format_row
+from app.api.shared.ict_helpers import (
+    _ict_format_row,
+    _ict_load_operator_sessions,
+    _ict_operadores_y_ajustes,
+)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -39,6 +43,21 @@ bp = Blueprint("historial_ict_pass_fail", __name__)
 # ---------------------------------------------------------------------------
 # Helpers privados del modulo
 # ---------------------------------------------------------------------------
+
+
+def _fmt_fecha(value):
+    """Serializa la fecha de jornada a 'YYYY-MM-DD' (date o str del driver)."""
+    return value.isoformat() if hasattr(value, "isoformat") else (value or "")
+
+
+def _fmt_hms(segundos):
+    """Segundos -> 'H:MM:SS' (o 'M:SS' si < 1h). 0 -> ''."""
+    segundos = int(segundos or 0)
+    if segundos <= 0:
+        return ""
+    h, rem = divmod(segundos, 3600)
+    m, s = divmod(rem, 60)
+    return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
 def _ict_pass_fail_fecha_jornada_expr(ts_column="ts"):
@@ -117,6 +136,7 @@ def _build_history_ict_pass_fail_summary_query():
 
     sql = (
         "SELECT resumen.fecha, resumen.linea, resumen.ict, resumen.turno, resumen.numero_parte, "
+        "MIN(resumen.primer_test) AS primer_test, MAX(resumen.ultimo_test) AS ultimo_test, "
         "SUM(resumen.total_real) AS total, "
         "SUM(resumen.correcto_real) AS ok_count, "
         "SUM(resumen.falla_real) AS ng_count, "
@@ -162,6 +182,7 @@ def _build_history_ict_pass_fail_summary_query():
         f"{turno_expr} AS turno, "
         f"{numero_parte_expr} AS numero_parte, "
         "h.barcode AS barcode, "
+        "MIN(h.ts) AS primer_test, MAX(h.ts) AS ultimo_test, "
         "COUNT(*) AS intentos, "
         "SUM(CASE WHEN UPPER(COALESCE(h.resultado, '')) = 'OK' THEN 1 ELSE 0 END) AS ok_count, "
         "SUM(CASE WHEN UPPER(COALESCE(h.resultado, '')) = 'NG' THEN 1 ELSE 0 END) AS ng_count, "
@@ -248,8 +269,21 @@ def ict_pass_fail_api():
         sql, params = _build_history_ict_pass_fail_summary_query()
         rows = execute_query(sql, params, fetch="all") or []
 
+        # Sesiones (operadores + ajustes) para enriquecer cada fila por su
+        # rango [primer_test, ultimo_test]. Carga unica por todo el resultado.
+        _ts = [r.get("primer_test") for r in rows if r.get("primer_test")]
+        _ts += [r.get("ultimo_test") for r in rows if r.get("ultimo_test")]
+        sessions = _ict_load_operator_sessions(min(_ts), max(_ts)) if _ts else {}
+
         result = []
         for row in rows:
+            oa = _ict_operadores_y_ajustes(
+                sessions, row.get("primer_test"), row.get("ultimo_test"),
+                row.get("linea"), row.get("ict"),
+            )
+            ajuste_texto = "; ".join(
+                f"{a['tecnico']} ({_fmt_hms(a['segundos'])})" for a in oa["ajustes"]
+            )
             total = int(row.get("total") or 0)
             ok_count = int(row.get("ok_count") or 0)
             ng_count = int(row.get("ng_count") or 0)
@@ -274,7 +308,7 @@ def ict_pass_fail_api():
             )
 
             result.append({
-                "fecha": _ict_format_row({"fecha": row.get("fecha")}).get("fecha", ""),
+                "fecha": _fmt_fecha(row.get("fecha")),
                 "linea": row.get("linea", "") or "",
                 "ict": row.get("ict", "") or "",
                 "turno": row.get("turno", "") or "",
@@ -304,12 +338,15 @@ def ict_pass_fail_api():
                 "porcentaje_deteccion": porcentaje_deteccion,
                 "porcentaje_falso_negativo": porcentaje_falso_negativo,
                 "porcentaje_falso_fail": porcentaje_falso_fail,
+                "operadores": ", ".join(oa["operadores"]),
+                "ajuste_total": _fmt_hms(oa["ajuste_total_seg"]),
+                "ajuste_detalle": ajuste_texto,
             })
 
         return jsonify(result)
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint ICT Pass/Fail")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/ict/pass-fail/detail")
@@ -499,8 +536,8 @@ def ict_pass_fail_detail_api():
     except ValueError:
         return jsonify({"error": "Fecha invalida para consultar detalle."}), 400
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint ICT Pass/Fail")
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/ict/pass-fail/export")
@@ -527,6 +564,10 @@ def ict_pass_fail_export():
         sql, params = _build_history_ict_pass_fail_summary_query()
         rows = execute_query(sql, params, fetch="all") or []
 
+        _ts = [r.get("primer_test") for r in rows if r.get("primer_test")]
+        _ts += [r.get("ultimo_test") for r in rows if r.get("ultimo_test")]
+        sessions = _ict_load_operator_sessions(min(_ts), max(_ts)) if _ts else {}
+
         from io import BytesIO
 
         from openpyxl import Workbook
@@ -549,20 +590,22 @@ def ict_pass_fail_export():
         if modo == "detallado":
             headers = [
                 "Fecha", "Linea", "ICT", "Turno", "Numero de parte",
+                "Operador(es)", "Tiempo ajuste",
                 "Total real", "Correctos", "OK real",
                 "Detectados", "F. fail",
                 "% Correcto", "% Deteccion", "% F. fail",
                 "PORCENTAJE",
             ]
-            column_widths = [14, 20, 10, 18, 28, 14, 12, 12, 14, 12, 14, 14, 14, 58]
+            column_widths = [14, 20, 10, 18, 28, 30, 34, 14, 12, 12, 14, 12, 14, 14, 14, 58]
         else:
             headers = [
                 "Fecha", "Linea", "ICT", "Turno", "Numero de parte",
+                "Operador(es)", "Tiempo ajuste",
                 "Intentos", "OK", "NG",
                 "% Pass", "% Fail",
                 "PORCENTAJE",
             ]
-            column_widths = [14, 20, 10, 18, 28, 14, 12, 12, 14, 14, 58]
+            column_widths = [14, 20, 10, 18, 28, 30, 34, 14, 12, 12, 14, 14, 58]
 
         bar_col = len(headers)
 
@@ -605,15 +648,27 @@ def ict_pass_fail_export():
                 if total_intentos else 0
             )
 
-            fecha_fmt = _ict_format_row({"fecha": row.get("fecha")}).get("fecha", "")
+            fecha_fmt = _fmt_fecha(row.get("fecha"))
             linea = row.get("linea", "") or ""
             ict = row.get("ict", "") or ""
             turno = row.get("turno", "") or ""
             numero_parte = row.get("numero_parte", "") or ""
 
+            oa = _ict_operadores_y_ajustes(
+                sessions, row.get("primer_test"), row.get("ultimo_test"),
+                row.get("linea"), row.get("ict"),
+            )
+            operadores_txt = ", ".join(oa["operadores"])
+            ajuste_txt = "; ".join(
+                f"{a['tecnico']} ({_fmt_hms(a['segundos'])})" for a in oa["ajustes"]
+            )
+            if oa["ajuste_total_seg"] and len(oa["ajustes"]) > 1:
+                ajuste_txt = f"Total {_fmt_hms(oa['ajuste_total_seg'])} | " + ajuste_txt
+
             if modo == "detallado":
                 values = [
                     fecha_fmt, linea, ict, turno, numero_parte,
+                    operadores_txt, ajuste_txt,
                     total,
                     ok_count,
                     int(row.get("ok_real") or 0),
@@ -627,6 +682,7 @@ def ict_pass_fail_export():
             else:
                 values = [
                     fecha_fmt, linea, ict, turno, numero_parte,
+                    operadores_txt, ajuste_txt,
                     total_intentos,
                     ok_count_raw,
                     ng_count_raw,
@@ -666,5 +722,5 @@ def ict_pass_fail_export():
         )
         return _send_excel_download(output, filename)
     except Exception as e:
-        import traceback
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+        logger.exception("Error en endpoint ICT Pass/Fail")
+        return jsonify({"error": str(e)}), 500

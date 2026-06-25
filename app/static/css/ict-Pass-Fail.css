@@ -135,99 +135,130 @@
     padding: 24px 12px;
 }
 
+/* Modo normal: 13 columnas. 6=Operador/es, 7=Tiempo ajuste, 13=barra. */
 #ict-pass-fail-table[data-mode="normal"] th:nth-child(1),
 #ict-pass-fail-table[data-mode="normal"] td:nth-child(1) {
-    width: 8%;
+    width: 7%;
 }
 
 #ict-pass-fail-table[data-mode="normal"] th:nth-child(2),
 #ict-pass-fail-table[data-mode="normal"] td:nth-child(2) {
-    width: 5%;
+    width: 4%;
 }
 
 #ict-pass-fail-table[data-mode="normal"] th:nth-child(3),
 #ict-pass-fail-table[data-mode="normal"] td:nth-child(3) {
-    width: 4%;
+    width: 3%;
 }
 
 #ict-pass-fail-table[data-mode="normal"] th:nth-child(4),
 #ict-pass-fail-table[data-mode="normal"] td:nth-child(4) {
-    width: 7%;
+    width: 6%;
 }
 
 #ict-pass-fail-table[data-mode="normal"] th:nth-child(5),
 #ict-pass-fail-table[data-mode="normal"] td:nth-child(5) {
-    width: 14%;
+    width: 11%;
 }
 
+/* Operador/es */
 #ict-pass-fail-table[data-mode="normal"] th:nth-child(6),
-#ict-pass-fail-table[data-mode="normal"] td:nth-child(6),
-#ict-pass-fail-table[data-mode="normal"] th:nth-child(7),
-#ict-pass-fail-table[data-mode="normal"] td:nth-child(7),
-#ict-pass-fail-table[data-mode="normal"] th:nth-child(8),
-#ict-pass-fail-table[data-mode="normal"] td:nth-child(8) {
-    width: 6%;
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(6) {
+    width: 11%;
 }
 
+/* Tiempo ajuste */
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(7),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(7) {
+    width: 11%;
+}
+
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(8),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(8),
 #ict-pass-fail-table[data-mode="normal"] th:nth-child(9),
 #ict-pass-fail-table[data-mode="normal"] td:nth-child(9),
 #ict-pass-fail-table[data-mode="normal"] th:nth-child(10),
 #ict-pass-fail-table[data-mode="normal"] td:nth-child(10) {
-    width: 7%;
+    width: 5%;
 }
 
 #ict-pass-fail-table[data-mode="normal"] th:nth-child(11),
-#ict-pass-fail-table[data-mode="normal"] td:nth-child(11) {
-    width: 30%;
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(11),
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(12),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(12) {
+    width: 6%;
 }
 
+/* PORCENTAJE (barra) */
+#ict-pass-fail-table[data-mode="normal"] th:nth-child(13),
+#ict-pass-fail-table[data-mode="normal"] td:nth-child(13) {
+    width: 24%;
+}
+
+/* Modo detallado: 16 columnas. 6=Operador/es, 7=Tiempo ajuste, 16=barra. */
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(1),
 #ict-pass-fail-table[data-mode="detallado"] td:nth-child(1) {
-    width: 7.5%;
+    width: 6.5%;
 }
 
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(2),
 #ict-pass-fail-table[data-mode="detallado"] td:nth-child(2) {
-    width: 4.5%;
+    width: 4%;
 }
 
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(3),
 #ict-pass-fail-table[data-mode="detallado"] td:nth-child(3) {
-    width: 3.5%;
+    width: 3%;
 }
 
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(4),
 #ict-pass-fail-table[data-mode="detallado"] td:nth-child(4) {
-    width: 6%;
+    width: 5.5%;
 }
 
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(5),
 #ict-pass-fail-table[data-mode="detallado"] td:nth-child(5) {
-    width: 14%;
+    width: 11%;
 }
 
+/* Operador/es */
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(6),
-#ict-pass-fail-table[data-mode="detallado"] td:nth-child(6),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(6) {
+    width: 10%;
+}
+
+/* Tiempo ajuste */
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(7),
-#ict-pass-fail-table[data-mode="detallado"] td:nth-child(7),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(7) {
+    width: 10%;
+}
+
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(8),
 #ict-pass-fail-table[data-mode="detallado"] td:nth-child(8),
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(9),
 #ict-pass-fail-table[data-mode="detallado"] td:nth-child(9),
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(10),
-#ict-pass-fail-table[data-mode="detallado"] td:nth-child(10) {
-    width: 6%;
-}
-
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(10),
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(11),
 #ict-pass-fail-table[data-mode="detallado"] td:nth-child(11),
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(12),
-#ict-pass-fail-table[data-mode="detallado"] td:nth-child(12),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(12) {
+    width: 5%;
+}
+
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(13),
 #ict-pass-fail-table[data-mode="detallado"] td:nth-child(13),
 #ict-pass-fail-table[data-mode="detallado"] th:nth-child(14),
-#ict-pass-fail-table[data-mode="detallado"] td:nth-child(14) {
-    width: 7%;
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(14),
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(15),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(15) {
+    width: 5%;
+}
+
+/* PORCENTAJE (barra) */
+#ict-pass-fail-table[data-mode="detallado"] th:nth-child(16),
+#ict-pass-fail-table[data-mode="detallado"] td:nth-child(16) {
+    width: 14%;
 }
 
 .ict-pass-fail-rate-good {
