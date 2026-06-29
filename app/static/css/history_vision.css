@@ -5,13 +5,89 @@
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 0;
     background: transparent;
+}
+
+#historial-vision-root > .filters-card {
+    margin-bottom: 0;
 }
 
 #historial-vision-root,
 #historial-vision-root * {
     box-sizing: border-box;
+}
+
+/* En escritorio el modulo ocupa solo el alto disponible del panel MES.
+   Filtros y tabs quedan fijos; el unico scroll vertical vive en la tabla. */
+@media (min-width: 769px) {
+    #control-resultados-content-area:not(.mes-area-hidden):has(> #historial-vision-unique-container[style*="display: block"]) {
+        display: flex !important;
+        flex-direction: column !important;
+        height: calc(100vh - var(--header-height, 100px) - 31px) !important;
+        height: calc(100dvh - var(--header-height, 100px) - 31px) !important;
+        max-height: calc(100vh - var(--header-height, 100px) - 31px) !important;
+        max-height: calc(100dvh - var(--header-height, 100px) - 31px) !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    #historial-vision-unique-container[style*="display: block"] {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    #vision-container,
+    #historial-vision-root {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        height: 100%;
+        max-height: 100%;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    #historial-vision-root > .filters-card,
+    #historial-vision-root > .vision-tabs {
+        flex: 0 0 auto;
+    }
+
+    #historial-vision-root > .results-card[hidden] {
+        display: none;
+    }
+
+    #historial-vision-root > .results-card:not([hidden]) {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        margin-bottom: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    #historial-vision-root > .results-card:not([hidden]) > .card-header,
+    #historial-vision-root > .results-card:not([hidden]) > .vision-results-hint {
+        flex: 0 0 auto;
+    }
+
+    /* Registros y Paros conservan el mismo alto efectivo de tabla. */
+    #vision-registros-panel > .vision-results-hint {
+        display: none;
+    }
+
+    #historial-vision-root > .results-card:not([hidden]) > .table-wrap {
+        flex: 1 1 auto;
+        height: auto;
+        max-height: none;
+        min-height: 0;
+        overflow: auto;
+    }
 }
 
 #vision-filters {
@@ -70,6 +146,126 @@
     z-index: 10;
     white-space: nowrap;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Filtros por columna: mismo patron de Control de material / Historial de entradas. */
+#historial-vision-root th.vision-column-filterable {
+    overflow: visible;
+}
+
+#historial-vision-root th.vision-column-filterable.filter-open {
+    z-index: 30;
+}
+
+.vision-column-header {
+    display: flex;
+    min-height: 20px;
+    align-items: center;
+    gap: 6px;
+}
+
+.vision-column-header > span {
+    flex: 1 1 auto;
+}
+
+.vision-column-filter-btn {
+    display: inline-flex;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    margin-left: auto;
+    padding: 4px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #55708a;
+    background: #203241;
+    color: #9cc8ff;
+    cursor: pointer;
+}
+
+.vision-column-filter-btn svg {
+    width: 11px;
+    height: 11px;
+    fill: currentColor;
+    stroke: none;
+}
+
+.vision-column-filter-btn:hover,
+.vision-column-filter-btn:focus-visible,
+.vision-column-filter-btn.open {
+    border-color: #71b9ff;
+    background: #20688c;
+    color: #ffffff;
+    outline: none;
+}
+
+.vision-column-filter-btn.active {
+    border-color: #71b9ff;
+    background: #2f80d8;
+    color: #ffffff;
+}
+
+.vision-column-filter-popover {
+    position: absolute;
+    top: calc(100% - 1px);
+    left: 6px;
+    right: 6px;
+    z-index: 40;
+    display: none;
+    min-width: 165px;
+    padding: 6px;
+    border: 1px solid #20688c;
+    background: #2c3e50;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+    text-align: left;
+    text-transform: none;
+    white-space: normal;
+}
+
+.vision-column-filter-popover.open {
+    display: block;
+}
+
+.vision-column-filter-input {
+    width: 100%;
+    height: 26px;
+    padding: 4px 6px;
+    border: 1px solid #20688c;
+    border-radius: 0;
+    background: #34495e;
+    color: #f3f6fb;
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: none;
+}
+
+.vision-column-filter-input:focus {
+    border-color: #71b9ff;
+    box-shadow: 0 0 0 2px rgba(113, 185, 255, 0.18);
+    outline: none;
+}
+
+.vision-column-filter-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.vision-column-filter-actions button {
+    flex: 1;
+    height: 22px;
+    padding: 0 6px;
+    border: 1px solid #5f7e9d;
+    background: #3c5066;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.vision-column-filter-actions button:hover,
+.vision-column-filter-actions button:focus-visible {
+    background: #4f78aa;
+    outline: none;
 }
 
 #vision-table tbody td {
@@ -402,7 +598,7 @@
     #historial-vision-root {
         min-height: auto;
         padding: 16px 16px 32px;
-        gap: 16px;
+        gap: 0;
     }
 
     #vision-filters .filter-group {
@@ -456,5 +652,262 @@
 
     .vision-preview-meta-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Pestañas Registros / Paros de Visión */
+.vision-tabs {
+    display: flex;
+    gap: 4px;
+    margin: 0;
+    min-height: 38px;
+    border-bottom: 1px solid var(--ilsan-border);
+}
+
+.vision-tab {
+    min-height: 38px;
+    padding: 8px 16px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.vision-tab:hover,
+.vision-tab:focus-visible {
+    color: var(--ilsan-text-light);
+    background: var(--ilsan-hover);
+    outline: none;
+}
+
+.vision-tab.is-active {
+    color: var(--accent, #38bdf8);
+    border-bottom-color: var(--accent, #38bdf8);
+}
+
+#vision-stops-table {
+    width: 100%;
+    min-width: 1120px;
+    border-collapse: collapse;
+    background-color: var(--ilsan-dark-secondary);
+}
+
+#vision-stops-table th,
+#vision-stops-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 7px;
+    color: var(--ilsan-text-secondary);
+    text-align: center;
+    font-size: 0.78rem;
+    vertical-align: middle;
+}
+
+#vision-stops-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--ilsan-dark-header);
+    color: var(--ilsan-text-light);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+#vision-stops-table tbody tr:nth-child(even) td {
+    background-color: #44475a;
+}
+
+#vision-stops-table tbody tr:hover td {
+    background-color: var(--ilsan-hover);
+}
+
+#vision-stops-table td:nth-child(7) {
+    min-width: 230px;
+    max-width: 320px;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+#vision-stops-table .vision-table-empty {
+    padding: 24px 12px;
+    color: var(--ilsan-text-gray);
+    font-style: italic;
+    text-align: center;
+}
+
+#vision-stops-table .vision-stop-open td {
+    background-color: rgba(196, 145, 2, 0.12);
+}
+
+.vision-stops-total-column {
+    display: flex;
+    min-width: 132px;
+    padding: 4px 10px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    border: 1px solid rgba(52, 152, 219, 0.22);
+    border-radius: 6px;
+    background: rgba(52, 152, 219, 0.08);
+}
+
+.vision-stops-total-column span {
+    color: var(--ilsan-text-gray);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.vision-stops-total-column strong {
+    color: var(--ilsan-text-light);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+/* Paginacion de Paros de Vision, alineada con Historial ICT. */
+.vision-pagination {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--ilsan-text-secondary);
+    font-size: 0.8rem;
+}
+
+.vision-pagination[hidden] {
+    display: none;
+}
+
+.vision-pagination-info {
+    color: var(--ilsan-text-gray);
+}
+
+.vision-pagination-controls,
+.vision-pagination-perpage,
+.vision-pagination-current {
+    display: flex;
+    align-items: center;
+}
+
+.vision-pagination-controls {
+    gap: 6px;
+}
+
+.vision-pagination-perpage {
+    gap: 6px;
+    margin-right: 12px;
+    color: var(--ilsan-text-gray);
+}
+
+.vision-pagination-perpage select,
+.vision-pagination-current input {
+    padding: 3px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    background: var(--ilsan-dark-secondary);
+    color: var(--ilsan-text-light);
+    font-size: 0.78rem;
+}
+
+.vision-btn-page {
+    min-width: 32px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.vision-btn-page:hover:not(:disabled),
+.vision-btn-page:focus-visible:not(:disabled) {
+    border-color: rgba(52, 152, 219, 0.45);
+    background: rgba(52, 152, 219, 0.2);
+    outline: none;
+}
+
+.vision-btn-page:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+
+.vision-pagination-current {
+    gap: 4px;
+    margin: 0 4px;
+}
+
+.vision-pagination-current input {
+    width: 56px;
+    text-align: center;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.85rem;
+}
+
+.vision-pagination-current input::-webkit-outer-spin-button,
+.vision-pagination-current input::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+@media (max-width: 768px) {
+    .vision-pagination {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .vision-pagination-controls {
+        justify-content: space-between;
+        overflow-x: auto;
+    }
+}
+
+.vision-stop-status {
+    display: inline-flex;
+    min-width: 86px;
+    min-height: 26px;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.vision-stop-status.is-confirmed {
+    color: #c8e6c9;
+    border-color: rgba(76, 175, 80, 0.35);
+    background: rgba(76, 175, 80, 0.14);
+}
+
+.vision-stop-status.is-open {
+    color: #ffe5a3;
+    border-color: rgba(255, 193, 7, 0.42);
+    background: rgba(255, 193, 7, 0.12);
+}
+
+@media (max-width: 768px) {
+    .vision-tabs {
+        overflow-x: auto;
+    }
+
+    .vision-tab {
+        flex: 1 0 auto;
     }
 }

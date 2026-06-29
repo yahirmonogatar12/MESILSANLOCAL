@@ -1,6 +1,6 @@
 (function () {
   const STYLE_ID = "material-invoices-css";
-  const STYLE_VERSION = "20260624b";
+  const STYLE_VERSION = "20260629a";
   const STYLE_HREF = `/static/css/material_invoices.css?v=${STYLE_VERSION}`;
 
   const state = {
@@ -11,6 +11,8 @@
     viewerWorkbook: null,
     viewerSheet: null,
     pendingUpload: null,
+    pendingInvoiceNumber: "",
+    uploadInFlight: false,
     // Lote pendiente de confirmar en pallet distinto (modal de linkeo).
     pendingPalletLink: null,
     pendingLineEdit: null,
@@ -135,12 +137,23 @@
     const hasta = el("mat-invoice-date-to")?.value;
     if (q) params.set("q", q);
     if (estado) params.set("estado", estado);
-    // "Solo pendientes" ignora el rango de fechas: un invoice pendiente de dias
-    // anteriores sigue abierto y debe verse aunque no sea de hoy.
-    const soloPendientes = estado === "PENDIENTES";
-    if (!soloPendientes && desde) params.set("fecha_inicio", desde);
-    if (!soloPendientes && hasta) params.set("fecha_fin", hasta);
+    // Los abiertos se muestran siempre, sin importar su fecha. El rango queda
+    // disponible para "Todos" y para los estados específicos.
+    const soloAbiertos = estado === "PENDIENTES";
+    if (!soloAbiertos && desde) params.set("fecha_inicio", desde);
+    if (!soloAbiertos && hasta) params.set("fecha_fin", hasta);
     return params;
+  }
+
+  function syncDateFilterAvailability() {
+    const soloAbiertos = el("mat-invoice-state")?.value === "PENDIENTES";
+    [el("mat-invoice-date-from"), el("mat-invoice-date-to")].forEach((input) => {
+      if (!input) return;
+      input.disabled = soloAbiertos;
+      input.title = soloAbiertos
+        ? "Los invoices abiertos se muestran siempre, sin limitar por fecha."
+        : "";
+    });
   }
 
   function clearFilters() {
@@ -152,6 +165,7 @@
     const to = el("mat-invoice-date-to");
     if (from) from.value = from.dataset.defaultDate || "";
     if (to) to.value = to.dataset.defaultDate || "";
+    syncDateFilterAvailability();
     loadInvoices();
   }
 
@@ -388,9 +402,25 @@
   }
 
   function closePreview() {
+    if (state.uploadInFlight) return;
     setPreviewLoading(false);
     hideModal("mat-invoice-preview");
     state.pendingUpload = null;
+    state.pendingInvoiceNumber = "";
+  }
+
+  function showUploadProgress(numeroInvoice) {
+    const numberEl = el("mat-invoice-upload-progress-number");
+    if (numberEl) {
+      numberEl.textContent = numeroInvoice
+        ? `Invoice ${numeroInvoice}`
+        : "Procesando archivo Excel";
+    }
+    openModal("mat-invoice-upload-progress");
+  }
+
+  function hideUploadProgress() {
+    hideModal("mat-invoice-upload-progress");
   }
 
   // Paso 1: parsea el Excel y muestra en un modal lo que se cargaria.
@@ -422,6 +452,7 @@
   }
 
   function renderPreview(data) {
+    state.pendingInvoiceNumber = data.numero_invoice || "";
     const subtitle = el("mat-invoice-preview-subtitle");
     if (subtitle) {
       const dup = data.duplicado
@@ -494,28 +525,38 @@
 
   // Paso 2: confirma y carga de verdad usando el FormData previsualizado.
   async function confirmUpload() {
-    if (!state.pendingUpload) return;
+    if (!state.pendingUpload || state.uploadInFlight) return;
+
+    // El guard se activa antes del primer await: aunque lleguen dos eventos de
+    // click seguidos, solo el primero puede iniciar la solicitud.
+    state.uploadInFlight = true;
+    const pendingUpload = state.pendingUpload;
+    const numeroInvoice = state.pendingInvoiceNumber;
+    state.pendingUpload = null;
     setLoading(true);
     setPreviewLoading(true);
-    setMessage("mat-invoice-preview-message", "Cargando invoice, no cierres esta ventana...", "success");
+    hideModal("mat-invoice-preview");
+    showUploadProgress(numeroInvoice);
     try {
       const data = await fetchJson("/api/material_admin/invoices/upload", {
         method: "POST",
-        body: state.pendingUpload,
+        body: pendingUpload,
       });
-      closePreview();
-      setMessage("mat-invoice-upload-message", `Invoice cargada: ${data.lineas} lineas, ${data.packing} packing.`, "success");
       el("mat-invoice-upload-form")?.reset();
       await loadInvoices();
       await loadDetail(data.invoice_id);
+      setMessage("mat-invoice-upload-message", `Invoice cargada: ${data.lineas} lineas, ${data.packing} packing.`, "success");
     } catch (err) {
       if (err.status === 409 && err.payload?.duplicado) {
-        setMessage("mat-invoice-preview-message", `${err.payload.message || "Duplicado"} (${err.payload.motivo || ""})`);
+        setMessage("mat-invoice-upload-message", `${err.payload.message || "Duplicado"} (${err.payload.motivo || ""})`);
       } else {
-        setMessage("mat-invoice-preview-message", `Error al cargar: ${err.message}`);
+        setMessage("mat-invoice-upload-message", `Error al cargar: ${err.message}`);
       }
     } finally {
+      hideUploadProgress();
       setPreviewLoading(false);
+      state.pendingInvoiceNumber = "";
+      state.uploadInFlight = false;
       setLoading(false);
     }
   }
@@ -1217,6 +1258,7 @@
       if (target.id === "mat-invoice-state"
           || target.id === "mat-invoice-date-from"
           || target.id === "mat-invoice-date-to") {
+        if (target.id === "mat-invoice-state") syncDateFilterAvailability();
         loadInvoices();
       }
       if (target.id === "mat-invoice-viewer-sheets") {
@@ -1271,6 +1313,7 @@
     if (el("mat-invoice-detail")) el("mat-invoice-detail").hidden = true;
     // Arrancar mostrando los pendientes (de cualquier fecha), no solo los de hoy.
     if (el("mat-invoice-state")) el("mat-invoice-state").value = "PENDIENTES";
+    syncDateFilterAvailability();
     loadInvoices();
   };
 })();

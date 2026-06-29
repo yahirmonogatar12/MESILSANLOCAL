@@ -85,7 +85,7 @@ def ict_data_api():
     Soporta `fecha` (igualdad, retro-compatible) o `fecha_desde`/`fecha_hasta`
     (rango). Si se envian ambos, prevalece el rango.
 
-    Paginacion: `page` (1-based) y `per_page` (default 200, max 1000).
+    Paginacion: `page` (1-based) y `per_page` (default 1000, max 1000).
     Cuando se envia `page`, la respuesta es un objeto con metadata; si no se
     envia, se devuelve el array plano (retro-compatible) con LIMIT 500.
     """
@@ -155,9 +155,9 @@ def ict_data_api():
             except ValueError:
                 page = 1
             try:
-                per_page = int(per_page_raw) if per_page_raw else 200
+                per_page = int(per_page_raw) if per_page_raw else 1000
             except ValueError:
-                per_page = 200
+                per_page = 1000
             per_page = max(1, min(per_page, 1000))
 
             count_sql = "SELECT COUNT(*) AS n FROM history_ict " + where_sql

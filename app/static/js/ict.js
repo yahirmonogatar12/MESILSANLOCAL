@@ -32,7 +32,7 @@ let currentTimestamp = "";
 
 // Paginacion del historial
 let ictCurrentPage = 1;
-let ictPerPage = 200;
+let ictPerPage = 1000;
 let ictTotalRows = 0;
 let ictTotalPages = 1;
 

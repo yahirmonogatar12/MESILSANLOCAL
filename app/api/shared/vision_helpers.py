@@ -428,8 +428,8 @@ def _resolve_history_vision_image(record):
 # ---------------------------------------------------------------------------
 
 
-def _build_history_vision_query():
-    """Construir query y parametros para consultar history_vision."""
+def _build_history_vision_where():
+    """WHERE compartido por listado, conteo y exportacion de registros Vision."""
     fecha_desde = request.args.get("fecha_desde", "").strip()
     fecha_hasta = request.args.get("fecha_hasta", "").strip()
     linea = request.args.get("linea", "").strip()
@@ -438,18 +438,7 @@ def _build_history_vision_query():
     qr = request.args.get("qr", "").strip()
     barcode = request.args.get("barcode", "").strip()
 
-    sql = (
-        "SELECT "
-        "id, "
-        "machine_name AS linea, "
-        "log_date AS fecha, "
-        "log_time AS hora, "
-        "part_code AS numero_parte, "
-        "qr_payload AS qr, "
-        "barcode, "
-        "result AS resultado "
-        "FROM history_vision WHERE 1=1"
-    )
+    sql = " FROM history_vision WHERE 1=1"
     params = []
 
     if fecha_desde:
@@ -474,9 +463,51 @@ def _build_history_vision_query():
         sql += " AND barcode LIKE %s"
         params.append(f"%{barcode}%")
 
-    sql += " ORDER BY COALESCE(log_datetime, created_at) DESC, id DESC"
+    column_filter_sql = {
+        "linea": "machine_name LIKE %s",
+        "fecha": "CAST(log_date AS CHAR) LIKE %s",
+        "hora": "CAST(log_time AS CHAR) LIKE %s",
+        "numero_parte": "part_code LIKE %s",
+        "qr": "qr_payload LIKE %s",
+        "barcode": "barcode LIKE %s",
+        "resultado": "result LIKE %s",
+    }
+    for key, clause in column_filter_sql.items():
+        value = request.args.get(f"cf_{key}", "").strip()
+        if value:
+            sql += f" AND {clause}"
+            params.append(f"%{value}%")
 
-    return sql, tuple(params) if params else None
+    return sql, params
+
+
+def _build_history_vision_query(limit=None, offset=0):
+    """Query de registros; sin ``limit`` devuelve todo para exportacion/compatibilidad."""
+    where_sql, params = _build_history_vision_where()
+    sql = (
+        "SELECT "
+        "id, "
+        "machine_name AS linea, "
+        "log_date AS fecha, "
+        "log_time AS hora, "
+        "part_code AS numero_parte, "
+        "qr_payload AS qr, "
+        "barcode, "
+        "result AS resultado"
+        + where_sql
+        + " ORDER BY COALESCE(log_datetime, created_at) DESC, id DESC"
+    )
+    if limit is not None:
+        sql += " LIMIT %s OFFSET %s"
+        params.extend([max(1, int(limit)), max(0, int(offset))])
+
+    return sql, tuple(params)
+
+
+def _build_history_vision_count_query():
+    """Conteo total de registros Vision con los mismos filtros del listado."""
+    where_sql, params = _build_history_vision_where()
+    return "SELECT COUNT(*) AS n" + where_sql, tuple(params)
 
 
 def _build_history_vision_pass_fail_summary_query():
@@ -513,3 +544,170 @@ def _build_history_vision_pass_fail_summary_query():
     )
 
     return sql, tuple(params) if params else None
+
+
+# ---------------------------------------------------------------------------
+# Paros reales de Vision (history_vision_ng_stops) + relacion con ajustes
+# ---------------------------------------------------------------------------
+
+
+def _build_vision_stops_where():
+    """WHERE compartido por listado, conteo y exportacion de paros de Vision."""
+    fecha_desde = request.args.get("fecha_desde", "").strip()
+    fecha_hasta = request.args.get("fecha_hasta", "").strip()
+    linea = request.args.get("linea", "").strip()
+    estado = request.args.get("estado", "").strip()  # open | confirmed | failed_recovery
+    sql = " FROM history_vision_ng_stops s WHERE s.stop_datetime IS NOT NULL"
+    params = []
+    if fecha_desde:
+        sql += " AND s.stop_datetime >= %s"
+        params.append(fecha_desde)
+    if fecha_hasta:
+        sql += " AND s.stop_datetime < DATE_ADD(%s, INTERVAL 1 DAY)"
+        params.append(fecha_hasta)
+    if linea:
+        sql += " AND s.machine_name = %s"
+        params.append(linea)
+    if estado in {"open", "confirmed", "failed_recovery"}:
+        sql += " AND s.recovery_status = %s"
+        params.append(estado)
+    else:
+        sql += " AND s.recovery_status IN ('open', 'confirmed')"
+
+    column_filters = {
+        key: request.args.get(f"cf_{key}", "").strip()
+        for key in (
+            "linea", "numero_parte", "stop_datetime", "stable_run_datetime",
+            "paro_real", "run_attempt_count", "tecnico_ajuste",
+        )
+    }
+    simple_filter_sql = {
+        "linea": "s.machine_name LIKE %s",
+        "numero_parte": "s.part_code LIKE %s",
+        "stop_datetime": "CAST(s.stop_datetime AS CHAR) LIKE %s",
+        "stable_run_datetime": "CAST(s.stable_run_datetime AS CHAR) LIKE %s",
+        "paro_real": (
+            "TIME_FORMAT(SEC_TO_TIME(COALESCE(s.real_stop_seconds, "
+            "TIMESTAMPDIFF(MICROSECOND, s.stop_datetime, NOW())/1e6)), "
+            "'%%H:%%i:%%s.%%f') LIKE %s"
+        ),
+        "run_attempt_count": "CAST(s.run_attempt_count AS CHAR) LIKE %s",
+    }
+    for key, clause in simple_filter_sql.items():
+        if column_filters[key]:
+            sql += f" AND {clause}"
+            params.append(f"%{column_filters[key]}%")
+
+    if column_filters["tecnico_ajuste"]:
+        tecnico_expr = (
+            "COALESCE(NULLIF(TRIM(a.usuario), ''), NULLIF(TRIM(a.username), ''), "
+            "NULLIF(TRIM(o.display_name), ''), NULLIF(TRIM(o.badge_code), ''), "
+            "CASE WHEN JSON_VALID(e.details_json) THEN NULLIF(NULLIF(TRIM(JSON_UNQUOTE("
+            "JSON_EXTRACT(e.details_json, '$.DisplayName'))), ''), 'null') END, "
+            "CASE WHEN JSON_VALID(e.details_json) THEN NULLIF(NULLIF(TRIM(JSON_UNQUOTE("
+            "JSON_EXTRACT(e.details_json, '$.BadgeCode'))), ''), 'null') END, '')"
+        )
+        sql += (
+            " AND EXISTS (SELECT 1 FROM historial_estaciones_qa a "
+            "LEFT JOIN station_events_QA e ON e.id = a.session_id "
+            "AND e.event_type = 'WindowClosed' "
+            "LEFT JOIN operators_QA o ON o.id = e.operator_id "
+            "WHERE a.estado = 'Ajuste' AND a.estacion LIKE 'VISION-%%' "
+            "AND a.linea = s.machine_name AND a.fin_local >= s.stop_datetime "
+            "AND a.inicio_local <= COALESCE(s.stable_run_datetime, NOW()) "
+            f"AND CONCAT_WS(' ', {tecnico_expr}, CAST(a.inicio_local AS CHAR), "
+            "CAST(a.fin_local AS CHAR)) LIKE %s)"
+        )
+        params.append(f"%{column_filters['tecnico_ajuste']}%")
+
+    return sql, params
+
+
+def _build_vision_stops_query(limit=None, offset=0):
+    """Query de paros; sin ``limit`` devuelve todo para exportacion/compatibilidad."""
+    where_sql, params = _build_vision_stops_where()
+    sql = (
+        "SELECT s.source_uid, s.machine_name AS linea, s.stop_datetime, s.stable_run_datetime, "
+        "s.real_stop_seconds, "
+        "COALESCE(s.real_stop_seconds, "
+        "         TIMESTAMPDIFF(MICROSECOND, s.stop_datetime, NOW())/1e6) AS real_stop_prov, "
+        "s.run_attempt_count, "
+        "s.recovery_status, s.part_code, s.ng_datetime"
+        + where_sql
+        + " ORDER BY s.stop_datetime DESC"
+    )
+    if limit is not None:
+        sql += " LIMIT %s OFFSET %s"
+        params.extend([max(1, int(limit)), max(0, int(offset))])
+    return sql, tuple(params)
+
+
+def _build_vision_stops_count_query():
+    """Conteo y tiempo total con exactamente los mismos filtros del listado."""
+    where_sql, params = _build_vision_stops_where()
+    aggregate_sql = (
+        "SELECT COUNT(*) AS n, "
+        "COALESCE(SUM(COALESCE(s.real_stop_seconds, "
+        "TIMESTAMPDIFF(MICROSECOND, s.stop_datetime, NOW())/1e6)), 0) "
+        "AS total_stop_seconds"
+    )
+    return aggregate_sql + where_sql, tuple(params)
+
+
+def _fetch_ajustes_for_stops(rows):
+    """Un solo query en lote para los ajustes de Vision que solapan los paros de la pagina,
+    agrupados por paro en Python. Para paros open el solape usa NOW() como fin provisional."""
+    if not rows:
+        return {}
+    lineas = sorted({r.get("linea") for r in rows if r.get("linea")})
+    if not lineas:
+        return {}
+
+    now = datetime.now()
+    stops_dt = [r.get("stop_datetime") for r in rows if r.get("stop_datetime")]
+    fines = [r.get("stable_run_datetime") or now for r in rows]
+    if not stops_dt:
+        return {}
+    min_stop = min(stops_dt)
+    max_fin = max(fines)
+
+    placeholders = ", ".join(["%s"] * len(lineas))
+    sql = (
+        "SELECT a.linea, a.session_id, "
+        "COALESCE(NULLIF(TRIM(a.usuario), ''), NULLIF(TRIM(a.username), ''), "
+        "         NULLIF(TRIM(o.display_name), ''), NULLIF(TRIM(o.badge_code), ''), "
+        "         CASE WHEN JSON_VALID(e.details_json) "
+        "              THEN NULLIF(NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(e.details_json, '$.DisplayName'))), ''), 'null') END, "
+        "         CASE WHEN JSON_VALID(e.details_json) "
+        "              THEN NULLIF(NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(e.details_json, '$.BadgeCode'))), ''), 'null') END) AS tecnico, "
+        "a.inicio_local, a.fin_local "
+        "FROM historial_estaciones_qa a "
+        "LEFT JOIN station_events_QA e ON e.id = a.session_id AND e.event_type = 'WindowClosed' "
+        "LEFT JOIN operators_QA o ON o.id = e.operator_id "
+        "WHERE a.estado = 'Ajuste' AND a.estacion LIKE 'VISION-%%' "
+        f"AND a.linea IN ({placeholders}) "
+        "AND a.fin_local >= %s AND a.inicio_local <= %s"
+    )
+    params = tuple(lineas) + (min_stop, max_fin)
+    ajustes = execute_query(sql, params, fetch="all") or []
+
+    # Empareja cada ajuste con los paros de su linea cuyo intervalo [stop, fin_prov] solapa.
+    by_uid = {}
+    for r in rows:
+        stop = r.get("stop_datetime")
+        if stop is None:
+            continue
+        fin = r.get("stable_run_datetime") or now
+        for a in ajustes:
+            if a.get("linea") != r.get("linea"):
+                continue
+            if a.get("fin_local") is None or a.get("inicio_local") is None:
+                continue
+            if a["fin_local"] >= stop and a["inicio_local"] <= fin:
+                by_uid.setdefault(r["source_uid"], []).append({
+                    "session_id": a.get("session_id"),
+                    "tecnico": _vision_format_value(a.get("tecnico")) or "",
+                    "inicio_local": _vision_format_value(a.get("inicio_local")) or "",
+                    "fin_local": _vision_format_value(a.get("fin_local")) or "",
+                })
+    return by_uid

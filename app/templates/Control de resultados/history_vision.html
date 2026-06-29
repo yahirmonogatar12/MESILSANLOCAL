@@ -99,7 +99,12 @@
       </div>
     </div>
 
-    <div class="results-card">
+    <div class="vision-tabs" role="tablist" aria-label="Vista de historial Vision">
+      <button type="button" class="vision-tab is-active" role="tab" aria-selected="true" aria-controls="vision-registros-panel" data-tab="registros">Registros</button>
+      <button type="button" class="vision-tab" role="tab" aria-selected="false" aria-controls="vision-paros-panel" data-tab="paros">Paros de Vision</button>
+    </div>
+
+    <div id="vision-registros-panel" class="results-card" role="tabpanel" data-tab-panel="registros">
       <div class="card-header">
         <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -124,17 +129,105 @@
         <table id="vision-table">
           <thead>
             <tr>
-              <th>Linea</th>
-              <th>Fecha</th>
-              <th>Hora</th>
-              <th>Numero de parte</th>
-              <th>QR</th>
-              <th>Barcode</th>
-              <th>Resultado</th>
+              <th data-vision-filter-table="records" data-vision-filter-field="linea">Linea</th>
+              <th data-vision-filter-table="records" data-vision-filter-field="fecha">Fecha</th>
+              <th data-vision-filter-table="records" data-vision-filter-field="hora">Hora</th>
+              <th data-vision-filter-table="records" data-vision-filter-field="numero_parte">Numero de parte</th>
+              <th data-vision-filter-table="records" data-vision-filter-field="qr">QR</th>
+              <th data-vision-filter-table="records" data-vision-filter-field="barcode">Barcode</th>
+              <th data-vision-filter-table="records" data-vision-filter-field="resultado">Resultado</th>
             </tr>
           </thead>
           <tbody id="vision-body"></tbody>
         </table>
+      </div>
+      <div id="vision-records-pagination" class="vision-pagination" hidden>
+        <div class="vision-pagination-info">
+          <span id="vision-records-pagination-summary">0 - 0 de 0</span>
+        </div>
+        <div class="vision-pagination-controls">
+          <label class="vision-pagination-perpage">
+            Por pagina
+            <select id="vision-records-per-page">
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+              <option value="1000" selected>1000</option>
+            </select>
+          </label>
+          <button id="vision-records-page-first" type="button" class="vision-btn-page" title="Primera">«</button>
+          <button id="vision-records-page-prev" type="button" class="vision-btn-page" title="Anterior">‹</button>
+          <span class="vision-pagination-current">
+            <input type="number" id="vision-records-page-input" min="1" value="1" step="1">
+            <span> / <span id="vision-records-page-total">1</span></span>
+          </span>
+          <button id="vision-records-page-next" type="button" class="vision-btn-page" title="Siguiente">›</button>
+          <button id="vision-records-page-last" type="button" class="vision-btn-page" title="Ultima">»</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="vision-paros-panel" class="results-card" role="tabpanel" data-tab-panel="paros" hidden>
+      <div class="card-header">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 9v6m4-6v6M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"></path>
+        </svg>
+        <h3>Paros de Vision</h3>
+        <span id="vision-stops-count" class="record-count">0 paros</span>
+        <div class="vision-stops-total-column" title="Suma del paro real de todos los resultados filtrados">
+          <span>Tiempo total</span>
+          <strong id="vision-stops-total-time">00:00:00.000</strong>
+        </div>
+        <button id="vision-btn-export-stops" class="btn-export" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Exportar Excel
+        </button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-loading" id="vision-stops-loading">
+          <div class="spinner"></div>
+          <span>Cargando paros...</span>
+        </div>
+        <table id="vision-stops-table">
+          <thead>
+            <tr>
+              <th data-vision-filter-table="stops" data-vision-filter-field="linea">Linea</th>
+              <th data-vision-filter-table="stops" data-vision-filter-field="numero_parte">Numero de parte</th>
+              <th data-vision-filter-table="stops" data-vision-filter-field="stop_datetime">STOP</th>
+              <th data-vision-filter-table="stops" data-vision-filter-field="stable_run_datetime">RUN estable</th>
+              <th data-vision-filter-table="stops" data-vision-filter-field="paro_real">Paro real</th>
+              <th data-vision-filter-table="stops" data-vision-filter-field="run_attempt_count">Intentos</th>
+              <th data-vision-filter-table="stops" data-vision-filter-field="tecnico_ajuste">Tecnico / Ajuste</th>
+            </tr>
+          </thead>
+          <tbody id="vision-stops-body"></tbody>
+        </table>
+      </div>
+      <div id="vision-stops-pagination" class="vision-pagination" hidden>
+        <div class="vision-pagination-info">
+          <span id="vision-stops-pagination-summary">0 - 0 de 0</span>
+        </div>
+        <div class="vision-pagination-controls">
+          <label class="vision-pagination-perpage">
+            Por pagina
+            <select id="vision-stops-per-page">
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+              <option value="1000" selected>1000</option>
+            </select>
+          </label>
+          <button id="vision-stops-page-first" type="button" class="vision-btn-page" title="Primera">«</button>
+          <button id="vision-stops-page-prev" type="button" class="vision-btn-page" title="Anterior">‹</button>
+          <span class="vision-pagination-current">
+            <input type="number" id="vision-stops-page-input" min="1" value="1" step="1">
+            <span> / <span id="vision-stops-page-total">1</span></span>
+          </span>
+          <button id="vision-stops-page-next" type="button" class="vision-btn-page" title="Siguiente">›</button>
+          <button id="vision-stops-page-last" type="button" class="vision-btn-page" title="Ultima">»</button>
+        </div>
       </div>
     </div>
 
@@ -195,6 +288,14 @@
                   <span>Fecha y hora</span>
                   <strong id="vision-preview-fecha-hora">-</strong>
                 </div>
+                <div class="vision-preview-meta-card">
+                  <span>QR</span>
+                  <strong id="vision-preview-qr">-</strong>
+                </div>
+                <div class="vision-preview-meta-card">
+                  <span>Barcode</span>
+                  <strong id="vision-preview-barcode">-</strong>
+                </div>
               </div>
 
               <div class="vision-preview-section">
@@ -216,4 +317,4 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/history_vision.js', v='20260527b') }}"></script>
+<script src="{{ url_for('static', filename='js/history_vision.js', v='20260629h') }}"></script>

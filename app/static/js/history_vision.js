@@ -3,7 +3,7 @@
   const sheets = [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
     { id: "ict-css", href: "/static/css/ict.css?v=20260522a" },
-    { id: "history-vision-css", href: "/static/css/history_vision.css?v=20260527b" },
+    { id: "history-vision-css", href: "/static/css/history_vision.css?v=20260629f" },
   ];
   sheets.forEach(({ id, href }) => {
     let link = document.getElementById(id);
@@ -23,6 +23,20 @@
 })();
 
 let visionModuleData = [];
+let visionStopsData = [];
+let visionRecordsCurrentPage = 1;
+let visionRecordsPerPage = 1000;
+let visionRecordsTotalRows = 0;
+let visionRecordsTotalPages = 1;
+let visionRecordsRequestToken = 0;
+let visionRecordsFilterTimer = null;
+let visionStopsCurrentPage = 1;
+let visionStopsPerPage = 1000;
+let visionStopsTotalRows = 0;
+let visionStopsTotalPages = 1;
+let visionStopsTotalSeconds = 0;
+let visionStopsRequestToken = 0;
+let visionStopsFilterTimer = null;
 let currentVisionPreviewToken = 0;
 const visionPreviewState = {
   scale: 1,
@@ -36,6 +50,165 @@ const visionPreviewState = {
   dragStartY: 0,
 };
 const VISION_FILTERS_STORAGE_KEY = "historialVisionFilters";
+const VISION_COLUMN_FILTERS_STORAGE_KEY = "historialVisionColumnFilters";
+let visionColumnFilters = null;
+
+function getVisionColumnFilterState() {
+  if (visionColumnFilters) {
+    return visionColumnFilters;
+  }
+
+  visionColumnFilters = { records: {}, stops: {} };
+  try {
+    const stored = JSON.parse(
+      window.localStorage.getItem(VISION_COLUMN_FILTERS_STORAGE_KEY) || "{}",
+    );
+    ["records", "stops"].forEach((tableKey) => {
+      if (stored?.[tableKey] && typeof stored[tableKey] === "object") {
+        visionColumnFilters[tableKey] = stored[tableKey];
+      }
+    });
+  } catch (error) {
+    console.warn("No se pudieron leer los filtros por columna de Vision", error);
+  }
+  return visionColumnFilters;
+}
+
+function saveVisionColumnFilters() {
+  try {
+    window.localStorage.setItem(
+      VISION_COLUMN_FILTERS_STORAGE_KEY,
+      JSON.stringify(getVisionColumnFilterState()),
+    );
+  } catch (error) {
+    console.warn("No se pudieron guardar los filtros por columna de Vision", error);
+  }
+}
+
+function getVisionColumnFilters(tableKey) {
+  return getVisionColumnFilterState()[tableKey] || {};
+}
+
+function setVisionColumnFilter(tableKey, field, value) {
+  const state = getVisionColumnFilterState();
+  state[tableKey] ||= {};
+  const normalizedValue = String(value || "").trim();
+
+  if (normalizedValue) {
+    state[tableKey][field] = normalizedValue;
+  } else {
+    delete state[tableKey][field];
+  }
+  saveVisionColumnFilters();
+}
+
+function clearAllVisionColumnFilters(tableKey) {
+  getVisionColumnFilterState()[tableKey] = {};
+  saveVisionColumnFilters();
+}
+
+function renderVisionColumnFilterHeaders() {
+  const root = document.getElementById("historial-vision-root");
+  if (!root) {
+    return;
+  }
+
+  root
+    .querySelectorAll("th[data-vision-filter-table][data-vision-filter-field]")
+    .forEach((header) => {
+      if (header.dataset.visionFilterReady === "true") {
+        return;
+      }
+
+      const tableKey = header.dataset.visionFilterTable;
+      const field = header.dataset.visionFilterField;
+      const label = header.textContent.trim();
+      const value = getVisionColumnFilters(tableKey)[field] || "";
+      header.classList.add("vision-column-filterable");
+      header.dataset.visionFilterReady = "true";
+      header.innerHTML = `
+        <div class="vision-column-header">
+          <span>${escapeVisionHtml(label)}</span>
+          <button class="vision-column-filter-btn${value ? " active" : ""}"
+                  type="button"
+                  data-vision-table-key="${escapeVisionHtml(tableKey)}"
+                  data-vision-field="${escapeVisionHtml(field)}"
+                  aria-label="Filtrar ${escapeVisionHtml(label)}"
+                  aria-expanded="false"
+                  title="Filtrar ${escapeVisionHtml(label)}">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="vision-column-filter-popover"
+             data-vision-table-key="${escapeVisionHtml(tableKey)}"
+             data-vision-field="${escapeVisionHtml(field)}">
+          <input class="vision-column-filter-input"
+                 data-vision-table-key="${escapeVisionHtml(tableKey)}"
+                 data-vision-field="${escapeVisionHtml(field)}"
+                 value="${escapeVisionHtml(value)}"
+                 placeholder="Buscar..."
+                 aria-label="Buscar en ${escapeVisionHtml(label)}"
+                 autocomplete="off">
+          <div class="vision-column-filter-actions">
+            <button class="vision-column-filter-clear" type="button">Limpiar</button>
+            <button class="vision-column-filter-clear-all" type="button">Todos</button>
+          </div>
+        </div>`;
+    });
+}
+
+function closeVisionColumnFilterPopovers(exceptPopover = null) {
+  document
+    .querySelectorAll(".vision-column-filter-popover.open")
+    .forEach((popover) => {
+      if (popover === exceptPopover) {
+        return;
+      }
+      popover.classList.remove("open");
+      popover.closest("th")?.classList.remove("filter-open");
+      const button = popover
+        .closest("th")
+        ?.querySelector(".vision-column-filter-btn");
+      button?.classList.remove("open");
+      button?.setAttribute("aria-expanded", "false");
+    });
+}
+
+function syncVisionColumnFilterControls(tableKey) {
+  const filters = getVisionColumnFilters(tableKey);
+  document
+    .querySelectorAll(
+      `.vision-column-filter-input[data-vision-table-key="${tableKey}"]`,
+    )
+    .forEach((input) => {
+      const value = filters[input.dataset.visionField] || "";
+      input.value = value;
+      input
+        .closest("th")
+        ?.querySelector(".vision-column-filter-btn")
+        ?.classList.toggle("active", Boolean(value));
+    });
+}
+
+function renderFilteredVisionTable(tableKey) {
+  if (tableKey === "stops") {
+    window.clearTimeout(visionStopsFilterTimer);
+    visionStopsCurrentPage = 1;
+    visionStopsFilterTimer = window.setTimeout(
+      () => loadVisionStopsData({ resetPage: false }),
+      250,
+    );
+    return;
+  }
+  window.clearTimeout(visionRecordsFilterTimer);
+  visionRecordsCurrentPage = 1;
+  visionRecordsFilterTimer = window.setTimeout(
+    () => loadHistorialVisionData({ resetPage: false }),
+    250,
+  );
+}
 
 function getVisionToday() {
   return new Date().toISOString().split("T")[0];
@@ -282,7 +455,11 @@ function hideVisionImageLoading() {
   }
 }
 
-async function loadHistorialVisionData() {
+async function loadHistorialVisionData(options = {}) {
+  if (options.resetPage !== false) {
+    visionRecordsCurrentPage = 1;
+  }
+  const requestToken = ++visionRecordsRequestToken;
   showVisionLoading();
 
   try {
@@ -296,36 +473,73 @@ async function loadHistorialVisionData() {
       barcode,
     } = resolveVisionFilters();
 
-    const url =
-      `/api/vision/data?fecha_desde=${encodeURIComponent(fechaDesde)}` +
-      `&fecha_hasta=${encodeURIComponent(fechaHasta)}` +
-      `&linea=${encodeURIComponent(linea)}` +
-      `&resultado=${encodeURIComponent(resultado)}` +
-      `&numero_parte=${encodeURIComponent(numeroParte)}` +
-      `&qr=${encodeURIComponent(qr)}` +
-      `&barcode=${encodeURIComponent(barcode)}`;
+    const perPageSelect = document.getElementById("vision-records-per-page");
+    const selectedPerPage = Number.parseInt(perPageSelect?.value || "", 10);
+    if (selectedPerPage > 0) {
+      visionRecordsPerPage = selectedPerPage;
+    }
+
+    const query = new URLSearchParams({
+      fecha_desde: fechaDesde,
+      fecha_hasta: fechaHasta,
+      linea,
+      resultado,
+      numero_parte: numeroParte,
+      qr,
+      barcode,
+      page: String(visionRecordsCurrentPage),
+      per_page: String(visionRecordsPerPage),
+    });
+    Object.entries(getVisionColumnFilters("records")).forEach(([field, value]) => {
+      if (String(value || "").trim()) {
+        query.set(`cf_${field}`, String(value).trim());
+      }
+    });
+
+    const url = `/api/vision/data?${query.toString()}`;
 
     const response = await fetch(url, { credentials: "same-origin" });
     const data = await response.json();
+    if (requestToken !== visionRecordsRequestToken) {
+      return;
+    }
 
     if (!response.ok) {
       throw new Error(data?.error || "Error al consultar historial vision");
     }
 
-    visionModuleData = Array.isArray(data) ? data : [];
-
-    const recordCount = document.getElementById("vision-record-count");
-    if (recordCount) {
-      recordCount.textContent = `${visionModuleData.length} registro${visionModuleData.length !== 1 ? "s" : ""}`;
+    visionModuleData = Array.isArray(data) ? data : data.rows || [];
+    visionRecordsTotalRows = Array.isArray(data)
+      ? visionModuleData.length
+      : Number(data.total || 0);
+    visionRecordsTotalPages = Array.isArray(data)
+      ? 1
+      : Math.max(1, Number(data.total_pages || 1));
+    if (!Array.isArray(data)) {
+      visionRecordsCurrentPage = Math.max(1, Number(data.page || 1));
+      visionRecordsPerPage = Math.max(
+        1,
+        Number(data.per_page || visionRecordsPerPage),
+      );
     }
 
     renderHistorialVisionTable(visionModuleData);
+    renderVisionRecordsPagination();
   } catch (error) {
+    if (requestToken !== visionRecordsRequestToken) {
+      return;
+    }
     console.error(error);
+    visionModuleData = [];
+    visionRecordsTotalRows = 0;
+    visionRecordsTotalPages = 1;
     renderHistorialVisionTable([]);
+    renderVisionRecordsPagination();
     showVisionNotification("Error al cargar datos", "error");
   } finally {
-    hideVisionLoading();
+    if (requestToken === visionRecordsRequestToken) {
+      hideVisionLoading();
+    }
   }
 }
 
@@ -334,14 +548,19 @@ function renderHistorialVisionTable(data) {
   if (!tbody) {
     return;
   }
+  const sourceRows = Array.isArray(data) ? data : [];
+  const recordCount = document.getElementById("vision-record-count");
+  if (recordCount) {
+    recordCount.textContent = `${visionRecordsTotalRows} registro${visionRecordsTotalRows !== 1 ? "s" : ""}`;
+  }
 
-  if (!Array.isArray(data) || data.length === 0) {
+  if (sourceRows.length === 0) {
     tbody.innerHTML =
       '<tr><td colspan="7" class="vision-table-empty">No se encontraron registros.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = data
+  tbody.innerHTML = sourceRows
     .map((row) => {
       const resultado = row.resultado ?? "";
       const resultClass =
@@ -367,6 +586,277 @@ function renderHistorialVisionTable(data) {
     .join("");
 }
 
+function renderVisionRecordsPagination() {
+  const pagination = document.getElementById("vision-records-pagination");
+  if (!pagination) {
+    return;
+  }
+  pagination.hidden = visionRecordsTotalRows <= 0;
+  if (pagination.hidden) {
+    return;
+  }
+
+  const start = (visionRecordsCurrentPage - 1) * visionRecordsPerPage + 1;
+  const end = Math.min(
+    visionRecordsCurrentPage * visionRecordsPerPage,
+    visionRecordsTotalRows,
+  );
+  const summary = document.getElementById("vision-records-pagination-summary");
+  const pageInput = document.getElementById("vision-records-page-input");
+  const pageTotal = document.getElementById("vision-records-page-total");
+  if (summary) {
+    summary.textContent = `${start} - ${end} de ${visionRecordsTotalRows}`;
+  }
+  if (pageInput) {
+    pageInput.value = String(visionRecordsCurrentPage);
+    pageInput.max = String(visionRecordsTotalPages);
+  }
+  if (pageTotal) {
+    pageTotal.textContent = String(visionRecordsTotalPages);
+  }
+
+  const atFirst = visionRecordsCurrentPage <= 1;
+  const atLast = visionRecordsCurrentPage >= visionRecordsTotalPages;
+  document.getElementById("vision-records-page-first")?.toggleAttribute("disabled", atFirst);
+  document.getElementById("vision-records-page-prev")?.toggleAttribute("disabled", atFirst);
+  document.getElementById("vision-records-page-next")?.toggleAttribute("disabled", atLast);
+  document.getElementById("vision-records-page-last")?.toggleAttribute("disabled", atLast);
+}
+
+function gotoVisionRecordsPage(page) {
+  const nextPage = Math.max(
+    1,
+    Math.min(visionRecordsTotalPages, Number.parseInt(page, 10) || 1),
+  );
+  if (nextPage === visionRecordsCurrentPage) {
+    renderVisionRecordsPagination();
+    return;
+  }
+  visionRecordsCurrentPage = nextPage;
+  loadHistorialVisionData({ resetPage: false });
+}
+
+function formatVisionStopSeconds(seconds) {
+  if (seconds === null || seconds === undefined || isNaN(seconds)) {
+    return "-";
+  }
+  const ms = Math.round(Number(seconds) * 1000);
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const millis = ms % 1000;
+  const pad = (n, w = 2) => String(n).padStart(w, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(millis, 3)}`;
+}
+
+async function loadVisionStopsData(options = {}) {
+  if (options.resetPage !== false) {
+    visionStopsCurrentPage = 1;
+  }
+  const requestToken = ++visionStopsRequestToken;
+  const loader = document.getElementById("vision-stops-loading");
+  loader?.classList.add("active");
+  try {
+    const { fechaDesde, fechaHasta, linea } = resolveVisionFilters();
+    const perPageSelect = document.getElementById("vision-stops-per-page");
+    const selectedPerPage = Number.parseInt(perPageSelect?.value || "", 10);
+    if (selectedPerPage > 0) {
+      visionStopsPerPage = selectedPerPage;
+    }
+
+    const query = new URLSearchParams({
+      fecha_desde: fechaDesde,
+      fecha_hasta: fechaHasta,
+      linea,
+      page: String(visionStopsCurrentPage),
+      per_page: String(visionStopsPerPage),
+    });
+    Object.entries(getVisionColumnFilters("stops")).forEach(([field, value]) => {
+      if (String(value || "").trim()) {
+        query.set(`cf_${field}`, String(value).trim());
+      }
+    });
+
+    const url = `/api/vision/stops?${query.toString()}`;
+    const response = await fetch(url, { credentials: "same-origin" });
+    const data = await response.json();
+    if (requestToken !== visionStopsRequestToken) {
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(data?.error || "Error al consultar paros de vision");
+    }
+
+    visionStopsData = Array.isArray(data) ? data : data.rows || [];
+    visionStopsTotalRows = Array.isArray(data)
+      ? visionStopsData.length
+      : Number(data.total || 0);
+    visionStopsTotalSeconds = Array.isArray(data)
+      ? visionStopsData.reduce((total, row) => {
+          const stopSeconds =
+            row.recovery_status === "confirmed"
+              ? row.real_stop_seconds
+              : row.real_stop_prov;
+          return total + (Number(stopSeconds) || 0);
+        }, 0)
+      : Number(data.total_stop_seconds || 0);
+    visionStopsTotalPages = Array.isArray(data)
+      ? 1
+      : Math.max(1, Number(data.total_pages || 1));
+    if (!Array.isArray(data)) {
+      visionStopsCurrentPage = Math.max(1, Number(data.page || 1));
+      visionStopsPerPage = Math.max(1, Number(data.per_page || visionStopsPerPage));
+    }
+    renderVisionStopsTable(visionStopsData);
+    renderVisionStopsPagination();
+  } catch (error) {
+    if (requestToken !== visionStopsRequestToken) {
+      return;
+    }
+    console.error(error);
+    visionStopsData = [];
+    visionStopsTotalRows = 0;
+    visionStopsTotalPages = 1;
+    visionStopsTotalSeconds = 0;
+    renderVisionStopsTable([]);
+    renderVisionStopsPagination();
+    showVisionNotification("Error al cargar paros de vision", "error");
+  } finally {
+    if (requestToken === visionStopsRequestToken) {
+      loader?.classList.remove("active");
+    }
+  }
+}
+
+function renderVisionStopsTable(data) {
+  const tbody = document.getElementById("vision-stops-body");
+  if (!tbody) {
+    return;
+  }
+  const sourceRows = Array.isArray(data) ? data : [];
+  const count = document.getElementById("vision-stops-count");
+  if (count) {
+    count.textContent = `${visionStopsTotalRows} paro${visionStopsTotalRows !== 1 ? "s" : ""}`;
+  }
+  const totalTime = document.getElementById("vision-stops-total-time");
+  if (totalTime) {
+    totalTime.textContent = formatVisionStopSeconds(visionStopsTotalSeconds);
+  }
+  if (sourceRows.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="7" class="vision-table-empty">No se encontraron paros.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = sourceRows
+    .map((row) => {
+      const confirmed = row.recovery_status === "confirmed";
+      const paro = confirmed ? row.real_stop_seconds : row.real_stop_prov;
+      const ajustes = Array.isArray(row.ajustes) ? row.ajustes : [];
+      const ajusteTxt = ajustes.length
+        ? ajustes
+            .map((a) => {
+              const tec = a.tecnico
+                ? `${escapeVisionHtml(a.tecnico)}: `
+                : "";
+              return `${tec}${escapeVisionHtml(a.inicio_local ?? "")} - ${escapeVisionHtml(a.fin_local ?? "")}`;
+            })
+            .join("<br>")
+        : "-";
+      return `
+        <tr class="${confirmed ? "" : "vision-stop-open"}">
+          <td>${escapeVisionHtml(row.linea ?? "")}</td>
+          <td>${escapeVisionHtml(row.numero_parte ?? "")}</td>
+          <td>${escapeVisionHtml(row.stop_datetime ?? "")}</td>
+          <td>${escapeVisionHtml(row.stable_run_datetime ?? "-")}</td>
+          <td><strong>${formatVisionStopSeconds(paro)}</strong></td>
+          <td>${escapeVisionHtml(String(row.run_attempt_count ?? 0))}</td>
+          <td>${ajusteTxt}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function renderVisionStopsPagination() {
+  const pagination = document.getElementById("vision-stops-pagination");
+  if (!pagination) {
+    return;
+  }
+  pagination.hidden = visionStopsTotalRows <= 0;
+  if (pagination.hidden) {
+    return;
+  }
+
+  const start = (visionStopsCurrentPage - 1) * visionStopsPerPage + 1;
+  const end = Math.min(
+    visionStopsCurrentPage * visionStopsPerPage,
+    visionStopsTotalRows,
+  );
+  const summary = document.getElementById("vision-stops-pagination-summary");
+  const pageInput = document.getElementById("vision-stops-page-input");
+  const pageTotal = document.getElementById("vision-stops-page-total");
+  if (summary) {
+    summary.textContent = `${start} - ${end} de ${visionStopsTotalRows}`;
+  }
+  if (pageInput) {
+    pageInput.value = String(visionStopsCurrentPage);
+    pageInput.max = String(visionStopsTotalPages);
+  }
+  if (pageTotal) {
+    pageTotal.textContent = String(visionStopsTotalPages);
+  }
+
+  const atFirst = visionStopsCurrentPage <= 1;
+  const atLast = visionStopsCurrentPage >= visionStopsTotalPages;
+  document.getElementById("vision-stops-page-first")?.toggleAttribute("disabled", atFirst);
+  document.getElementById("vision-stops-page-prev")?.toggleAttribute("disabled", atFirst);
+  document.getElementById("vision-stops-page-next")?.toggleAttribute("disabled", atLast);
+  document.getElementById("vision-stops-page-last")?.toggleAttribute("disabled", atLast);
+}
+
+function gotoVisionStopsPage(page) {
+  const nextPage = Math.max(
+    1,
+    Math.min(visionStopsTotalPages, Number.parseInt(page, 10) || 1),
+  );
+  if (nextPage === visionStopsCurrentPage) {
+    renderVisionStopsPagination();
+    return;
+  }
+  visionStopsCurrentPage = nextPage;
+  loadVisionStopsData({ resetPage: false });
+}
+
+function switchVisionTab(tab) {
+  const root = document.getElementById("historial-vision-root");
+  if (!root) {
+    return;
+  }
+  root.querySelectorAll(".vision-tab").forEach((button) => {
+    const active = button.dataset.tab === tab;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
+    button.tabIndex = active ? 0 : -1;
+  });
+  root.querySelectorAll("[data-tab-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.tabPanel !== tab;
+  });
+}
+
+function getActiveVisionTab() {
+  return (
+    document.querySelector("#historial-vision-root .vision-tab.is-active")
+      ?.dataset.tab || "registros"
+  );
+}
+
+function loadActiveVisionTab() {
+  if (getActiveVisionTab() === "paros") {
+    return loadVisionStopsData();
+  }
+  return loadHistorialVisionData();
+}
+
 async function exportHistorialVisionToExcel() {
   const {
     fechaDesde,
@@ -378,19 +868,47 @@ async function exportHistorialVisionToExcel() {
     barcode,
   } = resolveVisionFilters();
 
-  const url =
-    `/api/vision/export?fecha_desde=${encodeURIComponent(fechaDesde)}` +
-    `&fecha_hasta=${encodeURIComponent(fechaHasta)}` +
-    `&linea=${encodeURIComponent(linea)}` +
-    `&resultado=${encodeURIComponent(resultado)}` +
-    `&numero_parte=${encodeURIComponent(numeroParte)}` +
-    `&qr=${encodeURIComponent(qr)}` +
-    `&barcode=${encodeURIComponent(barcode)}`;
+  const query = new URLSearchParams({
+    fecha_desde: fechaDesde,
+    fecha_hasta: fechaHasta,
+    linea,
+    resultado,
+    numero_parte: numeroParte,
+    qr,
+    barcode,
+  });
+  Object.entries(getVisionColumnFilters("records")).forEach(([field, value]) => {
+    if (String(value || "").trim()) {
+      query.set(`cf_${field}`, String(value).trim());
+    }
+  });
+  const url = `/api/vision/export?${query.toString()}`;
 
   await downloadVisionFile(
     url,
     `historial_vision_${Date.now()}.xlsx`,
     "Exportacion completada",
+  );
+}
+
+async function exportVisionStopsToExcel() {
+  const { fechaDesde, fechaHasta, linea } = resolveVisionFilters();
+  const query = new URLSearchParams({
+    fecha_desde: fechaDesde,
+    fecha_hasta: fechaHasta,
+    linea,
+  });
+  Object.entries(getVisionColumnFilters("stops")).forEach(([field, value]) => {
+    if (String(value || "").trim()) {
+      query.set(`cf_${field}`, String(value).trim());
+    }
+  });
+  const url = `/api/vision/stops/export?${query.toString()}`;
+
+  await downloadVisionFile(
+    url,
+    `paros_vision_${Date.now()}.xlsx`,
+    "Exportacion de paros completada",
   );
 }
 
@@ -510,6 +1028,8 @@ function buildVisionRowFallback(recordId) {
     linea: row.linea ?? "",
     resultado: row.resultado ?? "",
     numero_parte: row.numero_parte ?? "",
+    qr: row.qr ?? "",
+    barcode: row.barcode ?? "",
     fecha_hora:
       row.fecha && row.hora ? `${row.fecha} ${row.hora}` : row.fecha ?? row.hora ?? "",
   };
@@ -528,6 +1048,11 @@ function populateVisionPreviewInfo(data = {}, fallback = {}) {
   setVisionPreviewField(
     "vision-preview-fecha-hora",
     data.fecha_hora ?? fallback.fecha_hora,
+  );
+  setVisionPreviewField("vision-preview-qr", data.qr ?? fallback.qr);
+  setVisionPreviewField(
+    "vision-preview-barcode",
+    data.barcode ?? fallback.barcode,
   );
   setVisionPreviewCode("vision-preview-path", data.resolved_path);
 
@@ -670,19 +1195,156 @@ async function openVisionPreviewModal(recordId) {
 }
 
 function initializeHistorialVisionEventListeners() {
+  renderVisionColumnFilterHeaders();
+
   if (document.body.dataset.visionListenersAttached) {
     return;
   }
 
   document.body.addEventListener("click", function (e) {
     const target = e.target;
+    const visionRoot = document.getElementById("historial-vision-root");
+
+    if (!target.closest(".vision-column-filterable")) {
+      closeVisionColumnFilterPopovers();
+    }
+
+    const clearColumnButton = target.closest(".vision-column-filter-clear");
+    if (clearColumnButton && visionRoot?.contains(clearColumnButton)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const popover = clearColumnButton.closest(
+        ".vision-column-filter-popover",
+      );
+      const tableKey = popover?.dataset.visionTableKey;
+      const field = popover?.dataset.visionField;
+      if (tableKey && field) {
+        setVisionColumnFilter(tableKey, field, "");
+        syncVisionColumnFilterControls(tableKey);
+        renderFilteredVisionTable(tableKey);
+        popover.querySelector(".vision-column-filter-input")?.focus();
+      }
+      return;
+    }
+
+    const clearAllButton = target.closest(".vision-column-filter-clear-all");
+    if (clearAllButton && visionRoot?.contains(clearAllButton)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const popover = clearAllButton.closest(".vision-column-filter-popover");
+      const tableKey = popover?.dataset.visionTableKey;
+      if (tableKey) {
+        clearAllVisionColumnFilters(tableKey);
+        syncVisionColumnFilterControls(tableKey);
+        renderFilteredVisionTable(tableKey);
+        popover.querySelector(".vision-column-filter-input")?.focus();
+      }
+      return;
+    }
+
+    const columnFilterButton = target.closest(".vision-column-filter-btn");
+    if (columnFilterButton && visionRoot?.contains(columnFilterButton)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const header = columnFilterButton.closest("th");
+      const popover = header?.querySelector(".vision-column-filter-popover");
+      if (!popover) {
+        return;
+      }
+      const shouldOpen = !popover.classList.contains("open");
+      closeVisionColumnFilterPopovers();
+      if (shouldOpen) {
+        popover.classList.add("open");
+        header.classList.add("filter-open");
+        columnFilterButton.classList.add("open");
+        columnFilterButton.setAttribute("aria-expanded", "true");
+        popover.querySelector(".vision-column-filter-input")?.focus();
+      }
+      return;
+    }
 
     if (
       target.id === "vision-btn-consultar" ||
       target.closest("#vision-btn-consultar")
     ) {
       e.preventDefault();
-      loadHistorialVisionData();
+      loadActiveVisionTab();
+      return;
+    }
+
+    if (
+      target.id === "vision-records-page-first" ||
+      target.closest("#vision-records-page-first")
+    ) {
+      e.preventDefault();
+      gotoVisionRecordsPage(1);
+      return;
+    }
+    if (
+      target.id === "vision-records-page-prev" ||
+      target.closest("#vision-records-page-prev")
+    ) {
+      e.preventDefault();
+      gotoVisionRecordsPage(visionRecordsCurrentPage - 1);
+      return;
+    }
+    if (
+      target.id === "vision-records-page-next" ||
+      target.closest("#vision-records-page-next")
+    ) {
+      e.preventDefault();
+      gotoVisionRecordsPage(visionRecordsCurrentPage + 1);
+      return;
+    }
+    if (
+      target.id === "vision-records-page-last" ||
+      target.closest("#vision-records-page-last")
+    ) {
+      e.preventDefault();
+      gotoVisionRecordsPage(visionRecordsTotalPages);
+      return;
+    }
+
+    if (
+      target.id === "vision-stops-page-first" ||
+      target.closest("#vision-stops-page-first")
+    ) {
+      e.preventDefault();
+      gotoVisionStopsPage(1);
+      return;
+    }
+    if (
+      target.id === "vision-stops-page-prev" ||
+      target.closest("#vision-stops-page-prev")
+    ) {
+      e.preventDefault();
+      gotoVisionStopsPage(visionStopsCurrentPage - 1);
+      return;
+    }
+    if (
+      target.id === "vision-stops-page-next" ||
+      target.closest("#vision-stops-page-next")
+    ) {
+      e.preventDefault();
+      gotoVisionStopsPage(visionStopsCurrentPage + 1);
+      return;
+    }
+    if (
+      target.id === "vision-stops-page-last" ||
+      target.closest("#vision-stops-page-last")
+    ) {
+      e.preventDefault();
+      gotoVisionStopsPage(visionStopsTotalPages);
+      return;
+    }
+
+    const tabBtn = target.closest(".vision-tab");
+    if (tabBtn && visionRoot?.contains(tabBtn)) {
+      e.preventDefault();
+      switchVisionTab(tabBtn.dataset.tab);
+      if (tabBtn.dataset.tab === "paros") {
+        loadVisionStopsData();
+      }
       return;
     }
 
@@ -692,6 +1354,15 @@ function initializeHistorialVisionEventListeners() {
     ) {
       e.preventDefault();
       exportHistorialVisionToExcel();
+      return;
+    }
+
+    if (
+      target.id === "vision-btn-export-stops" ||
+      target.closest("#vision-btn-export-stops")
+    ) {
+      e.preventDefault();
+      exportVisionStopsToExcel();
       return;
     }
 
@@ -761,15 +1432,53 @@ function initializeHistorialVisionEventListeners() {
       return;
     }
 
+    if (e.target.id === "vision-records-page-input") {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        gotoVisionRecordsPage(e.target.value);
+      }
+      return;
+    }
+
+    if (e.target.id === "vision-stops-page-input") {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        gotoVisionStopsPage(e.target.value);
+      }
+      return;
+    }
+
+    if (e.target.matches(".vision-column-filter-input")) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeVisionColumnFilterPopovers();
+      }
+      return;
+    }
+
     if (e.key === "Enter") {
       e.preventDefault();
-      loadHistorialVisionData();
+      loadActiveVisionTab();
     }
   });
 
   document.body.addEventListener("input", function (e) {
     const visionRoot = document.getElementById("historial-vision-root");
     if (!visionRoot || !e.target || !visionRoot.contains(e.target)) {
+      return;
+    }
+
+    if (e.target.matches(".vision-column-filter-input")) {
+      const tableKey = e.target.dataset.visionTableKey;
+      const field = e.target.dataset.visionField;
+      if (tableKey && field) {
+        setVisionColumnFilter(tableKey, field, e.target.value);
+        e.target
+          .closest("th")
+          ?.querySelector(".vision-column-filter-btn")
+          ?.classList.toggle("active", Boolean(e.target.value.trim()));
+        renderFilteredVisionTable(tableKey);
+      }
       return;
     }
 
@@ -793,6 +1502,26 @@ function initializeHistorialVisionEventListeners() {
 
     if (e.target.id === "vision-filter-resultado") {
       saveVisionFilters();
+      return;
+    }
+
+    if (e.target.id === "vision-stops-per-page") {
+      const perPage = Number.parseInt(e.target.value, 10);
+      if (perPage > 0) {
+        visionStopsPerPage = perPage;
+        visionStopsCurrentPage = 1;
+        loadVisionStopsData({ resetPage: false });
+      }
+      return;
+    }
+
+    if (e.target.id === "vision-records-per-page") {
+      const perPage = Number.parseInt(e.target.value, 10);
+      if (perPage > 0) {
+        visionRecordsPerPage = perPage;
+        visionRecordsCurrentPage = 1;
+        loadHistorialVisionData({ resetPage: false });
+      }
     }
   });
 
@@ -917,6 +1646,7 @@ window.initializeHistorialVisionEventListeners =
   initializeHistorialVisionEventListeners;
 window.loadHistorialVisionData = loadHistorialVisionData;
 window.exportHistorialVisionToExcel = exportHistorialVisionToExcel;
+window.exportVisionStopsToExcel = exportVisionStopsToExcel;
 window.openVisionPreviewModal = openVisionPreviewModal;
 window.closeVisionPreviewModal = closeVisionPreviewModal;
 

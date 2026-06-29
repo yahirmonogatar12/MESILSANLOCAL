@@ -1,7 +1,11 @@
+from datetime import datetime
+from decimal import Decimal
 from io import BytesIO
+from types import SimpleNamespace
 
 from openpyxl import Workbook
 
+from app.api.control_material.invoice_core import service as invoice_service
 from app.api.control_material.invoice_core.normalizers import normalizar_pallet_no
 from app.api.control_material.invoice_core.matcher import validate_system_parts
 from app.api.control_material.invoice_core.parser import parse_invoice_workbook
@@ -207,3 +211,174 @@ def test_validate_system_parts_encuentra_por_parte_base_sin_version():
         assert record["estado_match"] == "DIRECTO"
         assert record["uom"] == "MTR"
     assert "base" in records[0]["mensaje_match"].lower()
+
+
+class _UploadConnection:
+    def __init__(self):
+        self.commits = 0
+        self.rollbacks = 0
+        self.closed = False
+
+    def commit(self):
+        self.commits += 1
+
+    def rollback(self):
+        self.rollbacks += 1
+
+    def close(self):
+        self.closed = True
+
+
+class _UploadCursor:
+    def __init__(self, duplicate_on_insert=False):
+        self.duplicate_on_insert = duplicate_on_insert
+        self.events = []
+        self.lastrowid = 73
+        self._row = None
+        self._select_count = 0
+        self.closed = False
+
+    def execute(self, query, params=None):
+        normalized = " ".join(query.split())
+        if normalized.startswith("SELECT id FROM material_invoices"):
+            self._select_count += 1
+            # Las dos consultas preventivas no encuentran nada. Tras el 1062,
+            # la consulta de recuperacion ya ve la invoice de la otra solicitud.
+            self._row = {"id": 91} if self._select_count >= 3 else None
+            return
+        if normalized == "START TRANSACTION":
+            self.events.append("transaction")
+            return
+        if normalized.startswith("INSERT INTO material_invoices"):
+            self.events.append("insert")
+            if self.duplicate_on_insert:
+                raise Exception(
+                    1062,
+                    "Duplicate entry 'IM20260601-V38' for key 'material_invoices.uk_invoice_numero'",
+                )
+            return
+        if normalized.startswith("UPDATE material_invoices"):
+            self.events.append("update")
+
+    def fetchone(self):
+        return self._row
+
+    def close(self):
+        self.closed = True
+
+
+def _patch_upload_dependencies(monkeypatch, cursor, conn, save_file):
+    parsed = {
+        "invoice_lines": [{"costo_total": Decimal("10.0000")}],
+        "packing_lines": [],
+        "warnings": [],
+        "numero_invoice_sugerido": "IM20260601-V38",
+    }
+    monkeypatch.setattr(invoice_service, "parse_invoice_workbook", lambda *_: parsed)
+    monkeypatch.setattr(invoice_service, "_db", lambda: (conn, cursor, None))
+    monkeypatch.setattr(invoice_service, "_usuario_actual", lambda: "TEST")
+    monkeypatch.setattr(invoice_service, "obtener_fecha_hora_mexico", lambda: datetime(2026, 6, 29, 13, 46))
+    monkeypatch.setattr(invoice_service, "build_relative_path", lambda *_: "2026/06/invoice.xlsx")
+    monkeypatch.setattr(invoice_service, "save_file", save_file)
+    monkeypatch.setattr(invoice_service, "delete_file", lambda path: cursor.events.append("delete"))
+    monkeypatch.setattr(invoice_service, "validate_system_parts", lambda *_: None)
+    monkeypatch.setattr(invoice_service, "_insert_invoice_lines", lambda *_: cursor.events.append("lines"))
+    monkeypatch.setattr(invoice_service, "_insert_packing_lines", lambda *_: cursor.events.append("packing"))
+    monkeypatch.setattr(invoice_service, "assign_packing_lines", lambda *_: cursor.events.append("assign"))
+    monkeypatch.setattr(invoice_service, "invoice_has_differences", lambda *_: False)
+
+
+def _upload_file():
+    return {"file": SimpleNamespace(filename="invoice.xlsx", read=lambda: b"excel-bytes")}
+
+
+def test_upload_invoice_colision_concurrente_responde_409_sin_borrar_excel(monkeypatch):
+    cursor = _UploadCursor(duplicate_on_insert=True)
+    conn = _UploadConnection()
+
+    def unexpected_save(*_):
+        raise AssertionError("El archivo no debe escribirse antes de ganar el INSERT")
+
+    _patch_upload_dependencies(monkeypatch, cursor, conn, unexpected_save)
+
+    payload, status = invoice_service.upload_invoice(_upload_file(), {})
+
+    assert status == 409
+    assert payload == {
+        "success": False,
+        "duplicado": True,
+        "motivo": "NUMERO_INVOICE",
+        "message": "Esta invoice ya fue cargada.",
+        "invoice_id": 91,
+    }
+    assert conn.rollbacks == 1
+    assert "delete" not in cursor.events
+
+
+def test_upload_invoice_guarda_excel_despues_del_insert(monkeypatch):
+    cursor = _UploadCursor()
+    conn = _UploadConnection()
+
+    def record_save(*_):
+        cursor.events.append("save")
+        return "C:/storage/invoice.xlsx", len(b"excel-bytes")
+
+    _patch_upload_dependencies(monkeypatch, cursor, conn, record_save)
+
+    payload, status = invoice_service.upload_invoice(_upload_file(), {})
+
+    assert status == 201
+    assert payload["invoice_id"] == 73
+    assert cursor.events.index("insert") < cursor.events.index("save")
+    assert conn.commits == 1
+    assert conn.rollbacks == 0
+
+
+def test_list_invoices_abiertos_ignora_fechas_y_todos_si_las_aplica(monkeypatch):
+    class ListCursor:
+        def __init__(self):
+            self.query = ""
+            self.params = []
+
+        def execute(self, query, params=None):
+            self.query = " ".join(query.split())
+            self.params = list(params or [])
+
+        def fetchall(self):
+            return []
+
+        def close(self):
+            pass
+
+    cursor = ListCursor()
+    conn = _UploadConnection()
+    monkeypatch.setattr(invoice_service, "_db", lambda: (conn, cursor, None))
+
+    payload, status = invoice_service.list_invoices(
+        {
+            "estado": "PENDIENTES",
+            "fecha_inicio": "2026-06-15",
+            "fecha_fin": "2026-06-29",
+        }
+    )
+
+    assert status == 200
+    assert payload["records"] == []
+    assert "COALESCE(mi.cerrado_manual, 0) = 0" in cursor.query
+    assert "mi.estado NOT IN ('APLICADA', 'CANCELADA')" in cursor.query
+    assert "mi.fecha_carga >= %s" not in cursor.query
+    assert "mi.fecha_carga <= %s" not in cursor.query
+    assert cursor.params == []
+
+    cursor = ListCursor()
+    monkeypatch.setattr(invoice_service, "_db", lambda: (conn, cursor, None))
+
+    payload, status = invoice_service.list_invoices(
+        {"fecha_inicio": "2026-06-15", "fecha_fin": "2026-06-29"}
+    )
+
+    assert status == 200
+    assert "COALESCE(mi.cerrado_manual, 0) = 0" not in cursor.query
+    assert "mi.fecha_carga >= %s" in cursor.query
+    assert "mi.fecha_carga <= %s" in cursor.query
+    assert cursor.params == ["2026-06-15 00:00:00", "2026-06-29 23:59:59"]

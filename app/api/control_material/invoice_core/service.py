@@ -71,6 +71,39 @@ def _db():
     return conn, dict_cursor(conn), None
 
 
+def _duplicate_upload_result(cursor, numero_invoice, file_hash, exc):
+    """Convierte una colision de indice unico en la respuesta HTTP esperada."""
+    args = getattr(exc, "args", ())
+    if not args or args[0] != 1062:
+        return None
+
+    error_text = str(exc)
+    if "uk_invoice_file_hash" in error_text:
+        motivo = "ARCHIVO_HASH"
+        message = "Este archivo parece ya cargado."
+        query = "SELECT id FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1"
+        value = file_hash
+    else:
+        # uk_invoice_numero es la colision habitual. Si el driver no incluye el
+        # nombre del indice, el numero sigue siendo la respuesta mas util.
+        motivo = "NUMERO_INVOICE"
+        message = "Esta invoice ya fue cargada."
+        query = "SELECT id FROM material_invoices WHERE numero_invoice = %s LIMIT 1"
+        value = numero_invoice
+
+    cursor.execute(query, (value,))
+    existing = cursor.fetchone()
+    payload = {
+        "success": False,
+        "duplicado": True,
+        "motivo": motivo,
+        "message": message,
+    }
+    if existing:
+        payload["invoice_id"] = existing["id"]
+    return payload, 409
+
+
 def list_invoices(args):
     conn, cursor, error = _db()
     if error:
@@ -86,20 +119,26 @@ def list_invoices(args):
             where.append("(mi.numero_invoice LIKE %s OR COALESCE(mi.tipo, '') LIKE %s OR mi.archivo_nombre LIKE %s)")
             like = f"%{q}%"
             params.extend([like, like, like])
-        # "PENDIENTES": invoices que aun no estan completamente aplicadas ni
-        # canceladas (lo que falta por conciliar/aplicar). El resto filtra por
-        # el estado exacto.
+        # "PENDIENTES": invoices abiertas que aun no estan completamente
+        # aplicadas ni canceladas. Un cierre manual tambien las saca de esta
+        # vista aunque su estado siga siendo PARCIALMENTE_APLICADA.
         if estado == "PENDIENTES":
-            where.append("mi.estado NOT IN ('APLICADA', 'CANCELADA')")
+            where.append(
+                "COALESCE(mi.cerrado_manual, 0) = 0 "
+                "AND mi.estado NOT IN ('APLICADA', 'CANCELADA')"
+            )
         elif estado in ESTADOS_INVOICE:
             where.append("mi.estado = %s")
             params.append(estado)
-        if fecha_inicio:
-            where.append("mi.fecha_carga >= %s")
-            params.append(f"{fecha_inicio} 00:00:00")
-        if fecha_fin:
-            where.append("mi.fecha_carga <= %s")
-            params.append(f"{fecha_fin} 23:59:59")
+        # La vista de abiertos siempre muestra todos los pendientes, sin
+        # limitar por fecha. El rango se usa en "Todos" y estados específicos.
+        if estado != "PENDIENTES":
+            if fecha_inicio:
+                where.append("mi.fecha_carga >= %s")
+                params.append(f"{fecha_inicio} 00:00:00")
+            if fecha_fin:
+                where.append("mi.fecha_carga <= %s")
+                params.append(f"{fecha_fin} 23:59:59")
 
         cursor.execute(
             f"""
@@ -253,6 +292,7 @@ def upload_invoice(files, form):
     if error:
         return error
     archivo_ruta = None
+    archivo_guardado = False
     try:
         cursor.execute("SELECT id FROM material_invoices WHERE numero_invoice = %s LIMIT 1", (numero_invoice,))
         existing = cursor.fetchone()
@@ -285,11 +325,11 @@ def upload_invoice(files, form):
         usuario = _usuario_actual()
         fecha = obtener_fecha_hora_mexico()
 
-        # Guarda el Excel original renombrado por numero de invoice y ordenado
-        # por fecha (AAAA/MM). Se escribe antes del INSERT; si la transaccion
-        # falla, el except borra el archivo huerfano.
+        # La ruta se calcula antes del INSERT, pero el archivo se escribe solo
+        # despues de ganar los indices unicos. Asi una carga concurrente que
+        # pierda la carrera no sobrescribe ni borra el Excel de la ganadora.
         archivo_ruta = build_relative_path(numero_invoice, file_hash, fecha)
-        _, archivo_size = save_file(file_bytes, archivo_ruta)
+        archivo_size = len(file_bytes)
 
         cursor.execute("START TRANSACTION")
         # El Excel ya trae el numero de parte en sistema (Part Sys); solo se
@@ -326,6 +366,11 @@ def upload_invoice(files, form):
         )
         invoice_id = cursor.lastrowid
 
+        # Si la escritura falla, el INSERT y sus lineas se revierten juntos.
+        # Se marca antes de escribir para limpiar tambien archivos parciales.
+        archivo_guardado = True
+        save_file(file_bytes, archivo_ruta)
+
         _insert_invoice_lines(cursor, invoice_id, parsed["invoice_lines"])
         _insert_packing_lines(cursor, invoice_id, parsed["packing_lines"])
 
@@ -352,8 +397,16 @@ def upload_invoice(files, form):
         )
     except Exception as exc:
         conn.rollback()
-        if archivo_ruta:
+        if archivo_guardado and archivo_ruta:
             delete_file(archivo_ruta)
+        try:
+            duplicate_result = _duplicate_upload_result(cursor, numero_invoice, file_hash, exc)
+        except Exception:
+            duplicate_result = None
+            logger.exception("No se pudo resolver la colision de invoice: %s", exc)
+        if duplicate_result:
+            logger.info("Carga de invoice duplicada rechazada: %s", exc)
+            return duplicate_result
         logger.exception("Error cargando invoice: %s", exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:

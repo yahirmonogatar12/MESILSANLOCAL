@@ -41,7 +41,7 @@
                     Estado
                     <select id="mat-invoice-state">
                         <option value="">Todos</option>
-                        <option value="PENDIENTES">Solo pendientes</option>
+                        <option value="PENDIENTES">Solo abiertos (todas las fechas)</option>
                         <option value="VALIDADA">VALIDADA</option>
                         <option value="CON_DIFERENCIAS">CON_DIFERENCIAS</option>
                         <option value="PARCIALMENTE_APLICADA">PARCIALMENTE_APLICADA</option>
@@ -245,6 +245,17 @@
         </div>
     </div>
 
+    <div id="mat-invoice-upload-progress" class="mat-invoice-viewer" hidden aria-live="polite">
+        <div class="mat-invoice-viewer-backdrop"></div>
+        <div class="mat-invoice-upload-progress-dialog" role="dialog" aria-modal="true"
+             aria-labelledby="mat-invoice-upload-progress-title" aria-busy="true">
+            <div class="mat-invoice-upload-progress-spinner" aria-hidden="true"></div>
+            <h3 id="mat-invoice-upload-progress-title">Cargando invoice</h3>
+            <strong id="mat-invoice-upload-progress-number">Procesando archivo Excel</strong>
+            <p>Guardando el Excel y validando sus líneas. No cierres esta ventana.</p>
+        </div>
+    </div>
+
     <div id="mat-invoice-pallet-link" class="mat-invoice-viewer" hidden>
         <div class="mat-invoice-viewer-backdrop" data-pallet-link-close></div>
         <div class="mat-invoice-viewer-dialog mat-invoice-dialog-compact" role="dialog" aria-modal="true">
@@ -331,4 +342,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260624b') }}"></script>
+<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260629c') }}"></script>
