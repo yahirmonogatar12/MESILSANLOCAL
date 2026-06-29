@@ -550,6 +550,8 @@ def _build_history_vision_pass_fail_summary_query():
 # Paros reales de Vision (history_vision_ng_stops) + relacion con ajustes
 # ---------------------------------------------------------------------------
 
+VISION_STOP_START_SQL = "COALESCE(s.sequence_error_datetime, s.stop_datetime)"
+
 
 def _build_vision_stops_where():
     """WHERE compartido por listado, conteo y exportacion de paros de Vision."""
@@ -557,13 +559,13 @@ def _build_vision_stops_where():
     fecha_hasta = request.args.get("fecha_hasta", "").strip()
     linea = request.args.get("linea", "").strip()
     estado = request.args.get("estado", "").strip()  # open | confirmed | failed_recovery
-    sql = " FROM history_vision_ng_stops s WHERE s.stop_datetime IS NOT NULL"
+    sql = f" FROM history_vision_ng_stops s WHERE {VISION_STOP_START_SQL} IS NOT NULL"
     params = []
     if fecha_desde:
-        sql += " AND s.stop_datetime >= %s"
+        sql += f" AND {VISION_STOP_START_SQL} >= %s"
         params.append(fecha_desde)
     if fecha_hasta:
-        sql += " AND s.stop_datetime < DATE_ADD(%s, INTERVAL 1 DAY)"
+        sql += f" AND {VISION_STOP_START_SQL} < DATE_ADD(%s, INTERVAL 1 DAY)"
         params.append(fecha_hasta)
     if linea:
         sql += " AND s.machine_name = %s"
@@ -577,18 +579,19 @@ def _build_vision_stops_where():
     column_filters = {
         key: request.args.get(f"cf_{key}", "").strip()
         for key in (
-            "linea", "numero_parte", "stop_datetime", "stable_run_datetime",
-            "paro_real", "run_attempt_count", "tecnico_ajuste",
+            "linea", "numero_parte", "sequence_error_datetime", "stop_datetime",
+            "stable_run_datetime", "paro_real", "run_attempt_count", "tecnico_ajuste",
         )
     }
     simple_filter_sql = {
         "linea": "s.machine_name LIKE %s",
         "numero_parte": "s.part_code LIKE %s",
+        "sequence_error_datetime": f"CAST({VISION_STOP_START_SQL} AS CHAR) LIKE %s",
         "stop_datetime": "CAST(s.stop_datetime AS CHAR) LIKE %s",
         "stable_run_datetime": "CAST(s.stable_run_datetime AS CHAR) LIKE %s",
         "paro_real": (
             "TIME_FORMAT(SEC_TO_TIME(COALESCE(s.real_stop_seconds, "
-            "TIMESTAMPDIFF(MICROSECOND, s.stop_datetime, NOW())/1e6)), "
+            f"TIMESTAMPDIFF(MICROSECOND, {VISION_STOP_START_SQL}, NOW())/1e6)), "
             "'%%H:%%i:%%s.%%f') LIKE %s"
         ),
         "run_attempt_count": "CAST(s.run_attempt_count AS CHAR) LIKE %s",
@@ -613,7 +616,7 @@ def _build_vision_stops_where():
             "AND e.event_type = 'WindowClosed' "
             "LEFT JOIN operators_QA o ON o.id = e.operator_id "
             "WHERE a.estado = 'Ajuste' AND a.estacion LIKE 'VISION-%%' "
-            "AND a.linea = s.machine_name AND a.fin_local >= s.stop_datetime "
+            f"AND a.linea = s.machine_name AND a.fin_local >= {VISION_STOP_START_SQL} "
             "AND a.inicio_local <= COALESCE(s.stable_run_datetime, NOW()) "
             f"AND CONCAT_WS(' ', {tecnico_expr}, CAST(a.inicio_local AS CHAR), "
             "CAST(a.fin_local AS CHAR)) LIKE %s)"
@@ -627,14 +630,16 @@ def _build_vision_stops_query(limit=None, offset=0):
     """Query de paros; sin ``limit`` devuelve todo para exportacion/compatibilidad."""
     where_sql, params = _build_vision_stops_where()
     sql = (
-        "SELECT s.source_uid, s.machine_name AS linea, s.stop_datetime, s.stable_run_datetime, "
+        f"SELECT s.source_uid, s.machine_name AS linea, "
+        f"{VISION_STOP_START_SQL} AS sequence_error_datetime, "
+        "s.stop_datetime, s.stable_run_datetime, "
         "s.real_stop_seconds, "
         "COALESCE(s.real_stop_seconds, "
-        "         TIMESTAMPDIFF(MICROSECOND, s.stop_datetime, NOW())/1e6) AS real_stop_prov, "
+        f"         TIMESTAMPDIFF(MICROSECOND, {VISION_STOP_START_SQL}, NOW())/1e6) AS real_stop_prov, "
         "s.run_attempt_count, "
         "s.recovery_status, s.part_code, s.ng_datetime"
         + where_sql
-        + " ORDER BY s.stop_datetime DESC"
+        + f" ORDER BY {VISION_STOP_START_SQL} DESC"
     )
     if limit is not None:
         sql += " LIMIT %s OFFSET %s"
@@ -648,7 +653,7 @@ def _build_vision_stops_count_query():
     aggregate_sql = (
         "SELECT COUNT(*) AS n, "
         "COALESCE(SUM(COALESCE(s.real_stop_seconds, "
-        "TIMESTAMPDIFF(MICROSECOND, s.stop_datetime, NOW())/1e6)), 0) "
+        f"TIMESTAMPDIFF(MICROSECOND, {VISION_STOP_START_SQL}, NOW())/1e6)), 0) "
         "AS total_stop_seconds"
     )
     return aggregate_sql + where_sql, tuple(params)
@@ -664,7 +669,11 @@ def _fetch_ajustes_for_stops(rows):
         return {}
 
     now = datetime.now()
-    stops_dt = [r.get("stop_datetime") for r in rows if r.get("stop_datetime")]
+    stops_dt = [
+        r.get("sequence_error_datetime")
+        for r in rows
+        if r.get("sequence_error_datetime")
+    ]
     fines = [r.get("stable_run_datetime") or now for r in rows]
     if not stops_dt:
         return {}
@@ -691,11 +700,11 @@ def _fetch_ajustes_for_stops(rows):
     params = tuple(lineas) + (min_stop, max_fin)
     ajustes = execute_query(sql, params, fetch="all") or []
 
-    # Empareja cada ajuste con los paros de su linea cuyo intervalo [stop, fin_prov] solapa.
+    # Empareja cada ajuste con el intervalo real [ERROR inicial, RUN estable].
     by_uid = {}
     for r in rows:
-        stop = r.get("stop_datetime")
-        if stop is None:
+        stop_start = r.get("sequence_error_datetime")
+        if stop_start is None:
             continue
         fin = r.get("stable_run_datetime") or now
         for a in ajustes:
@@ -703,7 +712,7 @@ def _fetch_ajustes_for_stops(rows):
                 continue
             if a.get("fin_local") is None or a.get("inicio_local") is None:
                 continue
-            if a["fin_local"] >= stop and a["inicio_local"] <= fin:
+            if a["fin_local"] >= stop_start and a["inicio_local"] <= fin:
                 by_uid.setdefault(r["source_uid"], []).append({
                     "session_id": a.get("session_id"),
                     "tecnico": _vision_format_value(a.get("tecnico")) or "",

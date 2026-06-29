@@ -766,7 +766,7 @@ function renderVisionStopsTable(data) {
         <tr class="${confirmed ? "" : "vision-stop-open"}">
           <td>${escapeVisionHtml(row.linea ?? "")}</td>
           <td>${escapeVisionHtml(row.numero_parte ?? "")}</td>
-          <td>${escapeVisionHtml(row.stop_datetime ?? "")}</td>
+          <td>${escapeVisionHtml(row.sequence_error_datetime ?? "")}</td>
           <td>${escapeVisionHtml(row.stable_run_datetime ?? "-")}</td>
           <td><strong>${formatVisionStopSeconds(paro)}</strong></td>
           <td>${escapeVisionHtml(String(row.run_attempt_count ?? 0))}</td>

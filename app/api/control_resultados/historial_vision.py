@@ -142,7 +142,7 @@ def _serialize_history_vision(rows):
 @bp.route("/api/vision/stops")
 @login_requerido
 def vision_stops_api():
-    """Paros reales de Vision (STOP -> RUN estable) con el ajuste de tecnico relacionado.
+    """Paros reales de Vision (ERROR -> RUN estable) y su STOP fisico relacionado.
 
     Con ``page`` devuelve filas y metadata de paginacion. Sin ``page`` conserva la
     respuesta de array para clientes anteriores, pero ya no recorta el resultado.
@@ -198,6 +198,9 @@ def _serialize_vision_stops(rows):
         result.append({
             "linea": _vision_format_value(row.get("linea", "")) or "",
             "numero_parte": _vision_format_value(row.get("part_code", "")) or "",
+            "sequence_error_datetime": _vision_format_value(
+                row.get("sequence_error_datetime", "")
+            ) or "",
             "stop_datetime": _vision_format_value(row.get("stop_datetime", "")) or "",
             "stable_run_datetime": _vision_format_value(row.get("stable_run_datetime", "")) or "",
             "real_stop_seconds": float(real) if real is not None else None,
@@ -219,9 +222,8 @@ def export_vision_stops_excel():
         rows = execute_query(sql, params, fetch="all") or []
         stops = _serialize_vision_stops(rows)
         keys = [
-            "linea", "numero_parte", "stop_datetime", "stable_run_datetime",
-            "paro_real_seconds", "run_attempt_count",
-            "tecnico_ajuste",
+            "linea", "numero_parte", "sequence_error_datetime", "stable_run_datetime",
+            "paro_real_seconds", "run_attempt_count", "tecnico_ajuste",
         ]
         items = []
         for stop in stops:
@@ -244,7 +246,7 @@ def export_vision_stops_excel():
             items.append({
                 "linea": stop.get("linea", ""),
                 "numero_parte": stop.get("numero_parte", ""),
-                "stop_datetime": stop.get("stop_datetime", ""),
+                "sequence_error_datetime": stop.get("sequence_error_datetime", ""),
                 "stable_run_datetime": stop.get("stable_run_datetime", ""),
                 "paro_real_seconds": paro_real if paro_real is not None else "",
                 "run_attempt_count": stop.get("run_attempt_count", 0),
@@ -252,7 +254,7 @@ def export_vision_stops_excel():
             })
 
         headers = [
-            "Linea", "Numero de parte", "STOP", "RUN estable",
+            "Linea", "Numero de parte", "Inicio paro (ERROR)", "RUN estable",
             "Paro real (s)", "Intentos", "Tecnico / Ajuste",
         ]
         filename = f"paros_vision_{datetime.now().strftime('%Y%m%d_%H%M%S')}"

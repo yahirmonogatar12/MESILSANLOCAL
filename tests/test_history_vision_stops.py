@@ -31,9 +31,10 @@ def test_build_vision_stops_query_has_no_global_result_limit(app):
     ):
         sql, params = vision_helpers._build_vision_stops_query()
 
-    assert "s.stop_datetime IS NOT NULL" in sql
+    assert "COALESCE(s.sequence_error_datetime, s.stop_datetime) IS NOT NULL" in sql
+    assert "AS sequence_error_datetime" in sql
     assert "s.recovery_status IN ('open', 'confirmed')" in sql
-    assert "ORDER BY s.stop_datetime DESC" in sql
+    assert "ORDER BY COALESCE(s.sequence_error_datetime, s.stop_datetime) DESC" in sql
     assert " LIMIT " not in sql
     assert params == ("2026-06-26", "2026-06-26", "M1")
 
@@ -83,12 +84,14 @@ def test_fetch_ajustes_for_stops_batches_and_groups(monkeypatch):
         {
             "source_uid": "stop-1",
             "linea": "M1",
+            "sequence_error_datetime": datetime(2026, 6, 26, 11, 21, 10),
             "stop_datetime": datetime(2026, 6, 26, 11, 21, 15, 155000),
             "stable_run_datetime": datetime(2026, 6, 26, 11, 23, 8, 935000),
         },
         {
             "source_uid": "stop-2",
             "linea": "M2",
+            "sequence_error_datetime": datetime(2026, 6, 26, 11, 59, 55),
             "stop_datetime": datetime(2026, 6, 26, 12, 0),
             "stable_run_datetime": None,
         },
@@ -121,6 +124,7 @@ def test_vision_stops_api_serializes_rows(client, monkeypatch):
         "source_uid": "stop-1",
         "linea": "M1",
         "part_code": "EBR43713604",
+        "sequence_error_datetime": datetime(2026, 6, 26, 11, 21, 10, 300000),
         "stop_datetime": datetime(2026, 6, 26, 11, 21, 15, 155000),
         "stable_run_datetime": datetime(2026, 6, 26, 11, 23, 8, 935000),
         "real_stop_seconds": 113.78,
@@ -158,6 +162,7 @@ def test_vision_stops_api_serializes_rows(client, monkeypatch):
     assert response.status_code == 200
     payload = response.get_json()
     assert payload[0]["real_stop_seconds"] == 113.78
+    assert payload[0]["sequence_error_datetime"] == "2026-06-26 11:21:10.300000"
     assert payload[0]["run_attempt_count"] == 2
     assert payload[0]["ajustes"][0]["tecnico"] == "Yahir"
 
@@ -168,10 +173,11 @@ def test_vision_stops_api_returns_pagination_metadata(client, monkeypatch):
         "source_uid": "stop-401",
         "linea": "M4",
         "part_code": "EBR41039122",
-        "stop_datetime": datetime(2026, 6, 26, 17, 3, 29),
-        "stable_run_datetime": datetime(2026, 6, 26, 17, 3, 30),
-        "real_stop_seconds": 1.0,
-        "real_stop_prov": 1.0,
+        "sequence_error_datetime": datetime(2026, 6, 26, 17, 3, 12, 122000),
+        "stop_datetime": datetime(2026, 6, 26, 17, 3, 29, 921000),
+        "stable_run_datetime": datetime(2026, 6, 26, 17, 3, 30, 378000),
+        "real_stop_seconds": 18.256,
+        "real_stop_prov": 18.256,
         "reaccion_seconds": 0.5,
         "run_attempt_count": 1,
         "recovery_status": "confirmed",
@@ -209,6 +215,7 @@ def test_vision_stops_api_returns_pagination_metadata(client, monkeypatch):
     assert payload["per_page"] == 200
     assert payload["total_pages"] == 3
     assert payload["rows"][0]["numero_parte"] == "EBR41039122"
+    assert payload["rows"][0]["sequence_error_datetime"] == "2026-06-26 17:03:12.122000"
     assert captured == {"limit": 200, "offset": 400}
 
 
@@ -283,6 +290,8 @@ def test_history_vision_template_contains_stops_tab(app):
     )[0]
     assert "<th>Estado</th>" not in stops_panel
     assert "Reaccion" not in stops_panel
+    assert "Inicio paro (ERROR)" in stops_panel
+    assert "STOP maquina" not in stops_panel
 
 
 def test_export_vision_stops_excel_reuses_filtered_rows(client, monkeypatch):
@@ -291,6 +300,7 @@ def test_export_vision_stops_excel_reuses_filtered_rows(client, monkeypatch):
         "source_uid": "stop-1",
         "linea": "M4",
         "part_code": "EBR41039122",
+        "sequence_error_datetime": datetime(2026, 6, 26, 17, 3, 12, 122000),
         "stop_datetime": datetime(2026, 6, 26, 17, 3, 29, 921000),
         "stable_run_datetime": datetime(2026, 6, 26, 17, 3, 30, 378000),
         "real_stop_seconds": 18.256,
@@ -338,6 +348,16 @@ def test_export_vision_stops_excel_reuses_filtered_rows(client, monkeypatch):
     assert "Reaccion (s)" not in captured["headers"]
     assert "reaccion_seconds" not in captured["keys"]
     assert captured["items"][0]["paro_real_seconds"] == 18.256
+    assert captured["items"][0]["sequence_error_datetime"] == "2026-06-26 17:03:12.122000"
+    assert captured["headers"] == [
+        "Linea", "Numero de parte", "Inicio paro (ERROR)", "RUN estable",
+        "Paro real (s)", "Intentos", "Tecnico / Ajuste",
+    ]
+    assert captured["keys"] == [
+        "linea", "numero_parte", "sequence_error_datetime", "stable_run_datetime",
+        "paro_real_seconds", "run_attempt_count", "tecnico_ajuste",
+    ]
+    assert list(captured["items"][0]) == captured["keys"]
     assert "Yahir" in captured["items"][0]["tecnico_ajuste"]
     assert captured["kwargs"]["sheet"] == "Paros Vision"
 
