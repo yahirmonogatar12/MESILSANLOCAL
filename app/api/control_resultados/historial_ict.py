@@ -48,6 +48,30 @@ logger = logging.getLogger(__name__)
 bp = Blueprint("historial_ict", __name__)
 
 
+_ICT_HISTORY_COLUMN_FILTER_SQL = {
+    "fecha": "CAST(fecha AS CHAR) LIKE %s",
+    "hora": "CAST(TIME(ts) AS CHAR) LIKE %s",
+    "linea": "linea LIKE %s",
+    "ict": "CAST(ict AS CHAR) LIKE %s",
+    "resultado": "resultado LIKE %s",
+    "no_parte": "no_parte LIKE %s",
+    "barcode": "barcode LIKE %s",
+    "fuente_archivo": "fuente_archivo LIKE %s",
+    "defect_code": "defect_code LIKE %s",
+    "defect_valor": "defect_valor LIKE %s",
+}
+
+
+def _append_ict_history_column_filters(sql, params):
+    """Agrega filtros de encabezado permitidos sin interpolar nombres externos."""
+    for key, clause in _ICT_HISTORY_COLUMN_FILTER_SQL.items():
+        value = request.args.get(f"cf_{key}", "").strip()
+        if value:
+            sql += f" AND {clause}"
+            params.append(f"%{value}%")
+    return sql
+
+
 # ---------------------------------------------------------------------------
 # Render template
 # ---------------------------------------------------------------------------
@@ -142,6 +166,8 @@ def ict_data_api():
             else:
                 where_sql += " AND barcode LIKE %s"
                 params.append(f"{value}%")
+
+        where_sql = _append_ict_history_column_filters(where_sql, params)
 
         select_cols = (
             "SELECT fecha, TIME(ts) AS hora, linea, ict, resultado, no_parte, barcode, "
@@ -261,6 +287,8 @@ def export_ict_excel():
             params.append(resultado)
         if barcode_like:
             sql = _append_indexable_text_filter(sql, params, "barcode", barcode_like)
+
+        sql = _append_ict_history_column_filters(sql, params)
 
         sql += " ORDER BY ts DESC LIMIT 500"
         rows = execute_query(sql, tuple(params), fetch="all") or []

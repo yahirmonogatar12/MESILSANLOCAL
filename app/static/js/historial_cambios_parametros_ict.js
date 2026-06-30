@@ -7,7 +7,7 @@
 (function ensureModuleStyles() {
   const sheets = [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
-    { id: "ict-css", href: "/static/css/ict.css?v=20260522a" },
+    { id: "ict-css", href: "/static/css/ict.css?v=20260630a" },
     { id: "historial-cambios-parametros-ict-css", href: "/static/css/historial_cambios_parametros_ict.css?v=20260527a" },
   ];
   sheets.forEach(({ id, href }) => {

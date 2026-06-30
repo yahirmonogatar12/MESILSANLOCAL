@@ -437,6 +437,133 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Filtros por encabezado, alineados con Historial de maquina Vision. */
+th.ict-column-filterable {
+    overflow: visible;
+}
+
+th.ict-column-filterable.filter-open {
+    z-index: 35 !important;
+}
+
+.ict-column-header {
+    display: flex;
+    min-height: 20px;
+    align-items: center;
+    gap: 5px;
+}
+
+.ict-column-header > span {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ict-column-filter-btn {
+    display: inline-flex;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    margin-left: auto;
+    padding: 4px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #55708a;
+    background: #203241;
+    color: #9cc8ff;
+    cursor: pointer;
+}
+
+.ict-column-filter-btn svg {
+    width: 11px;
+    height: 11px;
+    fill: currentColor;
+    stroke: none;
+}
+
+.ict-column-filter-btn:hover,
+.ict-column-filter-btn:focus-visible,
+.ict-column-filter-btn.open {
+    border-color: #71b9ff;
+    background: #20688c;
+    color: #ffffff;
+    outline: none;
+}
+
+.ict-column-filter-btn.active {
+    border-color: #71b9ff;
+    background: #2f80d8;
+    color: #ffffff;
+}
+
+.ict-column-filter-popover {
+    position: absolute;
+    top: calc(100% - 1px);
+    left: 3px;
+    z-index: 45;
+    display: none;
+    min-width: 165px;
+    padding: 6px;
+    border: 1px solid #20688c;
+    background: #2c3e50;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+    text-align: left;
+    text-transform: none;
+    white-space: normal;
+}
+
+#ict-table th:nth-last-child(-n+2) .ict-column-filter-popover,
+#ict-defects-table th:nth-last-child(-n+4) .ict-column-filter-popover {
+    right: 3px;
+    left: auto;
+}
+
+.ict-column-filter-popover.open {
+    display: block;
+}
+
+.ict-column-filter-input {
+    width: 100%;
+    height: 26px;
+    padding: 4px 6px;
+    border: 1px solid #20688c;
+    border-radius: 0;
+    background: #34495e;
+    color: #f3f6fb;
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: none;
+}
+
+.ict-column-filter-input:focus {
+    border-color: #71b9ff;
+    box-shadow: 0 0 0 2px rgba(113, 185, 255, 0.18);
+    outline: none;
+}
+
+.ict-column-filter-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.ict-column-filter-actions button {
+    flex: 1;
+    height: 22px;
+    padding: 0 6px;
+    border: 1px solid #5f7e9d;
+    background: #3c5066;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.ict-column-filter-actions button:hover,
+.ict-column-filter-actions button:focus-visible {
+    background: #4f78aa;
+    outline: none;
+}
+
 #ict-table tbody td,
 #ict-defects-table tbody td {
     color: var(--ilsan-text-secondary);
@@ -855,6 +982,82 @@
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+/* El detalle contiene 25 columnas: usa todo el viewport y conserva visibles
+   todos los encabezados en escritorio; en pantallas menores mantiene scroll. */
+#defects-modal {
+    overflow: hidden;
+}
+
+#defects-modal .modal-content {
+    width: calc(100vw - 20px);
+    max-width: none;
+    height: calc(100vh - 20px);
+    height: calc(100dvh - 20px);
+    max-height: none;
+    margin: 10px;
+    border-radius: 12px;
+}
+
+#defects-modal .modal-body {
+    display: flex;
+    max-height: none;
+    padding: 8px 10px 10px;
+}
+
+#defects-modal .modal-body .table-wrap {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
+}
+
+#ict-defects-table {
+    min-width: 1080px;
+    table-layout: fixed;
+}
+
+#ict-defects-table th,
+#ict-defects-table td {
+    padding: 5px 2px;
+    font-size: 0.66rem;
+}
+
+#ict-defects-table .ict-column-header {
+    gap: 2px;
+}
+
+#ict-defects-table .ict-column-filter-btn {
+    flex-basis: 16px;
+    width: 16px;
+    height: 16px;
+    padding: 3px;
+}
+
+#ict-defects-table th:nth-child(1) { width: 62px; }
+#ict-defects-table th:nth-child(2) { width: 48px; }
+#ict-defects-table th:nth-child(3) { width: 32px; }
+#ict-defects-table th:nth-child(4) { width: 26px; }
+#ict-defects-table th:nth-child(5) { width: 135px; }
+#ict-defects-table th:nth-child(6) { width: 82px; }
+#ict-defects-table th:nth-child(7) { width: 35px; }
+#ict-defects-table th:nth-child(8),
+#ict-defects-table th:nth-child(10) { width: 36px; }
+#ict-defects-table th:nth-child(9),
+#ict-defects-table th:nth-child(11) { width: 28px; }
+#ict-defects-table th:nth-child(12) { width: 42px; }
+#ict-defects-table th:nth-child(13),
+#ict-defects-table th:nth-child(14) { width: 28px; }
+#ict-defects-table th:nth-child(15),
+#ict-defects-table th:nth-child(16) { width: 56px; }
+#ict-defects-table th:nth-child(17),
+#ict-defects-table th:nth-child(18),
+#ict-defects-table th:nth-child(19),
+#ict-defects-table th:nth-child(20) { width: 32px; }
+#ict-defects-table th:nth-child(21) { width: 36px; }
+#ict-defects-table th:nth-child(22),
+#ict-defects-table th:nth-child(23) { width: 26px; }
+#ict-defects-table th:nth-child(24) { width: 48px; }
+#ict-defects-table th:nth-child(25) { width: 58px; }
 
 /* ========== COMPARACION DE PARAMETROS (AUDITORIA) ========== */
 

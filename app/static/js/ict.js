@@ -6,12 +6,12 @@
 (function ensureModuleStyles() {
   const sheets = [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
-    { id: "ict-css", href: "/static/css/ict.css?v=20260522a" },
+    { id: "ict-css", href: "/static/css/ict.css?v=20260630a" },
   ];
   sheets.forEach(({ id, href }) => {
     let link = document.getElementById(id);
     if (link) {
-      if (!link.getAttribute("href")?.includes("20260522a")) {
+      if (!link.getAttribute("href")?.includes("20260630a")) {
         link.setAttribute("href", href);
       }
       return;
@@ -35,6 +35,9 @@ let ictCurrentPage = 1;
 let ictPerPage = 1000;
 let ictTotalRows = 0;
 let ictTotalPages = 1;
+let ictHistoryFilterTimer = null;
+const ICT_COLUMN_FILTERS_STORAGE_KEY = "historialIctColumnFilters";
+let ictColumnFilters = null;
 
 // Registros marcados para comparacion. Clave = `${barcode}|${ts}`.
 const selectedCompareRecords = new Map();
@@ -58,6 +61,168 @@ const COMPARE_FIELDS = [
   { key: "p_flag", label: "P" },
   { key: "j_flag", label: "J" },
 ];
+
+function getIctColumnFilterState() {
+  if (ictColumnFilters) return ictColumnFilters;
+
+  ictColumnFilters = { history: {}, params: {} };
+  try {
+    const stored = JSON.parse(
+      window.localStorage.getItem(ICT_COLUMN_FILTERS_STORAGE_KEY) || "{}",
+    );
+    ["history", "params"].forEach(tableKey => {
+      if (stored?.[tableKey] && typeof stored[tableKey] === "object") {
+        ictColumnFilters[tableKey] = stored[tableKey];
+      }
+    });
+  } catch (error) {
+    console.warn("No se pudieron leer los filtros por columna de ICT", error);
+  }
+  return ictColumnFilters;
+}
+
+function saveIctColumnFilters() {
+  try {
+    window.localStorage.setItem(
+      ICT_COLUMN_FILTERS_STORAGE_KEY,
+      JSON.stringify(getIctColumnFilterState()),
+    );
+  } catch (error) {
+    console.warn("No se pudieron guardar los filtros por columna de ICT", error);
+  }
+}
+
+function getIctColumnFilters(tableKey) {
+  return getIctColumnFilterState()[tableKey] || {};
+}
+
+function setIctColumnFilter(tableKey, field, value) {
+  const state = getIctColumnFilterState();
+  state[tableKey] ||= {};
+  const normalizedValue = String(value || "").trim();
+  if (normalizedValue) state[tableKey][field] = normalizedValue;
+  else delete state[tableKey][field];
+  saveIctColumnFilters();
+}
+
+function clearAllIctColumnFilters(tableKey) {
+  getIctColumnFilterState()[tableKey] = {};
+  saveIctColumnFilters();
+}
+
+function renderIctColumnFilterHeaders() {
+  document
+    .querySelectorAll("th[data-ict-filter-table][data-ict-filter-field]")
+    .forEach(header => {
+      if (header.dataset.ictFilterReady === "true") return;
+
+      const tableKey = header.dataset.ictFilterTable;
+      const field = header.dataset.ictFilterField;
+      const label = header.textContent.trim();
+      const value = getIctColumnFilters(tableKey)[field] || "";
+      header.classList.add("ict-column-filterable");
+      header.dataset.ictFilterReady = "true";
+      header.innerHTML = `
+        <div class="ict-column-header">
+          <span>${escapeHtml(label)}</span>
+          <button class="ict-column-filter-btn${value ? " active" : ""}"
+                  type="button"
+                  aria-label="Filtrar ${escapeHtml(label)}"
+                  aria-expanded="false"
+                  title="Filtrar ${escapeHtml(label)}">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="ict-column-filter-popover"
+             data-ict-table-key="${escapeHtml(tableKey)}"
+             data-ict-field="${escapeHtml(field)}">
+          <input class="ict-column-filter-input"
+                 data-ict-table-key="${escapeHtml(tableKey)}"
+                 data-ict-field="${escapeHtml(field)}"
+                 value="${escapeHtml(value)}"
+                 placeholder="Buscar..."
+                 aria-label="Buscar en ${escapeHtml(label)}"
+                 autocomplete="off">
+          <div class="ict-column-filter-actions">
+            <button class="ict-column-filter-clear" type="button">Limpiar</button>
+            <button class="ict-column-filter-clear-all" type="button">Todos</button>
+          </div>
+        </div>`;
+    });
+}
+
+function closeIctColumnFilterPopovers(exceptPopover = null) {
+  document.querySelectorAll(".ict-column-filter-popover.open").forEach(popover => {
+    if (popover === exceptPopover) return;
+    popover.classList.remove("open");
+    popover.closest("th")?.classList.remove("filter-open");
+    const button = popover.closest("th")?.querySelector(".ict-column-filter-btn");
+    button?.classList.remove("open");
+    button?.setAttribute("aria-expanded", "false");
+  });
+}
+
+function syncIctColumnFilterControls(tableKey) {
+  const filters = getIctColumnFilters(tableKey);
+  document
+    .querySelectorAll(`.ict-column-filter-input[data-ict-table-key="${tableKey}"]`)
+    .forEach(input => {
+      const value = filters[input.dataset.ictField] || "";
+      input.value = value;
+      input
+        .closest("th")
+        ?.querySelector(".ict-column-filter-btn")
+        ?.classList.toggle("active", Boolean(value));
+    });
+}
+
+function appendIctHistoryColumnFilters(qs) {
+  Object.entries(getIctColumnFilters("history")).forEach(([field, value]) => {
+    // Operador se resuelve despues del SELECT; se filtra sobre la pagina cargada.
+    if (field !== "operador" && value) qs.set(`cf_${field}`, value);
+  });
+}
+
+function filterIctRowsByClientColumns(rows) {
+  const operatorFilter = String(
+    getIctColumnFilters("history").operador || "",
+  ).toLocaleLowerCase();
+  if (!operatorFilter) return rows;
+  return rows.filter(row =>
+    String(row.operador ?? "").toLocaleLowerCase().includes(operatorFilter),
+  );
+}
+
+function scheduleIctHistoryFilter() {
+  window.clearTimeout(ictHistoryFilterTimer);
+  ictCurrentPage = 1;
+  ictHistoryFilterTimer = window.setTimeout(
+    () => loadIctData({ resetPage: false }),
+    250,
+  );
+}
+
+function getIctDefectFilterValue(defect, field) {
+  if (field === "fecha" || field === "hora") {
+    const [fecha = "", hora = ""] = String(defect.ts || "").split(" ");
+    return field === "fecha" ? fecha : hora;
+  }
+  if (field === "hlim_pct" || field === "llim_pct") {
+    const value = defect[field];
+    return value === null || value === undefined || value === "" ? "" : `${value}%`;
+  }
+  return defect[field] ?? "";
+}
+
+function matchesIctDefectColumnFilters(defect) {
+  return Object.entries(getIctColumnFilters("params")).every(([field, value]) =>
+    String(getIctDefectFilterValue(defect, field))
+      .toLocaleLowerCase()
+      .includes(String(value).toLocaleLowerCase()),
+  );
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -211,6 +376,7 @@ async function loadIctData(opts) {
     if (ict) qs.set("ict", ict);
     if (resultado) qs.set("resultado", resultado);
     if (barcode_like) qs.set("barcode_like", barcode_like);
+    appendIctHistoryColumnFilters(qs);
     qs.set("page", String(ictCurrentPage));
     qs.set("per_page", String(ictPerPage));
 
@@ -230,13 +396,19 @@ async function loadIctData(opts) {
 
     ictModuleData = rows;
 
-    // Contador en el header
+    const displayedRows = filterIctRowsByClientColumns(rows);
+
+    // Contador en el header. Operador se filtra en la pagina porque se calcula
+    // despues de leer history_ict y no existe como columna SQL.
     const recordCount = document.getElementById("record-count");
     if (recordCount) {
-      recordCount.textContent = `${ictTotalRows} registro${ictTotalRows !== 1 ? 's' : ''}`;
+      const operatorFilter = getIctColumnFilters("history").operador;
+      recordCount.textContent = operatorFilter
+        ? `${displayedRows.length} en pagina · ${ictTotalRows} registros`
+        : `${ictTotalRows} registro${ictTotalRows !== 1 ? 's' : ''}`;
     }
 
-    renderIctTable(rows);
+    renderIctTable(displayedRows);
     renderIctPagination();
   } catch (error) {
     showNotification("Error al cargar datos", "error");
@@ -427,6 +599,13 @@ async function openDefectsModal(barcode, ts) {
       document.body.appendChild(modal);
     }
     modal.classList.add("active");
+    window.requestAnimationFrame(() => {
+      const tableWrap = modal.querySelector(".modal-body .table-wrap");
+      if (tableWrap) {
+        tableWrap.scrollLeft = 0;
+        tableWrap.scrollTop = 0;
+      }
+    });
   }
   
   // Actualizar el título con el barcode
@@ -490,9 +669,9 @@ function filterDefects() {
   const filterSelect = document.getElementById("modal-filter-resultado");
   const filterValue = filterSelect?.value || "";
   
-  let filtered = allDefects;
+  let filtered = allDefects.filter(matchesIctDefectColumnFilters);
   if (filterValue) {
-    filtered = allDefects.filter(d => d.resultado_local === filterValue);
+    filtered = filtered.filter(d => d.resultado_local === filterValue);
   }
   
   renderDefectsTable(filtered);
@@ -771,6 +950,7 @@ async function exportIctToExcel() {
   if (ict) qs.set("ict", ict);
   if (resultado) qs.set("resultado", resultado);
   if (barcode_like) qs.set("barcode_like", barcode_like);
+  appendIctHistoryColumnFilters(qs);
   const url = `/api/ict/export?${qs.toString()}`;
   await downloadFile(url, `historial_ict_${Date.now()}.xlsx`, "Exportación completada");
 }
@@ -791,6 +971,8 @@ async function exportDefectsToExcel() {
  * IMPORTANTE: Esta función debe poder llamarse múltiples veces sin causar problemas
  */
 function initializeIctEventListeners() {
+  renderIctColumnFilterHeaders();
+
   // Protección contra inicialización múltiple
   if (document.body.dataset.ictListenersAttached) {
     return;
@@ -799,6 +981,65 @@ function initializeIctEventListeners() {
   // Event delegation para clicks
   document.body.addEventListener("click", function (e) {
     const target = e.target;
+
+    if (!target.closest(".ict-column-filterable")) {
+      closeIctColumnFilterPopovers();
+    }
+
+    const clearColumnButton = target.closest(".ict-column-filter-clear");
+    if (clearColumnButton) {
+      e.preventDefault();
+      e.stopPropagation();
+      const popover = clearColumnButton.closest(".ict-column-filter-popover");
+      const tableKey = popover?.dataset.ictTableKey;
+      const field = popover?.dataset.ictField;
+      if (tableKey && field) {
+        setIctColumnFilter(tableKey, field, "");
+        syncIctColumnFilterControls(tableKey);
+        if (tableKey === "params") filterDefects();
+        else if (field === "operador") {
+          renderIctTable(filterIctRowsByClientColumns(ictModuleData));
+          loadIctData({ resetPage: false });
+        } else scheduleIctHistoryFilter();
+        popover.querySelector(".ict-column-filter-input")?.focus();
+      }
+      return;
+    }
+
+    const clearAllButton = target.closest(".ict-column-filter-clear-all");
+    if (clearAllButton) {
+      e.preventDefault();
+      e.stopPropagation();
+      const popover = clearAllButton.closest(".ict-column-filter-popover");
+      const tableKey = popover?.dataset.ictTableKey;
+      if (tableKey) {
+        clearAllIctColumnFilters(tableKey);
+        syncIctColumnFilterControls(tableKey);
+        if (tableKey === "params") filterDefects();
+        else scheduleIctHistoryFilter();
+        popover.querySelector(".ict-column-filter-input")?.focus();
+      }
+      return;
+    }
+
+    const columnFilterButton = target.closest(".ict-column-filter-btn");
+    if (columnFilterButton) {
+      e.preventDefault();
+      e.stopPropagation();
+      const header = columnFilterButton.closest("th");
+      const popover = header?.querySelector(".ict-column-filter-popover");
+      if (!popover) return;
+      const shouldOpen = !popover.classList.contains("open");
+      closeIctColumnFilterPopovers();
+      if (shouldOpen) {
+        popover.classList.add("open");
+        header.classList.add("filter-open");
+        columnFilterButton.classList.add("open");
+        columnFilterButton.setAttribute("aria-expanded", "true");
+        popover.querySelector(".ict-column-filter-input")?.focus();
+      }
+      return;
+    }
 
     // Botón consultar
     if (target.id === "btn-consultar" || target.closest("#btn-consultar")) {
@@ -944,6 +1185,33 @@ function initializeIctEventListeners() {
   // Event delegation para input (búsqueda con debounce)
   let barcodeTimer;
   document.body.addEventListener("input", function (e) {
+    if (e.target.matches(".ict-column-filter-input")) {
+      const tableKey = e.target.dataset.ictTableKey;
+      const field = e.target.dataset.ictField;
+      if (tableKey && field) {
+        setIctColumnFilter(tableKey, field, e.target.value);
+        e.target
+          .closest("th")
+          ?.querySelector(".ict-column-filter-btn")
+          ?.classList.toggle("active", Boolean(e.target.value.trim()));
+        if (tableKey === "params") {
+          filterDefects();
+        } else if (field === "operador") {
+          const displayedRows = filterIctRowsByClientColumns(ictModuleData);
+          renderIctTable(displayedRows);
+          const recordCount = document.getElementById("record-count");
+          if (recordCount) {
+            recordCount.textContent = e.target.value.trim()
+              ? `${displayedRows.length} en pagina · ${ictTotalRows} registros`
+              : `${ictTotalRows} registro${ictTotalRows !== 1 ? "s" : ""}`;
+          }
+        } else {
+          scheduleIctHistoryFilter();
+        }
+      }
+      return;
+    }
+
     if (e.target.id === "filter-barcode") {
       clearTimeout(barcodeTimer);
       const barcodeValue = e.target.value.trim();
@@ -967,6 +1235,13 @@ function initializeIctEventListeners() {
     "filter-resultado",
   ]);
   document.body.addEventListener("keydown", function (e) {
+    if (e.target.matches(".ict-column-filter-input")) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeIctColumnFilterPopovers();
+      }
+      return;
+    }
     if (e.key !== "Enter") return;
     if (filterInputIds.has(e.target.id)) {
       e.preventDefault();

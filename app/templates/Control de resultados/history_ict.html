@@ -137,17 +137,17 @@
         <thead>
           <tr>
             <th class="ict-col-check"><input type="checkbox" id="select-all-ict" title="Seleccionar todos"></th>
-            <th>Fecha</th>
-            <th>Hora</th>
-            <th>Línea</th>
-            <th>ICT</th>
-            <th>Resultado</th>
-            <th>Operador</th>
-            <th>No Parte</th>
-            <th>Barcode</th>
-            <th>Fuente</th>
-            <th>Defect Code</th>
-            <th>Defect Valor</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="fecha">Fecha</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="hora">Hora</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="linea">Línea</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="ict">ICT</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="resultado">Resultado</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="operador">Operador</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="no_parte">No Parte</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="barcode">Barcode</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="fuente_archivo">Fuente</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="defect_code">Defect Code</th>
+            <th data-ict-filter-table="history" data-ict-filter-field="defect_valor">Defect Valor</th>
           </tr>
         </thead>
         <tbody id="ict-body"></tbody>
@@ -232,31 +232,31 @@
           <table id="ict-defects-table">
             <thead>
               <tr>
-                <th>Fecha</th>
-                <th>Hora</th>
-                <th>Linea</th>
-                <th>ICT</th>
-                <th>Barcode</th>
-                <th>Componente</th>
-                <th>Pinref</th>
-                <th>ACT</th>
-                <th>Unit</th>
-                <th>STD</th>
-                <th>Unit</th>
-                <th>MEAS</th>
-                <th>M</th>
-                <th>R</th>
-                <th>HLIM %</th>
-                <th>LLIM %</th>
-                <th>HP</th>
-                <th>LP</th>
-                <th>WS</th>
-                <th>DS</th>
-                <th>RC</th>
-                <th>P</th>
-                <th>J</th>
-                <th>Resultado</th>
-                <th>Defecto</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="fecha">Fecha</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="hora">Hora</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="linea">Linea</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="ict">ICT</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="barcode">Barcode</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="componente">Componente</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="pinref">Pinref</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="act_value">ACT</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="act_unit">Unit</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="std_value">STD</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="std_unit">Unit</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="meas_value">MEAS</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="m_value">M</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="r_value">R</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="hlim_pct">HLIM %</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="llim_pct">LLIM %</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="hp_value">HP</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="lp_value">LP</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="ws_value">WS</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="ds_value">DS</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="rc_value">RC</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="p_flag">P</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="j_flag">J</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="resultado_local">Resultado</th>
+                <th data-ict-filter-table="params" data-ict-filter-field="defecto_tipo">Defecto</th>
               </tr>
             </thead>
             <tbody id="defects-body"></tbody>
@@ -345,4 +345,4 @@
 </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/ict.js', v='20260629a') }}"></script>
+<script src="{{ url_for('static', filename='js/ict.js', v='20260630a') }}"></script>

@@ -2,7 +2,7 @@
 (function ensureModuleStyles() {
   const sheets = [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
-    { id: "ict-css", href: "/static/css/ict.css?v=20260522a" },
+    { id: "ict-css", href: "/static/css/ict.css?v=20260630a" },
     { id: "ict-pass-fail-css", href: "/static/css/ict-Pass-Fail.css?v=20260528e" },
   ];
   sheets.forEach(({ id, href }) => {
