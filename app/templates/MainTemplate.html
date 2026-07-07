@@ -316,6 +316,98 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
         }
+
+        .nav-button-label {
+            display: inline;
+        }
+
+        .nav-button-label-line {
+            display: inline;
+        }
+
+        .nav-button-label-line + .nav-button-label-line::before {
+            content: ' ';
+        }
+
+        @media (min-width: 769px) {
+            .app-header .nav-button-label {
+                display: inline-flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 0;
+            }
+
+            .app-header .nav-button-label-line {
+                display: block;
+                white-space: nowrap;
+            }
+
+            .app-header .nav-button-label-line + .nav-button-label-line::before {
+                content: '';
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1199.98px) {
+            .app-header .nav-button {
+                width: 84px;
+                height: 80px;
+                padding: 4px 3px;
+                font-size: 8px;
+                font-weight: 700;
+                line-height: 1.08;
+            }
+
+            .app-header .nav-button .icono-boton {
+                max-width: 32px;
+                max-height: 32px;
+                margin-bottom: 5px;
+            }
+        }
+
+        @media (min-width: 1200px) and (max-width: 1599.98px) {
+            .app-header .nav-buttons-container {
+                gap: 2px;
+                margin-left: 10px;
+            }
+
+            .app-header .nav-button {
+                width: 96px;
+                height: 90px;
+                padding: 5px 3px;
+                font-size: 10.5px;
+                font-weight: 700;
+                line-height: 1.08;
+            }
+
+            .app-header .nav-button .icono-boton {
+                max-width: 36px;
+                max-height: 36px;
+                margin-bottom: 6px;
+            }
+        }
+
+        @media (min-width: 1600px) {
+            .app-header .nav-buttons-container {
+                gap: 3px;
+                margin-left: 12px;
+            }
+
+            .app-header .nav-button {
+                width: 120px;
+                height: 90px;
+                padding: 5px 4px;
+                font-size: 13px;
+                font-weight: 700;
+                line-height: 1.08;
+            }
+
+            .app-header .nav-button .icono-boton {
+                max-width: 40px;
+                max-height: 40px;
+                margin-bottom: 6px;
+            }
+        }
     </style>
     <!-- Deshabilitar logs de consola en producción -->
     <script>
@@ -367,32 +459,68 @@
                     <!-- Botones de navegación -->
             <div class="nav-buttons-container" id="nav-container">
                 <button class="nav-button" id="Información Basica">
-                    <img src="..\static\icons\info.png" class="icono-boton" alt="Información Básica">Información Básica
+                    <img src="..\static\icons\info.png" class="icono-boton" alt="Información Básica">
+                    <span class="nav-button-label">
+                        <span class="nav-button-label-line">Información</span>
+                        <span class="nav-button-label-line">Básica</span>
+                    </span>
                 </button>
                 <button class="nav-button" id="Control de material">
-                    <img src="..\static\icons\material.png" class="icono-boton" alt="Control de material">Control de material
+                    <img src="..\static\icons\material.png" class="icono-boton" alt="Control de material">
+                    <span class="nav-button-label">
+                        <span class="nav-button-label-line">Control de</span>
+                        <span class="nav-button-label-line">material</span>
+                    </span>
                 </button>
                 <button class="nav-button" id="Control de producción">
-                    <img src="..\static\icons\produccion.png" class="icono-boton" alt="Control de producción">Control de producción
+                    <img src="..\static\icons\produccion.png" class="icono-boton" alt="Control de producción">
+                    <span class="nav-button-label">
+                        <span class="nav-button-label-line">Control de</span>
+                        <span class="nav-button-label-line">producción</span>
+                    </span>
                 </button>
                 <button class="nav-button" id="Control de proceso">
-                    <img src="..\static\icons\proceso.png" class="icono-boton" alt="Control de proceso">Control de proceso
+                    <img src="..\static\icons\proceso.png" class="icono-boton" alt="Control de proceso">
+                    <span class="nav-button-label">
+                        <span class="nav-button-label-line">Control de</span>
+                        <span class="nav-button-label-line">proceso</span>
+                    </span>
                 </button>
                 <button class="nav-button" id="Control de calidad">
-                    <img src="..\static\icons\calidad.png" class="icono-boton" alt="Control de calidad">Control de calidad
+                    <img src="..\static\icons\calidad.png" class="icono-boton" alt="Control de calidad">
+                    <span class="nav-button-label">
+                        <span class="nav-button-label-line">Control de</span>
+                        <span class="nav-button-label-line">calidad</span>
+                    </span>
                 </button>
                 <button class="nav-button" id="Control de resultados">
-                    <img src="..\static\icons\resultados.png" class="icono-boton" alt="Control de resultados">Control de resultados
+                    <img src="..\static\icons\resultados.png" class="icono-boton" alt="Control de resultados">
+                    <span class="nav-button-label">
+                        <span class="nav-button-label-line">Control de</span>
+                        <span class="nav-button-label-line">resultados</span>
+                    </span>
                 </button>
                 <button class="nav-button" id="Control de reporte">
-                    <img src="..\static\icons\reporte.png" class="icono-boton" alt="Control de reporte">Control de reporte
+                    <img src="..\static\icons\reporte.png" class="icono-boton" alt="Control de reporte">
+                    <span class="nav-button-label">
+                        <span class="nav-button-label-line">Control de</span>
+                        <span class="nav-button-label-line">reporte</span>
+                    </span>
                 </button>
                 <button class="nav-button" id="Configuración de programa">
-                    <img src="..\static\icons\configuracion.png" class="icono-boton" alt="Configuración de programa">Configuración de programa
+                    <img src="..\static\icons\configuracion.png" class="icono-boton" alt="Configuración de programa">
+                    <span class="nav-button-label">
+                        <span class="nav-button-label-line">Configuración de</span>
+                        <span class="nav-button-label-line">programa</span>
+                    </span>
                 </button>
                 {% if tiene_permisos_usuarios %}
                 <button class="nav-button admin-only" onclick="window.location.href='/admin/panel'">
-                    <img src="..\static\icons\engrane.png" class="icono-boton" alt="Panel de Administración">Panel de Administración
+                    <img src="..\static\icons\engrane.png" class="icono-boton" alt="Panel de Administración">
+                    <span class="nav-button-label">
+                        <span class="nav-button-label-line">Panel de</span>
+                        <span class="nav-button-label-line">Administración</span>
+                    </span>
                 </button>
                 {% endif %}
             </div>
@@ -1128,6 +1256,10 @@
         let deferredPrompt;
         let installButton;
 
+        function shouldShowInstallButton() {
+            return window.matchMedia('(max-width: 768px)').matches;
+        }
+
         window.addEventListener('beforeinstallprompt', function(e) {
             e.preventDefault();
             deferredPrompt = e;
@@ -1135,7 +1267,12 @@
         });
 
         function showInstallButton() {
-            // Crear botón de instalación si no existe (movil y PC).
+            if (!shouldShowInstallButton()) {
+                hideInstallButton();
+                return;
+            }
+
+            // Crear botón de instalación solo en móvil.
             if (!installButton) {
                 installButton = document.createElement('button');
                 installButton.textContent = '📱 Instalar App';
@@ -1202,6 +1339,12 @@
         function showInstallPrompt() {
             showInstallButton();
         }
+
+        window.addEventListener('resize', function() {
+            if (!shouldShowInstallButton()) {
+                hideInstallButton();
+            }
+        });
 
         // Ocultar botón de instalación cuando la app ya está instalada
         window.addEventListener('appinstalled', function() {
