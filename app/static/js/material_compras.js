@@ -1,7 +1,7 @@
 (function () {
   // Reusa el CSS del modulo de invoices (clases mat-invoice-*).
   const STYLE_ID = "material-invoices-css";
-  const STYLE_VERSION = "20260616c";
+  const STYLE_VERSION = "20260707a";
   const STYLE_HREF = `/static/css/material_invoices.css?v=${STYLE_VERSION}`;
 
   const state = {
@@ -11,8 +11,44 @@
     data: { transacciones: [], lineas: [] },
   };
 
+  const COMPRAS_LIST_COLUMNS = [
+    { field: "numero_transaccion", label: "Transaccion" },
+    { field: "tipo", label: "Tipo" },
+    { field: "estado", label: "Estado" },
+    { field: "proveedor", label: "Proveedor" },
+    { field: "num_partes", label: "Partes", value: (row) => numberText(row.num_partes) },
+    { field: "num_lineas", label: "Lineas", value: (row) => numberText(row.num_lineas) },
+    { field: "total_monto", label: "Monto", value: (row) => numberText(row.total_monto) },
+    { field: "fecha_compra", label: "Fecha" },
+  ];
+
+  const COMPRAS_LINEAS_COLUMNS = [
+    { field: "numero_parte", label: "Parte" },
+    { field: "numero_parte_sistema", label: "Parte sistema" },
+    { field: "descripcion", label: "Descripcion" },
+    { field: "spec", label: "Spec" },
+    { field: "cantidad", label: "Comprado", value: (row) => numberText(row.cantidad) },
+    { field: "aplicado", label: "Recibido", value: (row) => numberText(row.aplicado) },
+    { field: "pendiente", label: "Pendiente", value: (row) => numberText(row.pendiente) },
+    { field: "estado", label: "Estado" },
+    { field: "moneda", label: "Curr." },
+    { field: "costo_unitario", label: "P. Unit.", value: (row) => numberText(row.costo_unitario) },
+    { field: "costo_total", label: "Total", value: (row) => numberText(row.costo_total) },
+    { field: "proveedor", label: "Proveedor" },
+    { field: "factura", label: "Factura" },
+    { field: "modelo", label: "Modelo" },
+    { field: "categoria", label: "Cat." },
+    { field: "fecha_compra", label: "Fecha" },
+  ];
+
   function ensureModuleStyles() {
-    if (document.getElementById(STYLE_ID)) return;
+    const current = document.getElementById(STYLE_ID);
+    if (current) {
+      if (!current.getAttribute("href")?.includes(STYLE_VERSION)) {
+        current.setAttribute("href", STYLE_HREF);
+      }
+      return;
+    }
     const link = document.createElement("link");
     link.id = STYLE_ID;
     link.rel = "stylesheet";
@@ -111,12 +147,43 @@
     return params;
   }
 
+  function columnFilters() {
+    return window.MatColumnFilters || null;
+  }
+
+  function setupFilterHeaders() {
+    const filters = columnFilters();
+    if (!filters) return;
+    filters.attachGlobalHandlers();
+    filters.renderHead("compras:list", "mat-compras-list-head", COMPRAS_LIST_COLUMNS);
+    filters.renderHead("compras:lineas", "mat-compras-lineas-head", COMPRAS_LINEAS_COLUMNS);
+  }
+
+  function filterRows(tableKey, columns, rows) {
+    return columnFilters()?.filterRows(tableKey, columns, rows) || rows || [];
+  }
+
+  function rerenderFilteredTable(tableKey) {
+    if (tableKey === "compras:list") {
+      renderTransacciones(state.data.transacciones || []);
+    } else if (tableKey === "compras:lineas") {
+      renderLineas(state.data.lineas || []);
+    }
+  }
+
+  function clearColumnFilters() {
+    columnFilters()?.clearByPrefix("compras:");
+    setupFilterHeaders();
+    renderLineas(state.data.lineas || []);
+  }
+
   function clearFilters() {
     if (el("mat-compras-search")) el("mat-compras-search").value = "";
     if (el("mat-compras-type-filter")) el("mat-compras-type-filter").value = "";
     if (el("mat-compras-estado-filter")) el("mat-compras-estado-filter").value = "";
     if (el("mat-compras-date-from")) el("mat-compras-date-from").value = "";
     if (el("mat-compras-date-to")) el("mat-compras-date-to").value = "";
+    clearColumnFilters();
     loadTransacciones();
   }
 
@@ -160,12 +227,15 @@
 
   function renderTransacciones(rows) {
     const body = el("mat-compras-list-body");
+    state.data.transacciones = rows;
     if (!body) return;
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="8" class="mat-invoice-empty">Sin resultados.</td></tr>`;
+    const visibleRows = filterRows("compras:list", COMPRAS_LIST_COLUMNS, rows);
+    if (!visibleRows.length) {
+      const message = rows.length ? "Sin resultados con filtros." : "Sin resultados.";
+      body.innerHTML = `<tr><td colspan="8" class="mat-invoice-empty">${message}</td></tr>`;
       return;
     }
-    body.innerHTML = rows
+    body.innerHTML = visibleRows
       .map((r) => `
         <tr data-transaccion="${escapeHtml(r.numero_transaccion)}" class="mat-invoice-row">
           <td>${escapeHtml(r.numero_transaccion)}</td>
@@ -205,12 +275,15 @@
 
   function renderLineas(rows) {
     const body = el("mat-compras-lineas-body");
+    state.data.lineas = rows;
     if (!body) return;
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="16" class="mat-invoice-empty">Sin renglones.</td></tr>`;
+    const visibleRows = filterRows("compras:lineas", COMPRAS_LINEAS_COLUMNS, rows);
+    if (!visibleRows.length) {
+      const message = rows.length ? "Sin resultados con filtros." : "Sin renglones.";
+      body.innerHTML = `<tr><td colspan="16" class="mat-invoice-empty">${message}</td></tr>`;
       return;
     }
-    body.innerHTML = rows
+    body.innerHTML = visibleRows
       .map((r) => `
         <tr>
           <td>${escapeHtml(r.numero_parte || "")}</td>
@@ -450,11 +523,17 @@
         hideModal("mat-compras-preview");
       }
     });
+
+    document.addEventListener("mat-column-filter-change", (event) => {
+      const tableKey = event.detail?.tableKey || "";
+      if (tableKey.startsWith("compras:")) rerenderFilteredTable(tableKey);
+    });
   }
 
   function initMaterialCompras() {
     ensureModuleStyles();
     attachListeners();
+    setupFilterHeaders();
     refreshInicialState();
     loadTransacciones();
   }

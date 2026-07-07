@@ -348,6 +348,110 @@
     z-index: 2;
 }
 
+.mat-invoice-table thead th {
+    overflow: visible;
+}
+
+.mat-invoice-th-label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mat-invoice-filterable {
+    overflow: visible !important;
+    position: sticky;
+}
+
+.mat-invoice-header-cell {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+    min-height: 18px;
+}
+
+.mat-invoice-filter-btn {
+    align-items: center;
+    background: #203241;
+    border: 1px solid #55708a;
+    color: #9cc8ff;
+    cursor: pointer;
+    display: flex;
+    flex: 0 0 auto;
+    font-size: 10px;
+    height: 20px;
+    justify-content: center;
+    margin-left: auto;
+    padding: 0;
+    width: 20px;
+}
+
+.mat-invoice-filter-btn:hover,
+.mat-invoice-filter-btn.open {
+    background: #20688c;
+    color: #ffffff;
+}
+
+.mat-invoice-filter-btn.active {
+    background: #2f80d8;
+    border-color: #71b9ff;
+    color: #ffffff;
+}
+
+.mat-invoice-header-filter {
+    background: #2c3e50;
+    border: 1px solid #20688c;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+    display: none;
+    left: 6px;
+    min-width: 165px;
+    padding: 6px;
+    position: absolute;
+    right: 6px;
+    top: 29px;
+    z-index: 30;
+}
+
+.mat-invoice-header-filter.open {
+    display: block;
+}
+
+.mat-invoice-filter-input {
+    background: #34495e;
+    border: 1px solid #20688c;
+    color: #f3f6fb;
+    font-size: 11px;
+    height: 24px;
+    padding: 4px 6px;
+    width: 100%;
+}
+
+.mat-invoice-filter-input:focus {
+    border-color: #71b9ff;
+    box-shadow: 0 0 0 2px rgba(113, 185, 255, 0.18);
+    outline: 0;
+}
+
+.mat-invoice-filter-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.mat-invoice-filter-actions button {
+    background: #3c5066;
+    border: 1px solid #5f7e9d;
+    color: #ffffff;
+    cursor: pointer;
+    flex: 1;
+    font-size: 10px;
+    height: 22px;
+}
+
+.mat-invoice-filter-actions button:hover {
+    background: #4f78aa;
+}
+
 .mat-invoice-table td {
     border-bottom: 1px solid #3f4856;
     color: #eaf0f5;

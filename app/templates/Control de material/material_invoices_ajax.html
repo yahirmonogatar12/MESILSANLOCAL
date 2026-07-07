@@ -62,19 +62,7 @@
             </div>
             <div class="mat-invoice-table-wrap compact">
                 <table class="mat-invoice-table">
-                    <thead>
-                        <tr>
-                            <th>Invoice</th>
-                            <th>Estado</th>
-                            <th>Tipo</th>
-                            <th>Lineas</th>
-                            <th>Packing</th>
-                            <th>Links</th>
-                            <th>Fecha</th>
-                            <th>Excel</th>
-                            <th>Accion</th>
-                        </tr>
-                    </thead>
+                    <thead id="mat-invoice-list-head"></thead>
                     <tbody id="mat-invoice-list-body"></tbody>
                 </table>
             </div>
@@ -109,20 +97,7 @@
             </div>
             <div class="mat-invoice-table-wrap">
                 <table class="mat-invoice-table">
-                    <thead>
-                        <tr>
-                            <th>No.</th>
-                            <th>Parte raw</th>
-                            <th>Parte sistema</th>
-                            <th>Descripcion</th>
-                            <th>Cantidad</th>
-                            <th>UOM</th>
-                            <th>Costo unit.</th>
-                            <th>Total</th>
-                            <th>Estado</th>
-                            <th>Accion</th>
-                        </tr>
-                    </thead>
+                    <thead id="mat-invoice-lines-head"></thead>
                     <tbody id="mat-invoice-lines-body"></tbody>
                 </table>
             </div>
@@ -134,23 +109,7 @@
             </div>
             <div class="mat-invoice-table-wrap">
                 <table class="mat-invoice-table">
-                    <thead>
-                        <tr>
-                            <th>No.</th>
-                            <th>Pallet raw</th>
-                            <th>Pallet</th>
-                            <th>Parte sistema</th>
-                            <th>Cantidad</th>
-                            <th>Entradas</th>
-                            <th>Cant. entrada</th>
-                            <th>Pend. entrada</th>
-                            <th>Aplicado</th>
-                            <th>KG</th>
-                            <th>CBM</th>
-                            <th>Estado</th>
-                            <th>Mensaje</th>
-                        </tr>
-                    </thead>
+                    <thead id="mat-invoice-packing-head"></thead>
                     <tbody id="mat-invoice-packing-body"></tbody>
                 </table>
             </div>
@@ -162,20 +121,7 @@
             </div>
             <div class="mat-invoice-table-wrap">
                 <table class="mat-invoice-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Codigo recibido</th>
-                            <th>Parte</th>
-                            <th>Cantidad</th>
-                            <th>Costo</th>
-                            <th>Pallet</th>
-                            <th>Estado</th>
-                            <th>Aplicado por</th>
-                            <th>Fecha aplicacion</th>
-                            <th>Desaplicado por</th>
-                        </tr>
-                    </thead>
+                    <thead id="mat-invoice-links-head"></thead>
                     <tbody id="mat-invoice-links-body"></tbody>
                 </table>
             </div>
@@ -342,4 +288,5 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260629c') }}"></script>
+<script src="{{ url_for('static', filename='js/material_column_filters.js', v='20260707a') }}"></script>
+<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260707a') }}"></script>

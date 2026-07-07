@@ -1,6 +1,6 @@
 (function () {
   const STYLE_ID = "material-invoices-css";
-  const STYLE_VERSION = "20260629a";
+  const STYLE_VERSION = "20260707a";
   const STYLE_HREF = `/static/css/material_invoices.css?v=${STYLE_VERSION}`;
 
   const state = {
@@ -19,6 +19,60 @@
     // Copia de los datos renderizados para exportar a Excel sin volver al backend.
     data: { invoices: [], lines: [], packing: [], links: [] },
   };
+
+  const INVOICE_LIST_COLUMNS = [
+    { field: "numero_invoice", label: "Invoice" },
+    { field: "estado", label: "Estado" },
+    { field: "tipo", label: "Tipo" },
+    { field: "total_lineas", label: "Lineas", value: (row) => numberText(row.total_lineas) },
+    { field: "total_packing", label: "Packing", value: (row) => numberText(row.total_packing) },
+    { field: "links_activos", label: "Links", value: (row) => numberText(row.links_activos) },
+    { field: "fecha_carga", label: "Fecha" },
+    { field: "excel", label: "Excel", value: (row) => (row.archivo_ruta ? "Ver" : ""), filterable: false },
+    { field: "accion", label: "Accion", filterable: false },
+  ];
+
+  const INVOICE_LINES_COLUMNS = [
+    { field: "line_no", label: "No.", value: (row) => numberText(row.line_no) },
+    { field: "raw_part_num", label: "Parte raw" },
+    { field: "numero_parte_sistema", label: "Parte sistema" },
+    { field: "descripcion", label: "Descripcion" },
+    { field: "cantidad", label: "Cantidad", value: (row) => numberText(row.cantidad) },
+    { field: "uom", label: "UOM" },
+    { field: "costo_unitario", label: "Costo unit.", value: (row) => numberText(row.costo_unitario) },
+    { field: "costo_total", label: "Total", value: (row) => numberText(row.costo_total) },
+    { field: "estado_match", label: "Estado" },
+    { field: "accion", label: "Accion", filterable: false },
+  ];
+
+  const INVOICE_PACKING_COLUMNS = [
+    { field: "line_no", label: "No.", value: (row) => numberText(row.line_no) },
+    { field: "pallet_no_original", label: "Pallet raw" },
+    { field: "pallet_no", label: "Pallet" },
+    { field: "numero_parte_sistema", label: "Parte sistema" },
+    { field: "cantidad_packing", label: "Cantidad", value: (row) => numberText(row.cantidad_packing) },
+    { field: "entradas_recibidas", label: "Entradas", value: (row) => numberText(row.entradas_recibidas) },
+    { field: "cantidad_recibida", label: "Cant. entrada", value: (row) => numberText(row.cantidad_recibida) },
+    { field: "cantidad_pendiente_entrada", label: "Pend. entrada", value: (row) => numberText(row.cantidad_pendiente_entrada) },
+    { field: "cantidad_aplicada_activa", label: "Aplicado", value: (row) => numberText(row.cantidad_aplicada_activa) },
+    { field: "kg", label: "KG", value: (row) => numberText(row.kg) },
+    { field: "cbm", label: "CBM", value: (row) => numberText(row.cbm) },
+    { field: "estado_match", label: "Estado" },
+    { field: "mensaje_match", label: "Mensaje" },
+  ];
+
+  const INVOICE_LINKS_COLUMNS = [
+    { field: "id", label: "ID" },
+    { field: "codigo_material_recibido", label: "Codigo recibido" },
+    { field: "numero_parte_sistema", label: "Parte" },
+    { field: "cantidad_aplicada", label: "Cantidad", value: (row) => numberText(row.cantidad_aplicada) },
+    { field: "costo", label: "Costo", value: (row) => `${numberText(row.costo_unitario)} ${row.moneda || ""}` },
+    { field: "pallet", label: "Pallet", value: (row) => `${row.pallet_recibido || ""} ${row.pallet_esperado || ""}` },
+    { field: "estado", label: "Estado" },
+    { field: "usuario_aplicacion", label: "Aplicado por" },
+    { field: "fecha_aplicacion", label: "Fecha aplicacion" },
+    { field: "usuario_desaplicado", label: "Desaplicado por" },
+  ];
 
   function ensureModuleStyles() {
     const current = document.getElementById(STYLE_ID);
@@ -145,6 +199,44 @@
     return params;
   }
 
+  function columnFilters() {
+    return window.MatColumnFilters || null;
+  }
+
+  function setupFilterHeaders() {
+    const filters = columnFilters();
+    if (!filters) return;
+    filters.attachGlobalHandlers();
+    filters.renderHead("invoices:list", "mat-invoice-list-head", INVOICE_LIST_COLUMNS);
+    filters.renderHead("invoices:lines", "mat-invoice-lines-head", INVOICE_LINES_COLUMNS);
+    filters.renderHead("invoices:packing", "mat-invoice-packing-head", INVOICE_PACKING_COLUMNS);
+    filters.renderHead("invoices:links", "mat-invoice-links-head", INVOICE_LINKS_COLUMNS);
+  }
+
+  function filterRows(tableKey, columns, rows) {
+    return columnFilters()?.filterRows(tableKey, columns, rows) || rows || [];
+  }
+
+  function rerenderFilteredTable(tableKey) {
+    if (tableKey === "invoices:list") {
+      renderInvoiceList(state.data.invoices || []);
+    } else if (tableKey === "invoices:lines") {
+      renderLines(state.data.lines || []);
+    } else if (tableKey === "invoices:packing") {
+      renderPacking(state.data.packing || []);
+    } else if (tableKey === "invoices:links") {
+      renderLinks(state.data.links || []);
+    }
+  }
+
+  function clearColumnFilters() {
+    columnFilters()?.clearByPrefix("invoices:");
+    setupFilterHeaders();
+    renderLines(state.data.lines || []);
+    renderPacking(state.data.packing || []);
+    renderLinks(state.data.links || []);
+  }
+
   function syncDateFilterAvailability() {
     const soloAbiertos = el("mat-invoice-state")?.value === "PENDIENTES";
     [el("mat-invoice-date-from"), el("mat-invoice-date-to")].forEach((input) => {
@@ -165,6 +257,7 @@
     const to = el("mat-invoice-date-to");
     if (from) from.value = from.dataset.defaultDate || "";
     if (to) to.value = to.dataset.defaultDate || "";
+    clearColumnFilters();
     syncDateFilterAvailability();
     loadInvoices();
   }
@@ -187,11 +280,13 @@
     const body = el("mat-invoice-list-body");
     state.data.invoices = rows;
     if (!body) return;
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="9">No hay invoices cargadas.</td></tr>`;
+    const visibleRows = filterRows("invoices:list", INVOICE_LIST_COLUMNS, rows);
+    if (!visibleRows.length) {
+      const message = rows.length ? "Sin resultados con filtros." : "No hay invoices cargadas.";
+      body.innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
       return;
     }
-    body.innerHTML = rows.map((row) => {
+    body.innerHTML = visibleRows.map((row) => {
       const selected = Number(row.id) === Number(state.selectedInvoiceId) ? " selected" : "";
       const tieneArchivo = Boolean(row.archivo_ruta);
       const verBtn = tieneArchivo
@@ -256,11 +351,13 @@
     const body = el("mat-invoice-lines-body");
     state.data.lines = rows;
     if (!body) return;
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="10">Sin lineas.</td></tr>`;
+    const visibleRows = filterRows("invoices:lines", INVOICE_LINES_COLUMNS, rows);
+    if (!visibleRows.length) {
+      const message = rows.length ? "Sin resultados con filtros." : "Sin lineas.";
+      body.innerHTML = `<tr><td colspan="10">${message}</td></tr>`;
       return;
     }
-    body.innerHTML = rows.map((row) => {
+    body.innerHTML = visibleRows.map((row) => {
       const links = Number(row.links_activos || 0);
       const editBtn = `<button type="button" class="mat-invoice-btn small mat-invoice-edit-line"
         data-edit-line-id="${escapeHtml(row.id)}"
@@ -284,13 +381,15 @@
     const body = el("mat-invoice-packing-body");
     state.data.packing = rows;
     if (!body) return;
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="13">Sin packing.</td></tr>`;
+    const visibleRows = filterRows("invoices:packing", INVOICE_PACKING_COLUMNS, rows);
+    if (!visibleRows.length) {
+      const message = rows.length ? "Sin resultados con filtros." : "Sin packing.";
+      body.innerHTML = `<tr><td colspan="13">${message}</td></tr>`;
       return;
     }
     // Las diferencias de pallet van primero (requieren atencion); el resto
     // conserva su orden. Array.sort es estable, asi que no altera lo demas.
-    const ordered = rows.slice().sort((a, b) => {
+    const ordered = visibleRows.slice().sort((a, b) => {
       const da = a.estado_match === "DIFERENCIA_PALLET" ? 0 : 1;
       const db = b.estado_match === "DIFERENCIA_PALLET" ? 0 : 1;
       return da - db;
@@ -374,11 +473,13 @@
     const body = el("mat-invoice-links-body");
     state.data.links = rows;
     if (!body) return;
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="10">Sin links.</td></tr>`;
+    const visibleRows = filterRows("invoices:links", INVOICE_LINKS_COLUMNS, rows);
+    if (!visibleRows.length) {
+      const message = rows.length ? "Sin resultados con filtros." : "Sin links.";
+      body.innerHTML = `<tr><td colspan="10">${message}</td></tr>`;
       return;
     }
-    body.innerHTML = rows.map((row) => {
+    body.innerHTML = visibleRows.map((row) => {
       // Registro de pallet distinto: esperado -> recibido + nota.
       let pallet = "";
       if (row.pallet_recibido || row.pallet_esperado) {
@@ -1292,6 +1393,11 @@
       }
     });
 
+    document.addEventListener("mat-column-filter-change", (event) => {
+      const tableKey = event.detail?.tableKey || "";
+      if (tableKey.startsWith("invoices:")) rerenderFilteredTable(tableKey);
+    });
+
     document.body.dataset.materialInvoicesListenersAttached = "1";
   }
 
@@ -1311,6 +1417,7 @@
     hideModal("mat-invoice-pallet-link");
     hideModal("mat-invoice-line-edit");
     if (el("mat-invoice-detail")) el("mat-invoice-detail").hidden = true;
+    setupFilterHeaders();
     // Arrancar mostrando los pendientes (de cualquier fecha), no solo los de hoy.
     if (el("mat-invoice-state")) el("mat-invoice-state").value = "PENDIENTES";
     syncDateFilterAvailability();

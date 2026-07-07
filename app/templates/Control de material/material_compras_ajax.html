@@ -75,18 +75,7 @@
             </div>
             <div class="mat-invoice-table-wrap compact">
                 <table class="mat-invoice-table">
-                    <thead>
-                        <tr>
-                            <th>Transaccion</th>
-                            <th>Tipo</th>
-                            <th>Estado</th>
-                            <th>Proveedor</th>
-                            <th>Partes</th>
-                            <th>Lineas</th>
-                            <th>Monto</th>
-                            <th>Fecha</th>
-                        </tr>
-                    </thead>
+                    <thead id="mat-compras-list-head"></thead>
                     <tbody id="mat-compras-list-body"></tbody>
                 </table>
             </div>
@@ -109,27 +98,7 @@
 
         <div class="mat-invoice-table-wrap">
             <table class="mat-invoice-table">
-                <thead>
-                    <tr>
-                        <th>Parte</th>
-                        <th>Parte sistema</th>
-                        <th>Descripcion</th>
-                        <th>Spec</th>
-                        <th>Comprado</th>
-                        <th>Recibido</th>
-                        <th>Pendiente</th>
-                        <th>Estado</th>
-                        <th>Curr.</th>
-                        <th>P. Unit.</th>
-                        <th>Total</th>
-                        <th>Proveedor</th>
-                        <th>Factura</th>
-                        <th>Modelo</th>
-                        <th>Cat.</th>
-                        <th>Fecha</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
+                <thead id="mat-compras-lineas-head"></thead>
                 <tbody id="mat-compras-lineas-body"></tbody>
             </table>
         </div>
@@ -172,4 +141,5 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/material_compras.js', v='20260618a') }}"></script>
+<script src="{{ url_for('static', filename='js/material_column_filters.js', v='20260707a') }}"></script>
+<script src="{{ url_for('static', filename='js/material_compras.js', v='20260707a') }}"></script>
