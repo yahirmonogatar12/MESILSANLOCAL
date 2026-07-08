@@ -882,11 +882,13 @@ def importar_wos_a_plan_main():
             line = wo.get("linea") or "MAIN_LINE"
 
             # Buscar CT, UPH, MODEL, PROJECT en raw (no la linea)
+            # Prioriza match exacto de part_no: el LIKE tambien trae variantes
+            # con sufijo (EBR43713702_I / _S) y sin esto ganaba la mas nueva.
             raw_data_query = """
                 SELECT part_no, model, project, c_t as ct, uph
                 FROM raw
                 WHERE model = %s OR model = %s OR part_no = %s OR part_no LIKE %s
-                ORDER BY id DESC
+                ORDER BY (part_no IN (%s, %s)) DESC, id DESC
                 LIMIT 1
             """
             raw_params = (
@@ -894,11 +896,14 @@ def importar_wos_a_plan_main():
                 wo.get("codigo_modelo"),
                 wo.get("codigo_modelo"),
                 f"%{wo.get('modelo')}%",
+                wo.get("modelo"),
+                wo.get("codigo_modelo"),
             )
             raw_data = execute_query(raw_data_query, raw_params, fetch="one")
 
             if raw_data:
-                part_no = raw_data.get("part_no") or part_no
+                # El WO ya trae el part_no correcto; raw solo lo completa si falta
+                part_no = part_no or raw_data.get("part_no") or ""
                 model_code = raw_data.get("model") or wo.get("modelo") or ""
                 project = raw_data.get("project") or wo.get("nombre_modelo") or ""
                 try:
