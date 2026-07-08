@@ -25,14 +25,17 @@
     }
 
     // ===============================================
-    // ESTADO INTERNO POR DROPDOWN (independiente del DOM)
+    // RESOLUCION LOCAL DE TARGETS
     // ===============================================
-    // Bootstrap mantiene clases 'show' y 'collapsing' que cambian
-    // durante animaciones. Si el usuario hace click en medio de una
-    // animacion, leer el classList da resultados erroneos. Mantenemos
-    // nuestro propio estado deseado por ID para que el toggle siempre
-    // sepa cual es el estado "logico" actual.
-    const dropdownDesiredState = new Map(); // id -> boolean (true=abierto)
+    // Los LISTA_* de cada modulo conviven ocultos en el DOM y repiten
+    // IDs (p.ej. #sidebarMSL existe en 4 modulos). Un querySelector
+    // global agarra el del modulo oculto y el toggle opera sobre la
+    // lista equivocada. Resolver primero dentro de la seccion del boton.
+    function findLocalTarget(button, selector) {
+        const section = button.closest('.sidebar-section') || button.parentElement;
+        const local = section ? section.querySelector(selector) : null;
+        return local || document.querySelector(selector);
+    }
 
     // ===============================================
     // PERSISTENCIA EN LOCALSTORAGE
@@ -157,9 +160,9 @@
         const targetSelector = button.getAttribute('data-bs-target');
         if (!targetSelector) return;
         
-        const targetElement = document.querySelector(targetSelector);
+        const targetElement = findLocalTarget(button, targetSelector);
         if (!targetElement) return;
-        
+
         const dropdownId = `unified-dropdown-${index}`;
         
         // Limpiar listeners anteriores clonando el botón
@@ -254,9 +257,6 @@
         const savedState = getSavedDropdownState(targetId);
         const shouldOpen = savedState === null ? false : savedState;
 
-        // Inicializar el estado interno con el deseado
-        if (targetId) dropdownDesiredState.set(targetId, shouldOpen);
-
         setTimeout(() => {
             if (!targetElement || !collapseInstance._element) return;
             const isCurrentlyOpen = targetElement.classList.contains('show');
@@ -291,19 +291,18 @@
 
             // Resolver targetElement FRESCO (por si el sidebar se
             // recargo via AJAX y el closure tiene un nodo huerfano).
-            const liveTarget = document.querySelector(targetSelector);
+            const liveTarget = findLocalTarget(button, targetSelector);
             const liveCollapse = liveTarget ? (bootstrap.Collapse.getInstance(liveTarget) || new bootstrap.Collapse(liveTarget, { toggle: false })) : collapseInstance;
             const elementoActual = liveTarget || targetElement;
 
-            // Usar nuestro estado interno como fuente de verdad. Asi
-            // somos inmunes a 'collapsing' / clases en transicion.
-            // Si nunca se inicializo, asumir abierto (default).
-            const currentDesired = dropdownDesiredState.has(targetId)
-                ? dropdownDesiredState.get(targetId)
-                : true;
-            const willOpen = !currentDesired;
+            // Estado por boton (aria-expanded se setea sincrono en cada
+            // toggle), con el classList del elemento como respaldo. No
+            // usar estado global por ID: los IDs se repiten entre modulos.
+            const currentOpen = button.getAttribute('aria-expanded') === 'true'
+                || elementoActual.classList.contains('show');
+            const willOpen = !currentOpen;
 
-            log(`🖥️ Toggle: ${dropdownId} (${currentDesired ? 'cerrar' : 'abrir'})`);
+            log(`🖥️ Toggle: ${dropdownId} (${currentOpen ? 'cerrar' : 'abrir'})`);
 
             try {
                 if (willOpen) {
@@ -327,13 +326,12 @@
                 }
             }
             button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-            dropdownDesiredState.set(targetId, willOpen);
             saveDropdownState(targetId, willOpen);
             log(`🖥️ ${willOpen ? 'Abierto' : 'Cerrado'} por usuario: ${dropdownId}`);
 
             // Actualizar aria-expanded después de la animación
             setTimeout(() => {
-                const t = document.querySelector(targetSelector) || elementoActual;
+                const t = findLocalTarget(button, targetSelector) || elementoActual;
                 const newState = t.classList.contains('show');
                 button.setAttribute('aria-expanded', newState.toString());
                 isProcessing = false;
