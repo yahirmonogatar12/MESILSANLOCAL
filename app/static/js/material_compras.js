@@ -6,9 +6,12 @@
 
   const state = {
     selectedTransaccion: null,
+    selectedTipo: null,
+    selectedTransactionData: null,
+    activeTab: "lineas",
     pendingUpload: null,
     inicialHecha: {},
-    data: { transacciones: [], lineas: [] },
+    data: { transacciones: [], lineas: [], links: [] },
   };
 
   const COMPRAS_LIST_COLUMNS = [
@@ -39,6 +42,17 @@
     { field: "modelo", label: "Modelo" },
     { field: "categoria", label: "Cat." },
     { field: "fecha_compra", label: "Fecha" },
+  ];
+
+  const COMPRAS_LINKS_COLUMNS = [
+    { field: "codigo_material_recibido", label: "Lote" },
+    { field: "numero_parte_sistema", label: "Parte sistema" },
+    { field: "cantidad_aplicada", label: "Cantidad", value: (row) => numberText(row.cantidad_aplicada) },
+    { field: "costo_unitario", label: "Costo unit.", value: (row) => numberText(row.costo_unitario) },
+    { field: "moneda", label: "Moneda" },
+    { field: "estado", label: "Estado" },
+    { field: "usuario_aplicacion", label: "Usuario" },
+    { field: "fecha_aplicacion", label: "Fecha vinculacion" },
   ];
 
   function ensureModuleStyles() {
@@ -157,6 +171,7 @@
     filters.attachGlobalHandlers();
     filters.renderHead("compras:list", "mat-compras-list-head", COMPRAS_LIST_COLUMNS);
     filters.renderHead("compras:lineas", "mat-compras-lineas-head", COMPRAS_LINEAS_COLUMNS);
+    filters.renderHead("compras:links", "mat-compras-links-head", COMPRAS_LINKS_COLUMNS);
   }
 
   function filterRows(tableKey, columns, rows) {
@@ -168,6 +183,8 @@
       renderTransacciones(state.data.transacciones || []);
     } else if (tableKey === "compras:lineas") {
       renderLineas(state.data.lineas || []);
+    } else if (tableKey === "compras:links") {
+      renderLinks(state.data.links || []);
     }
   }
 
@@ -175,6 +192,7 @@
     columnFilters()?.clearByPrefix("compras:");
     setupFilterHeaders();
     renderLineas(state.data.lineas || []);
+    renderLinks(state.data.links || []);
   }
 
   function clearFilters() {
@@ -237,7 +255,7 @@
     }
     body.innerHTML = visibleRows
       .map((r) => `
-        <tr data-transaccion="${escapeHtml(r.numero_transaccion)}" class="mat-invoice-row">
+        <tr data-transaccion="${escapeHtml(r.numero_transaccion)}" data-tipo="${escapeHtml(r.tipo)}" class="mat-invoice-row">
           <td>${escapeHtml(r.numero_transaccion)}</td>
           <td>${escapeHtml(r.tipo || "")}</td>
           <td>${statusBadge(r.estado)}</td>
@@ -250,21 +268,33 @@
       .join("");
   }
 
-  async function loadDetail(numeroTransaccion) {
+  async function loadDetail(numeroTransaccion, tipo) {
     setLoading(true);
     setMessage("mat-compras-detail-message", "");
     try {
-      const url = `/api/material_admin/compras/transacciones/${encodeURIComponent(numeroTransaccion)}`;
+      const params = new URLSearchParams({ tipo: tipo || "" });
+      const url = `/api/material_admin/compras/transacciones/${encodeURIComponent(numeroTransaccion)}?${params.toString()}`;
       const data = await fetchJson(url);
       state.selectedTransaccion = numeroTransaccion;
+      state.selectedTipo = data.tipo || tipo;
+      state.selectedTransactionData = data.transaccion || {};
       state.data.lineas = data.lineas || [];
+      state.data.links = data.links || [];
       renderLineas(state.data.lineas);
+      renderLinks(state.data.links);
       const detail = el("mat-compras-detail");
       if (detail) detail.hidden = false;
       const title = el("mat-compras-detail-title");
       if (title) title.textContent = `Transaccion ${numeroTransaccion}`;
       const sub = el("mat-compras-detail-subtitle");
-      if (sub) sub.textContent = `${state.data.lineas.length} renglones`;
+      if (sub) sub.textContent = `${state.selectedTipo || ""} · ${state.selectedTransactionData.estado || ""} · ${state.data.lineas.length} renglones · ${state.data.links.length} lotes vinculados`;
+      const closeTransactionBtn = el("mat-compras-transaction-close");
+      if (closeTransactionBtn) {
+        const cerrada = state.selectedTransactionData.cerrada === true;
+        closeTransactionBtn.textContent = cerrada ? "Reabrir transaccion" : "Cerrar transaccion";
+        closeTransactionBtn.dataset.cerrada = cerrada ? "1" : "0";
+      }
+      syncTabs();
       detail?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       setMessage("mat-compras-detail-message", `No se pudo abrir la transaccion: ${err.message}`);
@@ -306,6 +336,66 @@
       .join("");
   }
 
+  function renderLinks(rows) {
+    const body = el("mat-compras-links-body");
+    state.data.links = rows;
+    if (!body) return;
+    const visibleRows = filterRows("compras:links", COMPRAS_LINKS_COLUMNS, rows);
+    if (!visibleRows.length) {
+      const message = rows.length ? "Sin resultados con filtros." : "Sin lotes vinculados.";
+      body.innerHTML = `<tr><td colspan="8" class="mat-invoice-empty">${message}</td></tr>`;
+      return;
+    }
+    body.innerHTML = visibleRows.map((row) => `<tr>
+      <td title="${escapeHtml(row.codigo_material_recibido)}">${escapeHtml(row.codigo_material_recibido)}</td>
+      <td>${escapeHtml(row.numero_parte_sistema || "")}</td>
+      <td>${numberText(row.cantidad_aplicada)}</td>
+      <td>${numberText(row.costo_unitario)}</td>
+      <td>${escapeHtml(row.moneda || "")}</td>
+      <td>${statusBadge(row.estado)}</td>
+      <td>${escapeHtml(row.usuario_aplicacion || "")}</td>
+      <td>${escapeHtml(row.fecha_aplicacion || "")}</td>
+    </tr>`).join("");
+  }
+
+  function syncTabs() {
+    const page = el("mat-compras-page");
+    if (!page) return;
+    page.querySelectorAll("[data-compras-tab]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.comprasTab === state.activeTab);
+    });
+    ["lineas", "links"].forEach((tab) => {
+      const panel = el(`mat-compras-tab-${tab}`);
+      if (panel) panel.hidden = state.activeTab !== tab;
+    });
+  }
+
+  async function toggleTransactionClosed(button) {
+    if (!state.selectedTransaccion || !state.selectedTipo) return;
+    const cerrar = button.dataset.cerrada !== "1";
+    setLoading(true);
+    setMessage("mat-compras-detail-message", "");
+    try {
+      const url = `/api/material_admin/compras/transacciones/${encodeURIComponent(state.selectedTransaccion)}/close`;
+      await fetchJson(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: state.selectedTipo, cerrado: cerrar }),
+      });
+      setMessage(
+        "mat-compras-detail-message",
+        cerrar ? "Transaccion cerrada." : "Transaccion reabierta.",
+        "success"
+      );
+      await loadDetail(state.selectedTransaccion, state.selectedTipo);
+      await loadTransacciones();
+    } catch (err) {
+      setMessage("mat-compras-detail-message", `No se pudo cambiar el estado: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // --- Carga (preview + confirmar) ---
 
   async function openPreview(modo) {
@@ -341,16 +431,19 @@
       const nuevasTxt = data.transacciones_nuevas != null
         ? ` · ${numberText(data.transacciones_nuevas)} nuevas / ${numberText(data.transacciones_existentes)} ya existen`
         : "";
+      const lineasTxt = data.lineas_nuevas != null
+        ? ` · ${numberText(data.lineas_nuevas)} renglones nuevos / ${numberText(data.lineas_existentes)} ya existen`
+        : "";
       sub.textContent =
         `${data.tipo} · ${modoTxt} · ${numberText(data.total_lineas)} renglones · ` +
-        `${numberText(data.total_transacciones)} transacciones${nuevasTxt}`;
+        `${numberText(data.total_transacciones)} transacciones${nuevasTxt}${lineasTxt}`;
     }
     // Aviso si en ACTUALIZACION no hay transacciones nuevas, o si el inicial ya existe.
     let aviso = (data.warnings || []).join(" ") || "";
     if (data.bloqueado_inicial) {
       aviso = `Ya existe carga inicial para ${data.tipo}. Usa Actualizar. ${aviso}`;
-    } else if (modo === "ACTUALIZACION" && data.transacciones_nuevas === 0) {
-      aviso = `No hay transacciones nuevas que agregar. ${aviso}`;
+    } else if (modo === "ACTUALIZACION" && data.lineas_nuevas === 0) {
+      aviso = `No hay renglones nuevos que agregar. ${aviso}`;
     }
     setMessage("mat-compras-preview-message", aviso.trim());
     const body = el("mat-compras-preview-body");
@@ -387,7 +480,7 @@
       if (fileInput) fileInput.value = "";
       const estadoTxt = data.estado_lineas === "CERRADA" ? " (cerradas, histórico)" : " (abiertas, almacén)";
       const msg = data.total_lineas === 0
-        ? "Sin transacciones nuevas que agregar."
+        ? "Sin renglones nuevos que agregar."
         : `Cargado: ${data.total_lineas} renglones, ${data.total_transacciones} transacciones (${data.tipo})${estadoTxt}.`;
       setMessage("mat-compras-upload-message", msg, "success");
       refreshInicialState();
@@ -500,14 +593,22 @@
         confirmUpload();
       } else if (t.hasAttribute && t.hasAttribute("data-preview-close")) {
         hideModal("mat-compras-preview");
+      } else if (t.id === "mat-compras-transaction-close") {
+        toggleTransactionClosed(t);
       } else if (t.id === "mat-compras-detail-close") {
         const detail = el("mat-compras-detail");
         if (detail) detail.hidden = true;
         state.selectedTransaccion = null;
+        state.selectedTipo = null;
+        state.selectedTransactionData = null;
+        state.data.links = [];
+      } else if (t.dataset && t.dataset.comprasTab) {
+        state.activeTab = t.dataset.comprasTab;
+        syncTabs();
       } else if (t.dataset && t.dataset.export === "lineas") {
         exportLineas();
       } else if (t.dataset && t.dataset.transaccion) {
-        loadDetail(t.dataset.transaccion);
+        loadDetail(t.dataset.transaccion, t.dataset.tipo);
       }
     });
 

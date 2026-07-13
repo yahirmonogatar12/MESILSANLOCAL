@@ -7,6 +7,12 @@ registran las compras y sus precios. Reusa storage, matcher y normalizadores.
 
 import hashlib
 import logging
+import threading
+import time
+import unicodedata
+from collections import Counter, OrderedDict
+from copy import deepcopy
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -33,6 +39,28 @@ logger = logging.getLogger(__name__)
 ERROR_INTERNO = "Error interno del servidor."
 TIPOS_VALIDOS = ("LG", "OVEN")
 EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+DB_IN_CHUNK_SIZE = 500
+PARSE_CACHE_MAX_ITEMS = 2
+PARSE_CACHE_TTL_SECONDS = 10 * 60
+
+_parse_cache = OrderedDict()
+_parse_cache_lock = threading.Lock()
+
+# Campos que identifican una compra. Se excluyen descripcion/spec/comentario para
+# que un cambio meramente descriptivo no vuelva a insertar una compra existente.
+_LINE_IDENTITY_COLUMNS = (
+    "numero_transaccion",
+    "raw_part_num",
+    "fecha_compra",
+    "cantidad",
+    "costo_unitario",
+    "costo_total",
+    "fecha_factura",
+    "proveedor",
+    "factura",
+    "modelo",
+    "categoria",
+)
 
 
 def _usuario_actual():
@@ -66,21 +94,138 @@ def _tiene_carga_inicial(cursor, tipo):
     return cursor.fetchone() is not None
 
 
-def _transacciones_existentes(cursor, tipo, numeros):
-    """Subconjunto de `numeros` que ya existe para ese tipo (de-dup por transaccion)."""
-    numeros = [n for n in set(numeros) if n]
-    if not numeros:
-        return set()
-    placeholders = ", ".join(["%s"] * len(numeros))
-    cursor.execute(
-        f"""
-        SELECT DISTINCT numero_transaccion
-        FROM lista_compras_lineas
-        WHERE tipo = %s AND numero_transaccion IN ({placeholders})
-        """,
-        [tipo, *numeros],
+def _text_key(value):
+    """Clave comparable como utf8mb4_unicode_ci: sin acentos, caso ni espacios extra."""
+    text = "" if value is None else str(value)
+    text = text.replace("\u00a0", " ").strip()
+    text = " ".join(text.split())
+    text = "".join(
+        char
+        for char in unicodedata.normalize("NFKD", text)
+        if not unicodedata.combining(char)
     )
-    return {row["numero_transaccion"] for row in (cursor.fetchall() or [])}
+    return text.casefold()
+
+
+def _transaction_key(value):
+    return _text_key(value)
+
+
+def _date_key(value):
+    if isinstance(value, (date, datetime)):
+        return value.strftime("%Y-%m-%d")
+    return str(value or "")[:10]
+
+
+def _decimal_key(value):
+    if value in (None, ""):
+        return None
+    try:
+        normalized = Decimal(str(value)).normalize()
+        return format(normalized, "f")
+    except Exception:
+        return str(value).strip()
+
+
+def _line_signature(line):
+    """Firma estable de una línea, compatible entre openpyxl y MySQL."""
+    return (
+        _transaction_key(line.get("numero_transaccion")),
+        _text_key(line.get("raw_part_num") or line.get("numero_parte")),
+        _date_key(line.get("fecha_compra")),
+        _decimal_key(line.get("cantidad")),
+        _decimal_key(line.get("costo_unitario")),
+        _decimal_key(line.get("costo_total")),
+        _date_key(line.get("fecha_factura")),
+        _text_key(line.get("proveedor")),
+        _text_key(line.get("factura")),
+        _text_key(line.get("modelo")),
+        _text_key(line.get("categoria")),
+    )
+
+
+def _chunks(values, size=DB_IN_CHUNK_SIZE):
+    for start in range(0, len(values), size):
+        yield values[start : start + size]
+
+
+def _existing_lines(cursor, tipo, lineas):
+    """Lee líneas candidatas por bloques y evita repetir filas por collation/chunks."""
+    numeros = sorted({l.get("numero_transaccion") or "" for l in lineas})
+    nonblank = [numero for numero in numeros if numero]
+    rows_by_id = {}
+    select_columns = ", ".join(("id", *_LINE_IDENTITY_COLUMNS))
+
+    for chunk in _chunks(nonblank):
+        placeholders = ", ".join(["%s"] * len(chunk))
+        cursor.execute(
+            f"""
+            SELECT {select_columns}
+            FROM lista_compras_lineas
+            WHERE tipo = %s AND numero_transaccion IN ({placeholders})
+            """,
+            [tipo, *chunk],
+        )
+        for row in cursor.fetchall() or []:
+            rows_by_id[row["id"]] = row
+
+    if "" in numeros:
+        cursor.execute(
+            f"""
+            SELECT {select_columns}
+            FROM lista_compras_lineas
+            WHERE tipo = %s AND numero_transaccion = ''
+            """,
+            (tipo,),
+        )
+        for row in cursor.fetchall() or []:
+            rows_by_id[row["id"]] = row
+
+    return list(rows_by_id.values())
+
+
+def _filter_new_lines(cursor, tipo, lineas):
+    """Quita sólo líneas ya cargadas; permite nuevas partes en una transacción vieja."""
+    existing_rows = _existing_lines(cursor, tipo, lineas)
+    existing_counts = Counter(_line_signature(row) for row in existing_rows)
+    existing_transaction_keys = {
+        _transaction_key(row.get("numero_transaccion")) for row in existing_rows
+    }
+    new_lines = []
+    matched_lines = 0
+
+    # Counter conserva multiplicidad: si BD tiene una copia y el nuevo Excel dos,
+    # sólo la copia adicional se considera nueva.
+    for line in lineas:
+        signature = _line_signature(line)
+        if existing_counts[signature] > 0:
+            existing_counts[signature] -= 1
+            matched_lines += 1
+        else:
+            new_lines.append(line)
+
+    return new_lines, matched_lines, existing_transaction_keys
+
+
+def _parse_cached(file_bytes, filename):
+    """Evita parsear dos veces el mismo Excel entre preview y confirmación."""
+    file_hash = hashlib.sha256(file_bytes).hexdigest()
+    now = time.monotonic()
+    with _parse_cache_lock:
+        cached = _parse_cache.get(file_hash)
+        if cached and now - cached[0] <= PARSE_CACHE_TTL_SECONDS:
+            _parse_cache.move_to_end(file_hash)
+            return deepcopy(cached[1]), file_hash
+        if cached:
+            del _parse_cache[file_hash]
+
+    parsed = parse_compras_workbook(file_bytes, filename)
+    with _parse_cache_lock:
+        _parse_cache[file_hash] = (now, parsed)
+        _parse_cache.move_to_end(file_hash)
+        while len(_parse_cache) > PARSE_CACHE_MAX_ITEMS:
+            _parse_cache.popitem(last=False)
+    return deepcopy(parsed), file_hash
 
 
 def _leer_archivo(files):
@@ -103,7 +248,7 @@ def preview_compras(files, form):
         return {"success": False, "error": "tipo requerido (LG u OVEN)."}, 400
     modo = _normalizar_modo(form.get("modo"))
     try:
-        parsed = parse_compras_workbook(file_bytes, filename)
+        parsed, _ = _parse_cached(file_bytes, filename)
     except Exception as exc:
         logger.exception("Error leyendo compras desde %s: %s", filename, exc)
         return {"success": False, "error": "No se pudo leer el Excel de compras."}, 400
@@ -113,22 +258,33 @@ def preview_compras(files, form):
         detail = " ".join(parsed.get("warnings") or [])
         return {"success": False, "error": f"No se detectaron renglones. {detail}".strip()}, 400
 
-    transacciones = {l["numero_transaccion"] for l in lineas}
+    transaction_keys = {_transaction_key(l["numero_transaccion"]) for l in lineas}
     total_monto = sum((l.get("costo_total") or Decimal("0")) for l in lineas)
-    sample = [row_to_json(l) for l in lineas[:50]]
+    sample_lines = lineas
 
     # Cuántas transacciones son nuevas vs ya existen (para que el usuario sepa
     # qué se agregará). En INICIAL todo entra cerrado; en ACTUALIZACION solo las
     # nuevas se insertan (abiertas).
     conn, cursor, db_error = _db()
-    nuevas = len(transacciones)
+    nuevas = len(transaction_keys)
     existentes = 0
+    lineas_nuevas = len(lineas)
+    lineas_existentes = 0
     bloqueado_inicial = False
     if not db_error:
         try:
-            existentes_set = _transacciones_existentes(cursor, tipo, transacciones)
-            existentes = len(existentes_set)
-            nuevas = len(transacciones) - existentes
+            if modo == "ACTUALIZACION":
+                nuevas_lineas, lineas_existentes, _ = _filter_new_lines(
+                    cursor, tipo, lineas
+                )
+                sample_lines = nuevas_lineas
+                lineas_nuevas = len(nuevas_lineas)
+                new_transaction_keys = {
+                    _transaction_key(line["numero_transaccion"])
+                    for line in nuevas_lineas
+                }
+                nuevas = len(new_transaction_keys)
+                existentes = len(transaction_keys - new_transaction_keys)
             if modo == "INICIAL":
                 bloqueado_inicial = _tiene_carga_inicial(cursor, tipo)
         finally:
@@ -141,13 +297,16 @@ def preview_compras(files, form):
             "tipo": tipo,
             "modo": modo,
             "total_lineas": len(lineas),
-            "total_transacciones": len(transacciones),
+            "total_transacciones": len(transaction_keys),
             "transacciones_nuevas": nuevas,
             "transacciones_existentes": existentes,
+            "lineas_nuevas": lineas_nuevas,
+            "lineas_existentes": lineas_existentes,
             "bloqueado_inicial": bloqueado_inicial,
             "total_monto": json_value(total_monto),
             "warnings": parsed.get("warnings") or [],
-            "sample": sample,
+            # En ACTUALIZACION la tabla de preview sólo enseña lo que se insertará.
+            "sample": [row_to_json(line) for line in sample_lines[:50]],
         },
         200,
     )
@@ -162,7 +321,7 @@ def upload_compras(files, form):
         return {"success": False, "error": "tipo requerido (LG u OVEN)."}, 400
     modo = _normalizar_modo(form.get("modo"))
     try:
-        parsed = parse_compras_workbook(file_bytes, filename)
+        parsed, file_hash = _parse_cached(file_bytes, filename)
     except Exception as exc:
         logger.exception("Error leyendo compras desde %s: %s", filename, exc)
         return {"success": False, "error": "No se pudo leer el Excel de compras."}, 400
@@ -172,7 +331,6 @@ def upload_compras(files, form):
         detail = " ".join(parsed.get("warnings") or [])
         return {"success": False, "error": f"No se detectaron renglones. {detail}".strip()}, 400
 
-    file_hash = hashlib.sha256(file_bytes).hexdigest()
     conn, cursor, error = _db()
     if error:
         return error
@@ -217,14 +375,11 @@ def upload_compras(files, form):
             lineas_a_insertar = lineas
             estado_lineas = "CERRADA"
         else:
-            # ACTUALIZACION: de-dup por número de transacción. Solo las
-            # transacciones que NO existen para el tipo se insertan, ABIERTAS.
-            # (El mismo archivo puede re-subirse: trae viejas + nuevas.)
-            transacciones_excel = {l["numero_transaccion"] for l in lineas}
-            existentes = _transacciones_existentes(cursor, tipo, transacciones_excel)
-            lineas_a_insertar = [
-                l for l in lineas if l["numero_transaccion"] not in existentes
-            ]
+            # ACTUALIZACION: de-dup por firma de línea, no por transacción. Así
+            # una transacción vieja puede recibir una parte/renglón nuevo.
+            lineas_a_insertar, lineas_existentes, existing_transaction_keys = (
+                _filter_new_lines(cursor, tipo, lineas)
+            )
             estado_lineas = "ABIERTA"
             if not lineas_a_insertar:
                 return (
@@ -235,8 +390,9 @@ def upload_compras(files, form):
                         "modo": modo,
                         "total_lineas": 0,
                         "total_transacciones": 0,
-                        "transacciones_existentes": len(existentes),
-                        "message": "Sin transacciones nuevas que agregar.",
+                        "transacciones_existentes": len(existing_transaction_keys),
+                        "lineas_existentes": lineas_existentes,
+                        "message": "Sin renglones nuevos que agregar.",
                     },
                     200,
                 )
@@ -248,7 +404,9 @@ def upload_compras(files, form):
         _, archivo_size = save_file(file_bytes, archivo_ruta)
 
         cursor.execute("START TRANSACTION")
-        transacciones = {l["numero_transaccion"] for l in lineas_a_insertar}
+        transacciones = {
+            _transaction_key(l["numero_transaccion"]) for l in lineas_a_insertar
+        }
         total_monto = sum((l.get("costo_total") or Decimal("0")) for l in lineas_a_insertar)
 
         cursor.execute(
@@ -370,7 +528,7 @@ def list_transacciones(args):
             where.append("tipo = %s")
             params.append(tipo)
         estado = sanitizar_texto(args.get("estado"), 10).upper()
-        if estado in ("ABIERTA", "CERRADA"):
+        if estado in ("ABIERTA", "CERRADA", "APLICADA"):
             where.append("estado = %s")
             params.append(estado)
         if fecha_inicio:
@@ -383,8 +541,12 @@ def list_transacciones(args):
         cursor.execute(
             f"""
             SELECT numero_transaccion,
-                   MAX(tipo) AS tipo,
-                   MAX(estado) AS estado,
+                   tipo,
+                   CASE
+                     WHEN SUM(estado = 'ABIERTA') > 0 THEN 'ABIERTA'
+                     WHEN SUM(estado = 'APLICADA') > 0 THEN 'APLICADA'
+                     ELSE 'CERRADA'
+                   END AS estado,
                    MAX(proveedor) AS proveedor,
                    MIN(fecha_compra) AS fecha_compra,
                    COUNT(*) AS num_lineas,
@@ -392,7 +554,7 @@ def list_transacciones(args):
                    SUM(COALESCE(costo_total, 0)) AS total_monto
             FROM lista_compras_lineas
             WHERE {' AND '.join(where)}
-            GROUP BY numero_transaccion
+            GROUP BY tipo, numero_transaccion
             ORDER BY MIN(fecha_compra) DESC, numero_transaccion DESC
             LIMIT 500
             """,
@@ -408,16 +570,23 @@ def list_transacciones(args):
         conn.close()
 
 
-def get_transaccion_detail(numero_transaccion):
+def get_transaccion_detail(numero_transaccion, tipo=None):
     conn, cursor, error = _db()
     if error:
         return error
     try:
         numero = sanitizar_texto(numero_transaccion, 255)
+        tipo_normalizado = _normalizar_tipo(tipo) if tipo else None
+        if tipo and not tipo_normalizado:
+            return {"success": False, "error": "tipo invalido (LG u OVEN)."}, 400
+        where_tipo = " AND l.tipo = %s" if tipo_normalizado else ""
+        params = [numero]
+        if tipo_normalizado:
+            params.append(tipo_normalizado)
         # Incluye cuánto se ha recibido (aplicado) vs comprado, y el estado por
         # parte (ABIERTA pendiente / APLICADA llena / CERRADA histórico).
         cursor.execute(
-            """
+            f"""
             SELECT l.*,
                    COALESCE(ll.aplicado, 0) AS aplicado,
                    GREATEST(l.cantidad - COALESCE(ll.aplicado, 0), 0) AS pendiente
@@ -429,16 +598,132 @@ def get_transaccion_detail(numero_transaccion):
                 GROUP BY transaccion_linea_id
             ) ll ON ll.transaccion_linea_id = l.id
             WHERE l.numero_transaccion = %s
+              {where_tipo}
             ORDER BY l.id ASC
             """,
-            (numero,),
+            params,
         )
         lineas = [row_to_json(r) for r in (cursor.fetchall() or [])]
         if not lineas:
             return {"success": False, "error": "Transaccion no encontrada."}, 404
-        return {"success": True, "numero_transaccion": numero, "lineas": lineas}, 200
+
+        tipos = {line.get("tipo") for line in lineas}
+        if not tipo_normalizado and len(tipos) > 1:
+            return {
+                "success": False,
+                "error": "La transaccion existe en LG y OVEN; especifica el tipo.",
+            }, 409
+        resolved_tipo = tipo_normalizado or next(iter(tipos))
+
+        cursor.execute(
+            """
+            SELECT ll.*, l.raw_part_num, l.descripcion
+            FROM lista_compras_lot_links ll
+            INNER JOIN lista_compras_lineas l ON l.id = ll.transaccion_linea_id
+            WHERE l.numero_transaccion = %s AND l.tipo = %s
+            ORDER BY ll.fecha_aplicacion DESC, ll.id DESC
+            LIMIT 500
+            """,
+            (numero, resolved_tipo),
+        )
+        links = [row_to_json(r) for r in (cursor.fetchall() or [])]
+        estados = {line.get("estado") for line in lineas}
+        estado = (
+            "ABIERTA"
+            if "ABIERTA" in estados
+            else "APLICADA"
+            if "APLICADA" in estados
+            else "CERRADA"
+        )
+        transaccion = {
+            "numero_transaccion": numero,
+            "tipo": resolved_tipo,
+            "estado": estado,
+            "cerrada": estado == "CERRADA",
+        }
+        return {
+            "success": True,
+            "numero_transaccion": numero,
+            "tipo": resolved_tipo,
+            "transaccion": transaccion,
+            "lineas": lineas,
+            "links": links,
+        }, 200
     except Exception as exc:
         logger.exception("Error obteniendo transaccion: %s", exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def set_transaccion_closed(numero_transaccion, tipo, cerrado):
+    """Cierra o reabre una transacción sin alterar sus vínculos de lote."""
+    conn, cursor, error = _db()
+    if error:
+        return error
+    try:
+        numero = sanitizar_texto(numero_transaccion, 255)
+        tipo_normalizado = _normalizar_tipo(tipo)
+        if not numero or not tipo_normalizado:
+            return {
+                "success": False,
+                "error": "numero_transaccion y tipo (LG u OVEN) son requeridos.",
+            }, 400
+
+        cursor.execute(
+            """
+            SELECT id FROM lista_compras_lineas
+            WHERE numero_transaccion = %s AND tipo = %s
+            LIMIT 1
+            """,
+            (numero, tipo_normalizado),
+        )
+        if not cursor.fetchone():
+            return {"success": False, "error": "Transaccion no encontrada."}, 404
+
+        if cerrado:
+            cursor.execute(
+                """
+                UPDATE lista_compras_lineas
+                SET estado = 'CERRADA'
+                WHERE numero_transaccion = %s AND tipo = %s
+                """,
+                (numero, tipo_normalizado),
+            )
+            estado = "CERRADA"
+        else:
+            # Al reabrir, las líneas completas recuperan APLICADA y las que aún
+            # tienen pendiente vuelven a ABIERTA.
+            cursor.execute(
+                """
+                UPDATE lista_compras_lineas l
+                LEFT JOIN (
+                    SELECT transaccion_linea_id, SUM(cantidad_aplicada) AS aplicado
+                    FROM lista_compras_lot_links
+                    WHERE estado = 'APLICADO'
+                    GROUP BY transaccion_linea_id
+                ) links ON links.transaccion_linea_id = l.id
+                SET l.estado = CASE
+                    WHEN COALESCE(links.aplicado, 0) >= l.cantidad THEN 'APLICADA'
+                    ELSE 'ABIERTA'
+                END
+                WHERE l.numero_transaccion = %s AND l.tipo = %s
+                """,
+                (numero, tipo_normalizado),
+            )
+            estado = "ABIERTA"
+        conn.commit()
+        return {
+            "success": True,
+            "numero_transaccion": numero,
+            "tipo": tipo_normalizado,
+            "cerrada": bool(cerrado),
+            "estado": estado,
+        }, 200
+    except Exception as exc:
+        conn.rollback()
+        logger.exception("Error cerrando transaccion %s/%s: %s", tipo, numero_transaccion, exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:
         cursor.close()

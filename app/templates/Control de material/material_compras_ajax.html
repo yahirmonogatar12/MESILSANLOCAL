@@ -32,7 +32,7 @@
                     </button>
                     <button id="mat-compras-btn-actualizar" class="mat-invoice-btn primary" type="button"
                             data-modo="ACTUALIZACION"
-                            title="Agrega solo las transacciones nuevas. Entran ABIERTAS y aparecen en almacén.">
+                            title="Agrega solo los renglones nuevos. Entran ABIERTOS y aparecen en almacén.">
                         Actualizar
                     </button>
                 </div>
@@ -60,6 +60,7 @@
                         <option value="">Todos</option>
                         <option value="ABIERTA">Abierta (almacén)</option>
                         <option value="CERRADA">Cerrada (histórico)</option>
+                        <option value="APLICADA">Aplicada (recibida)</option>
                     </select>
                 </label>
                 <label>
@@ -89,18 +90,37 @@
                 <span id="mat-compras-detail-subtitle"></span>
             </div>
             <div class="mat-invoice-header-actions">
-                <button class="mat-invoice-btn success small" type="button" data-export="lineas">Exportar Excel</button>
-                <button id="mat-compras-detail-close" class="mat-invoice-btn" type="button">Cerrar</button>
+                <button id="mat-compras-transaction-close" class="mat-invoice-btn warning" type="button">Cerrar transaccion</button>
+                <button id="mat-compras-detail-close" class="mat-invoice-btn" type="button">Ocultar detalle</button>
             </div>
+        </div>
+
+        <div class="mat-invoice-tabs" role="tablist">
+            <button class="mat-invoice-tab active" type="button" data-compras-tab="lineas">Lineas de compra</button>
+            <button class="mat-invoice-tab" type="button" data-compras-tab="links">Lotes vinculados</button>
         </div>
 
         <div id="mat-compras-detail-message" class="mat-invoice-message" hidden></div>
 
-        <div class="mat-invoice-table-wrap">
-            <table class="mat-invoice-table">
-                <thead id="mat-compras-lineas-head"></thead>
-                <tbody id="mat-compras-lineas-body"></tbody>
-            </table>
+        <div id="mat-compras-tab-lineas" class="mat-invoice-tab-panel">
+            <div class="mat-invoice-table-toolbar">
+                <button class="mat-invoice-btn success small" type="button" data-export="lineas">Exportar Excel</button>
+            </div>
+            <div class="mat-invoice-table-wrap">
+                <table class="mat-invoice-table">
+                    <thead id="mat-compras-lineas-head"></thead>
+                    <tbody id="mat-compras-lineas-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="mat-compras-tab-links" class="mat-invoice-tab-panel" hidden>
+            <div class="mat-invoice-table-wrap">
+                <table class="mat-invoice-table">
+                    <thead id="mat-compras-links-head"></thead>
+                    <tbody id="mat-compras-links-body"></tbody>
+                </table>
+            </div>
         </div>
     </section>
 
@@ -142,4 +162,4 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/material_column_filters.js', v='20260707a') }}"></script>
-<script src="{{ url_for('static', filename='js/material_compras.js', v='20260707a') }}"></script>
+<script src="{{ url_for('static', filename='js/material_compras.js', v='20260710c') }}"></script>

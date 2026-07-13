@@ -16,6 +16,7 @@ from app.api.control_material.compras_core.service import (
     list_transacciones,
     preview_compras,
     resolve_compras_file,
+    set_transaccion_closed,
     upload_compras,
 )
 from app.api.control_material.compras_core.service import EXCEL_MIME
@@ -58,7 +59,20 @@ def api_list_transacciones():
 @login_requerido
 @requiere_permiso_dropdown(*PERMISO_COMPRAS)
 def api_transaccion_detail(numero):
-    return _json_result(get_transaccion_detail(numero))
+    return _json_result(get_transaccion_detail(numero, request.args.get("tipo")))
+
+
+@bp.route(
+    "/api/material_admin/compras/transacciones/<path:numero>/close",
+    methods=["POST"],
+)
+@login_requerido
+@requiere_permiso_dropdown(*PERMISO_COMPRAS)
+def api_close_transaccion(numero):
+    data = request.get_json(silent=True) or {}
+    return _json_result(
+        set_transaccion_closed(numero, data.get("tipo"), data.get("cerrado", True))
+    )
 
 
 @bp.route("/api/material_admin/compras/upload", methods=["POST"])
