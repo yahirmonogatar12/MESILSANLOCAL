@@ -777,91 +777,15 @@ def _obtener_detalle_movimiento_almacen_embarques(movement_type, record_id):
 def _obtener_inventario_general_almacen_embarques(limit=5000):
     limit = min(max(int(limit or 5000), 1), 20000)
     search = (request.args.get("search", "") or "").strip()
-    part_number_key_expr = "CONVERT(%s USING utf8mb4) COLLATE utf8mb4_unicode_ci"
-
-    closure_subquery = f"""
-        SELECT
-            cierre.part_number,
-            {part_number_key_expr % 'cierre.part_number'} AS part_number_key,
-            cierre.initial_quantity,
-            cierre.closed_at,
-            cierre.closure_label
-        FROM `{SHIPPING_TABLES['inventory_closures']}` cierre
-        INNER JOIN (
-            SELECT
-                {part_number_key_expr % 'part_number'} AS part_number_key,
-                MAX(closed_at) AS latest_closed_at
-            FROM `{SHIPPING_TABLES['inventory_closures']}`
-            GROUP BY {part_number_key_expr % 'part_number'}
-        ) ultimo
-            ON ultimo.part_number_key = {part_number_key_expr % 'cierre.part_number'}
-           AND ultimo.latest_closed_at = cierre.closed_at
-    """
 
     params = []
-
     sql = f"""
         SELECT
             i.part_number,
             i.product_model,
             i.customer,
-            i.current_quantity,
-            cierre.initial_quantity AS closure_initial_quantity,
-            cierre.closed_at AS period_start,
-            cierre.closure_label,
-            COALESCE(entradas.entries_qty, 0) AS entries_qty,
-            COALESCE(salidas.exits_qty, 0) AS exits_qty,
-            COALESCE(retornos.return_entries_qty, 0) AS return_entries_qty,
-            COALESCE(retornos.return_exits_qty, 0) AS return_exits_qty
+            i.current_quantity
         FROM `{SHIPPING_TABLES['inventory']}` i
-        LEFT JOIN ({closure_subquery}) cierre
-            ON cierre.part_number_key = {part_number_key_expr % 'i.part_number'}
-        LEFT JOIN (
-            SELECT
-                {part_number_key_expr % 'e.part_number'} AS part_number_key,
-                COALESCE(SUM(e.quantity), 0) AS entries_qty
-            FROM `{SHIPPING_TABLES['entries']}` e
-            LEFT JOIN ({closure_subquery}) cierre_e
-                ON cierre_e.part_number_key = {part_number_key_expr % 'e.part_number'}
-            WHERE COALESCE(e.is_fifo_layer_only, 0) = 0
-              AND COALESCE(e.movement_at, e.created_at) >= COALESCE(cierre_e.closed_at, '1000-01-01')
-            GROUP BY {part_number_key_expr % 'e.part_number'}
-        ) entradas
-            ON entradas.part_number_key = {part_number_key_expr % 'i.part_number'}
-        LEFT JOIN (
-            SELECT
-                {part_number_key_expr % 's.part_number'} AS part_number_key,
-                COALESCE(SUM(s.quantity), 0) AS exits_qty
-            FROM `{SHIPPING_TABLES['exits']}` s
-            LEFT JOIN ({closure_subquery}) cierre_s
-                ON cierre_s.part_number_key = {part_number_key_expr % 's.part_number'}
-            WHERE COALESCE(s.movement_at, s.created_at) >= COALESCE(cierre_s.closed_at, '1000-01-01')
-            GROUP BY {part_number_key_expr % 's.part_number'}
-        ) salidas
-            ON salidas.part_number_key = {part_number_key_expr % 'i.part_number'}
-        LEFT JOIN (
-            SELECT
-                {part_number_key_expr % 'r.part_number'} AS part_number_key,
-                COALESCE(SUM(
-                    CASE
-                        WHEN COALESCE(r.loss_quantity, 0) > 0
-                         AND (
-                            COALESCE(r.return_quantity, 0) <= COALESCE(r.loss_quantity, 0)
-                            OR LOWER(COALESCE(r.reason, '')) LIKE '%%salida retorno%%'
-                            OR LOWER(COALESCE(r.reason, '')) LIKE '%%salida de retorno%%'
-                         )
-                        THEN 0
-                        ELSE COALESCE(r.return_quantity, 0)
-                    END
-                ), 0) AS return_entries_qty,
-                COALESCE(SUM(r.loss_quantity), 0) AS return_exits_qty
-            FROM `{SHIPPING_TABLES['returns']}` r
-            LEFT JOIN ({closure_subquery}) cierre_r
-                ON cierre_r.part_number_key = {part_number_key_expr % 'r.part_number'}
-            WHERE COALESCE(r.movement_at, r.created_at) >= COALESCE(cierre_r.closed_at, '1000-01-01')
-            GROUP BY {part_number_key_expr % 'r.part_number'}
-        ) retornos
-            ON retornos.part_number_key = {part_number_key_expr % 'i.part_number'}
         WHERE 1 = 1
     """
 
@@ -877,20 +801,166 @@ def _obtener_inventario_general_almacen_embarques(limit=5000):
     sql += " ORDER BY i.part_number ASC LIMIT %s"
     params.append(limit)
 
-    rows = execute_query(sql, tuple(params), fetch="all") or []
+    inventory_rows = execute_query(sql, tuple(params), fetch="all") or []
+    if not inventory_rows:
+        return {
+            "rows": [],
+            "summary": {
+                "total_items": 0,
+                "has_closure": False,
+                "latest_period_start": "",
+            },
+        }
+
+    def part_key(value):
+        return normalize_part_number(value)
+
+    def chunked(values, size=700):
+        for start in range(0, len(values), size):
+            yield values[start:start + size]
+
+    part_numbers = [
+        _normalizar_texto_embarques_historial(row.get("part_number"))
+        for row in inventory_rows
+        if _normalizar_texto_embarques_historial(row.get("part_number"))
+    ]
+    part_keys = {part_key(part_number): part_number for part_number in part_numbers}
+    selected_keys = set(part_keys.keys())
+
+    closures_by_part = {}
+    for batch in chunked(part_numbers):
+        placeholders = ", ".join(["%s"] * len(batch))
+        closure_rows = execute_query(
+            f"""
+            SELECT
+                id,
+                part_number,
+                initial_quantity,
+                closed_at,
+                closure_label
+            FROM `{SHIPPING_TABLES['inventory_closures']}`
+            WHERE part_number IN ({placeholders})
+            ORDER BY part_number ASC, closed_at DESC, id DESC
+            """,
+            tuple(batch),
+            fetch="all",
+        ) or []
+        for closure in closure_rows:
+            key = part_key(closure.get("part_number"))
+            if key and key not in closures_by_part:
+                closures_by_part[key] = closure
+
+    period_start_by_part = {
+        key: closure.get("closed_at")
+        for key, closure in closures_by_part.items()
+        if closure.get("closed_at")
+    }
+
+    entries_by_part = {key: 0 for key in selected_keys}
+    exits_by_part = {key: 0 for key in selected_keys}
+    return_entries_by_part = {key: 0 for key in selected_keys}
+    return_exits_by_part = {key: 0 for key in selected_keys}
+
+    def batch_lower_bound(batch):
+        starts = [
+            period_start_by_part.get(part_key(part_number))
+            for part_number in batch
+            if period_start_by_part.get(part_key(part_number))
+        ]
+        if len(starts) == len(batch) and starts:
+            return min(starts)
+        return "1000-01-01"
+
+    def movement_in_period(row):
+        key = part_key(row.get("part_number"))
+        if key not in selected_keys:
+            return False, key
+        period_start = period_start_by_part.get(key)
+        movement_at = row.get("movement_at") or row.get("created_at")
+        if period_start and movement_at and movement_at < period_start:
+            return False, key
+        return True, key
+
+    for batch in chunked(part_numbers):
+        placeholders = ", ".join(["%s"] * len(batch))
+        lower_bound = batch_lower_bound(batch)
+
+        entry_rows = execute_query(
+            f"""
+            SELECT part_number, quantity, movement_at, created_at
+            FROM `{SHIPPING_TABLES['entries']}`
+            WHERE part_number IN ({placeholders})
+              AND COALESCE(is_fifo_layer_only, 0) = 0
+              AND COALESCE(movement_at, created_at) >= %s
+            """,
+            tuple(batch + [lower_bound]),
+            fetch="all",
+        ) or []
+        for row in entry_rows:
+            keep, key = movement_in_period(row)
+            if keep:
+                entries_by_part[key] = entries_by_part.get(key, 0) + (
+                    _normalizar_numero_embarques_historial(row.get("quantity")) or 0
+                )
+
+        exit_rows = execute_query(
+            f"""
+            SELECT part_number, quantity, movement_at, created_at
+            FROM `{SHIPPING_TABLES['exits']}`
+            WHERE part_number IN ({placeholders})
+              AND COALESCE(movement_at, created_at) >= %s
+            """,
+            tuple(batch + [lower_bound]),
+            fetch="all",
+        ) or []
+        for row in exit_rows:
+            keep, key = movement_in_period(row)
+            if keep:
+                exits_by_part[key] = exits_by_part.get(key, 0) + (
+                    _normalizar_numero_embarques_historial(row.get("quantity")) or 0
+                )
+
+        return_rows = execute_query(
+            f"""
+            SELECT
+                part_number,
+                return_quantity,
+                loss_quantity,
+                reason,
+                movement_at,
+                created_at
+            FROM `{SHIPPING_TABLES['returns']}`
+            WHERE part_number IN ({placeholders})
+              AND COALESCE(movement_at, created_at) >= %s
+            """,
+            tuple(batch + [lower_bound]),
+            fetch="all",
+        ) or []
+        for row in return_rows:
+            keep, key = movement_in_period(row)
+            if not keep:
+                continue
+            return_quantity = _normalizar_numero_embarques_historial(row.get("return_quantity")) or 0
+            loss_quantity = _normalizar_numero_embarques_historial(row.get("loss_quantity")) or 0
+            if not _es_salida_retorno_embarques(return_quantity, loss_quantity, row.get("reason")):
+                return_entries_by_part[key] = return_entries_by_part.get(key, 0) + return_quantity
+            return_exits_by_part[key] = return_exits_by_part.get(key, 0) + loss_quantity
+
     result_rows = []
     has_closure = False
     latest_period_start = None
 
-    for row in rows:
-        current_quantity = _normalizar_numero_embarques_historial(row.get("current_quantity"))
-        entries_qty = _normalizar_numero_embarques_historial(row.get("entries_qty"))
-        exits_qty = _normalizar_numero_embarques_historial(row.get("exits_qty"))
-        return_entries_qty = _normalizar_numero_embarques_historial(row.get("return_entries_qty"))
-        return_exits_qty = _normalizar_numero_embarques_historial(row.get("return_exits_qty"))
-        closure_initial_quantity = row.get("closure_initial_quantity")
-        period_start = _normalizar_texto_embarques_historial(row.get("period_start"))
-        closure_label = _normalizar_texto_embarques_historial(row.get("closure_label"))
+    for row in inventory_rows:
+        key = part_key(row.get("part_number"))
+        closure = closures_by_part.get(key) or {}
+        current_quantity = _normalizar_numero_embarques_historial(row.get("current_quantity")) or 0
+        entries_qty = entries_by_part.get(key, 0)
+        exits_qty = exits_by_part.get(key, 0)
+        return_entries_qty = return_entries_by_part.get(key, 0)
+        return_exits_qty = return_exits_by_part.get(key, 0)
+        closure_initial_quantity = closure.get("initial_quantity")
+        period_start = _normalizar_texto_embarques_historial(closure.get("closed_at"))
+        closure_label = _normalizar_texto_embarques_historial(closure.get("closure_label"))
 
         if closure_initial_quantity is None:
             initial_quantity = (
