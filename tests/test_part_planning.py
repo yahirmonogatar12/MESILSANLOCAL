@@ -163,3 +163,143 @@ def test_filas_segun_modo():
     assert len(sin_ceros) == 1 and sin_ceros[0][2] == 5
     solo_positivos = _pp_filas_segun_modo(parsed, "only_positive", include_zero=True)
     assert len(solo_positivos) == 1
+
+
+# ---------- Plan Proyectado (generador de lotes tipo hoja LOTE N) ----------
+
+def test_ppy_qty_pack_redondeo_caja_cerrada():
+    from app.api.control_produccion.part_planning import _ppy_qty_pack
+
+    # faltante 510 +10% = 561 -> multiplo de 20 arriba = 580
+    assert _ppy_qty_pack(510, 20) == 580
+    # sin pack (None/0) -> solo el +10% redondeado arriba
+    assert _ppy_qty_pack(510, None) == 561
+    assert _ppy_qty_pack(510, 0) == 561
+    # exacto: 100 +10% = 110, pack 10 -> 110
+    assert _ppy_qty_pack(100, 10) == 110
+    # siempre cierra caja aunque el 10% ya pase el multiplo
+    assert _ppy_qty_pack(95, 20) == 120  # 104.5 -> 120
+
+
+def test_ppy_familia_y_uph():
+    from app.api.control_produccion.part_planning import _ppy_familia, _ppy_parse_uph
+
+    assert _ppy_familia("EBR80757421") == "EBR807574"
+    assert _ppy_familia("EBR80757422") == _ppy_familia("EBR80757412")
+    assert _ppy_parse_uph("240") == 240
+    assert _ppy_parse_uph(240.0) == 240
+    assert _ppy_parse_uph("") is None
+    assert _ppy_parse_uph(None) is None
+    assert _ppy_parse_uph("0") is None
+    assert _ppy_parse_uph("N/A") is None
+
+
+def test_ppy_armar_lotes_capacidad_y_adelantos():
+    from app.api.control_produccion.part_planning import _ppy_armar_lotes
+
+    hoy = date(2026, 7, 14)
+    manana = date(2026, 7, 15)
+
+    def cand(part, falt_total, falt_hoy, primera, uph=100, pack=20, line=None):
+        return {"part_no": part, "falt_total": falt_total, "falt_hoy": falt_hoy,
+                "primera_falta": primera, "line": line, "uph": uph, "pack": pack,
+                "model": None, "main_sub": None}
+
+    # 1) Prioridad: faltante de HOY entra antes que el adelanto cuando no hay horas
+    horas = {"M1": 1.0}  # 1 h a 100 uph = 100 pzs
+    lotes, fuera = _ppy_armar_lotes(
+        [cand("FUTURO0001", 500, 0, manana), cand("URGENTE001", 500, 500, hoy)],
+        ["M1"], horas)
+    assert lotes[0]["part_no"] == "URGENTE001"
+    assert lotes[0]["qty"] == 100  # parcial a caja cerrada por horas
+    assert "parcial" in lotes[0]["comentario"]
+    assert fuera and fuera[0]["part_no"] == "FUTURO0001"
+
+    # 2) Adelanto: cabe completo (+10% a pack) y trae comentario de adelanto
+    horas = {"M1": 9.0}
+    lotes, fuera = _ppy_armar_lotes([cand("FUTURO0001", 500, 0, manana)], ["M1"], horas)
+    assert not fuera
+    assert lotes[0]["qty"] == 560  # 550 -> pack 20 -> 560
+    assert lotes[0]["comentario"].startswith("Adelanto")
+    assert abs(horas["M1"] - (9.0 - 5.6)) < 1e-6
+
+    # 3) Familia junta en la misma linea aunque otra este mas libre
+    horas = {"M1": 9.0, "M2": 9.0}
+    lotes, _ = _ppy_armar_lotes(
+        [cand("EBR8075741A", 400, 400, hoy, line="M1"),
+         cand("EBR8075742B", 400, 400, hoy)],
+        ["M1", "M2"], horas)
+    assert {l["part_no"][:9] for l in lotes} == {"EBR807574"}
+    assert len({l["linea"] for l in lotes}) == 1  # misma linea la familia
+
+    # 4) Sin UPH o sin pack: la parte NO se genera (visible en no_incluidos)
+    horas = {"M1": 9.0}
+    lotes, fuera = _ppy_armar_lotes(
+        [cand("SINUPH0001", 100, 100, hoy, uph=None),
+         cand("SINPACK001", 100, 100, hoy, pack=None),
+         cand("SINNADA001", 100, 0, manana, uph=None, pack=None),
+         cand("COMPLETA01", 100, 100, hoy)],
+        ["M1"], horas)
+    assert [l["part_no"] for l in lotes] == ["COMPLETA01"]
+    motivos = {f["part_no"]: f["motivo"] for f in fuera}
+    assert "UPH" in motivos["SINUPH0001"]
+    assert "pack" in motivos["SINPACK001"]
+    assert "UPH" in motivos["SINNADA001"] and "pack" in motivos["SINNADA001"]
+
+
+def test_ppy_armar_lotes_lineas_permitidas():
+    from app.api.control_produccion.part_planning import _ppy_armar_lotes
+
+    hoy = date(2026, 7, 14)
+
+    def cand(part, permitidas=None, line=None):
+        return {"part_no": part, "falt_total": 100, "falt_hoy": 100,
+                "primera_falta": hoy, "line": line, "uph": 100, "pack": 20,
+                "model": None, "main_sub": None, "permitidas": permitidas}
+
+    # Solo puede ir a D1 aunque M1 este mas libre; sin regla va a la mas libre
+    horas = {"M1": 9.0, "D1": 2.0}
+    lotes, fuera = _ppy_armar_lotes(
+        [cand("SOLOD10001", permitidas=["D1"]),
+         cand("LIBRE00001")],
+        ["M1", "D1"], horas)
+    por_parte = {l["part_no"]: l["linea"] for l in lotes}
+    assert por_parte["SOLOD10001"] == "D1"
+    assert por_parte["LIBRE00001"] == "M1"
+
+    # Sus lineas no estan activas -> fuera con motivo claro
+    horas = {"M1": 9.0}
+    lotes, fuera = _ppy_armar_lotes([cand("SOLOH10001", permitidas=["H1"])], ["M1"], horas)
+    assert not lotes
+    assert "H1" in fuera[0]["motivo"] and "no estan activas" in fuera[0]["motivo"]
+
+    # Permitida activa pero sin horas -> motivo menciona sus lineas
+    horas = {"M1": 9.0, "D1": 0.0}
+    lotes, fuera = _ppy_armar_lotes([cand("SOLOD10002", permitidas=["D1"])], ["M1", "D1"], horas)
+    assert not lotes
+    assert "sin horas" in fuera[0]["motivo"] and "D1" in fuera[0]["motivo"]
+
+
+def test_ppy_armar_lotes_modo_laxo_propuesta_schedule():
+    from app.api.control_produccion.part_planning import _ppy_armar_lotes
+
+    hoy = date(2026, 7, 14)
+
+    def cand(part, uph=100, pack=20):
+        return {"part_no": part, "falt_total": 100, "falt_hoy": 100,
+                "primera_falta": hoy, "line": None, "uph": uph, "pack": pack,
+                "model": None, "main_sub": None}
+
+    # Sin pack -> asume 20; sin UPH -> entra sin consumir horas
+    horas = {"M1": 9.0}
+    lotes, fuera = _ppy_armar_lotes(
+        [cand("SINPACK001", pack=None),
+         cand("SINUPH0001", uph=None, pack=None),
+         cand("NORMAL0001")],
+        ["M1"], horas, estricto=False)
+    assert not fuera
+    por_parte = {l["part_no"]: l for l in lotes}
+    assert por_parte["SINPACK001"]["qty"] == 120   # 110 -> pack 20 -> 120
+    assert por_parte["SINUPH0001"]["qty"] == 120   # mismo calculo, sin horas
+    # solo las partes con UPH consumen horas (120/100 + 120/100 = 2.4)
+    assert abs(horas["M1"] - (9.0 - 2.4)) < 1e-6
