@@ -1,0 +1,172 @@
+<div id="part-planning-root" class="pp-page">
+
+  <div class="pp-header">
+    <div>
+      <h2>Part Planning &mdash; Plan de produccion LG</h2>
+    </div>
+    <div class="pp-header-actions">
+      <button id="pp-btn-import" class="pp-btn primary" type="button">Importar Plan LG</button>
+      <button id="pp-btn-history" class="pp-btn secondary" type="button">Historial de importaciones</button>
+    </div>
+  </div>
+
+  <div class="pp-card">
+    <div class="pp-filters">
+      <div class="pp-field">
+        <label for="pp-filter-date-from">Fecha desde</label>
+        <input type="date" id="pp-filter-date-from">
+      </div>
+      <div class="pp-field">
+        <label for="pp-filter-date-to">Fecha hasta</label>
+        <input type="date" id="pp-filter-date-to">
+      </div>
+      <div class="pp-field pp-field-grow">
+        <label for="pp-filter-part">Buscar parte</label>
+        <input type="text" id="pp-filter-part" placeholder="Numero de parte...">
+      </div>
+      <button id="pp-btn-search" class="pp-btn primary" type="button">Buscar</button>
+      <button id="pp-btn-week" class="pp-btn secondary" type="button">Semana actual</button>
+    </div>
+  </div>
+
+  <div class="pp-card">
+    <div class="pp-table-wrap">
+      <table id="pp-plan-table" class="pp-table">
+        <thead></thead>
+        <tbody>
+          <tr><td class="pp-empty">Sin datos. Usa "Importar Plan LG" para cargar el plan.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pp-pagination">
+      <button id="pp-btn-prev" class="pp-btn secondary" type="button" disabled>&laquo; Anterior</button>
+      <span id="pp-page-info">&mdash;</span>
+      <button id="pp-btn-next" class="pp-btn secondary" type="button" disabled>Siguiente &raquo;</button>
+    </div>
+  </div>
+
+  <!-- ============ Modal: Importar Plan LG ============ -->
+  <div id="pp-import-modal" class="pp-modal-overlay" style="display: none;">
+    <div class="pp-modal">
+      <div class="pp-modal-header">
+        <h3>Importar Plan de Produccion LG</h3>
+        <button id="pp-btn-modal-close" class="pp-modal-x" type="button" title="Cerrar">&times;</button>
+      </div>
+
+      <!-- Paso 1: seleccionar archivo -->
+      <div id="pp-step-file" class="pp-step">
+        <p class="pp-hint">Formatos permitidos: <strong>.xlsx, .xlsm</strong> &middot; Hoja esperada: <strong>LG</strong> &middot; Tamano maximo: 20 MB</p>
+        <label class="pp-file-drop" for="pp-file-input">
+          <input type="file" id="pp-file-input" accept=".xlsx,.xlsm">
+          <span class="pp-file-drop-text">Seleccionar archivo Excel</span>
+        </label>
+        <div id="pp-file-info" class="pp-file-info" style="display: none;">
+          <div>Archivo seleccionado: <strong id="pp-file-name"></strong></div>
+          <div>Tamano: <span id="pp-file-size"></span> &middot; Estado: <span id="pp-file-status">Pendiente de validar</span></div>
+        </div>
+        <div class="pp-modal-actions">
+          <button class="pp-btn secondary pp-btn-cancel" type="button">Cancelar</button>
+          <button id="pp-btn-analyze" class="pp-btn primary" type="button" disabled>
+            <span id="pp-analyze-spinner" class="pp-spinner" style="display: none;"></span>
+            Analizar archivo
+          </button>
+        </div>
+      </div>
+
+      <!-- Paso 2: vista previa -->
+      <div id="pp-step-preview" class="pp-step" style="display: none;">
+        <div class="pp-summary-grid">
+          <div class="pp-sum-card"><div class="pp-sum-label">Partes</div><div id="pp-sum-parts" class="pp-sum-value">-</div></div>
+          <div class="pp-sum-card"><div class="pp-sum-label">Fechas</div><div id="pp-sum-dates" class="pp-sum-value">-</div></div>
+          <div class="pp-sum-card"><div class="pp-sum-label">Con cantidad</div><div id="pp-sum-records" class="pp-sum-value">-</div></div>
+          <div class="pp-sum-card"><div class="pp-sum-label">En cero</div><div id="pp-sum-zeros" class="pp-sum-value">-</div></div>
+          <div class="pp-sum-card"><div class="pp-sum-label">Duplicadas</div><div id="pp-sum-dups" class="pp-sum-value">-</div></div>
+          <div class="pp-sum-card"><div class="pp-sum-label">Rango</div><div id="pp-sum-range" class="pp-sum-value pp-sum-small">-</div></div>
+        </div>
+        <ul id="pp-errors-list" class="pp-msg-list pp-errors" style="display: none;"></ul>
+        <ul id="pp-warnings-list" class="pp-msg-list pp-warnings" style="display: none;"></ul>
+        <div class="pp-preview-wrap">
+          <table id="pp-preview-table" class="pp-table">
+            <thead><tr><th>Numero de parte</th><th>Fecha</th><th>Plan LG</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="pp-hint" id="pp-preview-note"></p>
+        <div class="pp-modal-actions">
+          <button id="pp-btn-preview-back" class="pp-btn secondary" type="button">Regresar</button>
+          <button id="pp-btn-preview-next" class="pp-btn primary" type="button" disabled>Continuar</button>
+        </div>
+      </div>
+
+      <!-- Paso 3: opciones -->
+      <div id="pp-step-options" class="pp-step" style="display: none;">
+        <h4>Modo de importacion</h4>
+        <label class="pp-radio"><input type="radio" name="pp-mode" value="upsert" checked>
+          Actualizar cantidades existentes <span class="pp-hint-inline">(recomendado: el archivo es la nueva version del plan)</span></label>
+        <label class="pp-radio"><input type="radio" name="pp-mode" value="only_positive">
+          Actualizar solamente partes con cantidad mayor que cero</label>
+        <label class="pp-radio"><input type="radio" name="pp-mode" value="only_new">
+          Importar unicamente registros nuevos</label>
+        <hr class="pp-sep">
+        <label class="pp-check"><input type="checkbox" id="pp-include-zero" checked>
+          Importar cantidades en cero <span class="pp-hint-inline">(permite cancelar planes que ya no vienen en el Excel)</span></label>
+        <div class="pp-field pp-field-year">
+          <label for="pp-plan-year">Ano del plan</label>
+          <input type="number" id="pp-plan-year" min="2020" max="2040">
+          <span class="pp-hint-inline">Solo aplica si el Excel trae fechas sin ano (ej. "07-Jul")</span>
+        </div>
+        <div class="pp-modal-actions">
+          <button id="pp-btn-options-back" class="pp-btn secondary" type="button">Regresar</button>
+          <button id="pp-btn-options-next" class="pp-btn primary" type="button">Continuar</button>
+        </div>
+      </div>
+
+      <!-- Paso 4: confirmacion -->
+      <div id="pp-step-confirm" class="pp-step" style="display: none;">
+        <h4>Confirmar importacion</h4>
+        <div id="pp-confirm-summary" class="pp-confirm-box"></div>
+        <p class="pp-hint">Esta accion quedara registrada en el historial de importaciones.</p>
+        <div class="pp-modal-actions">
+          <button id="pp-btn-confirm-back" class="pp-btn secondary" type="button">Regresar</button>
+          <button id="pp-btn-confirm-import" class="pp-btn primary" type="button">
+            <span id="pp-confirm-spinner" class="pp-spinner" style="display: none;"></span>
+            Confirmar importacion
+          </button>
+        </div>
+      </div>
+
+      <!-- Paso 5: resultado -->
+      <div id="pp-step-done" class="pp-step" style="display: none;">
+        <h4 id="pp-done-title">Importacion completada</h4>
+        <div id="pp-done-summary" class="pp-confirm-box"></div>
+        <div class="pp-modal-actions">
+          <button id="pp-btn-done-close" class="pp-btn primary" type="button">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Modal: Historial de importaciones ============ -->
+  <div id="pp-history-modal" class="pp-modal-overlay" style="display: none;">
+    <div class="pp-modal pp-modal-wide">
+      <div class="pp-modal-header">
+        <h3>Historial de importaciones</h3>
+        <button id="pp-btn-history-close" class="pp-modal-x" type="button" title="Cerrar">&times;</button>
+      </div>
+      <div class="pp-preview-wrap">
+        <table id="pp-history-table" class="pp-table">
+          <thead>
+            <tr>
+              <th>Fecha</th><th>Archivo</th><th>Ano</th><th>Rango</th><th>Partes</th>
+              <th>Fechas</th><th>Con qty</th><th>Ceros</th><th>Avisos</th><th>Modo</th>
+              <th>Usuario</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody><tr><td colspan="12" class="pp-empty">Sin importaciones</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="{{ url_for('static', filename='js/part-planning.js') }}?v=20260713a"></script>

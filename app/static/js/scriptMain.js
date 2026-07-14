@@ -891,6 +891,62 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   };
 
+  // Función AJAX: Proyeccion P/S/I (WF_002, 2026-07-13)
+  window.mostrarProyeccion = function () {
+    if (typeof window.prepararPanelSeccion !== "function") {
+      console.error("prepararPanelSeccion no disponible");
+      return;
+    }
+    window.prepararPanelSeccion("produccion");
+
+    const containerId = "proyeccion-unique-container";
+    const cont = document.getElementById(containerId);
+    if (cont) cont.style.display = "block";
+
+    window.cargarContenidoDinamico(containerId, "/proyeccion-ajax", () => {
+      function tryInitialize() {
+        if (
+          typeof window.initializeProyeccionEventListeners === "function" &&
+          typeof window.loadProyeccionData === "function"
+        ) {
+          window.initializeProyeccionEventListeners();
+          window.loadProyeccionData();
+        } else {
+          setTimeout(tryInitialize, 100);
+        }
+      }
+      tryInitialize();
+    });
+  };
+
+  // Función AJAX: Part Planning LG (WF_002, 2026-07-12)
+  window.mostrarPartPlanning = function () {
+    if (typeof window.prepararPanelSeccion !== "function") {
+      console.error("prepararPanelSeccion no disponible");
+      return;
+    }
+    window.prepararPanelSeccion("produccion");
+
+    const containerId = "part-planning-unique-container";
+    const cont = document.getElementById(containerId);
+    if (cont) cont.style.display = "block";
+
+    window.cargarContenidoDinamico(containerId, "/part-planning-ajax", () => {
+      function tryInitialize() {
+        if (
+          typeof window.initializePartPlanningEventListeners === "function" &&
+          typeof window.loadPartPlanningData === "function"
+        ) {
+          window.initializePartPlanningEventListeners();
+          window.loadPartPlanningData();
+        } else {
+          setTimeout(tryInitialize, 100);
+        }
+      }
+      tryInitialize();
+    });
+  };
+
   // Función AJAX: Plan Main IMD
   window.mostrarPlanMainIMD = function () {
     try {
@@ -2199,6 +2255,8 @@ window.mostrarLineMaterialStatus = function () {
       "crear-plan-produccion-unique-container",
       "plan-smt-unique-container",
       "control-embarque-unique-container",
+      "part-planning-unique-container",
+      "proyeccion-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {
@@ -2373,6 +2431,8 @@ window.mostrarEstandaresSoldadura = function () {
       "crear-plan-produccion-unique-container",
       "plan-smt-unique-container",
       "control-embarque-unique-container",
+      "part-planning-unique-container",
+      "proyeccion-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {
@@ -2464,6 +2524,8 @@ window.mostrarRegistroReciboSoldadura = function () {
       "crear-plan-produccion-unique-container",
       "plan-smt-unique-container",
       "control-embarque-unique-container",
+      "part-planning-unique-container",
+      "proyeccion-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {
@@ -2555,6 +2617,8 @@ window.mostrarControlSalidaSoldadura = function () {
       "crear-plan-produccion-unique-container",
       "plan-smt-unique-container",
       "control-embarque-unique-container",
+      "part-planning-unique-container",
+      "proyeccion-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {
@@ -2646,6 +2710,8 @@ window.mostrarHistorialTensionMaskMetal = function () {
       "crear-plan-produccion-unique-container",
       "plan-smt-unique-container",
       "control-embarque-unique-container",
+      "part-planning-unique-container",
+      "proyeccion-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {

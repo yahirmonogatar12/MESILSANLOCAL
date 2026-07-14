@@ -1,0 +1,122 @@
+<div id="ai-assistant-root"
+     class="ai-assistant-root"
+     data-permiso-pagina="MAIN_TEMPLATE"
+     data-permiso-seccion="Asistente IA"
+     data-permiso-boton="Usar asistente IA"
+     hidden>
+    <button id="ai-assistant-launcher" class="ai-launcher" type="button"
+            aria-label="Abrir asistente IA" aria-controls="ai-assistant-panel" aria-expanded="false">
+        <span class="ai-launcher-mark" aria-hidden="true">IA</span>
+    </button>
+    <div id="ai-assistant-backdrop" class="ai-backdrop" hidden></div>
+    <aside id="ai-assistant-panel" class="ai-panel" aria-hidden="true" aria-label="Asistente IA del MES">
+        <header class="ai-panel-header">
+            <div class="ai-panel-brand">
+                <span class="ai-panel-mark" aria-hidden="true">AI</span>
+                <div>
+                    <div class="ai-eyebrow">ILSAN MES</div>
+                    <h2 data-ai-i18n="title">Asistente IA</h2>
+                    <span id="ai-model-label" class="ai-model-label">GPT</span>
+                </div>
+            </div>
+            <div class="ai-header-actions">
+                <select id="ai-language" class="ai-language" aria-label="Idioma">
+                    <option value="auto">Auto</option>
+                    <option value="es">Español</option>
+                    <option value="en">English</option>
+                    <option value="ko">한국어</option>
+                </select>
+                <button id="ai-expand" class="ai-icon-button ai-expand-button" type="button"
+                        aria-label="Expandir" title="Expandir" aria-pressed="false">
+                    <svg class="ai-expand-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>
+                    </svg>
+                    <svg class="ai-collapse-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5"/>
+                    </svg>
+                </button>
+                <button id="ai-close" class="ai-icon-button" type="button" aria-label="Cerrar">×</button>
+            </div>
+        </header>
+
+        <div class="ai-workspace">
+            <aside class="ai-expanded-sidebar" aria-label="Navegación e historial del asistente">
+                <button class="ai-sidebar-new" type="button" data-ai-action="new-chat">
+                    <span class="ai-sidebar-new-mark" aria-hidden="true">＋</span>
+                    <span data-ai-i18n="newChat">Nuevo chat</span>
+                </button>
+                <nav class="ai-sidebar-nav" aria-label="Secciones del asistente">
+                    <button class="ai-sidebar-tab active" type="button" data-ai-tab="chat" data-ai-i18n="chat">Chat</button>
+                    <button class="ai-sidebar-tab" type="button" data-ai-tab="history" data-ai-i18n="history">Historial</button>
+                    <button id="ai-sidebar-audit-tab" class="ai-sidebar-tab" type="button" data-ai-tab="audit" data-ai-i18n="audit" hidden>Auditoría</button>
+                    <button id="ai-sidebar-limits-tab" class="ai-sidebar-tab" type="button" data-ai-tab="limits" data-ai-i18n="limits" hidden>Cuotas</button>
+                </nav>
+                <div class="ai-sidebar-history-heading" data-ai-i18n="conversations">Conversaciones</div>
+                <div class="ai-list ai-sidebar-conversation-list" data-ai-conversation-list></div>
+            </aside>
+
+            <main class="ai-workspace-main">
+                <nav class="ai-tabs" aria-label="Secciones del asistente">
+                    <button class="ai-tab active" type="button" data-ai-tab="chat" data-ai-i18n="chat">Chat</button>
+                    <button class="ai-tab" type="button" data-ai-tab="history" data-ai-i18n="history">Historial</button>
+                    <button id="ai-audit-tab" class="ai-tab" type="button" data-ai-tab="audit" data-ai-i18n="audit" hidden>Auditoría</button>
+                    <button id="ai-limits-tab" class="ai-tab" type="button" data-ai-tab="limits" data-ai-i18n="limits" hidden>Cuotas</button>
+                </nav>
+
+        <section class="ai-view active" data-ai-view="chat">
+            <div class="ai-chat-toolbar">
+                <button id="ai-new-chat" class="ai-secondary-button" type="button" data-ai-action="new-chat" data-ai-i18n="newChat">Nuevo chat</button>
+                <div class="ai-chat-actions">
+                    <button id="ai-archive-chat" class="ai-link-button" type="button" data-ai-i18n="archive">Archivar</button>
+                    <button id="ai-delete-chat" class="ai-link-button ai-delete-button" type="button" data-ai-i18n="delete">Eliminar</button>
+                </div>
+            </div>
+            <div id="ai-notice" class="ai-notice" hidden></div>
+            <div id="ai-messages" class="ai-messages" role="log" aria-live="polite"></div>
+            <div id="ai-stream-status" class="ai-stream-status" hidden></div>
+            <form id="ai-composer" class="ai-composer">
+                <label class="sr-only" for="ai-input" data-ai-i18n="message">Mensaje</label>
+                <textarea id="ai-input" rows="2" maxlength="8000" data-ai-i18n-placeholder="placeholder"
+                          placeholder="Pregunta sobre el MES o solicita un Excel/PowerPoint"></textarea>
+                <div class="ai-composer-actions">
+                    <span id="ai-usage-label" class="ai-usage-label"></span>
+                    <button id="ai-stop" class="ai-stop-button" type="button" hidden data-ai-i18n="stop">Detener</button>
+                    <button id="ai-retry" class="ai-secondary-button" type="button" hidden data-ai-i18n="retry">Reintentar</button>
+                    <button id="ai-send" class="ai-send-button" type="submit" data-ai-i18n="send">Enviar</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="ai-view" data-ai-view="history">
+            <div class="ai-view-heading">
+                <h3 data-ai-i18n="conversations">Conversaciones</h3>
+                <label><input id="ai-show-archived" type="checkbox"> <span data-ai-i18n="showArchived">Mostrar archivadas</span></label>
+            </div>
+            <div id="ai-conversation-list" class="ai-list" data-ai-conversation-list></div>
+        </section>
+
+        <section class="ai-view" data-ai-view="audit">
+            <div class="ai-view-heading"><h3 data-ai-i18n="audit">Auditoría</h3></div>
+            <div class="ai-audit-filter">
+                <input id="ai-audit-user" type="search" placeholder="Usuario">
+                <button id="ai-audit-search" class="ai-secondary-button" type="button" data-ai-i18n="search">Buscar</button>
+            </div>
+            <div id="ai-audit-list" class="ai-list"></div>
+        </section>
+
+        <section class="ai-view" data-ai-view="limits">
+            <div class="ai-view-heading"><h3 data-ai-i18n="limits">Cuotas</h3></div>
+            <form id="ai-limit-form" class="ai-limit-form">
+                <select id="ai-limit-type"><option value="user">Usuario</option><option value="role">Rol</option></select>
+                <input id="ai-limit-key" required placeholder="Usuario o rol">
+                <input id="ai-limit-requests" type="number" min="0" placeholder="Solicitudes/día">
+                <input id="ai-limit-tokens" type="number" min="0" placeholder="Tokens/día">
+                <input id="ai-limit-artifacts" type="number" min="0" placeholder="Archivos/día">
+                <button class="ai-send-button" type="submit" data-ai-i18n="save">Guardar</button>
+            </form>
+            <div id="ai-limits-list" class="ai-list"></div>
+        </section>
+            </main>
+        </div>
+    </aside>
+</div>

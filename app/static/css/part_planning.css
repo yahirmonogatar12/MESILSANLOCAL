@@ -1,0 +1,504 @@
+/* Part Planning LG (WF_004: CSS persistente en MainTemplate.html) */
+
+.pp-page {
+  background: #32323e;
+  color: #e4e7ea;
+  min-height: calc(100vh - 120px);
+  padding: 16px;
+  font-family: 'LG regular', 'Segoe UI', Tahoma, sans-serif;
+}
+
+.pp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 2px solid #20688c;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.pp-header h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.pp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pp-card {
+  background: #3c3940;
+  border: 1px solid #20688c;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.pp-btn {
+  border: 1px solid #4b5968;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  background: #40424f;
+  color: #e4e7ea;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pp-btn.primary {
+  background: #20688c;
+  border-color: #20688c;
+  color: #ffffff;
+}
+
+.pp-btn.primary:hover:not(:disabled) { background: #297ea9; }
+.pp-btn.secondary:hover:not(:disabled) { background: #4b4d5c; }
+
+.pp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Filtros ---------- */
+
+.pp-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pp-field-grow { flex: 1 1 180px; }
+
+.pp-field label {
+  font-size: 11px;
+  color: #d8dde1;
+}
+
+.pp-field input,
+.pp-filters input {
+  background: #2b2b33;
+  border: 1px solid #4b5968;
+  border-radius: 6px;
+  color: #e4e7ea;
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+/* ---------- Tabla del plan ---------- */
+
+.pp-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 320px);
+}
+
+.pp-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pp-table th,
+.pp-table td {
+  border: 1px solid #4b5968;
+  padding: 5px 8px;
+  text-align: center;
+}
+
+.pp-table thead th {
+  background: #20688c;
+  color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.pp-table .pp-col-part {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: #3c3940;
+  z-index: 1;
+  font-weight: 600;
+}
+
+.pp-table thead .pp-col-part {
+  background: #20688c;
+  z-index: 3;
+}
+
+.pp-col-total { font-weight: 700; }
+
+.pp-cell-qty { color: #b8f5bd; font-weight: 600; }
+.pp-cell-zero { color: #8b8f99; }
+.pp-cell-none { color: #5c5f6a; }
+.pp-col-today { background: rgba(32, 104, 140, 0.25); }
+
+/* Renglones P / S / I (Etapa 2) */
+
+.pp-col-tipo {
+  font-weight: 700;
+  width: 28px;
+  min-width: 28px;
+}
+
+.pp-tipo-p { color: #b8f5bd; }
+.pp-tipo-s { color: #ffd9a8; }
+.pp-tipo-i { color: #9ecfff; }
+
+.pp-row-p td { border-bottom-style: dotted; }
+.pp-row-s td { border-top-style: dotted; border-bottom-style: dotted; }
+.pp-row-i td { border-top-style: dotted; border-bottom-width: 2px; }
+
+.pp-cell-sched {
+  cursor: pointer;
+  color: #ffd9a8;
+}
+
+/* Columnas de inventario editables (LGEMM, ISEMM, SVC, ...) — compactas:
+   width 1% + min-width las encoge al contenido y deja el espacio a las fechas */
+.pp-col-inv,
+.pp-cell-inv {
+  width: 1%;
+  min-width: 38px;
+  padding: 4px 4px;
+  font-size: 11px;
+}
+
+.pp-cell-inv {
+  cursor: pointer;
+  background: #35333c;
+  vertical-align: middle;
+  font-weight: 600;
+}
+
+/* Req LG: demanda total del plan desde hoy (no editable) */
+.pp-cell-req {
+  width: 1%;
+  min-width: 44px;
+  padding: 4px 4px;
+  font-size: 11px;
+  vertical-align: middle;
+  font-weight: 700;
+  color: #b8f5bd;
+  background: #35333c;
+  border-right: 2px solid #4b5968;
+}
+
+.pp-cell-inv:hover {
+  outline: 1px dashed #20688c;
+  outline-offset: -2px;
+}
+
+.pp-cell-sched:hover {
+  outline: 1px dashed #ef6c00;
+  outline-offset: -2px;
+}
+
+.pp-sched-input {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+  background: #2b2b33;
+  border: 1px solid #ef6c00;
+  border-radius: 3px;
+  color: #ffd9a8;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0 2px;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.pp-sched-input::-webkit-outer-spin-button,
+.pp-sched-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pp-cell-proj { color: #9ecfff; }
+.pp-cell-neg {
+  color: #ffb3b3;
+  font-weight: 700;
+  background: rgba(198, 40, 40, 0.18);
+}
+
+.pp-check-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.pp-legend {
+  font-size: 12px;
+  color: #9aa0aa;
+  margin-bottom: 8px;
+}
+
+.pp-legend span { font-weight: 700; }
+
+.pp-line-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: #9aa0aa;
+  border: 1px solid #4b5968;
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-left: 6px;
+}
+
+.pp-empty {
+  color: #9aa0aa;
+  text-align: center;
+  padding: 18px !important;
+}
+
+.pp-error-text { color: #ffb3b3; }
+
+.pp-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+/* ---------- Modales ---------- */
+
+.pp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 10500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.pp-modal {
+  background: #3c3940;
+  border: 1px solid #20688c;
+  border-radius: 10px;
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+.pp-modal-wide { width: min(1080px, 100%); }
+
+.pp-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #4b5968;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.pp-modal-header h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.pp-modal-x {
+  background: none;
+  border: none;
+  color: #e4e7ea;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.pp-modal-x:hover { color: #ffb3b3; }
+
+.pp-step h4 {
+  margin: 0 0 10px;
+  color: #f4f6f8;
+}
+
+.pp-hint {
+  color: #9aa0aa;
+  font-size: 12px;
+}
+
+.pp-hint-inline {
+  color: #9aa0aa;
+  font-size: 11px;
+}
+
+.pp-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* Paso 1: archivo */
+
+.pp-file-drop {
+  display: block;
+  border: 2px dashed #4b5968;
+  border-radius: 8px;
+  padding: 26px;
+  text-align: center;
+  cursor: pointer;
+  margin: 10px 0;
+}
+
+.pp-file-drop:hover { border-color: #20688c; }
+
+.pp-file-drop input[type="file"] { display: none; }
+
+.pp-file-drop-text {
+  color: #d8dde1;
+  font-size: 14px;
+}
+
+.pp-file-info {
+  background: #2b2b33;
+  border: 1px solid #4b5968;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Paso 2: resumen y mensajes */
+
+.pp-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pp-sum-card {
+  background: #2b2b33;
+  border: 1px solid #4b5968;
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+}
+
+.pp-sum-label {
+  font-size: 11px;
+  color: #9aa0aa;
+}
+
+.pp-sum-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.pp-sum-small { font-size: 12px; }
+
+.pp-msg-list {
+  border-radius: 6px;
+  padding: 8px 8px 8px 26px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.pp-msg-list.pp-errors {
+  border: 1px solid #c62828;
+  background: rgba(198, 40, 40, 0.2);
+  color: #ffb3b3;
+}
+
+.pp-msg-list.pp-warnings {
+  border: 1px solid #ef6c00;
+  background: rgba(239, 108, 0, 0.2);
+  color: #ffd9a8;
+}
+
+.pp-preview-wrap {
+  overflow: auto;
+  max-height: 300px;
+  margin-top: 8px;
+}
+
+.pp-col-file {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Paso 3: opciones */
+
+.pp-radio,
+.pp-check {
+  display: block;
+  padding: 6px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pp-radio input,
+.pp-check input { margin-right: 8px; }
+
+.pp-sep {
+  border: none;
+  border-top: 1px solid #4b5968;
+  margin: 10px 0;
+}
+
+.pp-field-year {
+  margin-top: 10px;
+  max-width: 320px;
+}
+
+/* Paso 4/5 */
+
+.pp-confirm-box {
+  background: #2b2b33;
+  border: 1px solid #4b5968;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pp-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: pp-spin 0.8s linear infinite;
+}
+
+@keyframes pp-spin {
+  to { transform: rotate(360deg); }
+}

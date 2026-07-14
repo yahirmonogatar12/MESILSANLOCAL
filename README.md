@@ -37,6 +37,14 @@ Notas:
 - También se acepta `MYSQL_USERNAME` como alternativa a `MYSQL_USER`.
 - En entornos serverless (Vercel) las variables se inyectan vía configuración del proveedor.
 
+### Asistente IA
+
+Para habilitar el panel global, define `OPENAI_API_KEY` únicamente en el servidor y asigna a los usuarios los permisos de `MAIN_TEMPLATE / Asistente IA`. El modelo, cuotas y límites de exportación se configuran con las variables `OPENAI_MODEL` y `AI_*` documentadas en `.env.example`.
+
+Los chats y su auditoría se guardan en MySQL. Los Excel y PowerPoint se almacenan de forma privada en `instance/ai_artifacts` durante 30 días y sólo se descargan mediante endpoints autenticados; no se publican bajo `static`.
+
+Cuando un usuario con permiso para generar archivos solicita un BOM concreto —por ejemplo, “dame el BOM del 7421”— el servidor genera y adjunta automáticamente el Excel completo del reporte autorizado. Las consultas de una familia BOM crean una hoja independiente por modelo/trabajo, nombrada con su sufijo (`11`, `12`, `17`, `22`, etc.), en lugar de combinar todos los renglones en una sola hoja. Los Excel BOM omiten por defecto la hoja `Resumen` y las gráficas; sólo se agregan cuando el mensaje las solicita explícitamente. La hoja `Criterios` se conserva para documentar fuente y filtros.
+
 ## Instalación
 
 1) Crear y activar un entorno virtual (opcional pero recomendado).
