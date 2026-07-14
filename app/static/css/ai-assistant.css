@@ -1,8 +1,53 @@
-.ai-assistant-root { --ai-navy:#173d63; --ai-blue:#1f4e79; --ai-cyan:#3ca7d8; --ai-bg:#f4f7fa; --ai-border:#d9e2ea; font-family:Inter,Segoe UI,Malgun Gothic,sans-serif; }
-.ai-launcher { position:fixed; right:22px; bottom:22px; z-index:15000; display:flex; align-items:center; gap:9px; border:0; border-radius:999px; padding:10px 16px 10px 10px; color:#fff; background:linear-gradient(135deg,var(--ai-navy),var(--ai-cyan)); box-shadow:0 12px 32px rgba(13,45,73,.35); font-weight:700; cursor:pointer; }
-.ai-launcher-mark { display:grid; place-items:center; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.18); font-size:12px; letter-spacing:.06em; }
-.ai-backdrop { position:fixed; inset:0; z-index:15010; background:rgba(8,25,40,.36); }
-.ai-panel { position:fixed; z-index:15020; top:0; right:0; width:min(470px,100vw); height:100dvh; display:flex; flex-direction:column; background:var(--ai-bg); box-shadow:-16px 0 42px rgba(9,31,49,.25); transform:translateX(105%); transition:transform .22s ease; color:#203040; }
+.ai-assistant-root { 
+    --ai-navy:#173d63; 
+    --ai-blue:#1f4e79; 
+    --ai-cyan:#3ca7d8; 
+    --ai-bg:#f4f7fa; 
+    --ai-border:#d9e2ea; font-family:Inter,Segoe UI,Malgun Gothic,sans-serif; 
+}
+.ai-launcher { 
+    position: fixed; 
+    right:22px; 
+    bottom:22px; 
+    z-index:15000; 
+    display:flex; 
+    align-items:center; 
+    gap:9px; 
+    border-radius:999px; 
+    padding:10px 16px 10px 10px; 
+    color:#fff; 
+    background:linear-gradient(135deg,var(--ai-navy),var(--ai-cyan)); 
+    box-shadow:0 12px 32px rgba(13,45,73,.35); 
+    font-weight:700; 
+    cursor:pointer; 
+}
+.ai-launcher-mark { display:grid; 
+    place-items:center; 
+    width:34px; 
+    height:34px; 
+    border-radius:50%; 
+    background:rgba(255,255,255,.18); 
+    font-size:12px; 
+    letter-spacing:.06em; 
+}
+.ai-backdrop { 
+    position:fixed; 
+    inset:0; z-index:15010; 
+    background:rgba(8,25,40,.36); 
+}
+.ai-panel { 
+    position:fixed; z-index:15020; 
+    top:0; right:0; 
+    width:min(470px,100vw); 
+    height:100dvh; 
+    display:flex; 
+    flex-direction:column; 
+    background:var(--ai-bg); 
+    box-shadow:-16px 0 42px rgba(9,31,49,.25); 
+    transform:translateX(105%); 
+    transition:none; 
+    color:#203040; 
+}
 .ai-panel.open { transform:translateX(0); }
 .ai-panel-header { flex:none; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 18px; color:#fff; background:linear-gradient(135deg,var(--ai-navy),var(--ai-blue)); }
 .ai-panel-header h2 { margin:1px 0 2px; font-size:20px; color:#fff; }
@@ -62,23 +107,70 @@
 .ai-launcher {
     right:20px;
     bottom:20px;
-    border:1px solid rgba(255,255,255,.16);
-    border-radius:6px;
-    padding:7px;
-    background:linear-gradient(145deg,var(--ai-navy),var(--ai-blue));
-    box-shadow:0 8px 24px rgba(10,25,42,.34);
+    width:58px;
+    height:58px;
+    justify-content:center;
+    gap:0;
+    border:1px solid rgba(0,153,68,.18);
+    border-radius:50%;
+    padding:0;
+    color:#009944;
+    background:#fff;
+    box-shadow:0 10px 28px rgba(0,70,36,.22);
     touch-action:none;
     user-select:none;
+    transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;
 }
 .ai-launcher[data-side="left"] { right:auto; left:20px; }
+.ai-launcher:hover {
+    border-color:rgba(0,153,68,.45);
+    box-shadow:0 12px 32px rgba(0,70,36,.28);
+    transform:translateY(-1px);
+}
 .ai-launcher.dragging { cursor:grabbing; transform:translateY(-2px) scale(1.02); }
+.ai-launcher.is-morphing { opacity:0; pointer-events:none; }
+
+.ai-launcher-logo {
+    display:block;
+    width:58px;
+    height:58px;
+    object-fit:contain;
+    pointer-events:none;
+}
+
+.ai-panel-morph-shell {
+    position:fixed;
+    z-index:15035;
+    overflow:hidden;
+    pointer-events:none;
+    border:1px solid rgba(0,153,68,.18);
+    background:var(--ai-bg);
+    box-shadow:-12px 0 34px rgba(9,24,39,.32);
+    will-change:left,top,width,height,border-radius,opacity;
+}
+
+.ai-panel-morph-logo {
+    position:fixed;
+    z-index:15040;
+    object-fit:contain;
+    pointer-events:none;
+    will-change:left,top,width,height,opacity;
+}
 
 .ai-launcher-mark {
-    width:31px;
-    height:31px;
-    border-radius:4px;
-    background:rgba(52,152,219,.24);
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    background:#fff;
+    box-shadow:0 4px 12px rgba(0,70,36,.18);
+}
+
+.ai-panel-mark-logo {
+    display:block;
+    width:38px;
+    height:38px;
+    object-fit:contain;
+    transition:opacity .18s ease;
 }
 
 .ai-backdrop { background:rgba(13,24,37,.48); backdrop-filter:blur(1px); }
@@ -87,8 +179,17 @@
     width:min(480px,100vw);
     border-left:1px solid var(--ai-blue);
     box-shadow:-12px 0 34px rgba(9,24,39,.32);
-    transition:width .24s ease,transform .22s ease;
+    transition:width .24s ease;
 }
+.ai-panel.is-instant {
+    transition:none!important;
+}
+.ai-panel.is-measuring {
+    visibility:hidden;
+    pointer-events:none;
+    transition:none!important;
+}
+.ai-panel.is-logo-landing .ai-panel-mark-logo { opacity:0; }
 
 .ai-panel.expanded {
     --ai-chat-column:860px;
@@ -120,13 +221,10 @@
     place-items:center;
     width:38px;
     height:38px;
-    border:1px solid rgba(255,255,255,.25);
-    border-radius:5px;
-    color:#fff;
-    background:rgba(52,152,219,.22);
-    font-size:12px;
-    font-weight:800;
-    letter-spacing:.08em;
+    border:1px solid rgba(0,153,68,.16);
+    border-radius:50%;
+    background:#fff;
+    box-shadow:0 4px 12px rgba(0,70,36,.18);
 }
 
 .ai-panel-header h2 { margin:0; font-size:19px; font-weight:700; letter-spacing:.01em; }
@@ -322,6 +420,7 @@
     .ai-expand-button { display:none; }
     .ai-panel-header { min-height:70px; padding:10px 12px; }
     .ai-panel-mark { width:34px; height:34px; }
+    .ai-panel-mark-logo { width:34px; height:34px; margin: 0 auto; }
     .ai-panel.expanded .ai-workspace { display:flex; }
     .ai-panel.expanded .ai-expanded-sidebar { display:none; }
     .ai-panel.expanded .ai-tabs { display:flex; }

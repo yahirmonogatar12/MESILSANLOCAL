@@ -27,6 +27,7 @@
             this.expanded = false;
             this.launcherDrag = null;
             this.suppressLauncherClickUntil = 0;
+            this.transitioning = false;
             this.artifactIds = new Set();
             this.visualizationIds = new Set();
         }
@@ -202,22 +203,247 @@
             launcher.addEventListener('pointercancel', event => finish(event, true));
         }
 
-        open() {
-            this.panel.classList.add('open');
-            this.panel.setAttribute('aria-hidden', 'false');
+        prefersReducedMotion() {
+            return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+        }
+
+        wait(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        nextFrame() {
+            return new Promise(resolve => requestAnimationFrame(() => resolve()));
+        }
+
+        rectStyle(rect, extra = {}) {
+            return {
+                left: `${rect.left}px`,
+                top: `${rect.top}px`,
+                width: `${rect.width}px`,
+                height: `${rect.height}px`,
+                ...extra,
+            };
+        }
+
+        centerRect(container, size) {
+            return {
+                left: container.left + (container.width - size) / 2,
+                top: container.top + (container.height - size) / 2,
+                width: size,
+                height: size,
+            };
+        }
+
+        getPanelTargetRect() {
+            const previousTransition = this.panel.style.transition;
+            const previousTransform = this.panel.style.transform;
+            const previousVisibility = this.panel.style.visibility;
+            const previousPointerEvents = this.panel.style.pointerEvents;
+            this.panel.style.transition = 'none';
+            this.panel.style.transform = 'translateX(0)';
+            this.panel.style.visibility = 'hidden';
+            this.panel.style.pointerEvents = 'none';
+            const rect = this.panel.getBoundingClientRect();
+            this.panel.style.transition = previousTransition;
+            this.panel.style.transform = previousTransform;
+            this.panel.style.visibility = previousVisibility;
+            this.panel.style.pointerEvents = previousPointerEvents;
+            return rect;
+        }
+
+        async setPanelOpenInstant(open) {
+            const previousTransition = this.panel.style.transition;
+            this.panel.classList.add('is-instant');
+            this.panel.style.transition = 'none';
+            this.panel.getBoundingClientRect();
+            this.panel.classList.toggle('open', open);
+            this.panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+            this.panel.getBoundingClientRect();
+            await this.nextFrame();
+            this.panel.style.transition = previousTransition;
+            this.panel.classList.remove('is-instant');
+        }
+
+        createPanelMorphShell(rect, opacity = 1) {
+            const shell = document.createElement('div');
+            shell.className = 'ai-panel-morph-shell';
+            Object.assign(shell.style, this.rectStyle(rect, {
+                opacity: String(opacity),
+                borderRadius: rect.width === rect.height ? '50%' : '0px',
+            }));
+            document.body.appendChild(shell);
+            return shell;
+        }
+
+        createPanelMorphLogo(rect) {
+            const source = this.launcher.querySelector('img') || this.root.querySelector('.ai-panel-mark-logo');
+            const logo = document.createElement('img');
+            logo.src = source?.currentSrc || source?.src || '/static/icons/1538298822.svg';
+            logo.alt = '';
+            logo.className = 'ai-panel-morph-logo';
+            Object.assign(logo.style, this.rectStyle(rect));
+            document.body.appendChild(logo);
+            return logo;
+        }
+
+        async animateElement(element, keyframes, options) {
+            const frames = Array.isArray(keyframes) ? keyframes : [keyframes];
+            const finalFrame = frames[frames.length - 1] || {};
+            const duration = this.prefersReducedMotion() ? 1 : Number(options?.duration || 0);
+            const animationOptions = {...options, duration, fill: 'forwards'};
+            if (!element.animate) {
+                Object.assign(element.style, finalFrame);
+                await this.wait(duration);
+                return;
+            }
+            const animation = element.animate(frames, animationOptions);
+            await animation.finished.catch(() => {});
+            Object.assign(element.style, finalFrame);
+        }
+
+        async runPanelOpenAnimation() {
+            if (this.prefersReducedMotion()) {
+                this.backdrop.hidden = false;
+                this.panel.classList.add('open');
+                this.panel.setAttribute('aria-hidden', 'false');
+                return;
+            }
+
+            const launcherRect = this.launcher.getBoundingClientRect();
+            const panelRect = this.getPanelTargetRect();
+            const logoSize = Math.min(72, Math.max(58, Math.round(Math.min(panelRect.width, panelRect.height) * .12)));
+            const centerLogoRect = this.centerRect(panelRect, logoSize);
+
+            const shell = this.createPanelMorphShell(launcherRect);
+            const logo = this.createPanelMorphLogo(launcherRect);
+            const easing = 'cubic-bezier(.16,1,.3,1)';
+            const launcherSurface = {backgroundColor: '#fff', boxShadow: '0 10px 28px rgba(0,70,36,.22)'};
+            const panelSurface = {backgroundColor: '#f2f5f7', boxShadow: '-12px 0 34px rgba(9,24,39,.32)'};
+            Object.assign(shell.style, launcherSurface);
+            this.launcher.classList.add('is-morphing');
+            this.panel.classList.add('is-logo-landing');
             this.backdrop.hidden = false;
+
+            try {
+                await Promise.all([
+                    this.animateElement(shell, [
+                        this.rectStyle(launcherRect, {borderRadius: '50%', opacity: '1', ...launcherSurface}),
+                        this.rectStyle(panelRect, {borderRadius: '0px', opacity: '1', ...panelSurface}),
+                    ], {duration: 1500, easing}),
+                    this.animateElement(logo, [
+                        this.rectStyle(launcherRect, {opacity: '1'}),
+                        this.rectStyle(centerLogoRect, {opacity: '1'}),
+                    ], {duration: 1500, easing}),
+                ]);
+
+                await this.setPanelOpenInstant(true);
+                await this.wait(1000);
+
+                await this.animateElement(shell, [
+                    {opacity: '1'},
+                    {opacity: '0'},
+                ], {duration: 1000, easing: 'cubic-bezier(.4,0,.2,1)'});
+
+                const mark = this.root.querySelector('.ai-panel-mark-logo');
+                const markRect = mark?.getBoundingClientRect();
+                if (markRect) {
+                    await this.animateElement(logo, [
+                        this.rectStyle(centerLogoRect, {opacity: '1'}),
+                        this.rectStyle(markRect, {opacity: '1'}),
+                    ], {duration: 720, easing: 'cubic-bezier(.2,.85,.25,1)'});
+                } else {
+                    await this.animateElement(logo, [{opacity: '1'}, {opacity: '0'}], {duration: 240, easing});
+                }
+            } finally {
+                shell.remove();
+                logo.remove();
+                this.launcher.classList.remove('is-morphing');
+                this.panel.classList.remove('is-logo-landing');
+            }
+        }
+
+        async runPanelCloseAnimation() {
+            if (this.prefersReducedMotion()) {
+                this.panel.classList.remove('open');
+                this.panel.setAttribute('aria-hidden', 'true');
+                this.backdrop.hidden = true;
+                return;
+            }
+
+            const panelRect = this.panel.getBoundingClientRect();
+            const launcherRect = this.launcher.getBoundingClientRect();
+            const mark = this.root.querySelector('.ai-panel-mark-logo');
+            const markRect = mark?.getBoundingClientRect() || this.centerRect(panelRect, 38);
+            const logoSize = Math.min(72, Math.max(58, Math.round(Math.min(panelRect.width, panelRect.height) * .12)));
+            const centerLogoRect = this.centerRect(panelRect, logoSize);
+
+            const shell = this.createPanelMorphShell(panelRect, 0);
+            const logo = this.createPanelMorphLogo(markRect);
+            const easing = 'cubic-bezier(.16,1,.3,1)';
+            const launcherSurface = {backgroundColor: '#fff', boxShadow: '0 10px 28px rgba(0,70,36,.22)'};
+            const panelSurface = {backgroundColor: '#f2f5f7', boxShadow: '-12px 0 34px rgba(9,24,39,.32)'};
+            Object.assign(shell.style, panelSurface);
+            this.launcher.classList.add('is-morphing');
+            this.panel.classList.add('is-logo-landing');
+
+            try {
+                await Promise.all([
+                    this.animateElement(shell, [{opacity: '0'}, {opacity: '1'}], {duration: 520, easing: 'cubic-bezier(.4,0,.2,1)'}),
+                    this.animateElement(logo, [
+                        this.rectStyle(markRect, {opacity: '1'}),
+                        this.rectStyle(centerLogoRect, {opacity: '1'}),
+                    ], {duration: 720, easing}),
+                ]);
+
+                await this.setPanelOpenInstant(false);
+
+                await Promise.all([
+                    this.animateElement(shell, [
+                        this.rectStyle(panelRect, {borderRadius: '0px', opacity: '1', ...panelSurface}),
+                        this.rectStyle(launcherRect, {borderRadius: '50%', opacity: '1', ...launcherSurface}),
+                    ], {duration: 1100, easing}),
+                    this.animateElement(logo, [
+                        this.rectStyle(centerLogoRect, {opacity: '1'}),
+                        this.rectStyle(launcherRect, {opacity: '1'}),
+                    ], {duration: 1100, easing}),
+                ]);
+            } finally {
+                shell.remove();
+                logo.remove();
+                this.launcher.classList.remove('is-morphing');
+                this.panel.classList.remove('is-logo-landing');
+                this.backdrop.hidden = true;
+            }
+        }
+
+        async open() {
+            if (this.transitioning || this.panel.classList.contains('open')) return;
+            this.transitioning = true;
             this.launcher.setAttribute('aria-expanded', 'true');
             document.body.style.overflow = 'hidden';
             if (!this.currentConversation && this.bootstrap?.configured) this.newChat(false);
-            setTimeout(() => this.input.focus(), 120);
+            try {
+                await this.runPanelOpenAnimation();
+                setTimeout(() => this.input.focus(), 120);
+            } catch (error) {
+                this.launcher.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+                console.warn('No se pudo abrir la animación del asistente IA:', error);
+            } finally {
+                this.transitioning = false;
+            }
         }
 
-        close() {
-            this.panel.classList.remove('open');
-            this.panel.setAttribute('aria-hidden', 'true');
-            this.backdrop.hidden = true;
+        async close() {
+            if (this.transitioning || (!this.panel.classList.contains('open') && this.backdrop.hidden)) return;
+            this.transitioning = true;
             this.launcher.setAttribute('aria-expanded', 'false');
-            document.body.style.overflow = '';
+            try {
+                await this.runPanelCloseAnimation();
+            } finally {
+                document.body.style.overflow = '';
+                this.transitioning = false;
+            }
         }
 
         showTab(name) {
