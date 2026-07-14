@@ -26,6 +26,7 @@ from .ai_artifacts import (
     regenerate_artifact,
 )
 from .ai_openai import AIConfigurationError, AIProviderError, model_name, stream_response
+from . import ai_plan_tools
 from .ai_reports import allowed_reports, compact_report_result, query_tool_schema, run_report
 from .ai_store import (
     AI_PAGE,
@@ -41,6 +42,7 @@ from .ai_store import (
     effective_limits,
     get_conversation,
     get_message_by_client_id,
+    get_pending_plan_confirmation,
     get_usage,
     increment_usage,
     list_audit_conversations,
@@ -77,6 +79,11 @@ _LARGE_DATA_REQUEST = re.compile(
     r"all|every|full|complete|entire|전체|모두|전부)\b",
     re.IGNORECASE,
 )
+_PLAN_CONFIRMATION = re.compile(
+    r"^\s*(?:s[ií]|confirmo|confirmar|adelante|yes|confirm|ok|네|확인|동의)"
+    r"(?:\s+(?:por\s+favor|please))?[\s.!]*$",
+    re.IGNORECASE,
+)
 
 
 def _automatic_bom_filters(content: str) -> dict[str, str] | None:
@@ -100,6 +107,49 @@ def _artifact_language(preference: str, content: str) -> str:
     if re.search(r"\b(?:please|show|give|get|need|export|for)\b", content, re.IGNORECASE):
         return "en"
     return "es"
+
+
+def _plan_completion_text(action: str, result: dict[str, Any], language: str) -> str:
+    """Respuesta determinista tras consumir una confirmación del usuario."""
+    if action == "plan_importar_ejecutar":
+        if language == "ko":
+            return (
+                "**가져오기가 완료되었습니다.**\n\n"
+                f"- 계획 부품: **{int(result.get('plan_partes') or 0):,}**\n"
+                f"- 계획 레코드: **{int(result.get('plan_registros') or 0):,}**\n"
+                f"- 날짜: **{int(result.get('plan_fechas') or 0):,}** ({result.get('rango') or 'N/D'})\n"
+                f"- 재고 부품: **{int(result.get('inventario_partes') or 0):,}**\n"
+                f"- 스케줄: **{int(result.get('schedules') or 0):,}**\n\n"
+                f"가져오기 ID: **{result.get('import_id') or 'N/D'}**."
+            )
+        if language == "en":
+            return (
+                "**Import completed successfully.**\n\n"
+                f"- Plan parts: **{int(result.get('plan_partes') or 0):,}**\n"
+                f"- Plan records: **{int(result.get('plan_registros') or 0):,}**\n"
+                f"- Dates: **{int(result.get('plan_fechas') or 0):,}** ({result.get('rango') or 'N/A'})\n"
+                f"- Inventory parts: **{int(result.get('inventario_partes') or 0):,}**\n"
+                f"- Schedules: **{int(result.get('schedules') or 0):,}**\n\n"
+                f"Import ID: **{result.get('import_id') or 'N/A'}**."
+            )
+        return (
+            "**Importación completada correctamente.**\n\n"
+            f"- Partes del plan: **{int(result.get('plan_partes') or 0):,}**\n"
+            f"- Registros del plan: **{int(result.get('plan_registros') or 0):,}**\n"
+            f"- Fechas: **{int(result.get('plan_fechas') or 0):,}** ({result.get('rango') or 'N/D'})\n"
+            f"- Partes de inventario: **{int(result.get('inventario_partes') or 0):,}**\n"
+            f"- Schedules: **{int(result.get('schedules') or 0):,}**\n\n"
+            f"ID de importación: **{result.get('import_id') or 'N/D'}**."
+        )
+
+    generated = int(result.get("generados") or 0)
+    assigned = int(result.get("asignados") or 0)
+    unassigned = int(result.get("sin_asignar") or 0)
+    if language == "ko":
+        return f"**생성이 완료되었습니다.** 생성: **{generated:,}**, 배정: **{assigned:,}**, 미배정: **{unassigned:,}**."
+    if language == "en":
+        return f"**Generation completed.** Generated: **{generated:,}**, assigned: **{assigned:,}**, unassigned: **{unassigned:,}**."
+    return f"**Generación completada.** Generados: **{generated:,}**, asignados: **{assigned:,}**, sin asignar: **{unassigned:,}**."
 
 
 def _large_data_request(content: str) -> bool:
@@ -276,12 +326,111 @@ def bootstrap():
             "can_generate_artifacts": _has(AI_PERMISSION_ARTIFACTS),
             "can_audit": _has(AI_PERMISSION_AUDIT),
             "can_manage_limits": _has(AI_PERMISSION_LIMITS),
+            "can_use_plan": ai_plan_tools._has(username),
             "reports": reports,
             "permissions": permissions,
             "usage": usage,
             "limits": limits,
         }
     )
+
+
+def _upload_root() -> Path:
+    root = Path(__file__).resolve().parents[3] / "instance" / "ai_uploads"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _upload_lookup(conversation_id: int):
+    """Devuelve un callable file_ref -> (bytes, filename) para las tools del plan.
+
+    Solo lee dentro del directorio de la conversacion; file_ref es el uuid del
+    archivo subido (sin extension), no una ruta, asi que no hay path traversal.
+    """
+    base = (_upload_root() / str(int(conversation_id))).resolve()
+
+    def _read(path):
+        try:
+            path.resolve().relative_to(base)
+        except ValueError:
+            return None, None
+        meta = path.with_suffix(".name")
+        filename = meta.read_text("utf-8")[:255] if meta.is_file() else path.name
+        return path.read_bytes(), filename
+
+    def lookup(file_ref):
+        ref = re.sub(r"[^A-Za-z0-9_-]", "", str(file_ref or ""))[:64]
+        if ref:
+            for path in base.glob(f"{ref}.*"):
+                if path.suffix.lower() in (".xlsx", ".xlsm"):
+                    return _read(path)
+        # Sin file_ref valido: usa el ultimo Excel subido a esta conversacion
+        if not base.is_dir():
+            return None, None
+        candidatos = [p for p in base.glob("*") if p.suffix.lower() in (".xlsx", ".xlsm")]
+        if not candidatos:
+            return None, None
+        ultimo = max(candidatos, key=lambda p: p.stat().st_mtime)
+        return _read(ultimo)
+
+    return lookup
+
+
+def _uploaded_file_info(conversation_id: int, file_ref: str | None) -> dict[str, Any] | None:
+    """Obtiene metadatos seguros del adjunto exacto enviado en este turno."""
+    raw_ref = str(file_ref or "").strip()
+    ref = re.sub(r"[^A-Za-z0-9_-]", "", raw_ref)[:64]
+    if not ref or ref != raw_ref:
+        return None
+    base = (_upload_root() / str(int(conversation_id))).resolve()
+    if not base.is_dir():
+        return None
+    for path in base.glob(f"{ref}.*"):
+        if path.suffix.lower() not in (".xlsx", ".xlsm"):
+            continue
+        try:
+            resolved = path.resolve()
+            resolved.relative_to(base)
+        except ValueError:
+            continue
+        meta = resolved.with_suffix(".name")
+        filename = meta.read_text("utf-8")[:255] if meta.is_file() else resolved.name
+        return {
+            "filename": filename,
+            "extension": resolved.suffix.lower(),
+            "size_bytes": resolved.stat().st_size,
+            "kind": "excel",
+        }
+    return None
+
+
+@bp.post("/conversations/<public_id>/upload")
+@requiere_permiso_dropdown(AI_PAGE, AI_SECTION, AI_PERMISSION_USE)
+def upload_file(public_id: str):
+    """Sube un Excel al chat para que las tools del plan lo procesen."""
+    conversation = _owner_conversation(public_id)
+    if not conversation:
+        return jsonify({"success": False, "error": "Conversación no encontrada"}), 404
+    if not ai_plan_tools._has(_username()):
+        return jsonify({"success": False, "error": "No tienes permiso para las acciones del Plan"}), 403
+    archivo = request.files.get("file")
+    if archivo is None or not archivo.filename:
+        return jsonify({"success": False, "error": "No se recibió archivo"}), 400
+    ext = os.path.splitext(archivo.filename)[1].lower()
+    if ext not in (".xlsx", ".xlsm"):
+        return jsonify({"success": False, "error": "Solo .xlsx o .xlsm"}), 400
+    data = archivo.read()
+    if not data or len(data) > 20 * 1024 * 1024:
+        return jsonify({"success": False, "error": "Archivo vacío o mayor a 20 MB"}), 400
+
+    conv_dir = (_upload_root() / str(int(conversation["id"]))).resolve()
+    conv_dir.mkdir(parents=True, exist_ok=True)
+    file_ref = uuid.uuid4().hex
+    (conv_dir / f"{file_ref}{ext}").write_bytes(data)
+    (conv_dir / f"{file_ref}.name").write_text(archivo.filename[:255], "utf-8")
+    _audit("SUBIR_ARCHIVO", f"Archivo subido al chat IA: {archivo.filename}",
+           {"conversation_id": public_id, "file_ref": file_ref})
+    return jsonify({"success": True, "file_ref": file_ref, "filename": archivo.filename})
 
 
 @bp.route("/conversations", methods=["GET", "POST"])
@@ -437,6 +586,21 @@ def stream_message(public_id: str):
         if artifact_schema:
             tools.append(artifact_schema)
 
+    # Herramientas del Plan de produccion LG (importar, faltantes, generar).
+    # Solo si el usuario tiene el permiso "Plan Proyectado".
+    plan_tools = ai_plan_tools.tool_schemas(_username())
+    if plan_tools and not compact_warehouse_request and not analysis_report_key:
+        tools.extend(plan_tools)
+    last_file_ref = str(payload.get("file_ref") or "").strip() or None
+    attachment = _uploaded_file_info(int(conversation["id"]), last_file_ref)
+    if not attachment:
+        last_file_ref = None
+    pending_plan_confirmation = (
+        get_pending_plan_confirmation(int(conversation["id"]), _username())
+        if plan_tools and _PLAN_CONFIRMATION.fullmatch(content)
+        else None
+    )
+
     context_reports = (
         [item for item in report_catalog if item.get("key") == "warehouse_shift_activity"]
         if compact_warehouse_request
@@ -461,6 +625,8 @@ def stream_message(public_id: str):
         "conversation_summary": conversation.get("summary_text"),
         "automatic_bom_excel": automatic_bom_enabled,
         "automatic_large_export_requested": automatic_large_export_requested,
+        "plan_tools_enabled": bool(plan_tools),
+        "attachment": attachment,
     }
 
     @stream_with_context
@@ -665,11 +831,37 @@ def stream_message(public_id: str):
                         "public_summary": artifact,
                         "client_event": {"event": "artifact_ready", "data": artifact},
                     }
+                if name in ai_plan_tools.TOOL_NAMES:
+                    # Si la tool no trae file_ref, usa el ultimo adjunto del turno
+                    if name == "plan_importar_preparar" and not arguments.get("file_ref"):
+                        arguments = {**arguments, "file_ref": last_file_ref}
+                    result = ai_plan_tools.execute(
+                        name, arguments,
+                        username=_username(),
+                        file_lookup=_upload_lookup(int(conversation["id"])),
+                    )
+                    stored_arguments = {
+                        key: ("[redactado]" if key == "confirm_token" else value)
+                        for key, value in arguments.items()
+                    }
+                    record_tool_execution(
+                        conversation_id=int(conversation["id"]), message_id=assistant_message_id,
+                        username=_username(), tool_name=name, arguments=stored_arguments,
+                        result_summary=result, status="success",
+                        duration_ms=int((datetime.now() - started).total_seconds() * 1000),
+                    )
+                    _audit("PLAN_IA", f"Tool de plan ejecutada: {name}",
+                           {"tool": name, "conversation_id": public_id})
+                    return {"model_output": result, "public_summary": {"tool": name}}
                 raise ValueError("Herramienta no registrada")
             except Exception as exc:
+                error_arguments = {
+                    key: ("[redactado]" if key == "confirm_token" else value)
+                    for key, value in arguments.items()
+                }
                 record_tool_execution(
                     conversation_id=int(conversation["id"]), message_id=assistant_message_id,
-                    username=_username(), tool_name=name, arguments=arguments,
+                    username=_username(), tool_name=name, arguments=error_arguments,
                     result_summary={}, status="error",
                     duration_ms=int((datetime.now() - started).total_seconds() * 1000),
                     error_text=str(exc),
@@ -677,6 +869,56 @@ def stream_message(public_id: str):
                 raise
 
         try:
+            if pending_plan_confirmation:
+                action = str(pending_plan_confirmation["execute_tool"])
+                call_id = f"confirmed-{assistant_message_id}"
+                yield _sse("tool_start", {"name": action, "call_id": call_id})
+                executed = execute_tool(
+                    action,
+                    {"confirm_token": pending_plan_confirmation["confirm_token"]},
+                    call_id,
+                )
+                yield _sse(
+                    "tool_end",
+                    {
+                        "name": action,
+                        "call_id": call_id,
+                        "summary": executed.get("public_summary"),
+                    },
+                )
+                result = executed.get("model_output") or {}
+                final_text = _plan_completion_text(
+                    action,
+                    result,
+                    _artifact_language(language, content),
+                )
+                assistant_text.append(final_text)
+                yield _sse("delta", {"text": final_text})
+                update_message(
+                    assistant_message_id,
+                    content=final_text,
+                    status="complete",
+                    input_tokens=0,
+                    output_tokens=0,
+                    content_json={"artifacts": [], "visualizations": []},
+                )
+                increment_usage(_username(), model_name(), requests=1)
+                refresh_conversation_summary(int(conversation["id"]), keep_recent=12)
+                _audit(
+                    "PLAN_IA_CONFIRMADO",
+                    f"Acción del plan confirmada y ejecutada: {action}",
+                    {"conversation_id": public_id, "tool": action},
+                )
+                yield _sse(
+                    "done",
+                    {
+                        "message_id": assistant_message_id,
+                        "artifacts": [],
+                        "visualizations": [],
+                    },
+                )
+                return
+
             if automatic_bom_enabled:
                 presentation = _bom_excel_options(content)
                 arguments = {

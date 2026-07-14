@@ -69,9 +69,12 @@ REPORTS: dict[str, ReportSpec] = {
     "bom": ReportSpec(
         "bom",
         "BOM",
-        "bom",
+        "v_ecos_bom_current",
         (("LISTA_INFORMACIONBASICA", "Control de produccion", "Control de BOM"),),
-        "Consulta componentes BOM por modelo, revisión o número de parte.",
+        (
+            "Consulta el BOM vigente de Control de BOM desde v_ecos_bom_current, "
+            "vista canónica que une ks_bom_headers y ks_bom_components."
+        ),
     ),
     "raw_model_standards": ReportSpec(
         "raw_model_standards",
@@ -1487,6 +1490,104 @@ def _quality_lqc_analysis_report(filters: dict[str, Any], *, limit: int) -> dict
     }
 
 
+def _bom_report(filters: dict[str, Any], *, limit: int) -> dict[str, Any]:
+    """Consulta el mismo BOM vigente que muestra Control de BOM.
+
+    La vista canónica conserva los nombres KS; aquí se proyectan aliases estables
+    para que el chat y los Excel existentes mantengan su formato por trabajo.
+    """
+    plant_date = now_local().date().isoformat()
+    query = str(filters.get("q") or "").strip()[:160]
+    model = str(filters.get("model") or "").strip()[:160]
+    part_number = str(filters.get("part_number") or "").strip()[:160]
+    status = str(filters.get("status") or "").strip()[:80]
+    clauses = [
+        "(v.status_name IS NULL OR v.status_name = '' OR v.status_name = '사용')",
+        "(v.valid_from IS NULL OR v.valid_from <= %s)",
+        "(v.valid_to IS NULL OR v.valid_to >= %s)",
+        """v.bom_rev <=> (
+            SELECT v2.bom_rev
+            FROM v_ecos_bom_current v2
+            WHERE v2.bom_part_no = v.bom_part_no
+              AND (v2.status_name IS NULL OR v2.status_name = '' OR v2.status_name = '사용')
+              AND (v2.valid_from IS NULL OR v2.valid_from <= %s)
+              AND (v2.valid_to IS NULL OR v2.valid_to >= %s)
+            ORDER BY v2.header_synced_at DESC, v2.bom_rev DESC
+            LIMIT 1
+        )""",
+    ]
+    params: list[Any] = [plant_date, plant_date, plant_date, plant_date]
+    if model:
+        clauses.append("v.bom_part_no LIKE %s")
+        params.append(f"%{model}%")
+    if part_number:
+        clauses.append("v.item_no LIKE %s")
+        params.append(f"%{part_number}%")
+    if status:
+        clauses.append("v.status_name LIKE %s")
+        params.append(f"%{status}%")
+    if query:
+        clauses.append(
+            "(v.bom_part_no LIKE %s OR v.root_part_no LIKE %s OR "
+            "v.item_no LIKE %s OR v.item_name LIKE %s OR v.item_name_en LIKE %s OR "
+            "v.spec LIKE %s OR v.maker LIKE %s OR v.location_text LIKE %s)"
+        )
+        params.extend([f"%{query}%"] * 8)
+    params.append(limit + 1)
+    sql = f"""
+        SELECT
+            v.item_seq AS id,
+            v.bom_part_no AS modelo,
+            v.item_no AS codigo_material,
+            v.item_no AS numero_parte,
+            '' AS side,
+            COALESCE(NULLIF(v.item_process, ''), NULLIF(v.process_name, ''), 'MAIN') AS tipo_material,
+            v.item_class AS classification,
+            v.spec AS especificacion_material,
+            v.maker AS vender,
+            v.qty AS cantidad_total,
+            v.qty AS cantidad_original,
+            v.location_text AS ubicacion,
+            v.alt_item_no AS material_sustituto,
+            v.bom_rev AS bom_revision,
+            v.valid_from,
+            v.valid_to,
+            v.component_synced_at AS fecha_registro
+        FROM v_ecos_bom_current v
+        WHERE {' AND '.join(clauses)}
+        ORDER BY v.bom_part_no, v.item_seq, v.item_no
+        LIMIT %s
+    """
+    started = datetime.now()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(sql, tuple(params))
+        fetched = cursor.fetchall() or []
+    finally:
+        cursor.close()
+        conn.close()
+    truncated = len(fetched) > limit
+    rows = [_normalize_row(dict(row)) for row in fetched[:limit]]
+    columns = list(rows[0].keys()) if rows else [
+        "id", "modelo", "codigo_material", "numero_parte", "side",
+        "tipo_material", "classification", "especificacion_material", "vender",
+        "cantidad_total", "cantidad_original", "ubicacion", "material_sustituto",
+        "bom_revision", "valid_from", "valid_to", "fecha_registro",
+    ]
+    return {
+        "report": "bom",
+        "title": REPORTS["bom"].title,
+        "source": "v_ecos_bom_current (ks_bom_headers + ks_bom_components)",
+        "columns": columns,
+        "rows": rows,
+        "row_count": len(rows),
+        "truncated": truncated,
+        "filters": {**filters, "plant_date": plant_date, "revision_scope": "vigente"},
+        "duration_ms": int((datetime.now() - started).total_seconds() * 1000),
+    }
+
+
 def run_report(
     username: str,
     report_key: str,
@@ -1520,6 +1621,8 @@ def run_report(
         return _warehouse_analysis_report(username, filters, limit=limit)
     if report_key == "quality_lqc_analysis":
         return _quality_lqc_analysis_report(filters, limit=limit)
+    if report_key == "bom":
+        return _bom_report(filters, limit=limit)
 
     conn = get_db_connection()
     cursor = conn.cursor()

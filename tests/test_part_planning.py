@@ -303,3 +303,25 @@ def test_ppy_armar_lotes_modo_laxo_propuesta_schedule():
     assert por_parte["SINUPH0001"]["qty"] == 120   # mismo calculo, sin horas
     # solo las partes con UPH consumen horas (120/100 + 120/100 = 2.4)
     assert abs(horas["M1"] - (9.0 - 2.4)) < 1e-6
+
+
+def test_ppy_acomodo_heuristico_asigna_linea_por_id():
+    from app.api.control_produccion.part_planning import _ppy_acomodo_heuristico
+
+    pend = [
+        {"id": 1, "part_no": "EBR8075741A", "qty_plan": 200, "uph": 100,
+         "estandar_pack": 20, "model": None, "main_sub": None, "permitidas": ["M1"]},
+        {"id": 2, "part_no": "EBR8075742B", "qty_plan": 200, "uph": 100,
+         "estandar_pack": 20, "model": None, "main_sub": None, "permitidas": None},
+        {"id": 3, "part_no": "ABC00000001", "qty_plan": 100, "uph": 100,
+         "estandar_pack": 20, "model": None, "main_sub": None, "permitidas": ["H1"]},
+    ]
+    horas = {"M1": 9.0, "M2": 9.0}
+    asig = _ppy_acomodo_heuristico(pend, ["M1", "M2"], horas)
+    # id 1 permitido solo M1; familia (1 y 2 = EBR807574) juntas en M1
+    assert asig[1] == "M1"
+    assert asig[2] == "M1"
+    # id 3 solo permite H1 que no esta activa -> no se asigna
+    assert 3 not in asig
+    # no muta el dict original de horas del caller
+    assert horas["M1"] == 9.0

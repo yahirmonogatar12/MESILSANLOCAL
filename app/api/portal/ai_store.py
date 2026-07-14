@@ -785,6 +785,63 @@ def record_tool_execution(
         conn.close()
 
 
+def get_pending_plan_confirmation(
+    conversation_id: int,
+    username: str,
+) -> dict[str, Any] | None:
+    """Recupera la última acción del plan preparada y todavía no ejecutada.
+
+    El token permanece en MySQL y nunca necesita enviarse al navegador ni al
+    proveedor de IA. Una ejecución exitosa posterior consume lógicamente la
+    preparación y evita repetir la misma operación.
+    """
+    prepare_to_execute = {
+        "plan_importar_preparar": "plan_importar_ejecutar",
+        "plan_generar_preparar": "plan_generar_ejecutar",
+    }
+    relevant = tuple(prepare_to_execute) + tuple(prepare_to_execute.values())
+    placeholders = ",".join(["%s"] * len(relevant))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            f"""
+            SELECT tool_name, result_summary_json, status, created_at
+            FROM ai_tool_executions
+            WHERE conversation_id = %s AND username = %s
+              AND tool_name IN ({placeholders})
+            ORDER BY id DESC
+            LIMIT 20
+            """,
+            (int(conversation_id), username, *relevant),
+        )
+        rows = cursor.fetchall() or []
+    finally:
+        cursor.close()
+        conn.close()
+
+    for row in rows:
+        if str(row.get("status") or "") != "success":
+            continue
+        tool_name = str(row.get("tool_name") or "")
+        if tool_name in prepare_to_execute.values():
+            return None
+        execute_tool = prepare_to_execute.get(tool_name)
+        if not execute_tool:
+            continue
+        result = json_loads(row.get("result_summary_json"), {}) or {}
+        token = str(result.get("confirm_token") or "")
+        if not token:
+            return None
+        return {
+            "prepare_tool": tool_name,
+            "execute_tool": execute_tool,
+            "confirm_token": token,
+            "prepared_at": row.get("created_at"),
+        }
+    return None
+
+
 def get_usage(username: str, model: str) -> dict[str, Any]:
     row = _fetchone(
         """
