@@ -75,6 +75,7 @@ run_dev.py
 
 # Uploads
 app/static/uploads/
+instance/ai_artifacts/
 # Excel originales de invoices (se guardan por numero/fecha en runtime)
 storage/
 .graphify_detect.json

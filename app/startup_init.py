@@ -72,6 +72,8 @@ def run_startup_init():
     from .api.informacion_basica.control_material import crear_tabla_material_costos
     from .api.control_material.invoice_core.ddl import init_material_invoice_tables
     from .api.control_material.compras_core.ddl import init_lista_compras_tables
+    from .api.control_produccion.part_planning import init_part_planning_tables
+    from .api.portal.ai_store import init_ai_assistant_tables
 
     log("Iniciando init_db()")
     init_db()
@@ -138,6 +140,14 @@ def run_startup_init():
     init_lista_compras_tables()
     log("init_lista_compras_tables() completado")
 
+    log("Iniciando init_part_planning_tables()")
+    init_part_planning_tables()
+    log("init_part_planning_tables() completado")
+
+    log("Iniciando init_ai_assistant_tables()")
+    init_ai_assistant_tables()
+    log("init_ai_assistant_tables() completado")
+
     _start_workers_only()
 
 
@@ -155,3 +165,8 @@ def _start_workers_only():
         iniciar_snapshot_inv_worker()
     except Exception as e:
         logger.error(f"[startup-init] Error iniciando snapshot worker: {e}")
+    try:
+        from .api.portal.ai_store import start_ai_artifact_cleanup_worker
+        start_ai_artifact_cleanup_worker()
+    except Exception as e:
+        logger.error(f"[startup-init] Error iniciando limpieza de artefactos IA: {e}")

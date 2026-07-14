@@ -16,6 +16,16 @@
                     <li class="sidebar-link" tabindex="0"
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION"
                             data-permiso-seccion="Control de plan de produccion"
+                            data-permiso-boton="Part Planning LG"
+                            onclick="window.parent.mostrarPartPlanning ? window.parent.mostrarPartPlanning() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('part-planning-unique-container', '/part-planning-ajax') : window.location.href='/part-planning-ajax')">Part Planning LG</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION"
+                            data-permiso-seccion="Control de plan de produccion"
+                            data-permiso-boton="Proyeccion"
+                            onclick="window.parent.mostrarProyeccion ? window.parent.mostrarProyeccion() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('proyeccion-unique-container', '/proyeccion-ajax') : window.location.href='/proyeccion-ajax')">Proyeccion</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION"
+                            data-permiso-seccion="Control de plan de produccion"
                             data-permiso-boton="Crear Plan de produccion"
                             onclick="window.parent.mostrarCrearPlanProduccion ? window.parent.mostrarCrearPlanProduccion() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('crear-plan-produccion-unique-container', '/control_produccion/crear_plan') : window.location.href='/control_produccion/crear_plan')">Crear Plan de produccion</li>
                 </ul>

@@ -141,6 +141,8 @@ _MODULOS_REGISTRADOS = [
     # Migracion 2026-05-26: Plan ASSY + Plan IMD a blueprints
     "control_produccion.plan_assy",
     "control_produccion.plan_imd",
+    # WF_001-WF_005 (2026-07-12): Part Planning LG (import plan diario LG)
+    "control_produccion.part_planning",
     # Migracion 2026-05-27: Almacen de Embarques (6 modulos sidebar Control de proceso)
     "control_proceso.almacen_embarques",
     # Fase 3.1 (2026-05-28): renders cortos + Control de salida de lineas
@@ -148,6 +150,8 @@ _MODULOS_REGISTRADOS = [
     "control_proceso.control_salida_lineas",
     "shared.raw_modelos",
     "portal.tickets",
+    # Asistente IA global: chat, reportes seguros y artefactos Excel/PowerPoint.
+    "portal.ai_assistant",
     "pda.shipping",
     "pda.shipping_material",
     "pda.excess_inventory",
