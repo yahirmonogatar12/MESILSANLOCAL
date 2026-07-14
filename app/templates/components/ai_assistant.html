@@ -80,8 +80,14 @@
                 <label class="sr-only" for="ai-input" data-ai-i18n="message">Mensaje</label>
                 <textarea id="ai-input" rows="2" maxlength="8000" data-ai-i18n-placeholder="placeholder"
                           placeholder="Pregunta sobre el MES o solicita un Excel/PowerPoint"></textarea>
+                <div id="ai-attach-info" class="ai-attach-info" hidden>
+                    <span id="ai-attach-name"></span>
+                    <button id="ai-attach-clear" type="button" title="Quitar archivo">&times;</button>
+                </div>
+                <input type="file" id="ai-attach-file" accept=".xlsx,.xlsm" hidden>
                 <div class="ai-composer-actions">
                     <span id="ai-usage-label" class="ai-usage-label"></span>
+                    <button id="ai-attach" class="ai-secondary-button" type="button" title="Adjuntar Excel del plan" hidden>📎</button>
                     <button id="ai-stop" class="ai-stop-button" type="button" hidden data-ai-i18n="stop">Detener</button>
                     <button id="ai-retry" class="ai-secondary-button" type="button" hidden data-ai-i18n="retry">Reintentar</button>
                     <button id="ai-send" class="ai-send-button" type="submit" data-ai-i18n="send">Enviar</button>

@@ -7,6 +7,9 @@
     <div class="pp-header-actions">
       <button id="pr-btn-proponer" class="pp-btn secondary" type="button"
               title="Propone schedule para cubrir los faltantes del rango (mismas reglas que Plan Proyectado)">Proponer schedule</button>
+      <button id="pr-btn-sync-sched" class="pp-btn secondary" type="button"
+              title="TEMPORAL: reemplaza el schedule (renglon S) por el de la hoja Part N del Excel, por parte">Sincronizar schedule (Excel)</button>
+      <input type="file" id="pr-sync-file" accept=".xlsx,.xlsm" style="display: none;">
       <button id="pr-btn-inventory" class="pp-btn primary" type="button">Importar inventario (Part 10)</button>
       <button id="pr-btn-history" class="pp-btn secondary" type="button">Historial de importaciones</button>
     </div>
@@ -135,4 +138,4 @@
   </div>
 
 </div>
-<script src="{{ url_for('static', filename='js/proyeccion.js') }}?v=20260715b"></script>
+<script src="{{ url_for('static', filename='js/proyeccion.js') }}?v=20260715c"></script>

@@ -9,7 +9,14 @@
         <label for="ppy-fecha">Fecha del plan</label>
         <input type="date" id="ppy-fecha">
       </div>
-      <button id="ppy-btn-generate" class="pp-btn primary" type="button">Generar propuesta</button>
+      <button id="ppy-btn-generate" class="pp-btn primary" type="button"
+              title="Genera y acomoda automaticamente en las lineas segun horas">Generar propuesta</button>
+      <button id="ppy-btn-faltantes" class="pp-btn secondary" type="button"
+              title="Crea los lotes de los faltantes SIN linea (la asignas manual o con IA)">Generar desde faltantes</button>
+      <button id="ppy-btn-schedule" class="pp-btn secondary" type="button"
+              title="Crea un lote por cada Schedule (renglon S) del dia, con su cantidad exacta, SIN linea">Generar desde schedule</button>
+      <button id="ppy-btn-acomodar" class="pp-btn secondary" type="button"
+              title="Asigna la mejor linea a los lotes sin linea usando IA (respeta lineas permitidas y horas)">Acomodar con IA</button>
       <button id="ppy-btn-confirm" class="pp-btn secondary" type="button">Confirmar dia</button>
     </div>
   </div>
@@ -64,4 +71,4 @@
   </div>
 
 </div>
-<script src="{{ url_for('static', filename='js/plan_proyectado.js') }}?v=20260714b"></script>
+<script src="{{ url_for('static', filename='js/plan_proyectado.js') }}?v=20260715b"></script>

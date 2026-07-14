@@ -165,6 +165,56 @@
     }
   }
 
+  async function ppyGenerarFaltantes() {
+    if (!confirm("Crea los lotes de los faltantes SIN linea (reemplaza los PENDIENTES; los confirmados no se tocan). Luego asignas linea manual o con 'Acomodar con IA'. Continuar?")) return;
+    const btn = document.getElementById("ppy-btn-faltantes");
+    if (btn) { btn.disabled = true; }
+    try {
+      const data = await ppyPost("/api/plan-proyectado/generate-faltantes", { fecha: ppyFecha() });
+      ppyRender(data);
+      ppyMsg("Generados " + data.generados + " lotes sin linea. Usa 'Acomodar con IA' o asigna la linea a mano.");
+    } catch (e) {
+      ppyMsg("Error al generar faltantes: " + (e.message || e), true);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function ppyGenerarSchedule() {
+    if (!confirm("Crea un lote por cada Schedule (renglon S) del dia, con su cantidad exacta y SIN linea (reemplaza los PENDIENTES; los confirmados no se tocan). Continuar?")) return;
+    const btn = document.getElementById("ppy-btn-schedule");
+    if (btn) btn.disabled = true;
+    try {
+      const data = await ppyPost("/api/plan-proyectado/generate-schedule", { fecha: ppyFecha() });
+      ppyRender(data);
+      ppyMsg("Generados " + data.generados + " lotes desde el schedule del dia. Usa 'Acomodar con IA' o asigna la linea a mano.");
+    } catch (e) {
+      ppyMsg("Error al generar desde schedule: " + (e.message || e), true);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function ppyAcomodarIA() {
+    const btn = document.getElementById("ppy-btn-acomodar");
+    if (btn) { btn.disabled = true; btn.textContent = "Acomodando..."; }
+    try {
+      const data = await ppyPost("/api/plan-proyectado/acomodar-ia", { fecha: ppyFecha() });
+      ppyRender(data);
+      const via = data.metodo === "ia" ? "IA"
+        : data.metodo === "ia+heuristica" ? "IA + heuristica local"
+        : data.metodo === "nada" ? "nada que acomodar"
+        : "heuristica local (IA no disponible)";
+      let msg = "Acomodo (" + via + "): " + data.asignados + " lotes con linea.";
+      if (data.sin_asignar) msg += " " + data.sin_asignar + " sin acomodar (sin horas/linea permitida).";
+      ppyMsg(msg, !!data.sin_asignar);
+    } catch (e) {
+      ppyMsg("Error al acomodar: " + (e.message || e), true);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Acomodar con IA"; }
+    }
+  }
+
   async function ppyConfirmDia() {
     if (!confirm("Se asignaran numeros de lote (I" + ppyFecha().replace(/-/g, "") +
       "-####) y las cantidades se sumaran al renglon S de Proyeccion. Confirmar?")) return;
@@ -315,6 +365,9 @@
       const del = ev.target.closest(".ppy-del");
       if (del) { ppyDelete(del); return; }
       if (ev.target.closest("#ppy-btn-generate")) { ppyGenerate(); return; }
+      if (ev.target.closest("#ppy-btn-faltantes")) { ppyGenerarFaltantes(); return; }
+      if (ev.target.closest("#ppy-btn-schedule")) { ppyGenerarSchedule(); return; }
+      if (ev.target.closest("#ppy-btn-acomodar")) { ppyAcomodarIA(); return; }
       if (ev.target.closest("#ppy-btn-confirm")) { ppyConfirmDia(); return; }
       if (ev.target.closest("#ppy-btn-add")) { ppyAdd(); return; }
       if (ev.target.closest("#ppy-btn-lineas")) { ppyGuardarLineas(); return; }

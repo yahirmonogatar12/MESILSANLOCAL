@@ -29,6 +29,171 @@ def _sample_report():
     }
 
 
+def test_reporte_bom_usa_vista_canonica_ks_eco(monkeypatch):
+    captured = {}
+
+    class Cursor:
+        def execute(self, sql, params):
+            captured["sql"] = sql
+            captured["params"] = params
+
+        def fetchall(self):
+            return [{
+                "id": 1,
+                "modelo": "EBR80757421",
+                "codigo_material": "EAH62735001",
+                "numero_parte": "EAH62735001",
+                "cantidad_total": 1,
+                "bom_revision": "R01",
+            }]
+
+        def close(self):
+            pass
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(ai_reports, "get_db_connection", lambda: Connection())
+
+    result = ai_reports._bom_report({"q": "7421"}, limit=200)
+
+    assert ai_reports.REPORTS["bom"].source == "v_ecos_bom_current"
+    assert "FROM v_ecos_bom_current v" in captured["sql"]
+    assert "ks_bom_headers + ks_bom_components" in result["source"]
+    assert result["rows"][0]["modelo"] == "EBR80757421"
+    assert result["filters"]["revision_scope"] == "vigente"
+    assert captured["params"][-1] == 201
+
+
+def test_adjunto_se_informa_al_modelo_y_no_expone_file_ref(tmp_path, monkeypatch):
+    monkeypatch.setattr(ai_assistant, "_upload_root", lambda: tmp_path)
+    folder = tmp_path / "44"
+    folder.mkdir()
+    (folder / "abc123.xlsx").write_bytes(b"excel-test")
+    (folder / "abc123.name").write_text("Plan LG semana 29.xlsx", "utf-8")
+
+    info = ai_assistant._uploaded_file_info(44, "abc123")
+    instructions = ai_openai.build_instructions({
+        "language": "es",
+        "plan_tools_enabled": True,
+        "attachment": info,
+    })
+
+    assert info == {
+        "filename": "Plan LG semana 29.xlsx",
+        "extension": ".xlsx",
+        "size_bytes": 10,
+        "kind": "excel",
+    }
+    assert "El archivo ya llegó al servidor" in instructions
+    assert "Plan LG semana 29.xlsx" in instructions
+    assert "plan_importar_preparar" in instructions
+    assert "abc123" not in instructions
+
+
+def test_adjunto_rechaza_referencia_ajena_o_manipulada(tmp_path, monkeypatch):
+    monkeypatch.setattr(ai_assistant, "_upload_root", lambda: tmp_path)
+    folder = tmp_path / "44"
+    folder.mkdir()
+    (folder / "safe.xlsx").write_bytes(b"x")
+
+    assert ai_assistant._uploaded_file_info(44, "../safe") is None
+    assert ai_assistant._uploaded_file_info(45, "safe") is None
+
+
+def test_confirmacion_pendiente_ejecuta_importacion_sin_volver_a_preparar(client, monkeypatch):
+    from app.api.shared import permisos
+
+    class SuperadminAuth:
+        def obtener_rol_principal_usuario(self, _username):
+            return "superadmin"
+
+    message_ids = iter((71, 72))
+    executed = []
+    recorded = []
+    monkeypatch.setattr(permisos, "_auth", lambda: SuperadminAuth())
+    monkeypatch.setattr(ai_assistant, "get_conversation", lambda _public_id: {
+        "id": 44,
+        "public_id": "chat-plan",
+        "username": "ana",
+        "title": "Importar plan",
+        "language": "es",
+    })
+    monkeypatch.setattr(ai_assistant, "check_quota", lambda *_args, **_kwargs: (True, None, {}, {}))
+    monkeypatch.setattr(ai_assistant, "get_message_by_client_id", lambda *_args: None)
+    monkeypatch.setattr(ai_assistant, "add_message", lambda *_args, **_kwargs: next(message_ids))
+    monkeypatch.setattr(ai_assistant, "recent_model_messages", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(ai_assistant, "allowed_reports", lambda *_args: [])
+    monkeypatch.setattr(ai_assistant, "query_tool_schema", lambda *_args: None)
+    monkeypatch.setattr(ai_assistant, "_has", lambda *_args: True)
+    monkeypatch.setattr(ai_assistant, "permisos_botones", lambda *_args: {})
+    monkeypatch.setattr(ai_assistant, "_uploaded_file_info", lambda *_args: None)
+    monkeypatch.setattr(ai_assistant.ai_plan_tools, "tool_schemas", lambda *_args: [{"name": "plan"}])
+    monkeypatch.setattr(ai_assistant, "get_pending_plan_confirmation", lambda *_args: {
+        "prepare_tool": "plan_importar_preparar",
+        "execute_tool": "plan_importar_ejecutar",
+        "confirm_token": "token-servidor",
+    })
+
+    def fake_execute(name, arguments, **_kwargs):
+        executed.append((name, arguments))
+        return {
+            "import_id": 91,
+            "plan_partes": 487,
+            "plan_fechas": 80,
+            "plan_registros": 12000,
+            "rango": "2026-06-29 a 2026-09-16",
+            "inventario_partes": 404,
+            "schedules": 800,
+        }
+
+    monkeypatch.setattr(ai_assistant.ai_plan_tools, "execute", fake_execute)
+    monkeypatch.setattr(ai_assistant, "record_tool_execution", lambda **kwargs: recorded.append(kwargs))
+    monkeypatch.setattr(ai_assistant, "update_message", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "increment_usage", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "refresh_conversation_summary", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "_audit", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        ai_assistant,
+        "stream_response",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("No debe llamar OpenAI")),
+    )
+
+    with client.session_transaction() as sess:
+        sess["usuario"] = "ana"
+        sess["roles"] = ["superadmin"]
+    response = client.post(
+        "/api/ai/conversations/chat-plan/messages/stream",
+        json={
+            "content": "confirmo",
+            "client_message_id": "00000000-0000-4000-8000-000000000091",
+            "language": "es",
+        },
+    )
+
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert len(executed) == 1
+    assert executed[0] == (
+        "plan_importar_ejecutar",
+        {"confirm_token": "token-servidor"},
+    )
+    assert recorded[0]["arguments"]["confirm_token"] == "[redactado]"
+    assert "Importación completada correctamente" in body
+    assert "487" in body
+    assert "vuelve a preparar" not in body
+
+
+def test_detecta_confirmacion_corta_del_plan():
+    for text in ("sí", "si", "confirmo", "yes", "confirm", "확인"):
+        assert ai_assistant._PLAN_CONFIRMATION.fullmatch(text)
+    assert not ai_assistant._PLAN_CONFIRMATION.fullmatch("si puedes revisa el archivo")
+
+
 def test_excel_profesional_y_formula_injection(tmp_path):
     target = tmp_path / "reporte.xlsx"
     ai_artifacts._build_excel(_sample_report(), "Reporte inventario", "es", target)
@@ -377,6 +542,7 @@ def test_solicitud_bom_genera_excel_automatico(client, monkeypatch):
     monkeypatch.setattr(ai_assistant, "query_tool_schema", lambda *_args: None)
     monkeypatch.setattr(ai_assistant, "_has", lambda *_args: True)
     monkeypatch.setattr(ai_assistant, "permisos_botones", lambda *_args: {})
+    monkeypatch.setattr(ai_assistant.ai_plan_tools, "tool_schemas", lambda *_args: [])
 
     def fake_create_artifact(**kwargs):
         captured.update(kwargs)
@@ -463,6 +629,7 @@ def test_consulta_masiva_genera_excel_y_no_entrega_tabla_larga(client, monkeypat
     monkeypatch.setattr(ai_assistant, "artifact_tool_schema", lambda *_args: None)
     monkeypatch.setattr(ai_assistant, "_has", lambda *_args: True)
     monkeypatch.setattr(ai_assistant, "permisos_botones", lambda *_args: {})
+    monkeypatch.setattr(ai_assistant.ai_plan_tools, "tool_schemas", lambda *_args: [])
     monkeypatch.setattr(
         ai_assistant,
         "run_report",
@@ -1093,9 +1260,10 @@ def test_main_template_incluye_panel_y_metadatos_de_permiso():
     assert 'data-ai-conversation-list' in partial
     assert 'data-ai-action="new-chat"' in partial
     assert 'id="ai-delete-chat"' in partial
-    assert '<span class="ai-launcher-mark" aria-hidden="true">IA</span>' in partial
+    assert 'class="ai-launcher-logo"' in partial
+    assert "icons/1538298822.svg" in partial
     assert '>Asistente</span>' not in partial.split('</button>', 1)[0]
-    assert "20260713h" in main
+    assert "20260715a" in main
 
 
 def test_cliente_permite_eliminar_chat_con_confirmacion():

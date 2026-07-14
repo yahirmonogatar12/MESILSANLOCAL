@@ -44,6 +44,8 @@
             this.root.hidden = false;
             this.setLauncherSide(localStorage.getItem('mes-ai-launcher-side') === 'left' ? 'left' : 'right', false);
             this.root.querySelector('#ai-model-label').textContent = this.bootstrap.model || 'GPT';
+            const attachBtn = this.root.querySelector('#ai-attach');
+            if (attachBtn) attachBtn.hidden = !this.bootstrap.can_use_plan;
             this.root.querySelector('#ai-audit-tab').hidden = !this.bootstrap.can_audit;
             this.root.querySelector('#ai-limits-tab').hidden = !this.bootstrap.can_manage_limits;
             this.root.querySelector('#ai-sidebar-audit-tab').hidden = !this.bootstrap.can_audit;
@@ -81,6 +83,16 @@
                 event.preventDefault();
                 this.send();
             });
+            const attachBtn = this.root.querySelector('#ai-attach');
+            const attachFile = this.root.querySelector('#ai-attach-file');
+            if (attachBtn && attachFile) {
+                attachBtn.addEventListener('click', () => { attachFile.value = ''; attachFile.click(); });
+                attachFile.addEventListener('change', () => {
+                    const file = attachFile.files && attachFile.files[0];
+                    if (file) this.uploadPlanFile(file);
+                });
+                this.root.querySelector('#ai-attach-clear').addEventListener('click', () => this.clearAttachment());
+            }
             this.input.addEventListener('keydown', event => {
                 if (event.key === 'Enter' && !event.shiftKey) {
                     event.preventDefault();
@@ -888,6 +900,38 @@
             (parent || this.messages).appendChild(card); this.scrollBottom();
         }
 
+        async uploadPlanFile(file) {
+            const name = (file.name || '').toLowerCase();
+            if (!name.endsWith('.xlsx') && !name.endsWith('.xlsm')) {
+                this.notice('Solo .xlsx o .xlsm'); return;
+            }
+            if (!this.currentConversation) await this.newChat(false);
+            if (!this.currentConversation) return;
+            const info = this.root.querySelector('#ai-attach-info');
+            const nameEl = this.root.querySelector('#ai-attach-name');
+            nameEl.textContent = 'Subiendo ' + file.name + '...';
+            info.hidden = false;
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                const data = await this.api(
+                    `/api/ai/conversations/${this.currentConversation.public_id}/upload`,
+                    { method: 'POST', body: fd });
+                this.pendingFileRef = data.file_ref;
+                nameEl.textContent = '📎 ' + data.filename;
+            } catch (error) {
+                this.pendingFileRef = null;
+                info.hidden = true;
+                this.notice(error.message || 'No se pudo subir el archivo');
+            }
+        }
+
+        clearAttachment() {
+            this.pendingFileRef = null;
+            this.root.querySelector('#ai-attach-info').hidden = true;
+            this.root.querySelector('#ai-attach-name').textContent = '';
+        }
+
         async send() {
             const content = this.input.value.trim();
             if (!content || this.streaming) return;
@@ -912,12 +956,13 @@
                 const response = await fetch(`/api/ai/conversations/${this.currentConversation.public_id}/messages/stream`, {
                     method:'POST', signal:this.controller.signal,
                     headers:{'Content-Type':'application/json','Accept':'text/event-stream','X-Requested-With':'XMLHttpRequest'},
-                    body:JSON.stringify({content, client_message_id:clientId, language:this.language.value, page_context:this.pageContext()})
+                    body:JSON.stringify({content, client_message_id:clientId, language:this.language.value, page_context:this.pageContext(), file_ref:this.pendingFileRef || null})
                 });
                 if (!response.ok) {
                     const data = await response.json().catch(() => ({}));
                     throw new Error(data.error || response.statusText);
                 }
+                this.clearAttachment();
                 await this.consumeSSE(response.body);
             } catch (error) {
                 this.root.querySelector('#ai-retry').hidden = false;

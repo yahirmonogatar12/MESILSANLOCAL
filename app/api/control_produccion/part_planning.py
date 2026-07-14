@@ -30,6 +30,7 @@ rechaza (patron Lista de compras: sin token ni temporales en servidor).
 
 import hashlib
 import io
+import json
 import logging
 import math
 import os
@@ -1016,6 +1017,102 @@ def api_pp_inventory_import():
                 pass
 
 
+@bp.route("/api/part-planning/schedule/sync-excel", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PROY_PERMISO_BOTON)
+def api_pp_schedule_sync_excel():
+    """TEMPORAL: sincroniza SOLO el schedule (renglon S) desde la hoja Part N.
+
+    Reemplaza por parte: para cada parte que trae el Excel, borra su schedule
+    actual en el rango de fechas del archivo y lo repone con el del Excel. Las
+    partes que no estan en el Excel no se tocan. No modifica el inventario.
+    """
+    conn = None
+    cursor = None
+    try:
+        archivo = request.files.get("file")
+        if archivo is None or not archivo.filename:
+            return jsonify({"success": False, "errors": ["No se recibio archivo."]}), 400
+        file_bytes = archivo.read()
+
+        parsed, err = _parse_part10_workbook(file_bytes, archivo.filename)
+        if err is not None:
+            payload, status = err
+            return jsonify(payload), status
+
+        usuario = session.get("usuario") or "SISTEMA"
+        # Schedules agrupados por parte; rango de fechas real del archivo
+        por_parte = {}
+        for (p, f), q in parsed["schedules"].items():
+            por_parte.setdefault(p, []).append((f, int(q)))
+        rango_desde = parsed["ref_date"]
+        rango_hasta = parsed["date_to"]
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexion MySQL.")
+        cursor = get_dict_cursor(conn)
+        conn.autocommit(False)
+
+        partes = list(por_parte)
+        borradas = 0
+        for i in range(0, len(partes), PP_BATCH_SIZE):
+            lote = partes[i : i + PP_BATCH_SIZE]
+            placeholders = ", ".join(["%s"] * len(lote))
+            cursor.execute(
+                "DELETE FROM lg_schedule_daily "
+                f"WHERE part_no IN ({placeholders}) AND sched_date BETWEEN %s AND %s",
+                tuple(lote) + (rango_desde, rango_hasta),
+            )
+            borradas += cursor.rowcount or 0
+
+        datos = [
+            (p, f, q, usuario)
+            for p, celdas in por_parte.items()
+            for (f, q) in celdas
+            if q > 0
+        ]
+        for i in range(0, len(datos), PP_BATCH_SIZE):
+            cursor.executemany(
+                "INSERT INTO lg_schedule_daily (part_no, sched_date, sched_qty, updated_by) "
+                "VALUES (%s, %s, %s, %s)",
+                datos[i : i + PP_BATCH_SIZE],
+            )
+        conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "sheet_name": parsed["sheet_name"],
+                "parts": len(partes),
+                "schedules": len(datos),
+                "replaced": borradas,
+                "date_from": rango_desde.isoformat(),
+                "date_to": rango_hasta.isoformat(),
+            }
+        )
+    except Exception as e:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.error("Error en api_pp_schedule_sync_excel: %s", e, exc_info=True)
+        return jsonify({"success": False, "errors": [f"Error interno: {e}"]}), 500
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.autocommit(True)
+                conn.close()
+            except Exception:
+                pass
+
+
 @bp.route("/api/part-planning/schedule", methods=["POST"])
 @login_requerido
 @requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PROY_PERMISO_BOTON)
@@ -1482,9 +1579,15 @@ def api_pp_plan():
                 )
 
             if only_shortage:
+                # Solo faltantes accionables: dias de HOY en adelante (un
+                # negativo de un dia pasado ya no se puede producir).
+                hoy_iso = date.today().isoformat()
                 filas = [
                     f for f in filas
-                    if any(v is not None and v < 0 for v in f["proj"].values())
+                    if any(
+                        v is not None and v < 0 and iso >= hoy_iso
+                        for iso, v in f["proj"].items()
+                    )
                 ]
                 total_parts = len(filas)
                 filas = filas[(page - 1) * page_size : page * page_size]
@@ -1858,7 +1961,8 @@ def _ppy_listado(fecha):
     for clave in sorted(lineas, key=lambda x: (x == "SIN LINEA", x)):
         d = lineas[clave]
         d["horas_max"] = PPY_HORAS_TURNO
-        d["excede"] = d["horas"] > PPY_HORAS_TURNO
+        # "SIN LINEA" agrupa lo no acomodado: su suma de horas no es un exceso.
+        d["excede"] = clave != "SIN LINEA" and d["horas"] > PPY_HORAS_TURNO
         resumen.append(d)
     return {"fecha": fecha.isoformat(), "lotes": lotes, "lineas": resumen}
 
@@ -2037,6 +2141,404 @@ def api_ppy_generate():
                 conn.close()
             except Exception:
                 pass
+
+
+@bp.route("/api/plan-proyectado/generate-faltantes", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_generate_faltantes():
+    """Crea lotes PENDIENTES desde los faltantes del dia SIN asignar linea.
+
+    La linea se asigna despues (manual o con "Acomodar con IA"). Cantidad =
+    faltante +10% a caja cerrada (pack asumido PPY_PACK_DEFAULT si no hay).
+    Reemplaza los PENDIENTES del dia; no toca los CONFIRMADOS.
+    """
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        fecha = _ppy_parse_fecha(data.get("fecha")) or date.today()
+        usuario = session.get("usuario") or "SISTEMA"
+
+        confirmadas = execute_query(
+            "SELECT DISTINCT part_no FROM lg_lote_plan "
+            "WHERE plan_date = %s AND status = 'CONFIRMADO'",
+            (fecha,),
+            fetch="all",
+        ) or []
+        partes_confirmadas = {r["part_no"] for r in confirmadas}
+
+        proy = _ppy_proyeccion_rango(fecha, fecha + timedelta(days=PPY_HORIZONTE_DIAS))
+        faltantes = {}  # part_no -> faltante total (peor I del rango)
+        for p, d in proy.items():
+            if p in partes_confirmadas or not d["proj"]:
+                continue
+            min_i = min(d["proj"].values())
+            if min_i < 0:
+                faltantes[p] = -min_i
+
+        datos_raw = _ppy_datos_raw(list(faltantes))
+        nuevos = []
+        for p, falt in faltantes.items():
+            raw_info = datos_raw.get(p) or {}
+            pack_raw = raw_info.get("estandar_pack")
+            pack = int(pack_raw) if pack_raw else PPY_PACK_DEFAULT
+            nuevos.append(
+                (
+                    fecha, p, raw_info.get("model"), raw_info.get("sub_assy"),
+                    None,  # sin linea: se acomoda despues
+                    "DIA", falt, _ppy_qty_pack(falt, pack),
+                    _ppy_parse_uph(raw_info.get("uph")),
+                    (int(pack_raw) if pack_raw else None),
+                    None, usuario,
+                )
+            )
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexion MySQL.")
+        cursor = get_dict_cursor(conn)
+        conn.autocommit(False)
+        cursor.execute(
+            "DELETE FROM lg_lote_plan WHERE plan_date = %s AND status = 'PENDIENTE'",
+            (fecha,),
+        )
+        if nuevos:
+            for i in range(0, len(nuevos), PP_BATCH_SIZE):
+                cursor.executemany(
+                    "INSERT INTO lg_lote_plan (plan_date, part_no, model, main_sub, "
+                    "linea, turno, faltante, qty_plan, uph, estandar_pack, comentario, created_by) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    nuevos[i : i + PP_BATCH_SIZE],
+                )
+        conn.commit()
+        return jsonify(
+            {"success": True, "generados": len(nuevos),
+             "lineas_activas": _ppy_config_lineas(), **_ppy_listado(fecha)}
+        )
+    except Exception as e:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.error("Error en api_ppy_generate_faltantes: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.autocommit(True)
+                conn.close()
+            except Exception:
+                pass
+
+
+@bp.route("/api/plan-proyectado/generate-schedule", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_generate_schedule():
+    """Crea un lote PENDIENTE por cada Schedule (renglon S) del dia SIN linea.
+
+    El Schedule capturado/importado en Proyeccion ES el plan del dia: cada
+    celda S de la fecha se vuelve un lote con su cantidad EXACTA. La linea se
+    asigna despues (manual o con "Acomodar con IA"). Reemplaza los PENDIENTES;
+    no toca los CONFIRMADOS.
+    """
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        fecha = _ppy_parse_fecha(data.get("fecha")) or date.today()
+        usuario = session.get("usuario") or "SISTEMA"
+
+        confirmadas = execute_query(
+            "SELECT DISTINCT part_no FROM lg_lote_plan "
+            "WHERE plan_date = %s AND status = 'CONFIRMADO'",
+            (fecha,), fetch="all",
+        ) or []
+        partes_confirmadas = {r["part_no"] for r in confirmadas}
+
+        sched = execute_query(
+            "SELECT part_no, sched_qty FROM lg_schedule_daily "
+            "WHERE sched_date = %s AND sched_qty > 0 ORDER BY part_no",
+            (fecha,), fetch="all",
+        ) or []
+        sched = [r for r in sched if r["part_no"] not in partes_confirmadas]
+
+        datos_raw = _ppy_datos_raw([r["part_no"] for r in sched])
+        nuevos = []
+        for r in sched:
+            p = r["part_no"]
+            qty = int(r["sched_qty"] or 0)
+            raw_info = datos_raw.get(p) or {}
+            pack_raw = raw_info.get("estandar_pack")
+            nuevos.append(
+                (
+                    fecha, p, raw_info.get("model"), raw_info.get("sub_assy"),
+                    None,  # sin linea: se acomoda despues
+                    "DIA",
+                    qty,  # faltante = cantidad del schedule (referencia)
+                    qty,  # qty_plan = cantidad EXACTA del schedule
+                    _ppy_parse_uph(raw_info.get("uph")),
+                    (int(pack_raw) if pack_raw else None),
+                    "Desde schedule", usuario,
+                )
+            )
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexion MySQL.")
+        cursor = get_dict_cursor(conn)
+        conn.autocommit(False)
+        cursor.execute(
+            "DELETE FROM lg_lote_plan WHERE plan_date = %s AND status = 'PENDIENTE'",
+            (fecha,),
+        )
+        if nuevos:
+            for i in range(0, len(nuevos), PP_BATCH_SIZE):
+                cursor.executemany(
+                    "INSERT INTO lg_lote_plan (plan_date, part_no, model, main_sub, "
+                    "linea, turno, faltante, qty_plan, uph, estandar_pack, comentario, created_by) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    nuevos[i : i + PP_BATCH_SIZE],
+                )
+        conn.commit()
+        return jsonify(
+            {"success": True, "generados": len(nuevos),
+             "lineas_activas": _ppy_config_lineas(), **_ppy_listado(fecha)}
+        )
+    except Exception as e:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.error("Error en api_ppy_generate_schedule: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.autocommit(True)
+                conn.close()
+            except Exception:
+                pass
+
+
+def _ppy_acomodo_heuristico(pend, lineas_activas, horas_rest):
+    """Fallback local: asigna linea a los lotes sin linea por horas + familia.
+
+    Reutiliza _ppy_armar_lotes (linea mas libre, familia junta, lineas
+    permitidas). No cambia cantidades, solo linea. Retorna {id: linea}.
+    """
+    candidatos = []
+    for l in pend:
+        candidatos.append({
+            "part_no": l["part_no"], "falt_total": int(l["qty_plan"] or 0),
+            "falt_hoy": int(l["qty_plan"] or 0), "primera_falta": date.today(),
+            "line": None, "uph": l.get("uph"),
+            "pack": (int(l["estandar_pack"]) if l.get("estandar_pack") else None),
+            "model": l.get("model"), "main_sub": l.get("main_sub"),
+            "permitidas": l.get("permitidas"), "_id": l["id"],
+        })
+    lotes, _ = _ppy_armar_lotes(candidatos, lineas_activas, dict(horas_rest), estricto=False)
+    # _ppy_armar_lotes conserva las claves extra via {**c}, incluido _id
+    return {l["_id"]: l.get("linea") for l in lotes if l.get("linea")}
+
+
+@bp.route("/api/plan-proyectado/acomodar-ia", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_acomodar_ia():
+    """Asigna linea a los lotes PENDIENTES sin linea usando la IA (OpenAI).
+
+    Respeta lineas permitidas (raw) y 9 h por linea activa (menos lo ya usado
+    por lotes con linea). Si la IA falla o no hay API key, cae a la heuristica
+    local. No cambia cantidades: solo asigna linea.
+    """
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        fecha = _ppy_parse_fecha(data.get("fecha")) or date.today()
+        usuario = session.get("usuario") or "SISTEMA"
+        lineas_activas = _ppy_config_lineas()
+
+        rows = execute_query(
+            "SELECT id, part_no, model, main_sub, linea, qty_plan, uph, estandar_pack "
+            "FROM lg_lote_plan WHERE plan_date = %s AND status = 'PENDIENTE'",
+            (fecha,),
+            fetch="all",
+        ) or []
+        perm_parte, perm_familia = _ppy_lineas_permitidas_map()
+        for r in rows:
+            r["permitidas"] = (perm_parte.get(r["part_no"])
+                               or perm_familia.get(_ppy_familia(r["part_no"])))
+
+        sin_linea = [r for r in rows if not (r.get("linea") or "").strip()]
+        if not sin_linea:
+            return jsonify({"success": True, "asignados": 0, "metodo": "nada",
+                            "lineas_activas": lineas_activas, **_ppy_listado(fecha)})
+
+        # Horas ya ocupadas por lotes con linea (y confirmados)
+        horas_rest = {l: PPY_HORAS_TURNO for l in lineas_activas}
+        confirmados = execute_query(
+            "SELECT linea, qty_plan, uph FROM lg_lote_plan "
+            "WHERE plan_date = %s AND status = 'CONFIRMADO'",
+            (fecha,), fetch="all",
+        ) or []
+        for r in list(rows) + confirmados:
+            l = (r.get("linea") or "").upper()
+            if l in horas_rest and r.get("uph"):
+                horas_rest[l] -= int(r["qty_plan"] or 0) / int(r["uph"])
+
+        asignaciones = {}
+        ia_ok = False
+        try:
+            asignaciones = _ppy_acomodo_ia_llm(sin_linea, lineas_activas, horas_rest)
+            ia_ok = True
+        except Exception as e:
+            logger.warning("acomodar-ia: IA no disponible, uso heuristica: %r", e)
+
+        # Validar cada asignacion de la IA: linea activa, permitida, y que
+        # NO exceda las horas disponibles de la linea (la IA puede equivocarse).
+        by_id = {r["id"]: r for r in sin_linea}
+        horas_libre = dict(horas_rest)
+        validas = {}
+        for lote_id, l in asignaciones.items():
+            r = by_id.get(lote_id)
+            if not r:
+                continue
+            l = str(l).strip().upper()
+            if l not in lineas_activas:
+                continue
+            if r["permitidas"] and l not in r["permitidas"]:
+                continue
+            h = (int(r["qty_plan"] or 0) / int(r["uph"])) if r.get("uph") else 0.0
+            if h > horas_libre.get(l, 0.0) + 1e-6:
+                continue  # excederia la linea: se descarta, va a heuristica
+            horas_libre[l] = horas_libre.get(l, 0.0) - h
+            validas[lote_id] = l
+
+        if ia_ok and validas:
+            metodo = "ia"
+        else:
+            metodo = "heuristica"
+
+        # Solo si la IA fallo por completo (0 asignaciones validas), la
+        # heuristica local intenta acomodar todo. Si la IA acomodo bien, lo
+        # que dejo fuera es porque no cabe: NO se fuerza.
+        if not validas:
+            heur = _ppy_acomodo_heuristico(sin_linea, lineas_activas, horas_rest)
+            validas.update(heur)
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexion MySQL.")
+        cursor = get_dict_cursor(conn)
+        conn.autocommit(False)
+        for lote_id, linea in validas.items():
+            cursor.execute(
+                "UPDATE lg_lote_plan SET linea = %s, updated_by = %s "
+                "WHERE id = %s AND status = 'PENDIENTE'",
+                (linea, usuario, lote_id),
+            )
+        conn.commit()
+
+        return jsonify(
+            {"success": True, "asignados": len(validas),
+             "sin_asignar": len(sin_linea) - len(validas), "metodo": metodo,
+             "lineas_activas": lineas_activas, **_ppy_listado(fecha)}
+        )
+    except Exception as e:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.error("Error en api_ppy_acomodar_ia: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.autocommit(True)
+                conn.close()
+            except Exception:
+                pass
+
+
+def _ppy_acomodo_ia_llm(sin_linea, lineas_activas, horas_rest):
+    """Pide a la IA la mejor linea por lote. Retorna {id: linea}.
+
+    Lanza excepcion si la IA no esta disponible (sin API key) o falla; el
+    caller cae a la heuristica local.
+    """
+    from app.api.portal.ai_openai import complete_json
+
+    # Solo se le manda a la IA lo que puede caber: lotes con UPH (horas
+    # calculables), ordenados por familia, hasta ~el total de horas
+    # disponibles + un margen. El resto no cabe igual y se queda sin linea:
+    # asi el prompt no crece con faltantes que no se van a acomodar.
+    horas_totales = sum(max(horas_rest.get(l, 0.0), 0.0) for l in lineas_activas)
+    candidatos = sorted(
+        (r for r in sin_linea if r.get("uph")),
+        key=lambda r: (_ppy_familia(r["part_no"]), r["part_no"]),
+    )
+    lotes_payload = []
+    acum_horas = 0.0
+    for r in candidatos:
+        h = round(int(r["qty_plan"] or 0) / int(r["uph"]), 2)
+        lotes_payload.append({
+            "id": r["id"],
+            "familia": _ppy_familia(r["part_no"]),
+            "horas": h,
+            "lineas": r["permitidas"] or lineas_activas,
+        })
+        acum_horas += h
+        if acum_horas >= horas_totales * 1.2:  # margen para que la IA elija
+            break
+    if not lotes_payload:
+        return {}
+
+    system = (
+        "Eres un planificador de produccion. Asignas lotes a lineas de ensamble "
+        "balanceando la carga. Reglas ESTRICTAS:\n"
+        "1. Cada lote va SOLO a una de sus 'lineas' permitidas.\n"
+        "2. La suma de 'horas' de los lotes de una linea no debe exceder sus "
+        "'horas_disponibles'. Si no cabe todo, deja lotes sin asignar; no "
+        "inventes lineas ni excedas horas.\n"
+        "3. Manten juntos en la MISMA linea los lotes de la misma 'familia'.\n"
+        "4. Balancea las horas entre lineas.\n"
+        "Responde SOLO JSON {\"asignaciones\":[{\"id\":<int>,\"linea\":\"<LINEA>\"}]}, "
+        "omitiendo los lotes que no acomodes."
+    )
+    user = "Acomoda estos lotes y responde en JSON.\n" + json.dumps({
+        "horas_disponibles": {l: round(max(horas_rest.get(l, 0.0), 0.0), 2) for l in lineas_activas},
+        "lotes": lotes_payload,
+    }, ensure_ascii=False)
+
+    resultado = complete_json(system=system, user=user, username="plan_proyectado")
+    salida = {}
+    for a in (resultado.get("asignaciones") or []):
+        try:
+            salida[int(a["id"])] = str(a["linea"]).strip().upper()
+        except (KeyError, TypeError, ValueError):
+            continue
+    return salida
 
 
 @bp.route("/api/plan-proyectado/add", methods=["POST"])

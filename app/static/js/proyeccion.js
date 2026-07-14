@@ -623,6 +623,39 @@
     }
   }
 
+  // TEMPORAL: sincroniza solo el schedule desde la hoja Part N del Excel
+  async function prSyncSchedule(file) {
+    const nombre = file.name.toLowerCase();
+    if (!nombre.endsWith(".xlsx") && !nombre.endsWith(".xlsm")) {
+      alert("Formato no permitido. Solo .xlsx o .xlsm");
+      return;
+    }
+    if (!confirm("Reemplaza el schedule (renglon S) de cada parte del Excel por el del archivo, en el rango del Excel. Las partes que no esten en el Excel no se tocan. Continuar?")) return;
+    const btn = prEl("pr-btn-sync-sched");
+    if (btn) { btn.disabled = true; btn.textContent = "Sincronizando..."; }
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const resp = await fetch("/api/part-planning/schedule/sync-excel", {
+        method: "POST",
+        credentials: "same-origin",
+        body: fd,
+      });
+      const data = await resp.json();
+      if (!data.success) throw new Error((data.errors && data.errors[0]) || data.error || "Error");
+      await prLoadData({ silent: true });
+      alert(
+        "Schedule sincronizado desde hoja " + data.sheet_name + ".\n" +
+        data.parts + " partes, " + data.schedules + " capturas (" +
+        data.date_from + " a " + data.date_to + ")."
+      );
+    } catch (e) {
+      alert("Error al sincronizar schedule: " + (e.message || e));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Sincronizar schedule (Excel)"; }
+    }
+  }
+
   // =============================
   // Listeners delegados (idempotentes)
   // =============================
@@ -636,6 +669,12 @@
       const hit = (id) => t.id === id || (t.closest && t.closest("#" + id));
 
       if (hit("pr-btn-proponer")) { e.preventDefault(); prProponerSchedule(); return; }
+      if (hit("pr-btn-sync-sched")) {
+        e.preventDefault();
+        const f = prEl("pr-sync-file");
+        if (f) { f.value = ""; f.click(); }
+        return;
+      }
       if (hit("pr-btn-prop-apply")) { e.preventDefault(); prAplicarPropuesta(); return; }
       if (hit("pr-btn-prop-close") || hit("pr-btn-prop-cancel")) {
         prPropCerrar(true); return;
@@ -675,6 +714,10 @@
         prEl("pr-inv-file-name").textContent = file.name;
         prEl("pr-inv-file-info").style.display = "block";
         prEl("pr-btn-inv-import").disabled = false;
+      }
+      if (e.target.id === "pr-sync-file") {
+        const file = e.target.files && e.target.files[0];
+        if (file) prSyncSchedule(file);
       }
     });
 
