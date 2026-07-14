@@ -35,6 +35,16 @@
                             data-permiso-seccion="Control de inventario"
                             data-permiso-boton="Inventario Exceso"
                             onclick="window.parent.mostrarInventarioExceso ? window.parent.mostrarInventarioExceso() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('inventario-exceso-unique-container', '/control_resultados/inventario_exceso') : window.location.href='/control_resultados/inventario_exceso')">Inventario Exceso</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Control de inventario"
+                            data-permiso-boton="Entradas Exceso"
+                            onclick="window.parent.mostrarEntradasExceso ? window.parent.mostrarEntradasExceso() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('exceso-entradas-unique-container', '/control_resultados/inventario_exceso/entradas') : window.location.href='/control_resultados/inventario_exceso/entradas')">Entradas Exceso</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Control de inventario"
+                            data-permiso-boton="Salidas Exceso"
+                            onclick="window.parent.mostrarSalidasExceso ? window.parent.mostrarSalidasExceso() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('exceso-salidas-unique-container', '/control_resultados/inventario_exceso/salidas') : window.location.href='/control_resultados/inventario_exceso/salidas')">Salidas Exceso</li>
                 </ul>
             </li>
             <li class="sidebar-section">

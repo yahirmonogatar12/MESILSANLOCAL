@@ -70,6 +70,8 @@
     <link id="inventario-reparacion-assy-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_reparacion_assy.css', v='20260605a') }}">
     <!-- WF_004: CSS persistente Inventario Exceso QA (Control de resultados / Control de inventario) -->
     <link id="inventario-exceso-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_exceso.css', v='20260605c') }}">
+    <!-- WF_004: CSS persistente historiales de Entradas/Salidas Exceso QA. -->
+    <link id="exceso-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/exceso_history.css', v='20260713a') }}">
     <!-- WF_004: CSS persistente Historial AOI (Control de resultados) -->
     <link id="control-historial-aoi-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_historial_aoi.css', v='20260527a') }}">
     <!-- WF_004: CSS persistente Administracion de usuario por departamento (Informacion Basica) -->
@@ -880,6 +882,16 @@
         <!-- Inventario Exceso QA (Control de inventario) -->
         <!-- WF_002: contenedor unico para carga AJAX del modulo Inventario Exceso QA. -->
         <div id="inventario-exceso-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Entradas Exceso QA (Control de inventario) -->
+        <div id="exceso-entradas-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Salidas Exceso QA (Control de inventario) -->
+        <div id="exceso-salidas-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
@@ -3163,6 +3175,31 @@ function hideAllMaterialContainers() {
                 cargarContenidoDinamico('inventario-exceso-unique-container', '/control_resultados/inventario_exceso', () => {
                     if (typeof window.initInventarioExceso === 'function') {
                         window.initInventarioExceso();
+                    }
+                });
+            };
+
+            // WF_002/WF_004: historiales de movimientos de Inventario Exceso QA.
+            window.mostrarEntradasExceso = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('exceso-entradas-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('exceso-entradas-unique-container', '/control_resultados/inventario_exceso/entradas', () => {
+                    if (typeof window.inicializarEntradasExcesoAjax === 'function') {
+                        window.inicializarEntradasExcesoAjax();
+                    }
+                });
+            };
+
+            window.mostrarSalidasExceso = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('exceso-salidas-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('exceso-salidas-unique-container', '/control_resultados/inventario_exceso/salidas', () => {
+                    if (typeof window.inicializarSalidasExcesoAjax === 'function') {
+                        window.inicializarSalidasExcesoAjax();
                     }
                 });
             };

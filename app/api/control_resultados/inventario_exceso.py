@@ -43,9 +43,17 @@ bp = Blueprint("control_resultados_inventario_exceso", __name__)
 PERMISO_PAGINA = "LISTA_DE_CONTROL_DE_RESULTADOS"
 PERMISO_SECCION = "Control de inventario"
 PERMISO_BOTON = "Inventario Exceso"
+PERMISO_BOTON_ENTRADAS = "Entradas Exceso"
+PERMISO_BOTON_SALIDAS = "Salidas Exceso"
 
 _requiere_permiso_inventario_exceso = requiere_permiso_dropdown(
     PERMISO_PAGINA, PERMISO_SECCION, PERMISO_BOTON
+)
+_requiere_permiso_entradas_exceso = requiere_permiso_dropdown(
+    PERMISO_PAGINA, PERMISO_SECCION, PERMISO_BOTON_ENTRADAS
+)
+_requiere_permiso_salidas_exceso = requiere_permiso_dropdown(
+    PERMISO_PAGINA, PERMISO_SECCION, PERMISO_BOTON_SALIDAS
 )
 
 
@@ -86,6 +94,193 @@ def _normalizar_numero(value):
         return int(value or 0)
     except (TypeError, ValueError):
         return 0
+
+
+def _obtener_limite_historial_exceso(default=300, filtered=5000):
+    tiene_filtros = any(
+        (
+            request.args.get("search", "").strip(),
+            request.args.get("fecha_desde", "").strip(),
+            request.args.get("fecha_hasta", "").strip(),
+        )
+    )
+    return filtered if tiene_filtros else default
+
+
+def _aplicar_filtros_historial_exceso(sql, params, date_expression, search_columns):
+    search = request.args.get("search", "").strip()
+    fecha_desde = request.args.get("fecha_desde", "").strip()
+    fecha_hasta = request.args.get("fecha_hasta", "").strip()
+
+    if not (fecha_desde or fecha_hasta):
+        sql += f"""
+            AND {date_expression} >= COALESCE(
+                (SELECT MAX(closed_at) FROM `{EXCESS_TABLES['closures']}`),
+                '1000-01-01'
+            )
+        """
+
+    if fecha_desde:
+        sql += f" AND DATE({date_expression}) >= %s"
+        params.append(fecha_desde)
+
+    if fecha_hasta:
+        sql += f" AND DATE({date_expression}) <= %s"
+        params.append(fecha_hasta)
+
+    if search:
+        like_value = f"%{search}%"
+        sql += " AND (" + " OR ".join(
+            [f"COALESCE({column}, '') LIKE %s" for column in search_columns]
+        ) + ")"
+        params.extend([like_value] * len(search_columns))
+
+    return sql, params
+
+
+def _obtener_historial_entradas_exceso(cursor, limit=300):
+    _sincronizar_entradas_exceso(cursor)
+    sql = f"""
+        SELECT
+          e.id,
+          e.piece_id,
+          DATE_FORMAT(e.entry_at, '%%Y-%%m-%%d') AS fecha,
+          DATE_FORMAT(e.entry_at, '%%H:%%i:%%s') AS hora,
+          DATE_FORMAT(e.entry_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS entry_at,
+          e.scan_code,
+          e.raw_code,
+          e.part_number,
+          e.quantity,
+          e.source,
+          e.registered_by,
+          e.device_id,
+          e.notes,
+          p.product_model,
+          p.customer,
+          p.zone_code
+        FROM `{EXCESS_TABLES['entries']}` e
+        LEFT JOIN `{EXCESS_TABLES['pieces']}` p
+          ON p.id = e.piece_id
+        WHERE 1 = 1
+    """
+    params = []
+    sql, params = _aplicar_filtros_historial_exceso(
+        sql,
+        params,
+        "e.entry_at",
+        [
+            "e.scan_code",
+            "e.raw_code",
+            "e.part_number",
+            "e.source",
+            "e.registered_by",
+            "e.device_id",
+            "e.notes",
+            "p.product_model",
+            "p.customer",
+            "p.zone_code",
+        ],
+    )
+    sql += " ORDER BY e.entry_at DESC, e.id DESC LIMIT %s"
+    params.append(limit)
+    cursor.execute(sql, tuple(params))
+    return [serialize_row(row) for row in cursor.fetchall()]
+
+
+def _obtener_historial_salidas_exceso(cursor, limit=300):
+    _sincronizar_movimientos_exceso(cursor, sync_exits=True)
+    sql = f"""
+        SELECT
+          x.id,
+          x.piece_id,
+          DATE_FORMAT(x.released_at, '%%Y-%%m-%%d') AS fecha,
+          DATE_FORMAT(x.released_at, '%%H:%%i:%%s') AS hora,
+          DATE_FORMAT(x.released_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS released_at,
+          DATE_FORMAT(x.lqc_last_scan, '%%Y-%%m-%%d %%H:%%i:%%s') AS lqc_last_scan,
+          DATE_FORMAT(p.scanned_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS excess_entry_at,
+          x.scan_code,
+          x.raw_code,
+          x.part_number,
+          1 AS quantity,
+          x.box_code,
+          x.oqc_folio,
+          x.oqc_release_box_id,
+          x.oqc_box_quantity,
+          x.oqc_status,
+          x.qc_passed,
+          x.source,
+          x.notes,
+          p.product_model,
+          p.customer,
+          p.zone_code,
+          p.registered_by AS entry_registered_by
+        FROM `{EXCESS_TABLES['exits']}` x
+        LEFT JOIN `{EXCESS_TABLES['pieces']}` p
+          ON p.id = x.piece_id
+        WHERE 1 = 1
+    """
+    params = []
+    sql, params = _aplicar_filtros_historial_exceso(
+        sql,
+        params,
+        "x.released_at",
+        [
+            "x.scan_code",
+            "x.raw_code",
+            "x.part_number",
+            "x.box_code",
+            "x.oqc_folio",
+            "x.oqc_status",
+            "x.source",
+            "x.notes",
+            "p.product_model",
+            "p.customer",
+            "p.zone_code",
+            "p.registered_by",
+        ],
+    )
+    sql += " ORDER BY x.released_at DESC, x.lqc_last_scan DESC, x.id DESC LIMIT %s"
+    params.append(limit)
+    cursor.execute(sql, tuple(params))
+    return [serialize_row(row) for row in cursor.fetchall()]
+
+
+def _exportar_historial_exceso_excel(sheet_name, filename_prefix, columns, rows):
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    output = io.BytesIO()
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = sheet_name[:31]
+
+    header_fill = PatternFill("solid", fgColor="1F4E78")
+    header_font = Font(color="FFFFFF", bold=True)
+    for col_idx, (label, _) in enumerate(columns, start=1):
+        cell = sheet.cell(row=1, column=col_idx, value=label)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    for row_idx, row in enumerate(rows, start=2):
+        for col_idx, (_, key) in enumerate(columns, start=1):
+            sheet.cell(row=row_idx, column=col_idx, value=row.get(key))
+
+    for col_idx, (label, key) in enumerate(columns, start=1):
+        values = [str(row.get(key) or "") for row in rows[:300]]
+        width = max([len(label), *(len(value) for value in values)]) + 2
+        sheet.column_dimensions[get_column_letter(col_idx)].width = min(max(width, 12), 36)
+
+    workbook.save(output)
+    output.seek(0)
+    filename = f"{filename_prefix}_{obtener_fecha_hora_mexico().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 def _resolver_part_number_desde_barcode(raw_value, catalog_part_numbers):
@@ -633,6 +828,147 @@ def inventario_exceso_ajax():
     except Exception as exc:
         logger.exception("Error cargando Inventario Exceso")
         return f"Error al cargar el contenido: {exc}", 500
+
+
+@bp.route("/control_resultados/inventario_exceso/entradas")
+@login_requerido
+@_requiere_permiso_entradas_exceso
+def entradas_exceso_ajax():
+    try:
+        init_excess_inventory_tables()
+        return render_template("Control de resultados/exceso_entradas_ajax.html")
+    except Exception as exc:
+        logger.exception("Error cargando Entradas Exceso")
+        return f"Error al cargar el contenido: {exc}", 500
+
+
+@bp.route("/control_resultados/inventario_exceso/salidas")
+@login_requerido
+@_requiere_permiso_salidas_exceso
+def salidas_exceso_ajax():
+    try:
+        init_excess_inventory_tables()
+        return render_template("Control de resultados/exceso_salidas_ajax.html")
+    except Exception as exc:
+        logger.exception("Error cargando Salidas Exceso")
+        return f"Error al cargar el contenido: {exc}", 500
+
+
+@bp.route("/api/inventario_exceso/entradas", methods=["GET"])
+@login_requerido
+@_requiere_permiso_entradas_exceso
+def api_inventario_exceso_entradas():
+    init_excess_inventory_tables()
+    conn = get_db_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        rows = _obtener_historial_entradas_exceso(
+            cursor,
+            limit=_obtener_limite_historial_exceso(),
+        )
+        return jsonify(rows)
+    except Exception as exc:
+        logger.exception("Error API entradas exceso")
+        return jsonify({"error": str(exc)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@bp.route("/api/inventario_exceso/salidas", methods=["GET"])
+@login_requerido
+@_requiere_permiso_salidas_exceso
+def api_inventario_exceso_salidas():
+    init_excess_inventory_tables()
+    conn = get_db_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        rows = _obtener_historial_salidas_exceso(
+            cursor,
+            limit=_obtener_limite_historial_exceso(),
+        )
+        return jsonify(rows)
+    except Exception as exc:
+        logger.exception("Error API salidas exceso")
+        return jsonify({"error": str(exc)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@bp.route("/api/inventario_exceso/entradas/export", methods=["GET"])
+@login_requerido
+@_requiere_permiso_entradas_exceso
+def api_inventario_exceso_entradas_export():
+    init_excess_inventory_tables()
+    conn = get_db_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        rows = _obtener_historial_entradas_exceso(cursor, limit=5000)
+        return _exportar_historial_exceso_excel(
+            "Entradas Exceso",
+            "entradas_exceso",
+            [
+                ("Fecha", "fecha"),
+                ("Hora", "hora"),
+                ("Entrada", "entry_at"),
+                ("No. Parte", "part_number"),
+                ("QR / Pieza", "scan_code"),
+                ("Cantidad", "quantity"),
+                ("Modelo", "product_model"),
+                ("Cliente", "customer"),
+                ("Zona", "zone_code"),
+                ("Origen", "source"),
+                ("Dispositivo", "device_id"),
+                ("Usuario", "registered_by"),
+                ("Notas", "notes"),
+            ],
+            rows,
+        )
+    except Exception as exc:
+        logger.exception("Error exportando entradas exceso")
+        return jsonify({"error": str(exc)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@bp.route("/api/inventario_exceso/salidas/export", methods=["GET"])
+@login_requerido
+@_requiere_permiso_salidas_exceso
+def api_inventario_exceso_salidas_export():
+    init_excess_inventory_tables()
+    conn = get_db_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        rows = _obtener_historial_salidas_exceso(cursor, limit=5000)
+        return _exportar_historial_exceso_excel(
+            "Salidas Exceso",
+            "salidas_exceso",
+            [
+                ("Fecha", "fecha"),
+                ("Hora", "hora"),
+                ("Liberacion OQC", "released_at"),
+                ("No. Parte", "part_number"),
+                ("QR / Pieza", "scan_code"),
+                ("Caja", "box_code"),
+                ("Folio OQC", "oqc_folio"),
+                ("Cantidad caja OQC", "oqc_box_quantity"),
+                ("Estado OQC", "oqc_status"),
+                ("LQC ultimo escaneo", "lqc_last_scan"),
+                ("Entrada QA", "excess_entry_at"),
+                ("Modelo", "product_model"),
+                ("Cliente", "customer"),
+                ("Usuario entrada", "entry_registered_by"),
+            ],
+            rows,
+        )
+    except Exception as exc:
+        logger.exception("Error exportando salidas exceso")
+        return jsonify({"error": str(exc)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @bp.route("/api/inventario_exceso/inventory", methods=["GET"])

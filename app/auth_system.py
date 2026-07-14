@@ -574,6 +574,9 @@ class AuthSystem:
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Análisis de resultados', 'Acceso al análisis de resultados'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Reportes estadísticos', 'Acceso a reportes estadísticos'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Gráficos de tendencia', 'Acceso a gráficos de tendencia'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de inventario', 'Inventario Exceso', 'Acceso a Inventario Exceso'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de inventario', 'Entradas Exceso', 'Acceso a Entradas Exceso'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de inventario', 'Salidas Exceso', 'Acceso a Salidas Exceso'),
             
             # LISTA DE CONTROL DE REPORTE
             ('LISTA_DE_CONTROL_DE_REPORTE', 'Control de reporte', 'Generación de reportes', 'Acceso a generación de reportes'),

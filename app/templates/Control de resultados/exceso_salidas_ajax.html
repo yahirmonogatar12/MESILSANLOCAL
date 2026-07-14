@@ -1,0 +1,92 @@
+<!-- Salidas Exceso QA.
+     WF_002: template AJAX propio cargado en MainTemplate.html.
+     WF_003: consume APIs /api/inventario_exceso/salidas*. -->
+<div
+    id="exceso-exits-module"
+    class="exceso-history-module"
+    data-module-type="exits"
+>
+    <div class="exceso-history-filters-card">
+        <div class="exceso-history-card-header">
+            <h3>Filtros de busqueda</h3>
+        </div>
+        <div class="exceso-history-filters">
+            <div class="exceso-history-filter-group exceso-history-filter-group--wide">
+                <label for="exceso-exits-search">Buscar</label>
+                <input
+                    type="text"
+                    id="exceso-exits-search"
+                    placeholder="QR, no. parte, caja, folio OQC, modelo o cliente"
+                >
+            </div>
+            <div class="exceso-history-filter-group">
+                <label for="exceso-exits-date-from">Fecha desde</label>
+                <input type="date" id="exceso-exits-date-from">
+            </div>
+            <div class="exceso-history-filter-group">
+                <label for="exceso-exits-date-to">Fecha hasta</label>
+                <input type="date" id="exceso-exits-date-to">
+            </div>
+            <button id="exceso-exits-search-btn" class="exceso-history-btn-primary">
+                Consultar
+            </button>
+            <button id="exceso-exits-clear-btn" class="exceso-history-btn-secondary">
+                Limpiar filtros
+            </button>
+            <button id="exceso-exits-export-btn" class="exceso-history-btn-export">
+                Exportar Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="exceso-history-results-card">
+        <div class="exceso-history-card-header">
+            <h3>Salidas Exceso</h3>
+            <span id="exceso-exits-count" class="exceso-history-record-count">0 piezas</span>
+            <span id="exceso-exits-status" class="exceso-history-status-text"></span>
+        </div>
+        <div class="exceso-history-table-shell">
+            <div class="exceso-history-table-head">
+                <table class="exceso-history-table exceso-history-table--head">
+                    <colgroup>
+                        <col style="width: 10%;">
+                        <col style="width: 9%;">
+                        <col style="width: 17%;">
+                        <col style="width: 28%;">
+                        <col style="width: 20%;">
+                        <col style="width: 16%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>No. parte</th>
+                            <th>QR / pieza</th>
+                            <th>Caja OQC</th>
+                            <th>Folio OQC</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="exceso-history-table-body-wrap">
+                <table class="exceso-history-table exceso-history-table--body">
+                    <colgroup>
+                        <col style="width: 10%;">
+                        <col style="width: 9%;">
+                        <col style="width: 17%;">
+                        <col style="width: 28%;">
+                        <col style="width: 20%;">
+                        <col style="width: 16%;">
+                    </colgroup>
+                    <tbody id="exceso-exits-tbody">
+                        <tr>
+                            <td colspan="6" class="exceso-history-empty-cell">Cargando salidas...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/exceso_history.js', v='20260713a') }}"></script>

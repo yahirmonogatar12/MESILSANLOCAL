@@ -311,6 +311,16 @@ const allDropdowns = [
     },
     {
         "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
+        "seccion": "Control de inventario",
+        "boton": "Entradas Exceso"
+    },
+    {
+        "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
+        "seccion": "Control de inventario",
+        "boton": "Salidas Exceso"
+    },
+    {
+        "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
         "seccion": "Consultar resultados",
         "boton": "Consultar cantidad consumida de produccion SMT"
     },
