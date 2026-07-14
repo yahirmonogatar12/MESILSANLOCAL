@@ -329,31 +329,26 @@
                     this.animateElement(shell, [
                         this.rectStyle(launcherRect, {borderRadius: '50%', opacity: '1', ...launcherSurface}),
                         this.rectStyle(panelRect, {borderRadius: '0px', opacity: '1', ...panelSurface}),
-                    ], {duration: 1500, easing}),
+                    ], {duration: 1000, easing}),
                     this.animateElement(logo, [
                         this.rectStyle(launcherRect, {opacity: '1'}),
                         this.rectStyle(centerLogoRect, {opacity: '1'}),
-                    ], {duration: 1500, easing}),
+                    ], {duration: 1000, easing}),
                 ]);
 
                 await this.setPanelOpenInstant(true);
-                await this.wait(1000);
+                await this.wait(400);
 
-                await this.animateElement(shell, [
-                    {opacity: '1'},
-                    {opacity: '0'},
-                ], {duration: 1000, easing: 'cubic-bezier(.4,0,.2,1)'});
-
-                const mark = this.root.querySelector('.ai-panel-mark-logo');
-                const markRect = mark?.getBoundingClientRect();
-                if (markRect) {
-                    await this.animateElement(logo, [
+                await Promise.all([
+                    this.animateElement(shell, [
+                        {opacity: '1'},
+                        {opacity: '0'},
+                    ], {duration: 1000, easing: 'cubic-bezier(.4,0,.2,1)'}),
+                    this.animateElement(logo, [
                         this.rectStyle(centerLogoRect, {opacity: '1'}),
-                        this.rectStyle(markRect, {opacity: '1'}),
-                    ], {duration: 720, easing: 'cubic-bezier(.2,.85,.25,1)'});
-                } else {
-                    await this.animateElement(logo, [{opacity: '1'}, {opacity: '0'}], {duration: 240, easing});
-                }
+                        this.rectStyle(centerLogoRect, {opacity: '0'}),
+                    ], {duration: 1000, easing: 'cubic-bezier(.4,0,.2,1)'}),
+                ]);
             } finally {
                 shell.remove();
                 logo.remove();
@@ -401,11 +396,11 @@
                     this.animateElement(shell, [
                         this.rectStyle(panelRect, {borderRadius: '0px', opacity: '1', ...panelSurface}),
                         this.rectStyle(launcherRect, {borderRadius: '50%', opacity: '1', ...launcherSurface}),
-                    ], {duration: 1100, easing}),
+                    ], {duration: 900, easing}),
                     this.animateElement(logo, [
                         this.rectStyle(centerLogoRect, {opacity: '1'}),
                         this.rectStyle(launcherRect, {opacity: '1'}),
-                    ], {duration: 1100, easing}),
+                    ], {duration: 900, easing}),
                 ]);
             } finally {
                 shell.remove();
