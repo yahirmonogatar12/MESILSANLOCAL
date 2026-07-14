@@ -236,6 +236,19 @@
   margin: 0;
 }
 
+/* Propuesta de schedule (fantasma, sin guardar) */
+.pp-sched-prop,
+.pp-sched-prop-legend {
+  display: block;
+  font-size: 10px;
+  font-style: italic;
+  color: #ffd9a8;
+  opacity: 0.65;
+  line-height: 1.1;
+}
+
+.pp-sched-prop-legend { display: inline; }
+
 .pp-cell-proj { color: #9ecfff; }
 .pp-cell-neg {
   color: #ffb3b3;

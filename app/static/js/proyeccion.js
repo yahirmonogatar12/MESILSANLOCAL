@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  const prState = { page: 1, pageSize: 50, totalParts: 0 };
+  const prState = { page: 1, pageSize: 50, totalParts: 0, propuestas: null };
 
   function prEl(id) {
     return document.getElementById(id);
@@ -216,11 +216,19 @@
         for (const iso of data.dates) {
           const q = sched[iso];
           const esHoy = iso === hoy ? " pp-col-today" : "";
+          const prop = prState.propuestas
+            ? prState.propuestas[row.part_no + "|" + iso]
+            : null;
           html +=
             '<td class="pp-cell-sched' + esHoy + '" data-part="' +
             prEscapeHtml(row.part_no) + '" data-date="' + iso +
             '" title="Clic para capturar schedule">' +
-            (q != null ? prFmtNum(q) : "") + "</td>";
+            (q != null ? prFmtNum(q) : "") +
+            (prop
+              ? '<span class="pp-sched-prop" title="Propuesta (sin guardar): +' + prop + '">&asymp;' +
+                prFmtNum(prop) + "</span>"
+              : "") +
+            "</td>";
         }
         html += "</tr>";
 
@@ -492,6 +500,130 @@
   }
 
   // =============================
+  // Propuesta de schedule (mismo motor que Plan Proyectado)
+  // =============================
+
+  function prPropFecha(iso) {
+    const DIAS = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+    const f = new Date(iso + "T00:00:00");
+    return DIAS[f.getDay()] + " " +
+      String(f.getDate()).padStart(2, "0") + "/" +
+      String(f.getMonth() + 1).padStart(2, "0");
+  }
+
+  function prPropCerrar(descartar) {
+    const modal = prEl("pr-prop-modal");
+    if (modal) modal.style.display = "none";
+    if (descartar && prState.propuestas) {
+      prState.propuestas = null;
+      prState.propItems = null;
+      prLoadData({ silent: true }); // quita los fantasmas de la tabla
+    }
+  }
+
+  async function prProponerSchedule() {
+    const btn = prEl("pr-btn-proponer");
+    const from = prEl("pr-filter-date-from");
+    const to = prEl("pr-filter-date-to");
+    if (btn) { btn.disabled = true; btn.textContent = "Calculando..."; }
+    try {
+      const resp = await fetch("/api/part-planning/schedule/proponer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          date_from: from ? from.value : "",
+          date_to: to ? to.value : "",
+        }),
+      });
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.error || "Error al proponer");
+
+      prState.propuestas = {};
+      for (const p of data.proposals) {
+        prState.propuestas[p.part_no + "|" + p.sched_date] = p.qty;
+      }
+      prState.propItems = data.proposals;
+      await prLoadData({ silent: true }); // fantasmas visibles detras del modal
+
+      // Llenar modal de revision
+      prEl("pr-prop-resumen").innerHTML =
+        "<div><strong>" + data.proposals.length + "</strong> capturas &middot; <strong>" +
+        data.total_qty.toLocaleString("en-US") + "</strong> pzs &middot; <strong>" +
+        data.partes + "</strong> partes &middot; " + data.date_from + " a " + data.date_to +
+        "</div><div class='pp-hint'>Al aplicar, cada cantidad se SUMA al schedule existente " +
+        "de esa parte/fecha y el renglon I se recalcula.</div>";
+
+      let filas = "";
+      for (const p of data.proposals) {
+        filas +=
+          "<tr><td class='pp-col-part'>" + prEscapeHtml(p.part_no) + "</td>" +
+          "<td>" + prPropFecha(p.sched_date) + "</td>" +
+          "<td class='pp-cell-qty'>+" + prFmtNum(p.qty) + "</td>" +
+          "<td>" + (p.sched_actual != null ? prFmtNum(p.sched_actual) : "&mdash;") + "</td></tr>";
+      }
+      prEl("pr-prop-table").querySelector("tbody").innerHTML =
+        filas || "<tr><td colspan='4' class='pp-empty'>Sin faltantes por cubrir en el rango</td></tr>";
+
+      const ul = prEl("pr-prop-omitidas");
+      if (data.omitidas_count) {
+        ul.innerHTML =
+          "<li><strong>Sin cubrir (" + data.omitidas_count + "):</strong></li>" +
+          data.omitidas.map((o) => "<li>" + prEscapeHtml(o) + "</li>").join("");
+        ul.style.display = "";
+      } else {
+        ul.style.display = "none";
+      }
+
+      prEl("pr-prop-wrap").style.display = "";
+      const aplicarBtn = prEl("pr-btn-prop-apply");
+      aplicarBtn.style.display = data.proposals.length ? "" : "none";
+      aplicarBtn.disabled = false;
+      prEl("pr-btn-prop-cancel").textContent = "Cancelar";
+      prEl("pr-prop-modal").style.display = "flex";
+    } catch (e) {
+      alert("Error al proponer schedule: " + (e.message || e));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Proponer schedule"; }
+    }
+  }
+
+  async function prAplicarPropuesta() {
+    const items = prState.propItems || [];
+    if (!items.length) { prPropCerrar(true); return; }
+    const btn = prEl("pr-btn-prop-apply");
+    if (btn) btn.disabled = true;
+    try {
+      const resp = await fetch("/api/part-planning/schedule/proponer/aplicar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          proposals: items.map((p) => ({
+            part_no: p.part_no, sched_date: p.sched_date, qty: p.qty,
+          })),
+        }),
+      });
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.error || "Error al aplicar");
+      prState.propuestas = null;
+      prState.propItems = null;
+      await prLoadData({ silent: true });
+      // Resultado dentro del mismo modal
+      prEl("pr-prop-resumen").innerHTML =
+        "<div><strong>Aplicadas " + data.aplicadas + " capturas al schedule.</strong> " +
+        "El renglon I ya esta recalculado.</div>";
+      prEl("pr-prop-wrap").style.display = "none";
+      prEl("pr-prop-omitidas").style.display = "none";
+      if (btn) btn.style.display = "none";
+      prEl("pr-btn-prop-cancel").textContent = "Cerrar";
+    } catch (e) {
+      alert("Error al aplicar propuesta: " + (e.message || e));
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // =============================
   // Listeners delegados (idempotentes)
   // =============================
 
@@ -503,6 +635,11 @@
       const t = e.target;
       const hit = (id) => t.id === id || (t.closest && t.closest("#" + id));
 
+      if (hit("pr-btn-proponer")) { e.preventDefault(); prProponerSchedule(); return; }
+      if (hit("pr-btn-prop-apply")) { e.preventDefault(); prAplicarPropuesta(); return; }
+      if (hit("pr-btn-prop-close") || hit("pr-btn-prop-cancel")) {
+        prPropCerrar(true); return;
+      }
       if (hit("pr-btn-inventory")) { e.preventDefault(); prOpenInvModal(); return; }
       if (hit("pr-btn-inv-close") || hit("pr-btn-inv-cancel")) {
         prEl("pr-inv-modal").style.display = "none"; return;

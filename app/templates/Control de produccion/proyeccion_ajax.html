@@ -5,6 +5,8 @@
       <h2>Proyeccion &mdash; Plan / Schedule / Inventario</h2>
     </div>
     <div class="pp-header-actions">
+      <button id="pr-btn-proponer" class="pp-btn secondary" type="button"
+              title="Propone schedule para cubrir los faltantes del rango (mismas reglas que Plan Proyectado)">Proponer schedule</button>
       <button id="pr-btn-inventory" class="pp-btn primary" type="button">Importar inventario (Part 10)</button>
       <button id="pr-btn-history" class="pp-btn secondary" type="button">Historial de importaciones</button>
     </div>
@@ -40,6 +42,8 @@
       <span class="pp-tipo-i">I</span> Inventario proyectado = I anterior &minus; P + S
       &nbsp;&middot;&nbsp; I inicial = LGEMM + ISEMM + SVC + DIF + PEND + REW + SMT + IMD
       (clic en las columnas para capturar inventario)
+      &nbsp;&middot;&nbsp; <span class="pp-sched-prop-legend">&asymp;n</span> = propuesta de schedule
+      (faltante +10%, caja cerrada, 9 h por linea) &mdash; se guarda hasta dar "Aplicar propuesta"
     </div>
     <div class="pp-table-wrap">
       <table id="pr-plan-table" class="pp-table">
@@ -84,6 +88,30 @@
     </div>
   </div>
 
+  <!-- ============ Modal: Propuesta de schedule ============ -->
+  <div id="pr-prop-modal" class="pp-modal-overlay" style="display: none;">
+    <div class="pp-modal pp-modal-wide">
+      <div class="pp-modal-header">
+        <h3>Propuesta de schedule</h3>
+        <button id="pr-btn-prop-close" class="pp-modal-x" type="button" title="Cerrar">&times;</button>
+      </div>
+      <div id="pr-prop-resumen" class="pp-confirm-box"></div>
+      <div id="pr-prop-wrap" class="pp-preview-wrap">
+        <table id="pr-prop-table" class="pp-table">
+          <thead>
+            <tr><th>Numero de parte</th><th>Fecha</th><th>Cantidad</th><th>Schedule actual</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <ul id="pr-prop-omitidas" class="pp-msg-list pp-warnings" style="display: none;"></ul>
+      <div class="pp-modal-actions">
+        <button id="pr-btn-prop-cancel" class="pp-btn secondary" type="button">Cancelar</button>
+        <button id="pr-btn-prop-apply" class="pp-btn primary" type="button">Aplicar propuesta</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ Modal: Historial de importaciones ============ -->
   <div id="pr-history-modal" class="pp-modal-overlay" style="display: none;">
     <div class="pp-modal pp-modal-wide">
@@ -107,4 +135,4 @@
   </div>
 
 </div>
-<script src="{{ url_for('static', filename='js/proyeccion.js') }}?v=20260713g"></script>
+<script src="{{ url_for('static', filename='js/proyeccion.js') }}?v=20260715b"></script>

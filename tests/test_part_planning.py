@@ -278,3 +278,28 @@ def test_ppy_armar_lotes_lineas_permitidas():
     lotes, fuera = _ppy_armar_lotes([cand("SOLOD10002", permitidas=["D1"])], ["M1", "D1"], horas)
     assert not lotes
     assert "sin horas" in fuera[0]["motivo"] and "D1" in fuera[0]["motivo"]
+
+
+def test_ppy_armar_lotes_modo_laxo_propuesta_schedule():
+    from app.api.control_produccion.part_planning import _ppy_armar_lotes
+
+    hoy = date(2026, 7, 14)
+
+    def cand(part, uph=100, pack=20):
+        return {"part_no": part, "falt_total": 100, "falt_hoy": 100,
+                "primera_falta": hoy, "line": None, "uph": uph, "pack": pack,
+                "model": None, "main_sub": None}
+
+    # Sin pack -> asume 20; sin UPH -> entra sin consumir horas
+    horas = {"M1": 9.0}
+    lotes, fuera = _ppy_armar_lotes(
+        [cand("SINPACK001", pack=None),
+         cand("SINUPH0001", uph=None, pack=None),
+         cand("NORMAL0001")],
+        ["M1"], horas, estricto=False)
+    assert not fuera
+    por_parte = {l["part_no"]: l for l in lotes}
+    assert por_parte["SINPACK001"]["qty"] == 120   # 110 -> pack 20 -> 120
+    assert por_parte["SINUPH0001"]["qty"] == 120   # mismo calculo, sin horas
+    # solo las partes con UPH consumen horas (120/100 + 120/100 = 2.4)
+    assert abs(horas["M1"] - (9.0 - 2.4)) < 1e-6

@@ -61,6 +61,7 @@ PPY_MARGEN = 1.10  # siempre se planea 10% mas del faltante
 PPY_TURNOS = ("DIA", "TIEMPO EXTRA", "NOCHE")
 PPY_HORIZONTE_DIAS = 14  # dias hacia adelante para adelantar faltantes futuros
 PPY_LINEAS_DEFAULT = "M1,M2,M3"
+PPY_PACK_DEFAULT = 20  # std pack asumido en la propuesta de schedule para partes sin registro
 
 PP_SHEET_NAME = "LG"
 # Campos de inventario por parte (editables en Proyeccion; suman al I inicial)
@@ -1056,6 +1057,198 @@ def api_pp_schedule_save():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def _ppy_simular_schedule(fecha_ini, fecha_fin):
+    """Propuesta de schedule dia a dia para cubrir faltantes del rango.
+
+    Mismo motor que Plan Proyectado (+10%, caja cerrada, familias, lineas
+    permitidas, 9 h por linea activa menos lotes confirmados). Se simula en
+    orden cronologico: lo propuesto un dia sube la I de los dias siguientes,
+    y lo que no cupo reaparece como faltante al dia siguiente.
+    No escribe nada. Retorna (propuestas, partes_omitidas).
+    """
+    lineas_activas = _ppy_config_lineas()
+    proy = _ppy_proyeccion_rango(fecha_ini, fecha_fin)
+    partes = list(proy)
+    datos_raw = _ppy_datos_raw(partes)
+    perm_parte, perm_familia = _ppy_lineas_permitidas_map()
+
+    info = {}
+    for p in partes:
+        r = datos_raw.get(p) or {}
+        pack = r.get("estandar_pack")
+        info[p] = {
+            "pack": int(pack) if pack else None,
+            "uph": _ppy_parse_uph(r.get("uph")),
+            "model": r.get("model"),
+            "main_sub": r.get("sub_assy"),
+            "line": proy[p]["line"],
+            "permitidas": perm_parte.get(p) or perm_familia.get(_ppy_familia(p)),
+        }
+
+    horas_conf = {}
+    rows = execute_query(
+        "SELECT plan_date, linea, qty_plan, uph FROM lg_lote_plan "
+        "WHERE plan_date BETWEEN %s AND %s AND status = 'CONFIRMADO'",
+        (fecha_ini, fecha_fin),
+        fetch="all",
+    ) or []
+    for r in rows:
+        f = r["plan_date"].date() if isinstance(r["plan_date"], datetime) else r["plan_date"]
+        l = (r.get("linea") or "").upper()
+        if r.get("uph"):
+            horas_conf[(f, l)] = horas_conf.get((f, l), 0.0) + int(r["qty_plan"] or 0) / int(r["uph"])
+
+    propuestas = []
+    acum = {p: 0 for p in partes}
+    omitidas = set()
+    d = fecha_ini
+    while d <= fecha_fin:
+        candidatos = []
+        for p in partes:
+            base = proy[p]["proj"].get(d)
+            if base is None:
+                continue
+            i_d = base + acum[p]
+            if i_d < 0:
+                candidatos.append(
+                    {"part_no": p, "falt_total": -i_d, "falt_hoy": -i_d,
+                     "primera_falta": d, **info[p]}
+                )
+        if candidatos:
+            horas_rest = {
+                l: PPY_HORAS_TURNO - horas_conf.get((d, l), 0.0) for l in lineas_activas
+            }
+            lotes, fuera = _ppy_armar_lotes(
+                candidatos, lineas_activas, horas_rest, estricto=False
+            )
+            for l in lotes:
+                propuestas.append(
+                    {"part_no": l["part_no"], "sched_date": d.isoformat(), "qty": l["qty"]}
+                )
+                acum[l["part_no"]] += l["qty"]
+            for f in fuera:
+                omitidas.add(f["part_no"] + " (" + f["motivo"] + ")")
+        d += timedelta(days=1)
+    return propuestas, sorted(omitidas)
+
+
+@bp.route("/api/part-planning/schedule/proponer", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PROY_PERMISO_BOTON)
+def api_pp_schedule_proponer():
+    """Calcula la propuesta de schedule del rango visible (sin guardar)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        hoy = date.today()
+        date_from = _ppy_parse_fecha(data.get("date_from")) or hoy
+        date_to = _ppy_parse_fecha(data.get("date_to")) or (date_from + timedelta(days=6))
+        if date_to < date_from:
+            date_from, date_to = date_to, date_from
+        date_from = max(date_from, hoy)  # no se propone produccion en el pasado
+        if date_to < date_from:
+            return jsonify({"success": False, "error": "El rango ya paso; no hay dias por proponer."}), 400
+        if (date_to - date_from).days > PP_MAX_RANGO_DIAS:
+            return jsonify({"success": False, "error": f"Rango maximo {PP_MAX_RANGO_DIAS} dias"}), 400
+
+        propuestas, omitidas = _ppy_simular_schedule(date_from, date_to)
+        # Schedule actual de las celdas propuestas (para el modal de revision)
+        if propuestas:
+            partes_prop = list({p["part_no"] for p in propuestas})
+            placeholders = ", ".join(["%s"] * len(partes_prop))
+            rows = execute_query(
+                "SELECT part_no, sched_date, sched_qty FROM lg_schedule_daily "
+                f"WHERE sched_date BETWEEN %s AND %s AND part_no IN ({placeholders})",
+                tuple([date_from, date_to] + partes_prop),
+                fetch="all",
+            ) or []
+            actual = {}
+            for r in rows:
+                f = r["sched_date"].date() if isinstance(r["sched_date"], datetime) else r["sched_date"]
+                actual[(r["part_no"], f.isoformat())] = int(r["sched_qty"])
+            for p in propuestas:
+                p["sched_actual"] = actual.get((p["part_no"], p["sched_date"]))
+        return jsonify(
+            {
+                "success": True,
+                "date_from": date_from.isoformat(),
+                "date_to": date_to.isoformat(),
+                "proposals": propuestas,
+                "total_qty": sum(p["qty"] for p in propuestas),
+                "partes": len({p["part_no"] for p in propuestas}),
+                "omitidas": omitidas[:20],
+                "omitidas_count": len(omitidas),
+            }
+        )
+    except Exception as e:
+        logger.error("Error en api_pp_schedule_proponer: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/part-planning/schedule/proponer/aplicar", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PROY_PERMISO_BOTON)
+def api_pp_schedule_aplicar():
+    """Aplica la propuesta: SUMA cada cantidad al schedule existente."""
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        items = data.get("proposals") or []
+        if not items or not isinstance(items, list):
+            return jsonify({"success": False, "error": "Sin propuestas que aplicar"}), 400
+        if len(items) > 5000:
+            return jsonify({"success": False, "error": "Demasiadas propuestas"}), 400
+
+        usuario = session.get("usuario") or "SISTEMA"
+        filas = []
+        for it in items:
+            p = (it.get("part_no") or "").strip()
+            f = _ppy_parse_fecha(it.get("sched_date"))
+            try:
+                q = int(it.get("qty"))
+            except (TypeError, ValueError):
+                q = 0
+            if not p or not f or q <= 0:
+                return jsonify({"success": False, "error": "Propuesta invalida"}), 400
+            filas.append((p, f, q, usuario))
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexion MySQL.")
+        cursor = get_dict_cursor(conn)
+        conn.autocommit(False)
+        for i in range(0, len(filas), PP_BATCH_SIZE):
+            cursor.executemany(
+                "INSERT INTO lg_schedule_daily (part_no, sched_date, sched_qty, updated_by) "
+                "VALUES (%s, %s, %s, %s) "
+                "ON DUPLICATE KEY UPDATE sched_qty = sched_qty + VALUES(sched_qty), "
+                "updated_by = VALUES(updated_by)",
+                filas[i : i + PP_BATCH_SIZE],
+            )
+        conn.commit()
+        return jsonify({"success": True, "aplicadas": len(filas)})
+    except Exception as e:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.error("Error en api_pp_schedule_aplicar: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.autocommit(True)
+                conn.close()
+            except Exception:
+                pass
+
+
 @bp.route("/api/part-planning/inventory/field", methods=["POST"])
 @login_requerido
 @requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PROY_PERMISO_BOTON)
@@ -1490,7 +1683,7 @@ def _ppy_proyeccion_rango(fecha_ini, fecha_fin):
     return resultado
 
 
-def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest):
+def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest, estricto=True):
     """Ajusta los candidatos a las horas disponibles por linea (9 h sin TE).
 
     candidatos: [{part_no, falt_total, falt_hoy, primera_falta(date), line,
@@ -1501,6 +1694,10 @@ def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest):
     antes que los adelantos); familia junta y de preferencia en la misma linea.
     Si un lote no cabe completo se planea parcial a caja cerrada ("lo que se
     pueda meter"). Retorna (lotes, fuera).
+
+    estricto=True (Plan Proyectado): sin UPH o sin pack la parte no se genera.
+    estricto=False (propuesta de schedule): pack faltante se asume
+    PPY_PACK_DEFAULT y sin UPH la parte entra sin presupuesto de horas.
     """
     familias = {}
     for c in candidatos:
@@ -1517,22 +1714,32 @@ def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest):
         grupo.sort(key=lambda c: (c["primera_falta"], -c["falt_total"], c["part_no"]))
         linea_familia = None
         for c in grupo:
-            # Sin UPH no hay presupuesto de horas y sin pack no hay caja
-            # cerrada: la parte no se genera (queda visible en no_incluidos).
-            faltan = []
-            if not c["uph"]:
-                faltan.append("UPH")
-            if not c["pack"] or c["pack"] <= 0:
-                faltan.append("pack")
-            if faltan:
-                fuera.append({"part_no": c["part_no"],
-                              "qty": _ppy_qty_pack(c["falt_total"], c["pack"]),
-                              "motivo": "sin " + " ni ".join(faltan) + " en raw"})
-                continue
+            pack = c["pack"] if c["pack"] and c["pack"] > 0 else None
+            if estricto:
+                # Sin UPH no hay presupuesto de horas y sin pack no hay caja
+                # cerrada: la parte no se genera (visible en no_incluidos).
+                faltan = []
+                if not c["uph"]:
+                    faltan.append("UPH")
+                if not pack:
+                    faltan.append("pack")
+                if faltan:
+                    fuera.append({"part_no": c["part_no"],
+                                  "qty": _ppy_qty_pack(c["falt_total"], pack),
+                                  "motivo": "sin " + " ni ".join(faltan) + " en raw"})
+                    continue
+            elif not pack:
+                pack = PPY_PACK_DEFAULT
 
-            pack = c["pack"]
             qty_obj = _ppy_qty_pack(c["falt_total"], pack)
             adelanto = c["falt_hoy"] <= 0
+
+            if not c["uph"]:
+                # Solo en modo laxo: entra completo sin consumir horas
+                lotes.append({**c, "qty": qty_obj,
+                              "linea": linea_familia or c.get("line"),
+                              "comentario": None})
+                continue
 
             # Linea: la de la familia > la preferida de la parte > la mas
             # libre, siempre dentro de las permitidas (raw.lineas_permitidas)
