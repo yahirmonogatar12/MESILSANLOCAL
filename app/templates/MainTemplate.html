@@ -59,7 +59,7 @@
     <link id="control-squeegee-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_squeegee.css', v='20260526a') }}">
     <!-- WF_004: CSS persistente Control de produccion (ASSY / IMT / SMT Plan) -->
     <link id="control-plan-assy-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_assy.css', v='20260526a') }}">
-    <link id="part-planning-css" rel="stylesheet" href="{{ url_for('static', filename='css/part_planning.css', v='20260713g') }}">
+    <link id="part-planning-css" rel="stylesheet" href="{{ url_for('static', filename='css/part_planning.css', v='20260714a') }}">
     <link id="control-plan-imt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_imt.css', v='20260526a') }}">
     <link id="control-plan-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_smt.css', v='20260526a') }}">
     <!-- WF_004: CSS persistente Inventario IMD-SMD Terminado (Control de resultados) -->
@@ -678,6 +678,11 @@
 
         <!-- Proyeccion P/S/I (WF_002, 2026-07-13) -->
         <div id="proyeccion-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Plan Proyectado / lotes (WF_002, 2026-07-14) -->
+        <div id="plan-proyectado-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 

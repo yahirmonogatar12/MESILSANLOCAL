@@ -31,6 +31,7 @@ rechaza (patron Lista de compras: sin token ni temporales en servidor).
 import hashlib
 import io
 import logging
+import math
 import os
 import re
 from datetime import date, datetime, timedelta
@@ -52,6 +53,14 @@ PP_PERMISO_SECCION = "Control de plan de produccion"
 PP_PERMISO_BOTON = "Part Planning LG"
 # Modulo hermano "Proyeccion" (renglones P/S/I, inventario semanal y schedule)
 PROY_PERMISO_BOTON = "Proyeccion"
+# Modulo hermano "Plan Proyectado" (generador de lotes tipo hoja LOTE N)
+PPY_PERMISO_BOTON = "Plan Proyectado"
+PPY_HORAS_TURNO = 9.0  # horas productivas sin tiempo extra (plan-assy-helpers.js)
+PPY_FAMILIA_LEN = 9  # ponytail: familia = prefijo del part_no (EBR807574xx); catalogo si hay excepciones
+PPY_MARGEN = 1.10  # siempre se planea 10% mas del faltante
+PPY_TURNOS = ("DIA", "TIEMPO EXTRA", "NOCHE")
+PPY_HORIZONTE_DIAS = 14  # dias hacia adelante para adelantar faltantes futuros
+PPY_LINEAS_DEFAULT = "M1,M2,M3"
 
 PP_SHEET_NAME = "LG"
 # Campos de inventario por parte (editables en Proyeccion; suman al I inicial)
@@ -186,6 +195,67 @@ def init_part_planning_tables():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
     )
+    # Plan Proyectado: lotes propuestos/confirmados tipo hoja "LOTE N"
+    # (lot_no NULL hasta confirmar; time/falta/%/familia se calculan al vuelo)
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS lg_lote_plan (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            plan_date DATE NOT NULL,
+            lot_no VARCHAR(20) NULL,
+            part_no VARCHAR(100) NOT NULL,
+            model VARCHAR(100) NULL,
+            main_sub VARCHAR(20) NULL,
+            linea VARCHAR(10) NULL,
+            turno VARCHAR(15) NOT NULL DEFAULT 'DIA',
+            faltante INT NOT NULL DEFAULT 0,
+            qty_plan INT NOT NULL DEFAULT 0,
+            uph INT NULL,
+            estandar_pack INT NULL,
+            fisico INT NULL,
+            status VARCHAR(12) NOT NULL DEFAULT 'PENDIENTE',
+            comentario VARCHAR(255) NULL,
+            created_by VARCHAR(80) NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_by VARCHAR(80) NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ON UPDATE CURRENT_TIMESTAMP,
+            confirmed_by VARCHAR(80) NULL,
+            confirmed_at DATETIME NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_llp_lot (lot_no),
+            KEY idx_llp_plan_date (plan_date),
+            KEY idx_llp_part (part_no)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+    # Config del Plan Proyectado (lineas activas configurables)
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS lg_pp_config (
+            clave VARCHAR(50) NOT NULL,
+            valor VARCHAR(255) NULL,
+            PRIMARY KEY (clave)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+    execute_query(
+        "INSERT IGNORE INTO lg_pp_config (clave, valor) VALUES ('lineas_activas', %s)",
+        (PPY_LINEAS_DEFAULT,),
+    )
+    # Lineas permitidas por parte/familia: columna en raw (se configura una
+    # vez por familia; aplica a todos los sufijos del mismo prefijo).
+    existe = execute_query(
+        "SELECT COUNT(*) AS c FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'raw' "
+        "AND COLUMN_NAME = 'lineas_permitidas'",
+        fetch="one",
+    )
+    if not existe["c"]:
+        execute_query(
+            "ALTER TABLE raw ADD COLUMN lineas_permitidas VARCHAR(100) NULL "
+            "AFTER estandar_pack"
+        )
 
 
 # =============================
@@ -433,7 +503,15 @@ def _pp_filas_segun_modo(parsed, modo, include_zero):
 # Parser hoja "Part 10" (inventario semanal LGEMM/ISEMM + schedule)
 # =============================
 
-PP_INV_SHEET = "Part 10"
+# La hoja cambia de nombre por dia ("Part 10", "Part 14", ...): se busca por patron.
+PP_INV_SHEET_RE = re.compile(r"^part\s*\d+\s*$", re.IGNORECASE)
+
+
+def _pp_buscar_hoja_inventario(sheetnames):
+    for nombre in sheetnames:
+        if PP_INV_SHEET_RE.match(nombre.strip()):
+            return nombre
+    return None
 
 
 def _parse_part10_workbook(file_bytes, original_filename=""):
@@ -466,9 +544,10 @@ def _parse_part10_workbook(file_bytes, original_filename=""):
         return error("El archivo esta corrupto o no es un Excel valido.")
 
     try:
-        if PP_INV_SHEET not in wb.sheetnames:
-            return error(f"No se encontro la hoja '{PP_INV_SHEET}' en el archivo.")
-        ws = wb[PP_INV_SHEET]
+        hoja_inv = _pp_buscar_hoja_inventario(wb.sheetnames)
+        if not hoja_inv:
+            return error("No se encontro una hoja 'Part N' (ej. Part 10, Part 14) en el archivo.")
+        ws = wb[hoja_inv]
 
         warnings = []
         filas = ws.iter_rows(values_only=True)
@@ -487,10 +566,10 @@ def _parse_part10_workbook(file_bytes, original_filename=""):
                 break
         if not encontrado:
             return error(
-                f"No se encontro el encabezado 'PART NUMBER' en la hoja '{PP_INV_SHEET}'."
+                f"No se encontro el encabezado 'PART NUMBER' en la hoja '{hoja_inv}'."
             )
         if not col_fechas:
-            return error(f"No se encontraron fechas en el encabezado de '{PP_INV_SHEET}'.")
+            return error(f"No se encontraron fechas en el encabezado de '{hoja_inv}'.")
 
         def escalar(v):
             return int(round(v)) if isinstance(v, (int, float)) else 0
@@ -506,7 +585,7 @@ def _parse_part10_workbook(file_bytes, original_filename=""):
                     parte_actual = None
                     continue
                 if part in inventory:
-                    warnings.append(f"Parte repetida en {PP_INV_SHEET}: {part} (se toma la primera).")
+                    warnings.append(f"Parte repetida en {hoja_inv}: {part} (se toma la primera).")
                     parte_actual = None
                     continue
                 parte_actual = part
@@ -530,10 +609,11 @@ def _parse_part10_workbook(file_bytes, original_filename=""):
                         schedules[clave] = schedules.get(clave, 0) + int(round(v))
 
         if not inventory:
-            return error(f"No se encontraron partes en la hoja '{PP_INV_SHEET}'.")
+            return error(f"No se encontraron partes en la hoja '{hoja_inv}'.")
 
         fechas = sorted(col_fechas.values())
         return {
+            "sheet_name": hoja_inv,
             "ref_date": fechas[0],
             "date_to": fechas[-1],
             "dates_count": len(fechas),
@@ -570,6 +650,18 @@ def proyeccion_ajax():
         return render_template("Control de produccion/proyeccion_ajax.html")
     except Exception as e:
         logger.error("Error al cargar Proyeccion: %s", e)
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@bp.route("/plan-proyectado-ajax")
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def plan_proyectado_ajax():
+    """Ruta AJAX para el modulo Plan Proyectado (generador de lotes)."""
+    try:
+        return render_template("Control de produccion/plan_proyectado_ajax.html")
+    except Exception as e:
+        logger.error("Error al cargar Plan Proyectado: %s", e)
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -820,6 +912,11 @@ def api_pp_inventory_import():
 
         usuario = session.get("usuario") or "SISTEMA"
         file_hash = hashlib.sha256(file_bytes).hexdigest()
+        # ref_date = lunes actual (igual que la captura manual): el inventario
+        # importado ya incluye lo producido antes; arrancar la proyeccion en la
+        # primera fecha de la hoja restaria plan y sumaria schedules pasados dos veces.
+        hoy = date.today()
+        ref_lunes = hoy - timedelta(days=hoy.weekday())
 
         conn = get_pooled_connection()
         if conn is None:
@@ -837,7 +934,7 @@ def api_pp_inventory_import():
             """,
             (
                 archivo.filename[:255],
-                PP_INV_SHEET,
+                parsed["sheet_name"],
                 parsed["ref_date"].year,
                 parsed["ref_date"],
                 parsed["date_to"],
@@ -865,7 +962,7 @@ def api_pp_inventory_import():
         datos_inv = [
             (p, d["board"], d["line"], d["lgemm"], d["isemm"], d["svc"],
              d["dif"], d["pendiente"], d["rework"], d["smt"], d["imd"],
-             parsed["ref_date"], import_id)
+             ref_lunes, import_id)
             for p, d in parsed["inventory"].items()
         ]
         for i in range(0, len(datos_inv), PP_BATCH_SIZE):
@@ -891,7 +988,7 @@ def api_pp_inventory_import():
                 "import_id": import_id,
                 "parts": len(parsed["inventory"]),
                 "schedules": len(parsed["schedules"]),
-                "ref_date": parsed["ref_date"].isoformat(),
+                "ref_date": ref_lunes.isoformat(),
                 "date_to": parsed["date_to"].isoformat(),
                 "warnings": parsed["warnings"],
             }
@@ -1240,3 +1337,755 @@ def api_pp_imports():
     except Exception as e:
         logger.error("Error en api_pp_imports: %s", e, exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# =============================
+# PLAN PROYECTADO (generador de lotes tipo hoja "LOTE N" del Excel)
+#
+# Reglas (confirmadas con el usuario):
+#   - faltante = |I proyectado negativo| a la fecha (formula de Proyeccion)
+#   - se planea faltante + 10%, redondeado ARRIBA a caja cerrada (estandar_pack)
+#   - familias juntas (prefijo del part_no) y por linea
+#   - por linea la suma de horas (qty/UPH) debe caber en 9 h sin tiempo extra
+#   - los lotes quedan PENDIENTE sin numero; al confirmar se numeran
+#     I<YYYYMMDD>-#### (consecutivo global del dia) y su qty se SUMA al
+#     renglon S (lg_schedule_daily) de Proyeccion
+# =============================
+
+
+def _ppy_familia(part_no):
+    return (part_no or "")[:PPY_FAMILIA_LEN]
+
+
+def _ppy_qty_pack(faltante, pack):
+    """Cantidad a planear: faltante + 10%, redondeada arriba a caja cerrada."""
+    try:
+        pack = int(pack) if pack and int(pack) > 0 else 1
+    except (TypeError, ValueError):
+        pack = 1
+    # round() evita que el float de *1.10 suba de mas (100*1.1 = 110.0000...01)
+    objetivo = round(faltante * PPY_MARGEN, 6)
+    return int(math.ceil(objetivo / pack)) * pack
+
+
+def _ppy_parse_uph(valor):
+    """UPH de raw es varchar: parseo defensivo, None si no es numero positivo."""
+    try:
+        n = int(float(str(valor).strip()))
+        return n if n > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _ppy_parse_fecha(texto):
+    try:
+        return datetime.strptime((texto or "").strip(), "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _ppy_config_lineas():
+    """Lineas activas configurables (CSV en lg_pp_config)."""
+    try:
+        row = execute_query(
+            "SELECT valor FROM lg_pp_config WHERE clave = 'lineas_activas'",
+            fetch="one",
+        )
+    except Exception:
+        row = None
+    texto = (row or {}).get("valor") or PPY_LINEAS_DEFAULT
+    lineas = []
+    for l in texto.split(","):
+        l = l.strip().upper()[:10]
+        if l and l not in lineas:
+            lineas.append(l)
+    return lineas or [x.strip() for x in PPY_LINEAS_DEFAULT.split(",")]
+
+
+def _ppy_lineas_permitidas_map():
+    """Lineas permitidas desde raw.lineas_permitidas (CSV, ej. 'M1,M2,M4').
+
+    Se configura una sola vez por familia: basta capturarla en cualquier
+    parte de la familia y aplica a todos los sufijos (EBR807574xx).
+    Retorna ({part_no: [lineas]}, {familia: [lineas]}).
+    """
+    try:
+        rows = execute_query(
+            "SELECT TRIM(part_no) AS part_no, lineas_permitidas FROM raw "
+            "WHERE lineas_permitidas IS NOT NULL AND TRIM(lineas_permitidas) <> ''",
+            fetch="all",
+        ) or []
+    except Exception:
+        return {}, {}
+    por_parte = {}
+    por_familia = {}
+    for r in rows:
+        lineas = [l.strip().upper() for l in (r["lineas_permitidas"] or "").split(",") if l.strip()]
+        if not lineas:
+            continue
+        por_parte[r["part_no"]] = lineas
+        por_familia.setdefault(_ppy_familia(r["part_no"]), lineas)
+    return por_parte, por_familia
+
+
+def _ppy_proyeccion_rango(fecha_ini, fecha_fin):
+    """I proyectado por parte para cada dia de [fecha_ini, fecha_fin].
+
+    Misma formula que Proyeccion: I(t) = I(t-1) - P(t) + S(t) desde ref_date.
+    Como I ya incluye los S confirmados/capturados, regenerar no duplica.
+    Retorna {part_no: {"line": str|None, "proj": {date: int}}}.
+    """
+    inv_rows = execute_query("SELECT * FROM lg_part_inventory", fetch="all") or []
+    base = {}
+    refs = {}
+    for r in inv_rows:
+        ref = r.get("ref_date")
+        if isinstance(ref, datetime):
+            ref = ref.date()
+        i0 = sum(int(r.get(k) or 0) for k in PP_INV_FIELDS)
+        base[r["part_no"]] = {"line": r.get("line"), "i0": i0}
+        if ref and ref <= fecha_fin:
+            refs[r["part_no"]] = ref
+
+    movs = {}  # (part, date) -> delta (-P + S)
+    if refs:
+        min_ref = min(refs.values())
+        for tabla, col_f, col_q, signo in (
+            ("lg_plan_daily", "plan_date", "plan_qty", -1),
+            ("lg_schedule_daily", "sched_date", "sched_qty", 1),
+        ):
+            rows = execute_query(
+                f"SELECT part_no, {col_f} AS f, {col_q} AS q FROM {tabla} "
+                f"WHERE {col_f} BETWEEN %s AND %s",
+                (min_ref, fecha_fin),
+                fetch="all",
+            ) or []
+            for r in rows:
+                ref = refs.get(r["part_no"])
+                if not ref:
+                    continue
+                f = r["f"].date() if isinstance(r["f"], datetime) else r["f"]
+                if f >= ref:
+                    clave = (r["part_no"], f)
+                    movs[clave] = movs.get(clave, 0) + signo * int(r["q"] or 0)
+
+    resultado = {}
+    for p, d in base.items():
+        ref = refs.get(p)
+        proj = {}
+        carry = d["i0"]
+        if ref:
+            f = ref
+            while f <= fecha_fin:
+                carry += movs.get((p, f), 0)
+                if f >= fecha_ini:
+                    proj[f] = carry
+                f += timedelta(days=1)
+        else:
+            f = fecha_ini
+            while f <= fecha_fin:
+                proj[f] = carry
+                f += timedelta(days=1)
+        resultado[p] = {"line": d["line"], "proj": proj}
+    return resultado
+
+
+def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest):
+    """Ajusta los candidatos a las horas disponibles por linea (9 h sin TE).
+
+    candidatos: [{part_no, falt_total, falt_hoy, primera_falta(date), line,
+                  uph, pack, model, main_sub}]
+    horas_rest: {linea: horas disponibles} (se muta al asignar).
+
+    Orden: familias con la falta mas proxima primero (los faltantes de HOY van
+    antes que los adelantos); familia junta y de preferencia en la misma linea.
+    Si un lote no cabe completo se planea parcial a caja cerrada ("lo que se
+    pueda meter"). Retorna (lotes, fuera).
+    """
+    familias = {}
+    for c in candidatos:
+        familias.setdefault(_ppy_familia(c["part_no"]), []).append(c)
+    orden = sorted(
+        familias.values(),
+        key=lambda g: (min(c["primera_falta"] for c in g),
+                       -max(c["falt_total"] for c in g)),
+    )
+
+    lotes = []
+    fuera = []
+    for grupo in orden:
+        grupo.sort(key=lambda c: (c["primera_falta"], -c["falt_total"], c["part_no"]))
+        linea_familia = None
+        for c in grupo:
+            # Sin UPH no hay presupuesto de horas y sin pack no hay caja
+            # cerrada: la parte no se genera (queda visible en no_incluidos).
+            faltan = []
+            if not c["uph"]:
+                faltan.append("UPH")
+            if not c["pack"] or c["pack"] <= 0:
+                faltan.append("pack")
+            if faltan:
+                fuera.append({"part_no": c["part_no"],
+                              "qty": _ppy_qty_pack(c["falt_total"], c["pack"]),
+                              "motivo": "sin " + " ni ".join(faltan) + " en raw"})
+                continue
+
+            pack = c["pack"]
+            qty_obj = _ppy_qty_pack(c["falt_total"], pack)
+            adelanto = c["falt_hoy"] <= 0
+
+            # Linea: la de la familia > la preferida de la parte > la mas
+            # libre, siempre dentro de las permitidas (raw.lineas_permitidas)
+            permitidas = c.get("permitidas")
+
+            def _permitida(l):
+                return permitidas is None or l in permitidas
+
+            opciones = []
+            for cand in (linea_familia, (c.get("line") or "").upper() or None):
+                if cand in horas_rest and _permitida(cand) and cand not in opciones:
+                    opciones.append(cand)
+            opciones += sorted(
+                (l for l in horas_rest if l not in opciones and _permitida(l)),
+                key=lambda l: -horas_rest[l],
+            )
+            if not opciones:
+                fuera.append({"part_no": c["part_no"], "qty": qty_obj,
+                              "motivo": "sus lineas (" + ",".join(permitidas or []) +
+                                        ") no estan activas"})
+                continue
+            elegido = None
+            qty = 0
+            for l in opciones:
+                cap = int(max(horas_rest[l], 0.0) * c["uph"]) // pack * pack
+                if cap >= pack:
+                    elegido = l
+                    qty = min(qty_obj, cap)
+                    break
+            if elegido is None:
+                fuera.append({"part_no": c["part_no"], "qty": qty_obj,
+                              "motivo": "sin horas disponibles" +
+                                        (" en sus lineas (" + ",".join(permitidas) + ")"
+                                         if permitidas else "")})
+                continue
+
+            horas_rest[elegido] = horas_rest[elegido] - qty / c["uph"]
+            if linea_familia is None:
+                linea_familia = elegido
+            notas = []
+            if adelanto:
+                notas.append(f"Adelanto: falta el {c['primera_falta'].strftime('%d/%m')}")
+            if qty < qty_obj:
+                notas.append("parcial por horas")
+            lotes.append({**c, "qty": qty, "linea": elegido,
+                          "comentario": " | ".join(notas) or None})
+    return lotes, fuera
+
+
+def _ppy_datos_raw(parte_list):
+    """model/sub_assy/uph/estandar_pack desde raw, indexado por part_no TRIM."""
+    if not parte_list:
+        return {}
+    placeholders = ", ".join(["%s"] * len(parte_list))
+    rows = execute_query(
+        "SELECT TRIM(part_no) AS part_no, model, sub_assy, uph, estandar_pack "
+        f"FROM raw WHERE TRIM(part_no) IN ({placeholders})",
+        tuple(parte_list),
+        fetch="all",
+    ) or []
+    return {r["part_no"]: r for r in rows}
+
+
+_PPY_ORDEN_SQL = (
+    "ORDER BY COALESCE(NULLIF(linea, ''), 'ZZZ'), "
+    f"LEFT(part_no, {PPY_FAMILIA_LEN}), part_no, id"
+)
+
+
+def _ppy_listado(fecha):
+    """Lotes del dia + resumen de horas por linea (para GET y respuestas)."""
+    rows = execute_query(
+        "SELECT * FROM lg_lote_plan WHERE plan_date = %s "
+        "AND status IN ('PENDIENTE', 'CONFIRMADO') " + _PPY_ORDEN_SQL,
+        (fecha,),
+        fetch="all",
+    ) or []
+    lotes = []
+    lineas = {}
+    for r in rows:
+        uph = r.get("uph")
+        qty = int(r.get("qty_plan") or 0)
+        horas = round(qty / uph, 2) if uph else None
+        fisico = r.get("fisico")
+        pack = r.get("estandar_pack")
+        lotes.append(
+            {
+                "id": r["id"],
+                "lot_no": r.get("lot_no"),
+                "part_no": r["part_no"],
+                "familia": _ppy_familia(r["part_no"]),
+                "model": r.get("model"),
+                "main_sub": r.get("main_sub"),
+                "linea": r.get("linea"),
+                "turno": r.get("turno"),
+                "faltante": int(r.get("faltante") or 0),
+                "qty_plan": qty,
+                "uph": uph,
+                "estandar_pack": pack,
+                "time_horas": horas,
+                "fisico": fisico,
+                "falta": (int(fisico) - qty) if fisico is not None else None,
+                "pct": (round(int(fisico) * 100.0 / qty, 1) if fisico is not None and qty else None),
+                "status": r.get("status"),
+                "comentario": r.get("comentario"),
+                "warn_pack": bool(pack and int(pack) > 1 and qty % int(pack) != 0),
+                "warn_uph": uph is None,
+            }
+        )
+        clave = r.get("linea") or "SIN LINEA"
+        acum = lineas.setdefault(clave, {"linea": clave, "horas": 0.0, "lotes": 0})
+        acum["lotes"] += 1
+        if horas:
+            acum["horas"] = round(acum["horas"] + horas, 2)
+    resumen = []
+    for clave in sorted(lineas, key=lambda x: (x == "SIN LINEA", x)):
+        d = lineas[clave]
+        d["horas_max"] = PPY_HORAS_TURNO
+        d["excede"] = d["horas"] > PPY_HORAS_TURNO
+        resumen.append(d)
+    return {"fecha": fecha.isoformat(), "lotes": lotes, "lineas": resumen}
+
+
+@bp.route("/api/plan-proyectado", methods=["GET"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_listado():
+    try:
+        fecha = _ppy_parse_fecha(request.args.get("fecha")) or date.today()
+        return jsonify(
+            {"success": True, "lineas_activas": _ppy_config_lineas(), **_ppy_listado(fecha)}
+        )
+    except Exception as e:
+        logger.error("Error en api_ppy_listado: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/plan-proyectado/config", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_config():
+    """Guarda las lineas activas (CSV, ej. 'M1,M2,M3') para el generador."""
+    try:
+        data = request.get_json(silent=True) or {}
+        texto = (data.get("lineas") or "").strip().upper()
+        lineas = []
+        for l in texto.split(","):
+            l = l.strip()
+            if not l:
+                continue
+            if not re.match(r"^[A-Z0-9\-]{1,10}$", l):
+                return jsonify({"success": False, "error": f"Linea invalida: {l}"}), 400
+            if l not in lineas:
+                lineas.append(l)
+        if not lineas:
+            return jsonify({"success": False, "error": "Captura al menos una linea"}), 400
+        execute_query(
+            "INSERT INTO lg_pp_config (clave, valor) VALUES ('lineas_activas', %s) "
+            "ON DUPLICATE KEY UPDATE valor = VALUES(valor)",
+            (",".join(lineas),),
+        )
+        return jsonify({"success": True, "lineas_activas": lineas})
+    except Exception as e:
+        logger.error("Error en api_ppy_config: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/plan-proyectado/generate", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_generate():
+    """Genera la propuesta del dia: borra PENDIENTEs de la fecha y los recrea.
+
+    Cubre los faltantes de HOY y adelanta faltantes de los proximos
+    PPY_HORIZONTE_DIAS dias hasta llenar las horas de las lineas activas.
+    """
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        fecha = _ppy_parse_fecha(data.get("fecha")) or date.today()
+        usuario = session.get("usuario") or "SISTEMA"
+
+        lineas_activas = _ppy_config_lineas()
+        horas_rest = {l: PPY_HORAS_TURNO for l in lineas_activas}
+        # Los lotes ya confirmados del dia consumen horas de su linea
+        confirmados = execute_query(
+            "SELECT part_no, linea, qty_plan, uph FROM lg_lote_plan "
+            "WHERE plan_date = %s AND status = 'CONFIRMADO'",
+            (fecha,),
+            fetch="all",
+        ) or []
+        partes_confirmadas = set()
+        for r in confirmados:
+            partes_confirmadas.add(r["part_no"])
+            l = (r.get("linea") or "").upper()
+            if l in horas_rest and r.get("uph"):
+                horas_rest[l] -= int(r["qty_plan"] or 0) / int(r["uph"])
+
+        proy = _ppy_proyeccion_rango(fecha, fecha + timedelta(days=PPY_HORIZONTE_DIAS))
+        candidatos = []
+        for p, d in proy.items():
+            if p in partes_confirmadas or not d["proj"]:
+                continue
+            min_i = min(d["proj"].values())
+            if min_i >= 0:
+                continue
+            i_hoy = d["proj"].get(fecha, 0)
+            candidatos.append(
+                {
+                    "part_no": p,
+                    "falt_total": -min_i,
+                    "falt_hoy": max(0, -i_hoy),
+                    "primera_falta": min(f for f, v in d["proj"].items() if v < 0),
+                    "line": d["line"],
+                }
+            )
+
+        datos_raw = _ppy_datos_raw([c["part_no"] for c in candidatos])
+        perm_parte, perm_familia = _ppy_lineas_permitidas_map()
+        for c in candidatos:
+            raw_info = datos_raw.get(c["part_no"]) or {}
+            pack = raw_info.get("estandar_pack")
+            c["pack"] = int(pack) if pack else None
+            c["uph"] = _ppy_parse_uph(raw_info.get("uph"))
+            c["model"] = raw_info.get("model")
+            c["main_sub"] = raw_info.get("sub_assy")
+            c["permitidas"] = (perm_parte.get(c["part_no"])
+                               or perm_familia.get(_ppy_familia(c["part_no"])))
+
+        lotes, fuera = _ppy_armar_lotes(candidatos, lineas_activas, horas_rest)
+        nuevos = [
+            (
+                fecha,
+                l["part_no"],
+                l.get("model"),
+                l.get("main_sub"),
+                (l.get("linea") or None),
+                "DIA",
+                l["falt_total"],
+                l["qty"],
+                l.get("uph"),
+                l.get("pack"),
+                l.get("comentario"),
+                usuario,
+            )
+            for l in lotes
+        ]
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexion MySQL.")
+        cursor = get_dict_cursor(conn)
+        conn.autocommit(False)
+        cursor.execute(
+            "DELETE FROM lg_lote_plan WHERE plan_date = %s AND status = 'PENDIENTE'",
+            (fecha,),
+        )
+        if nuevos:
+            for i in range(0, len(nuevos), PP_BATCH_SIZE):
+                cursor.executemany(
+                    "INSERT INTO lg_lote_plan (plan_date, part_no, model, main_sub, "
+                    "linea, turno, faltante, qty_plan, uph, estandar_pack, comentario, created_by) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    nuevos[i : i + PP_BATCH_SIZE],
+                )
+        conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "generados": len(nuevos),
+                "no_incluidos": fuera,
+                "lineas_activas": lineas_activas,
+                **_ppy_listado(fecha),
+            }
+        )
+    except Exception as e:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.error("Error en api_ppy_generate: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.autocommit(True)
+                conn.close()
+            except Exception:
+                pass
+
+
+@bp.route("/api/plan-proyectado/add", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_add():
+    """Alta manual de un lote PENDIENTE (enriquece desde raw e inventario)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        fecha = _ppy_parse_fecha(data.get("fecha")) or date.today()
+        part_no = (data.get("part_no") or "").strip()
+        if not part_no:
+            return jsonify({"success": False, "error": "part_no requerido"}), 400
+        try:
+            qty = int(data.get("qty"))
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "Cantidad invalida"}), 400
+        if qty <= 0:
+            return jsonify({"success": False, "error": "Cantidad invalida"}), 400
+
+        usuario = session.get("usuario") or "SISTEMA"
+        raw_info = (_ppy_datos_raw([part_no])).get(part_no) or {}
+        linea = (data.get("linea") or "").strip() or None
+        if not linea:
+            inv = execute_query(
+                "SELECT line FROM lg_part_inventory WHERE part_no = %s",
+                (part_no,),
+                fetch="one",
+            )
+            linea = (inv or {}).get("line") or None
+        pack = raw_info.get("estandar_pack")
+        execute_query(
+            "INSERT INTO lg_lote_plan (plan_date, part_no, model, main_sub, linea, "
+            "turno, faltante, qty_plan, uph, estandar_pack, created_by) "
+            "VALUES (%s, %s, %s, %s, %s, 'DIA', 0, %s, %s, %s, %s)",
+            (
+                fecha,
+                part_no,
+                raw_info.get("model"),
+                raw_info.get("sub_assy"),
+                linea,
+                qty,
+                _ppy_parse_uph(raw_info.get("uph")),
+                (int(pack) if pack else None),
+                usuario,
+            ),
+        )
+        return jsonify({"success": True, **_ppy_listado(fecha)})
+    except Exception as e:
+        logger.error("Error en api_ppy_add: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/plan-proyectado/update", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_update():
+    """Edita un campo del lote. PENDIENTE: qty/linea/turno/comentario/fisico;
+    CONFIRMADO: solo fisico y comentario (la qty confirmada ya sumo al S)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        lote_id = data.get("id")
+        campo = (data.get("field") or "").strip().lower()
+        valor = data.get("value")
+        if not lote_id or campo not in ("qty_plan", "linea", "turno", "comentario", "fisico"):
+            return jsonify({"success": False, "error": "Campo invalido"}), 400
+
+        row = execute_query(
+            "SELECT * FROM lg_lote_plan WHERE id = %s", (lote_id,), fetch="one"
+        )
+        if not row:
+            return jsonify({"success": False, "error": "Lote no encontrado"}), 404
+        if row["status"] == "CANCELADO":
+            return jsonify({"success": False, "error": "Lote cancelado"}), 400
+        if row["status"] == "CONFIRMADO" and campo not in ("fisico", "comentario"):
+            return (
+                jsonify({"success": False, "error": "Lote confirmado: solo FISICO y comentario son editables"}),
+                400,
+            )
+
+        if campo == "qty_plan":
+            try:
+                valor = int(valor)
+            except (TypeError, ValueError):
+                return jsonify({"success": False, "error": "Cantidad invalida"}), 400
+            if valor <= 0:
+                return jsonify({"success": False, "error": "Cantidad invalida"}), 400
+        elif campo == "fisico":
+            if valor in (None, ""):
+                valor = None
+            else:
+                try:
+                    valor = int(valor)
+                except (TypeError, ValueError):
+                    return jsonify({"success": False, "error": "Valor invalido"}), 400
+                if valor < 0:
+                    return jsonify({"success": False, "error": "Valor invalido"}), 400
+        elif campo == "turno":
+            valor = (str(valor) or "").strip().upper()
+            if valor not in PPY_TURNOS:
+                return jsonify({"success": False, "error": "Turno invalido"}), 400
+        else:
+            valor = (str(valor or "").strip()[:255]) or None
+            if campo == "linea" and valor:
+                valor = valor.upper()[:10]
+
+        usuario = session.get("usuario") or "SISTEMA"
+        # campo validado contra whitelist arriba
+        execute_query(
+            f"UPDATE lg_lote_plan SET {campo} = %s, updated_by = %s WHERE id = %s",
+            (valor, usuario, lote_id),
+        )
+        fecha = row["plan_date"]
+        if isinstance(fecha, datetime):
+            fecha = fecha.date()
+        return jsonify({"success": True, **_ppy_listado(fecha)})
+    except Exception as e:
+        logger.error("Error en api_ppy_update: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/plan-proyectado/delete", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_delete():
+    """PENDIENTE se borra; CONFIRMADO se cancela y su qty se resta del S."""
+    try:
+        data = request.get_json(silent=True) or {}
+        lote_id = data.get("id")
+        row = execute_query(
+            "SELECT * FROM lg_lote_plan WHERE id = %s", (lote_id,), fetch="one"
+        )
+        if not row:
+            return jsonify({"success": False, "error": "Lote no encontrado"}), 404
+        fecha = row["plan_date"]
+        if isinstance(fecha, datetime):
+            fecha = fecha.date()
+
+        if row["status"] == "PENDIENTE":
+            execute_query("DELETE FROM lg_lote_plan WHERE id = %s", (lote_id,))
+        elif row["status"] == "CONFIRMADO":
+            usuario = session.get("usuario") or "SISTEMA"
+            execute_query(
+                "UPDATE lg_lote_plan SET status = 'CANCELADO', updated_by = %s "
+                "WHERE id = %s",
+                (usuario, lote_id),
+            )
+            execute_query(
+                "UPDATE lg_schedule_daily SET sched_qty = GREATEST(sched_qty - %s, 0), "
+                "updated_by = %s WHERE part_no = %s AND sched_date = %s",
+                (int(row["qty_plan"] or 0), usuario, row["part_no"], fecha),
+            )
+            execute_query(
+                "DELETE FROM lg_schedule_daily WHERE part_no = %s AND sched_date = %s "
+                "AND sched_qty = 0",
+                (row["part_no"], fecha),
+            )
+        return jsonify({"success": True, **_ppy_listado(fecha)})
+    except Exception as e:
+        logger.error("Error en api_ppy_delete: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/plan-proyectado/confirm", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PPY_PERMISO_BOTON)
+def api_ppy_confirm():
+    """Numera los PENDIENTEs del dia (I<YYYYMMDD>-####) y suma su qty al S.
+
+    Bloquea si alguna linea excede las 9 h sin tiempo extra ("debe cumplirse
+    en sus horas"): el usuario ajusta cantidades y reintenta.
+    """
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        fecha = _ppy_parse_fecha(data.get("fecha")) or date.today()
+        usuario = session.get("usuario") or "SISTEMA"
+
+        listado = _ppy_listado(fecha)
+        excedidas = [l for l in listado["lineas"] if l["excede"]]
+        if excedidas:
+            detalle = ", ".join(f"{l['linea']}: {l['horas']} h" for l in excedidas)
+            return (
+                jsonify({"success": False,
+                         "error": f"Lineas exceden {PPY_HORAS_TURNO:g} h sin tiempo extra: {detalle}. Ajusta cantidades antes de confirmar."}),
+                400,
+            )
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexion MySQL.")
+        cursor = get_dict_cursor(conn)
+        conn.autocommit(False)
+
+        cursor.execute(
+            "SELECT * FROM lg_lote_plan WHERE plan_date = %s AND status = 'PENDIENTE' "
+            + _PPY_ORDEN_SQL + " FOR UPDATE",
+            (fecha,),
+        )
+        pendientes = cursor.fetchall() or []
+        if not pendientes:
+            conn.rollback()
+            return jsonify({"success": False, "error": "No hay lotes pendientes para esa fecha."}), 400
+
+        prefijo = f"I{fecha.strftime('%Y%m%d')}"
+        cursor.execute(
+            "SELECT lot_no FROM lg_lote_plan WHERE lot_no LIKE %s "
+            "ORDER BY lot_no DESC LIMIT 1 FOR UPDATE",
+            (f"{prefijo}-%",),
+        )
+        ultimo = cursor.fetchone()
+        consecutivo = 0
+        if ultimo and ultimo.get("lot_no"):
+            try:
+                consecutivo = int(str(ultimo["lot_no"]).split("-")[-1])
+            except ValueError:
+                consecutivo = 0
+
+        sumas_s = {}
+        for r in pendientes:
+            consecutivo += 1
+            cursor.execute(
+                "UPDATE lg_lote_plan SET lot_no = %s, status = 'CONFIRMADO', "
+                "confirmed_by = %s, confirmed_at = NOW() WHERE id = %s",
+                (f"{prefijo}-{consecutivo:04d}", usuario, r["id"]),
+            )
+            sumas_s[r["part_no"]] = sumas_s.get(r["part_no"], 0) + int(r["qty_plan"] or 0)
+
+        cursor.executemany(
+            "INSERT INTO lg_schedule_daily (part_no, sched_date, sched_qty, updated_by) "
+            "VALUES (%s, %s, %s, %s) "
+            "ON DUPLICATE KEY UPDATE sched_qty = sched_qty + VALUES(sched_qty), "
+            "updated_by = VALUES(updated_by)",
+            [(p, fecha, q, usuario) for p, q in sumas_s.items()],
+        )
+        conn.commit()
+
+        return jsonify({"success": True, "confirmados": len(pendientes), **_ppy_listado(fecha)})
+    except Exception as e:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        logger.error("Error en api_ppy_confirm: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.autocommit(True)
+                conn.close()
+            except Exception:
+                pass

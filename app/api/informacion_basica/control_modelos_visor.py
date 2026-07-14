@@ -476,6 +476,59 @@ def api_mysql_create():
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/api/mysql/familia-lineas", methods=["POST"])
+@login_requerido
+def api_mysql_familia_lineas():
+    """Asigna lineas permitidas (CSV) a toda una familia en raw.
+
+    familia = inicio del part_no (ej. EBR807574); aplica a todas las partes
+    que empiecen igual. lineas vacio = limpiar (cualquier linea). Lo consume
+    el boton "Lineas por familia" de Control de modelos; el generador de
+    Plan Proyectado lee raw.lineas_permitidas.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        familia = (data.get("familia") or "").strip().upper()
+        if not re.match(r"^[A-Z0-9\-]{4,30}$", familia):
+            return (
+                jsonify({"success": False,
+                         "error": "Familia invalida (minimo 4 caracteres, sin espacios)"}),
+                400,
+            )
+        texto = (data.get("lineas") or "").strip().upper()
+        lineas = []
+        for l in texto.split(","):
+            l = l.strip()
+            if not l:
+                continue
+            if not re.match(r"^[A-Z0-9\-]{1,10}$", l):
+                return jsonify({"success": False, "error": f"Linea invalida: {l}"}), 400
+            if l not in lineas:
+                lineas.append(l)
+        valor = ",".join(lineas) if lineas else None
+
+        total = execute_query(
+            "SELECT COUNT(*) AS c FROM raw WHERE TRIM(part_no) LIKE %s",
+            (familia + "%",),
+            fetch="one",
+        )
+        n = int((total or {}).get("c") or 0)
+        if n == 0:
+            return (
+                jsonify({"success": False,
+                         "error": f"No hay partes en raw que empiecen con {familia}"}),
+                404,
+            )
+        execute_query(
+            "UPDATE raw SET lineas_permitidas = %s WHERE TRIM(part_no) LIKE %s",
+            (valor, familia + "%"),
+        )
+        return jsonify({"success": True, "familia": familia, "lineas": valor, "partes": n})
+    except Exception as e:
+        logger.error(f"Error en api_mysql_familia_lineas: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @bp.route("/api/mysql/usuario-actual", methods=["GET"])
 @login_requerido
 def api_mysql_usuario_actual():

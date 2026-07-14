@@ -351,11 +351,50 @@
     window.rawEditModal.abrir(emptyRow, 'NUEVO');
   }
 
+  // Asignar lineas permitidas (Plan Proyectado) a toda una familia en raw
+  async function asignarLineasFamilia() {
+    const sugerida = (RX.search || "").trim().toUpperCase().slice(0, 9);
+    let familia = prompt(
+      "Familia (inicio del numero de parte, ej. EBR807574).\n" +
+      "Aplica a TODAS las partes que empiecen igual:",
+      sugerida
+    );
+    if (familia === null || !familia.trim()) return;
+    familia = familia.trim().toUpperCase();
+
+    const filaActual = (RX.allRows || []).find(
+      (r) => String(r.part_no || "").trim().toUpperCase().startsWith(familia) && r.lineas_permitidas
+    );
+    const lineas = prompt(
+      "Lineas donde puede correr la familia " + familia +
+      ", separadas por coma (ej. M1,M2,M4).\nVacio = cualquier linea:",
+      filaActual ? filaActual.lineas_permitidas : ""
+    );
+    if (lineas === null) return;
+
+    try {
+      const resp = await fetch("/api/mysql/familia-lineas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ familia: familia, lineas: lineas }),
+      });
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.error || "Error");
+      alert("Familia " + data.familia + ": " + (data.lineas || "cualquier linea") +
+        "\nAplicado a " + data.partes + " partes.");
+      refreshAll();
+    } catch (e) {
+      alert("Error: " + (e.message || e));
+    }
+  }
+
   // Bindear event listeners a los elementos del fragment.
   // Idempotente: usa dataset.boundVisor para no duplicar al re-inicializar.
   function bindVisorListeners() {
     const refreshBtn = $("ix-refresh");
     const registerBtn = $("ix-register");
+    const familiaBtn = $("ix-familia-lineas");
     const searchInput = $("ix-search");
 
     if (refreshBtn && refreshBtn.dataset.boundVisor !== "true") {
@@ -371,6 +410,13 @@
         abrirModalRegistro();
       });
       registerBtn.dataset.boundVisor = "true";
+    }
+
+    if (familiaBtn && familiaBtn.dataset.boundVisor !== "true") {
+      familiaBtn.addEventListener("click", () => {
+        asignarLineasFamilia();
+      });
+      familiaBtn.dataset.boundVisor = "true";
     }
 
     if (searchInput && searchInput.dataset.boundVisor !== "true") {

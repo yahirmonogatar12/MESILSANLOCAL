@@ -502,3 +502,45 @@
 @keyframes pp-spin {
   to { transform: rotate(360deg); }
 }
+
+/* ---------- Plan Proyectado (lotes tipo hoja LOTE N) ---------- */
+
+.ppy-linea-row td {
+  background: #20688c;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: left;
+}
+
+.ppy-linea-row.ppy-excede td {
+  background: #7c2a2a;
+}
+
+.ppy-edit { cursor: pointer; }
+
+.ppy-edit:hover {
+  outline: 1px dashed #20688c;
+  outline-offset: -2px;
+}
+
+.ppy-warn {
+  color: #ffb3b3;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.ppy-warn-pack {
+  outline: 1px solid #ef6c00;
+  outline-offset: -2px;
+}
+
+.ppy-coment {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  font-size: 11px;
+}
+
+.ppy-status-pendiente { color: #ffd9a8; font-size: 11px; }
+.ppy-status-confirmado { color: #b8f5bd; font-size: 11px; }

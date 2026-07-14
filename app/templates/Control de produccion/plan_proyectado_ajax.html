@@ -1,0 +1,67 @@
+<div id="plan-proyectado-root" class="pp-page">
+
+  <div class="pp-header">
+    <div>
+      <h2>Plan Proyectado &mdash; Lotes del dia</h2>
+    </div>
+    <div class="pp-header-actions">
+      <div class="pp-field">
+        <label for="ppy-fecha">Fecha del plan</label>
+        <input type="date" id="ppy-fecha">
+      </div>
+      <button id="ppy-btn-generate" class="pp-btn primary" type="button">Generar propuesta</button>
+      <button id="ppy-btn-confirm" class="pp-btn secondary" type="button">Confirmar dia</button>
+    </div>
+  </div>
+
+  <div class="pp-card">
+    <div class="pp-legend">
+      Propuesta = faltante de Proyeccion <strong>+10%</strong>, redondeado a
+      <strong>caja cerrada</strong> (estandar pack) &nbsp;&middot;&nbsp;
+      familias juntas por linea &nbsp;&middot;&nbsp;
+      cubre los faltantes de hoy y <strong>adelanta faltantes de los proximos 14 dias</strong>
+      hasta llenar las <strong>9 h</strong> sin tiempo extra de cada linea activa &nbsp;&middot;&nbsp;
+      el numero de lote (I&lt;fecha&gt;-####) se asigna al <strong>Confirmar</strong>
+      y la cantidad se suma al renglon S de Proyeccion.
+      Clic en Q'ty, FISICO o Comentario para editar.
+      Las lineas donde puede correr cada modelo se configuran en <strong>raw</strong>
+      (columna <strong>lineas_permitidas</strong>, ej. "M1,M2,M4"): basta capturarla en
+      una parte de la familia y aplica a toda la familia.
+    </div>
+    <div class="pp-filters" style="margin-bottom: 8px;">
+      <div class="pp-field">
+        <label for="ppy-lineas">Lineas activas (9 h c/u)</label>
+        <input type="text" id="ppy-lineas" placeholder="M1,M2,M3" style="width: 160px;">
+      </div>
+      <button id="ppy-btn-lineas" class="pp-btn secondary" type="button">Guardar lineas</button>
+      <div class="pp-field pp-field-grow">
+        <label for="ppy-add-part">Agregar parte manual</label>
+        <input type="text" id="ppy-add-part" placeholder="Numero de parte...">
+      </div>
+      <div class="pp-field">
+        <label for="ppy-add-qty">Cantidad</label>
+        <input type="number" id="ppy-add-qty" min="1" style="width: 110px;">
+      </div>
+      <button id="ppy-btn-add" class="pp-btn secondary" type="button">+ Agregar</button>
+      <span id="ppy-status-msg" class="pp-hint-inline"></span>
+    </div>
+    <div class="pp-table-wrap">
+      <table id="ppy-table" class="pp-table">
+        <thead>
+          <tr>
+            <th class="pp-col-part">Lote</th>
+            <th>Part No</th><th>Model</th><th>Main</th><th>UPH</th><th>Pack</th>
+            <th>Faltante</th><th>Q'ty</th><th>Time</th><th>Turno</th>
+            <th>FISICO</th><th>Falta</th><th>%</th><th>Comentario</th>
+            <th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="16" class="pp-empty">Sin lotes. Genera la propuesta del dia.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<script src="{{ url_for('static', filename='js/plan_proyectado.js') }}?v=20260714b"></script>

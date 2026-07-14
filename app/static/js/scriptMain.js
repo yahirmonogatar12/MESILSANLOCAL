@@ -919,6 +919,34 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   };
 
+  // Función AJAX: Plan Proyectado / lotes (WF_002, 2026-07-14)
+  window.mostrarPlanProyectado = function () {
+    if (typeof window.prepararPanelSeccion !== "function") {
+      console.error("prepararPanelSeccion no disponible");
+      return;
+    }
+    window.prepararPanelSeccion("produccion");
+
+    const containerId = "plan-proyectado-unique-container";
+    const cont = document.getElementById(containerId);
+    if (cont) cont.style.display = "block";
+
+    window.cargarContenidoDinamico(containerId, "/plan-proyectado-ajax", () => {
+      function tryInitialize() {
+        if (
+          typeof window.initializePlanProyectadoEventListeners === "function" &&
+          typeof window.loadPlanProyectadoData === "function"
+        ) {
+          window.initializePlanProyectadoEventListeners();
+          window.loadPlanProyectadoData();
+        } else {
+          setTimeout(tryInitialize, 100);
+        }
+      }
+      tryInitialize();
+    });
+  };
+
   // Función AJAX: Part Planning LG (WF_002, 2026-07-12)
   window.mostrarPartPlanning = function () {
     if (typeof window.prepararPanelSeccion !== "function") {
@@ -2257,6 +2285,7 @@ window.mostrarLineMaterialStatus = function () {
       "control-embarque-unique-container",
       "part-planning-unique-container",
       "proyeccion-unique-container",
+      "plan-proyectado-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {
@@ -2433,6 +2462,7 @@ window.mostrarEstandaresSoldadura = function () {
       "control-embarque-unique-container",
       "part-planning-unique-container",
       "proyeccion-unique-container",
+      "plan-proyectado-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {
@@ -2526,6 +2556,7 @@ window.mostrarRegistroReciboSoldadura = function () {
       "control-embarque-unique-container",
       "part-planning-unique-container",
       "proyeccion-unique-container",
+      "plan-proyectado-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {
@@ -2619,6 +2650,7 @@ window.mostrarControlSalidaSoldadura = function () {
       "control-embarque-unique-container",
       "part-planning-unique-container",
       "proyeccion-unique-container",
+      "plan-proyectado-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {
@@ -2712,6 +2744,7 @@ window.mostrarHistorialTensionMaskMetal = function () {
       "control-embarque-unique-container",
       "part-planning-unique-container",
       "proyeccion-unique-container",
+      "plan-proyectado-unique-container",
     ];
 
     produccionContainers.forEach((containerId) => {
