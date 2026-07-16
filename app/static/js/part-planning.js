@@ -466,6 +466,18 @@
     ppState.page = 1;
   }
 
+  // Los fragmentos AJAX pueden crear un stacking context debajo del navbar.
+  // Los overlays se portan al body para que position:fixed y z-index sean
+  // relativos a toda la ventana.
+  function ppMoveModalsToBody() {
+    ["pp-import-modal", "pp-history-modal"].forEach((id) => {
+      const matches = Array.from(document.querySelectorAll("#" + id));
+      const modal = matches.pop();
+      matches.forEach((duplicate) => duplicate.remove());
+      if (modal && modal.parentNode !== document.body) document.body.appendChild(modal);
+    });
+  }
+
   // =============================
   // Exports globales + init dual (WF_003)
   // =============================
@@ -479,6 +491,7 @@
 
   function ppBoot() {
     if (!document.getElementById("part-planning-root")) return;
+    ppMoveModalsToBody();
     ppInitListeners();
     ppSetDefaultDates(false);
   }

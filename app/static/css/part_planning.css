@@ -62,6 +62,12 @@
 
 .pp-btn.primary:hover:not(:disabled) { background: #297ea9; }
 .pp-btn.secondary:hover:not(:disabled) { background: #4b4d5c; }
+.pp-btn.danger {
+  background: #7b3030;
+  border-color: #a64747;
+  color: #fff;
+}
+.pp-btn.danger:hover:not(:disabled) { background: #963d3d; }
 
 .pp-btn:disabled {
   opacity: 0.5;
@@ -306,11 +312,13 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  z-index: 10500;
+  z-index: 20000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .pp-modal {
@@ -324,6 +332,82 @@
 }
 
 .pp-modal-wide { width: min(1080px, 100%); }
+
+.pp-modal-plan-proposal {
+  width: min(1500px, 96vw);
+  max-height: 94vh;
+}
+
+.pp-modal-plan-proposal .pp-preview-wrap {
+  max-height: 52vh;
+  border: 1px solid #4b5968;
+  border-radius: 6px;
+}
+
+.pp-modal-plan-proposal .pp-table {
+  min-width: 1420px;
+}
+
+.pp-modal-plan-proposal .pp-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.pp-prop-line-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.pp-prop-line-card {
+  padding: 6px 9px;
+  border: 1px solid #20688c;
+  border-radius: 5px;
+  background: rgba(32, 104, 140, 0.18);
+  color: #dcecf5;
+  font-size: 11px;
+}
+
+.pp-prop-line-card.warn {
+  border-color: #ef6c00;
+  background: rgba(239, 108, 0, 0.18);
+}
+
+.pp-prop-input,
+.pp-prop-select {
+  box-sizing: border-box;
+  min-width: 78px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 1px solid #5c6572;
+  border-radius: 4px;
+  background: #2b2b33;
+  color: #eef2f5;
+  font-size: 11px;
+}
+
+.pp-prop-input[type="date"] { min-width: 128px; }
+.pp-prop-input.pp-prop-line { min-width: 62px; width: 62px; }
+.pp-prop-input.pp-prop-qty { min-width: 88px; width: 88px; text-align: right; }
+.pp-prop-select { min-width: 118px; }
+.pp-prop-input:disabled,
+.pp-prop-select:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+.pp-prop-stale {
+  padding: 8px 10px;
+  border: 1px solid #ef6c00;
+  border-radius: 5px;
+  background: rgba(239, 108, 0, 0.18);
+  color: #ffd9a8;
+}
+.pp-prop-exception { color: #ffcf91; font-size: 10px; white-space: normal; }
+.pp-prop-ok { color: #8bd6a6; font-size: 10px; }
+.pp-prop-row-excluded { opacity: 0.48; }
+.pp-prop-row-modified { box-shadow: inset 3px 0 #f2b84b; }
 
 .pp-modal-header {
   display: flex;

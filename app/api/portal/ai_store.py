@@ -798,6 +798,8 @@ def get_pending_plan_confirmation(
     prepare_to_execute = {
         "plan_importar_preparar": "plan_importar_ejecutar",
         "plan_generar_preparar": "plan_generar_ejecutar",
+        "plan_part_sincronizar_preparar": "plan_part_sincronizar_ejecutar",
+        "plan_propuesta_preparar": "plan_propuesta_aplicar",
     }
     relevant = tuple(prepare_to_execute) + tuple(prepare_to_execute.values())
     placeholders = ",".join(["%s"] * len(relevant))
@@ -837,6 +839,7 @@ def get_pending_plan_confirmation(
             "prepare_tool": tool_name,
             "execute_tool": execute_tool,
             "confirm_token": token,
+            "proposal_id": result.get("proposal_id"),
             "prepared_at": row.get("created_at"),
         }
     return None

@@ -31,8 +31,14 @@ from app.api.control_produccion import part_planning as pp
 
 logger = logging.getLogger(__name__)
 
-# Permiso: solo usuarios con "Plan Proyectado" pueden usar estas tools
+# Permisos separados: consultar/proponer el renglon S pertenece a Proyeccion;
+# crear lotes pertenece a Plan Proyectado.
 PLAN_PERMISO = (pp.PP_PERMISO_PAGINA, pp.PP_PERMISO_SECCION, pp.PPY_PERMISO_BOTON)
+PROJECTION_PERMISO = (
+    pp.PP_PERMISO_PAGINA,
+    pp.PP_PERMISO_SECCION,
+    pp.PROY_PERMISO_BOTON,
+)
 _TOKEN_TTL = 900  # 15 min: la confirmacion caduca
 
 TOOL_NAMES = frozenset({
@@ -41,6 +47,10 @@ TOOL_NAMES = frozenset({
     "plan_importar_ejecutar",
     "plan_generar_preparar",
     "plan_generar_ejecutar",
+    "plan_part_sincronizar_preparar",
+    "plan_part_sincronizar_ejecutar",
+    "plan_propuesta_preparar",
+    "plan_propuesta_aplicar",
 })
 
 
@@ -93,8 +103,7 @@ def _importar_plan_e_inventario(file_bytes: bytes, filename: str, usuario: str) 
     inv, err2 = pp._parse_part10_workbook(file_bytes, filename)
     inv_ok = err2 is None
 
-    hoy = date.today()
-    ref_lunes = hoy - timedelta(days=hoy.weekday())
+    ref_lunes = pp._pp_ref_lunes(filename)
     file_hash = hashlib.sha256(file_bytes).hexdigest()
 
     conn = get_pooled_connection()
@@ -184,12 +193,16 @@ def _importar_plan_e_inventario(file_bytes: bytes, filename: str, usuario: str) 
 
 def _faltantes(fecha: date) -> dict[str, Any]:
     """Resumen de faltantes accionables (hoy en adelante) a la fecha."""
-    proy = pp._ppy_proyeccion_rango(fecha, fecha + timedelta(days=pp.PPY_HORIZONTE_DIAS))
+    # El anticipo se cuenta en dias de produccion y D1 llega mas lejos que main.
+    proy = pp._ppy_proyeccion_rango(
+        fecha, pp._ppy_sumar_dias_produccion(fecha, pp.PPY_ANTICIPACION_MAX)
+    )
     hoy = date.today()
+    excluidas = pp._ppy_partes_excluidas()
     partes = []
     for p, d in proy.items():
-        if not d["proj"]:
-            continue
+        if not d["proj"] or p.upper() in excluidas:
+            continue  # las que no producimos aqui no son faltante nuestro
         futuros = {f: v for f, v in d["proj"].items() if f >= hoy}
         if not futuros:
             continue
@@ -210,94 +223,155 @@ def _faltantes(fecha: date) -> dict[str, Any]:
 # Definiciones de tools (schema OpenAI)
 # ============================================================
 
-def _has(username: str) -> bool:
+def _has_plan(username: str) -> bool:
     from app.api.shared.permisos import puede_boton
     return bool(username and puede_boton(username, *PLAN_PERMISO))
 
 
+def _has_projection(username: str) -> bool:
+    from app.api.shared.permisos import puede_boton
+    return bool(username and puede_boton(username, *PROJECTION_PERMISO))
+
+
+def _has(username: str) -> bool:
+    """Compatibilidad: el asistente muestra funciones de plan con cualquiera de ambos permisos."""
+    return _has_plan(username) or _has_projection(username)
+
+
 def tool_schemas(username: str) -> list[dict[str, Any]]:
-    """Schemas de las tools del plan; vacio si el usuario no tiene permiso."""
-    if not _has(username):
-        return []
-    return [
-        {
-            "type": "function",
-            "name": "plan_estado_faltantes",
-            "description": (
-                "SOLO LECTURA. Dice que falta para cubrir el plan LG a una fecha: "
-                "cuantas partes en faltante, cuantas piezas y el top de las mas urgentes. "
-                "Usalo para responder 'que falta', 'como vamos'."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "fecha": {"type": "string", "description": "Fecha AAAA-MM-DD; por defecto hoy"},
+    """Tools visibles al modelo; las de ejecutar quedan solo del lado servidor."""
+    tools: list[dict[str, Any]] = []
+    if _has_plan(username):
+        tools.extend(
+            [
+                {
+                    "type": "function",
+                    "name": "plan_estado_faltantes",
+                    "description": (
+                        "SOLO LECTURA. Resume faltantes para cubrir el plan LG a una fecha."
+                    ),
+                    "strict": True,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "fecha": {
+                                "type": ["string", "null"],
+                                "description": "Fecha AAAA-MM-DD; null significa hoy",
+                            },
+                        },
+                        "required": ["fecha"],
+                        "additionalProperties": False,
+                    },
                 },
-            },
-        },
-        {
-            "type": "function",
-            "name": "plan_importar_preparar",
-            "description": (
-                "Paso 1 de importar el Excel del plan LG. Analiza el ultimo archivo que "
-                "el usuario subio al chat y devuelve un resumen y un confirm_token. NO "
-                "escribe nada. Presenta el resumen al usuario y pide confirmar antes de "
-                "llamar plan_importar_ejecutar. No necesitas file_ref: se toma el ultimo "
-                "adjunto automaticamente."
-            ),
-            "parameters": {"type": "object", "properties": {}},
-        },
-        {
-            "type": "function",
-            "name": "plan_importar_ejecutar",
-            "description": (
-                "Paso 2: importa el plan LG y su inventario a la BD. Solo llamalo tras "
-                "que el usuario confirme, con el confirm_token de plan_importar_preparar."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "confirm_token": {"type": "string"},
+                {
+                    "type": "function",
+                    "name": "plan_importar_preparar",
+                    "description": (
+                        "Analiza el ultimo Excel de plan adjunto y prepara su importacion. "
+                        "No modifica el MES; muestra el resumen y pide confirmacion posterior."
+                    ),
+                    "strict": True,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                        "additionalProperties": False,
+                    },
                 },
-                "required": ["confirm_token"],
-            },
-        },
-        {
-            "type": "function",
-            "name": "plan_generar_preparar",
-            "description": (
-                "Paso 1 de generar los lotes del dia. modo='faltantes' (calcula "
-                "faltante+10% a caja cerrada) o modo='schedule' (un lote por cada "
-                "Schedule del dia con su cantidad exacta). Devuelve cuantos lotes se "
-                "crearian y un confirm_token. NO escribe. Pide confirmar."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "fecha": {"type": "string"},
-                    "modo": {"type": "string", "enum": ["faltantes", "schedule"]},
+                {
+                    "type": "function",
+                    "name": "plan_generar_preparar",
+                    "description": (
+                        "Prepara la creacion de lotes del dia desde faltantes o schedule. "
+                        "No escribe; muestra el resumen y pide confirmacion posterior."
+                    ),
+                    "strict": True,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "fecha": {"type": ["string", "null"]},
+                            "modo": {"type": "string", "enum": ["faltantes", "schedule"]},
+                        },
+                        "required": ["fecha", "modo"],
+                        "additionalProperties": False,
+                    },
                 },
-                "required": ["modo"],
-            },
-        },
-        {
-            "type": "function",
-            "name": "plan_generar_ejecutar",
-            "description": (
-                "Paso 2: crea los lotes PENDIENTES (sin linea) y los acomoda en las "
-                "lineas activas con IA respetando las 9 h. Solo tras confirmacion, con "
-                "el confirm_token de plan_generar_preparar."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "confirm_token": {"type": "string"},
-                    "acomodar": {"type": "boolean", "description": "Acomodar con IA tras generar (default true)"},
+            ]
+        )
+    if _has_projection(username):
+        tools.append(
+            {
+                "type": "function",
+                "name": "plan_part_sincronizar_preparar",
+                "description": (
+                    "Analiza el ultimo Excel adjunto y prepara la sincronizacion del "
+                    "renglon S de su hoja Part N usando exactamente la operacion del "
+                    "boton Sincronizar Part. Reemplaza schedule por parte y rango; no "
+                    "modifica inventario ni plan LG. Requiere confirmacion posterior."
+                ),
+                "strict": True,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "alcance": {
+                            "type": "string",
+                            "enum": ["main", "todos"],
+                            "description": (
+                                "main sincroniza solo M1-M4; todos reproduce el "
+                                "alcance completo del boton"
+                            ),
+                        },
+                    },
+                    "required": ["alcance"],
+                    "additionalProperties": False,
                 },
-                "required": ["confirm_token"],
-            },
-        },
-    ]
+            }
+        )
+        tools.append(
+            {
+                "type": "function",
+                "name": "plan_propuesta_preparar",
+                "description": (
+                    "Genera una propuesta deterministica y revisable de schedule usando plan LG, "
+                    "inventario, RAW (CT/UPH/empaque), lineas permitidas y capacidad. No modifica "
+                    "schedule ni lotes. Usala cuando pidan 'haz una propuesta del plan'."
+                ),
+                "strict": True,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "fecha_inicio": {
+                            "type": ["string", "null"],
+                            "description": "AAAA-MM-DD; null significa hoy",
+                        },
+                        "fecha_fin": {
+                            "type": ["string", "null"],
+                            "description": "AAAA-MM-DD; null significa seis dias despues",
+                        },
+                        "objetivo": {
+                            "type": ["string", "null"],
+                            "description": (
+                                "Nota de prioridad/restriccion para registrar y mostrar al planeador; "
+                                "la V1 no altera reglas duras con texto libre"
+                            ),
+                        },
+                        "proceso_actual": {
+                            "type": ["string", "null"],
+                            "description": (
+                                "Obligatorio cuando el rango incluye hoy: indica en que "
+                                "proceso/lote van las lineas antes de replanear. Para fechas "
+                                "futuras debe ser null."
+                            ),
+                        },
+                    },
+                    "required": [
+                        "fecha_inicio", "fecha_fin", "objetivo", "proceso_actual"
+                    ],
+                    "additionalProperties": False,
+                },
+            }
+        )
+    return tools
 
 
 # ============================================================
@@ -307,11 +381,159 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
 def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup) -> dict[str, Any]:
     """Ejecuta una tool del plan. `file_lookup(file_ref)` devuelve (bytes, filename)
     o (None, None). Retorna dict serializable para el LLM."""
-    if not _has(username):
+    projection_tools = {
+        "plan_part_sincronizar_preparar",
+        "plan_part_sincronizar_ejecutar",
+        "plan_propuesta_preparar",
+        "plan_propuesta_aplicar",
+    }
+    if name in projection_tools:
+        if not _has_projection(username):
+            raise PermissionError("No tienes permiso de Proyeccion para esta accion")
+    elif not _has_plan(username):
         raise PermissionError("No tienes permiso para las acciones del Plan de produccion")
 
     if name == "plan_estado_faltantes":
         return _faltantes(_parse_fecha(arguments.get("fecha")))
+
+    if name == "plan_part_sincronizar_preparar":
+        file_bytes, filename = file_lookup(arguments.get("file_ref"))
+        if not file_bytes:
+            raise ValueError(
+                "No encuentro un Excel subido. Pide al usuario que adjunte el "
+                "archivo que contiene la hoja Part N."
+            )
+        resumen = pp._pp_sincronizar_schedule_excel(
+            file_bytes,
+            filename or "plan.xlsm",
+            username,
+            aplicar=False,
+            alcance=arguments.get("alcance") or "todos",
+        )
+        token = _make_token(
+            "sincronizar_part_schedule",
+            {
+                "sha": hashlib.sha256(file_bytes).hexdigest(),
+                "alcance": arguments.get("alcance") or "todos",
+            },
+        )
+        return {
+            "resumen": resumen,
+            "confirm_token": token,
+            "instruccion": (
+                "Explica que solo se sincronizara el renglon S de Part N, muestra "
+                "hoja, alcance, partes, schedules, exclusiones por alcance y rango, "
+                "aclara que plan LG e inventario no cambian, y pide confirmacion en "
+                "un mensaje posterior."
+            ),
+        }
+
+    if name == "plan_part_sincronizar_ejecutar":
+        payload = _read_token(
+            arguments.get("confirm_token"), "sincronizar_part_schedule"
+        )
+        file_bytes, filename = file_lookup(None)
+        if not file_bytes:
+            raise ValueError("El archivo ya no esta disponible; vuelve a adjuntarlo.")
+        if payload.get("sha") != hashlib.sha256(file_bytes).hexdigest():
+            raise ValueError(
+                "El archivo cambio desde la vista previa; vuelve a preparar la sincronizacion."
+            )
+        return pp._pp_sincronizar_schedule_excel(
+            file_bytes,
+            filename or "plan.xlsm",
+            username,
+            aplicar=True,
+            alcance=payload.get("alcance") or "todos",
+        )
+
+    if name == "plan_propuesta_preparar":
+        hoy = date.today()
+        fecha_inicio = _parse_fecha(arguments.get("fecha_inicio"))
+        fecha_fin = pp._ppy_parse_fecha(arguments.get("fecha_fin")) or (
+            fecha_inicio + timedelta(days=6)
+        )
+        if fecha_fin < fecha_inicio:
+            fecha_inicio, fecha_fin = fecha_fin, fecha_inicio
+        fecha_inicio = max(fecha_inicio, hoy)
+        if fecha_fin < fecha_inicio:
+            raise ValueError("El rango solicitado ya paso")
+        if (fecha_fin - fecha_inicio).days > pp.PP_MAX_RANGO_DIAS:
+            raise ValueError(f"Rango maximo {pp.PP_MAX_RANGO_DIAS} dias")
+        proceso_actual = str(arguments.get("proceso_actual") or "").strip()
+        if fecha_inicio <= hoy <= fecha_fin and not proceso_actual:
+            raise ValueError(
+                "Antes de replanear hoy, pregunta en que proceso o lote van "
+                "las lineas y envia la respuesta en proceso_actual."
+            )
+        objetivo = str(arguments.get("objetivo") or "").strip()
+        if proceso_actual:
+            contexto = "Proceso actual reportado por Planning: " + proceso_actual
+            objetivo = (objetivo + "\n" + contexto).strip()
+        propuesta = pp._ppy_crear_propuesta(
+            fecha_inicio,
+            fecha_fin,
+            username,
+            source="AI",
+            objective=objetivo or None,
+        )
+        pp._ppy_mark_proposal_pending(propuesta["proposal_id"], username)
+        token = _make_token(
+            "aplicar_propuesta",
+            {
+                "proposal_id": propuesta["proposal_id"],
+                "version": propuesta["version"],
+                "username": username,
+            },
+        )
+        muestra = [
+            {
+                "fecha": item["fecha"],
+                "linea": item["linea"],
+                "turno": item["turno"],
+                "numero_parte": item["numero_parte"],
+                "cantidad": item["cantidad"],
+                "ct": item["ct"],
+                "uph": item["uph"],
+                "horas_requeridas": item["horas_requeridas"],
+                "inventario_antes": item["inventario_antes"],
+                "inventario_despues": item["inventario_despues"],
+                "fecha_shortage": item["fecha_shortage"],
+                "excepciones": item["excepciones"],
+            }
+            for item in propuesta["proposals"][:12]
+        ]
+        return {
+            "proposal_id": propuesta["proposal_id"],
+            "version": propuesta["version"],
+            "engine_version": propuesta["engine_version"],
+            "date_from": propuesta["date_from"],
+            "date_to": propuesta["date_to"],
+            "items": len(propuesta["proposals"]),
+            "partes": propuesta["partes"],
+            "total_qty": propuesta["total_qty"],
+            "line_summary": propuesta["line_summary"],
+            "omitted_count": propuesta["omitidas_count"],
+            "exceptions": propuesta["exceptions"][:20],
+            "sample": muestra,
+            "proceso_actual": proceso_actual or None,
+            "confirm_token": token,
+            "instruccion": (
+                "Explica que es una propuesta calculada por el motor, resume capacidad y "
+                "excepciones, y pide confirmacion en un mensaje posterior para aplicarla."
+            ),
+        }
+
+    if name == "plan_propuesta_aplicar":
+        payload = _read_token(arguments.get("confirm_token"), "aplicar_propuesta")
+        if payload.get("username") != username:
+            raise PermissionError("La confirmacion pertenece a otro usuario")
+        return pp._ppy_aplicar_propuesta(
+            str(payload.get("proposal_id") or ""),
+            username,
+            version=payload.get("version") or 1,
+            items=None,
+        )
 
     if name == "plan_importar_preparar":
         file_bytes, filename = file_lookup(arguments.get("file_ref"))
@@ -332,8 +554,35 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         }
         # El token liga el hash del archivo: confirmar importa exactamente lo previsualizado
         token = _make_token("importar", {"sha": hashlib.sha256(file_bytes).hexdigest()})
+        instruccion = "Muestra el resumen y pide al usuario confirmar la importacion."
+        # Importar un archivo mas viejo que el ultimo revierte en silencio lo
+        # que el mas nuevo actualizo (el upsert por parte+fecha gana el ultimo).
+        viejo = pp._pp_import_mas_reciente(
+            pp._pp_fecha_archivo(filename), plan["date_from"], plan["date_to"])
+        if viejo:
+            resumen["aviso_retroceso"] = (
+                f"Este archivo es del {pp._pp_fecha_archivo(filename)} pero ya se "
+                f"importo uno mas nuevo ({viejo['archivo']}, del "
+                f"{viejo['fecha_archivo']}). Confirmar REVIERTE el plan de las "
+                f"fechas que se solapan a la version vieja."
+            )
+            instruccion += (" ADVIERTE del retroceso: ya se importo un archivo mas "
+                            "nuevo y confirmar pisaria ese plan con datos viejos. "
+                            "Pide confirmacion explicita.")
+        if err2 is not None:
+            # El Cal diario solo trae el plan de LG; el inventario vive en la
+            # hoja Part N del xlsm semanal. Importar el Cal actualiza la demanda
+            # y deja el inventario como este, que es lo correcto: la foto es del
+            # lunes. Hay que decirlo para que nadie asuma que se actualizo.
+            resumen["nota_inventario"] = (
+                "Este archivo no trae hoja de inventario (Part N): solo se "
+                "actualiza el plan de LG. El inventario sigue siendo el de la "
+                "ultima importacion del xlsm semanal."
+            )
+            instruccion += (" Avisa que el inventario NO se actualiza con este "
+                            "archivo y que se usara el ya cargado.")
         return {"resumen": resumen, "confirm_token": token,
-                "instruccion": "Muestra el resumen y pide al usuario confirmar la importacion."}
+                "instruccion": instruccion}
 
     if name == "plan_importar_ejecutar":
         payload = _read_token(arguments.get("confirm_token"), "importar")
@@ -383,10 +632,28 @@ def _generar_y_acomodar(fecha: date, modo: str, acomodar: bool, username: str) -
 
     Reutiliza los endpoints internos via test_request_context para no duplicar
     la logica transaccional ni la de acomodo IA (ya probada)."""
-    from flask import current_app
+    if modo == "faltantes":
+        # /generate hace el ciclo completo: elige linea (manda assy_line),
+        # reparte las lineas en los bloques de 9 h y recorta lo que no cabe.
+        # NO usar /generate-faltantes: crea los lotes sin linea y delega en el
+        # acomodo, que ignora assy_line (mandaba todo a D1, la primera
+        # alfabetica) y no recorta cantidades (dejaba D1 en 11.4 h).
+        res = _call_endpoint("/api/plan-proyectado/generate",
+                             {"fecha": fecha.isoformat()}, username)
+        return {
+            "generados": res.get("generados", 0),
+            "modo": modo,
+            "fecha": fecha.isoformat(),
+            "no_incluidos": res.get("no_incluidos") or [],
+            "lineas": [
+                {"linea": l["linea"], "horas": l["horas"], "excede": l["excede"]}
+                for l in (res.get("lineas") or [])
+            ],
+        }
 
-    ruta = ("/api/plan-proyectado/generate-faltantes" if modo == "faltantes"
-            else "/api/plan-proyectado/generate-schedule")
+    # modo schedule: el renglon S ya trae la cantidad exacta, pero los
+    # registros legacy pueden venir sin linea; ahi si aplica el acomodo.
+    ruta = "/api/plan-proyectado/generate-schedule"
     res_gen = _call_endpoint(ruta, {"fecha": fecha.isoformat()}, username)
     salida = {"generados": res_gen.get("generados", 0), "modo": modo,
               "fecha": fecha.isoformat()}

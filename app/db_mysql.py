@@ -71,6 +71,12 @@ def init_db():
         logger.info(" Migrando tabla bom...")
         migrar_tabla_bom()
 
+        # La hoja RAW del plan contiene una segunda columna "Linea" que
+        # corresponde a la linea de ensamble. Se conserva `linea` por
+        # compatibilidad y se expone de forma explicita como `assy_line`.
+        logger.info(" Migrando tabla raw (agregar columna assy_line)...")
+        migrar_tabla_raw()
+
         # Crear tablas/vista para ECOs de cambios de ingenieria.
         logger.info(" Inicializando tablas de ECOs...")
         from .api.informacion_basica.control_bom_data import crear_tablas_ecos
@@ -618,6 +624,38 @@ def migrar_tabla_bom():
         
     except Exception as e:
         logger.error(f" Error en migración de tabla bom: {e}")
+        return False
+
+
+def migrar_tabla_raw():
+    """Asegura la columna RAW que identifica la linea de ensamble.
+
+    La migracion es idempotente y no modifica los valores actuales de
+    ``raw.linea``; la carga desde el archivo del plan se realiza por el
+    proceso de sincronizacion/importacion.
+    """
+    try:
+        existe = execute_query(
+            """
+            SELECT 1 AS existe
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'raw'
+              AND COLUMN_NAME = 'assy_line'
+            LIMIT 1
+            """,
+            fetch="one",
+        )
+        if not existe:
+            execute_query(
+                "ALTER TABLE raw ADD COLUMN assy_line VARCHAR(64) NULL AFTER linea"
+            )
+            logger.info(" Columna assy_line agregada a tabla raw")
+        else:
+            logger.info(" Columna assy_line ya existe en tabla raw")
+        return True
+    except Exception as e:
+        logger.error(f" Error en migración de tabla raw: {e}")
         return False
 
 def verificar_estructura_materiales():

@@ -9,13 +9,15 @@ import os
 import re
 import uuid
 from collections import Counter, defaultdict
-from datetime import datetime
+from copy import copy
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.chart import BarChart, LineChart, Reference
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from werkzeug.utils import secure_filename
 
@@ -333,6 +335,508 @@ def _add_grouped_analysis_excel_summary(
         ws.add_chart(part_chart, f"F{part_start}")
 
 
+_PLAN_WEEKDAYS_ES = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
+_PLAN_MONTHS_ES = (
+    "ene", "feb", "mar", "abr", "may", "jun",
+    "jul", "ago", "sep", "oct", "nov", "dic",
+)
+
+
+def _plan_date(value: Any) -> date | None:
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    text = str(value or "").strip()[:10]
+    try:
+        return datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _plan_date_label(value: date, *, weekday: bool = True) -> str:
+    label = value.strftime("%d/%m")
+    return f"{label} {_PLAN_WEEKDAYS_ES[value.weekday()]}" if weekday else label
+
+
+def _plan_template_path() -> Path:
+    configured = str(os.getenv("AI_PLAN_PROPOSAL_TEMPLATE") or "").strip()
+    if configured:
+        return Path(configured).expanduser().resolve()
+    return Path(__file__).resolve().parents[3] / "Plan_260716_FINAL.xlsx"
+
+
+def _plan_block_assignments(rows: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
+    """Reconstruye bloques visuales de 9 h cuando el borrador no los persistió."""
+    assignments: dict[tuple[str, str], str] = {}
+    by_date: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    for row in rows:
+        by_date[str(row.get("fecha") or "")][str(row.get("linea") or "")] += float(
+            row.get("horas") or 0
+        )
+
+    def compatible(line: str, existing: list[str]) -> bool:
+        line = line.upper()
+        other = [item.upper() for item in existing]
+        return not (
+            (line == "D3" and any(item.startswith("M") for item in other))
+            or (line.startswith("M") and "D3" in other)
+        )
+
+    for sched_date, line_hours in sorted(by_date.items()):
+        blocks: list[dict[str, Any]] = []
+        for line, hours in sorted(line_hours.items(), key=lambda item: (-item[1], item[0])):
+            candidates = [
+                block for block in blocks
+                if block["hours"] + hours <= 9.01 and compatible(line, block["lines"])
+            ]
+            if candidates:
+                block = min(candidates, key=lambda item: (item["hours"], item["name"]))
+            else:
+                block = {
+                    "name": f"B{len(blocks) + 1}",
+                    "hours": 0.0,
+                    "lines": [],
+                }
+                blocks.append(block)
+            block["hours"] += hours
+            block["lines"].append(line)
+            assignments[(sched_date, line)] = block["name"]
+    return assignments
+
+
+def _build_plan_proposal_excel(
+    result: dict[str, Any],
+    title: str,
+    language: str,
+    target: Path,
+) -> bool:
+    """Genera la propuesta con la misma plantilla visual usada por Planning."""
+    template = _plan_template_path()
+    if not template.exists():
+        logger.warning("Plantilla de propuesta no encontrada: %s", template)
+        return False
+
+    wb = load_workbook(template)
+    required = {"Resumen", "Horizonte", "Logica", "No planeadas", "Part"}
+    plan_sheet_name = next(
+        (name for name in wb.sheetnames if name.startswith("Plan ")),
+        None,
+    )
+    if not required.issubset(set(wb.sheetnames)) or not plan_sheet_name:
+        logger.warning("La plantilla de propuesta no contiene las seis hojas esperadas")
+        return False
+
+    plan_template = wb[plan_sheet_name]
+
+    def find_row(ws, column: int, predicate, fallback: int) -> int:
+        for row_no in range(1, ws.max_row + 1):
+            if predicate(ws.cell(row_no, column).value):
+                return row_no
+        return fallback
+
+    subtotal_row = find_row(
+        plan_template,
+        2,
+        lambda value: str(value or "").startswith("Total B"),
+        5,
+    )
+    total_row = find_row(
+        plan_template,
+        2,
+        lambda value: str(value or "").strip().upper() == "TOTAL",
+        21,
+    )
+    footnote_row = find_row(
+        plan_template,
+        1,
+        lambda value: str(value or "").startswith("Inv. antes"),
+        23,
+    )
+    alert_row = find_row(
+        wb["No planeadas"],
+        2,
+        lambda value: str(value or "").startswith("Las partes omitidas"),
+        11,
+    )
+    part_total_row = find_row(
+        wb["Part"],
+        1,
+        lambda value: str(value or "").strip().upper() == "TOTAL PZS",
+        42,
+    )
+    weekend_column = next(
+        (
+            cell.column
+            for cell in wb["Part"][3]
+            if "sáb" in str(cell.value or "").lower()
+            or "dom" in str(cell.value or "").lower()
+        ),
+        5,
+    )
+    green_style = copy(wb["Horizonte"]["C5"]._style)
+    # La plantilla validada conserva el estilo amarillo aunque una propuesta
+    # concreta no tenga lineas sobre capacidad. En ese caso permanece sin uso.
+    yellow_style = (
+        copy(wb._cell_styles[24])
+        if len(wb._cell_styles) > 24
+        else copy(green_style)
+    )
+    refs = {
+        "title": copy(wb["Resumen"]["A1"]._style),
+        "section": copy(wb["Resumen"]["B3"]._style),
+        "note": copy(wb["Resumen"]["B4"]._style),
+        "header": copy(plan_template["A3"]._style),
+        "body": copy(plan_template["B4"]._style),
+        "body_bold": copy(plan_template["A4"]._style),
+        "negative": copy(plan_template["G4"]._style),
+        "subtotal": copy(plan_template.cell(subtotal_row, 2)._style),
+        "subtotal_green": copy(plan_template.cell(subtotal_row, 6)._style),
+        "subtotal_note": copy(plan_template.cell(subtotal_row, 7)._style),
+        "total": copy(plan_template.cell(total_row, 2)._style),
+        "total_note": copy(plan_template.cell(total_row, 7)._style),
+        "footnote": copy(plan_template.cell(footnote_row, 1)._style),
+        "green_body": green_style,
+        "green_note": copy(wb["Horizonte"]["F5"]._style),
+        "yellow_body": yellow_style,
+        "step": copy(wb["Logica"]["B3"]._style),
+        "alert": copy(wb["No planeadas"].cell(alert_row, 2)._style),
+        "weekend_header": copy(wb["Part"].cell(3, weekend_column)._style),
+        "weekend_body": copy(wb["Part"].cell(4, weekend_column)._style),
+        "part_total_label": copy(wb["Part"].cell(part_total_row, 1)._style),
+        "part_total": copy(wb["Part"].cell(part_total_row, 3)._style),
+    }
+    for sheet in list(wb.worksheets):
+        wb.remove(sheet)
+
+    def style(cell, key: str):
+        cell._style = copy(refs[key])
+        return cell
+
+    def setup(ws, *, landscape: bool = False):
+        ws.sheet_view.showGridLines = False
+        ws.freeze_panes = "A2"
+        ws.page_setup.orientation = "landscape" if landscape else "portrait"
+        ws.page_setup.fitToWidth = 1
+        ws.page_setup.fitToHeight = 0
+        ws.sheet_properties.pageSetUpPr.fitToPage = True
+        ws.page_margins.left = 0.35
+        ws.page_margins.right = 0.35
+        ws.page_margins.top = 0.5
+        ws.page_margins.bottom = 0.5
+
+    rows = list(result.get("rows") or [])
+    summary = dict(result.get("summary") or {})
+    proposal_id = str(summary.get("proposal_id") or "")
+    date_from = _plan_date(summary.get("date_from")) or date.today()
+    date_to = _plan_date(summary.get("date_to")) or date_from
+    generated_on = _plan_date(summary.get("created_at")) or date.today()
+    blocks = _plan_block_assignments(rows)
+    block_count = len(set(blocks.values())) or 1
+
+    # Resumen
+    ws = wb.create_sheet("Resumen")
+    setup(ws)
+    widths = {"A": 3, "B": 34, "C": 26, "D": 26, "E": 60, "F": 3}
+    for column, width in widths.items():
+        ws.column_dimensions[column].width = width
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells("A1:F1")
+    style(ws["A1"], "title").value = (
+        f"Plan Proyectado — propuesta de producción ({date_from.strftime('%d/%m/%Y')})"
+    )
+    style(ws["B3"], "section").value = "Qué es esto"
+    ws.merge_cells("B4:E5")
+    style(ws["B4"], "note").value = (
+        f"Propuesta calculada por el motor {summary.get('engine_version') or 'MES'} "
+        f"para {date_from.strftime('%d/%m/%Y')}"
+        + (f" a {date_to.strftime('%d/%m/%Y')}" if date_to != date_from else "")
+        + ". El Excel conserva la distribución por bloques, líneas, partes, "
+        "cantidades, UPH, horas e inventario. Exportarlo no aplica el schedule."
+    )
+    style(ws["B7"], "section").value = "Resumen general"
+    for column, value in enumerate(("Indicador", "Valor", "Indicador", "Valor"), 2):
+        style(ws.cell(8, column), "header").value = value
+    summary_rows = [
+        ("Propuesta ID", proposal_id, "Estado", summary.get("status")),
+        ("Fecha del plan", date_from.isoformat(), "Motor", summary.get("engine_version")),
+        ("Partes / lotes", summary.get("total_items", len(rows)), "Cantidad total", summary.get("total_qty", 0)),
+        ("Horas totales", summary.get("total_hours", 0), "Bloques de 9 h", block_count),
+        ("Partes omitidas", summary.get("omitted_count", 0), "Objetivo", summary.get("objective") or "Plan de producción"),
+    ]
+    for row_no, values in enumerate(summary_rows, 9):
+        for column, value in enumerate(values, 2):
+            style(ws.cell(row_no, column), "body_bold" if column in (2, 4) else "body").value = _safe_cell(value)
+    style(ws["B16"], "section").value = "Carga por línea"
+    for column, value in enumerate(("Línea", "Lotes", "Cantidad", "Horas"), 2):
+        style(ws.cell(17, column), "header").value = value
+    for row_no, item in enumerate(summary.get("by_line") or [], 18):
+        values = (item.get("linea"), item.get("lotes"), item.get("cantidad"), item.get("horas"))
+        for column, value in enumerate(values, 2):
+            style(ws.cell(row_no, column), "green_body" if float(item.get("horas") or 0) <= 9 else "yellow_body").value = value
+        ws.cell(row_no, 4).number_format = "#,##0"
+        ws.cell(row_no, 5).number_format = "0.00"
+    note_row = 19 + len(summary.get("by_line") or [])
+    ws.merge_cells(start_row=note_row, start_column=2, end_row=note_row + 1, end_column=5)
+    style(ws.cell(note_row, 2), "note").value = (
+        f"Se omitieron {int(summary.get('omitted_count') or 0)} partes. "
+        "Consulta la hoja 'No planeadas'. La propuesta permanece pendiente hasta "
+        "que se confirme expresamente su aplicación al MES."
+    )
+    ws.print_area = f"A1:F{note_row + 1}"
+
+    # Plan por bloques
+    plan_name = f"Plan {date_from.day:02d}-{_PLAN_MONTHS_ES[date_from.month - 1]}"
+    ws = wb.create_sheet(plan_name[:31])
+    setup(ws, landscape=True)
+    for column, width in {
+        "A": 7, "B": 7, "C": 16, "D": 10, "E": 8,
+        "F": 9, "G": 12, "H": 12, "I": 12,
+    }.items():
+        ws.column_dimensions[column].width = width
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells("A1:I1")
+    style(ws["A1"], "title").value = (
+        f"Plan propuesto — {date_from.strftime('%d/%m/%Y')} "
+        f"({block_count} bloques de 9 h; propuesta {proposal_id[:8]})"
+    )
+    headers = ("Bloque", "Línea", "Parte", "Cantidad", "UPH", "Horas", "Inv. antes", "Inv. después", "Falta el")
+    for column, value in enumerate(headers, 1):
+        style(ws.cell(3, column), "header").value = value
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for item in rows:
+        key = (str(item.get("fecha") or ""), blocks.get((str(item.get("fecha") or ""), str(item.get("linea") or "")), "B1"))
+        grouped[key].append(item)
+    current = 4
+    subtotal_rows = []
+    for (_sched_date, block), items in sorted(grouped.items()):
+        start = current
+        lines = sorted({str(item.get("linea") or "") for item in items})
+        for item in items:
+            values = (
+                block, item.get("linea"), item.get("numero_parte"), item.get("cantidad"),
+                item.get("uph"), item.get("horas"), item.get("inventario_antes"),
+                item.get("inventario_despues"), item.get("fecha_faltante"),
+            )
+            for column, value in enumerate(values, 1):
+                key = "negative" if column == 7 and float(value or 0) < 0 else ("body_bold" if column == 1 else "body")
+                style(ws.cell(current, column), key).value = _safe_cell(value)
+            ws.cell(current, 4).number_format = "#,##0"
+            ws.cell(current, 5).number_format = "#,##0"
+            ws.cell(current, 6).number_format = "0.00"
+            current += 1
+        subtotal = current
+        subtotal_rows.append(subtotal)
+        style(ws.cell(subtotal, 2), "subtotal").value = f"Total {block} ({'+'.join(lines)})"
+        style(ws.cell(subtotal, 4), "subtotal").value = f"=SUM(D{start}:D{subtotal - 1})"
+        style(ws.cell(subtotal, 6), "subtotal_green").value = f"=SUM(F{start}:F{subtotal - 1})"
+        style(ws.cell(subtotal, 7), "subtotal_note").value = f'=TEXT(F{subtotal}/9,"0%")&" de las 9 h del turno"'
+        ws.cell(subtotal, 4).number_format = "#,##0"
+        ws.cell(subtotal, 6).number_format = "0.00"
+        current += 2
+    total_row = current
+    style(ws.cell(total_row, 2), "total").value = "TOTAL"
+    style(ws.cell(total_row, 4), "total").value = (
+        "=" + "+".join(f"D{row}" for row in subtotal_rows) if subtotal_rows else 0
+    )
+    style(ws.cell(total_row, 6), "total").value = (
+        "=" + "+".join(f"F{row}" for row in subtotal_rows) if subtotal_rows else 0
+    )
+    style(ws.cell(total_row, 7), "total_note").value = f"de {block_count * 9} h ({block_count} bloques x 9 h)"
+    ws.cell(total_row, 4).number_format = "#,##0"
+    ws.cell(total_row, 6).number_format = "0.00"
+    foot_row = total_row + 2
+    ws.merge_cells(start_row=foot_row, start_column=1, end_row=foot_row, end_column=9)
+    style(ws.cell(foot_row, 1), "footnote").value = (
+        "Inv. antes = inventario proyectado el día del faltante. Inv. después = "
+        "inventario más cantidad planeada. Cada línea queda completa en un solo bloque; "
+        "ningún bloque debe superar 9 h."
+    )
+    ws.print_area = f"A1:I{foot_row}"
+
+    # Horizonte / capacidad
+    ws = wb.create_sheet("Horizonte")
+    setup(ws)
+    for column, width in {"A": 3, "B": 14, "C": 12, "D": 12, "E": 14, "F": 46, "G": 3}.items():
+        ws.column_dimensions[column].width = width
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells("A1:G1")
+    style(ws["A1"], "title").value = "Capacidad y horizonte de la propuesta"
+    style(ws["B3"], "section").value = "Carga por línea"
+    for column, value in enumerate(("Línea", "Piezas", "Lotes", "Horas", "Diagnóstico"), 2):
+        style(ws.cell(4, column), "header").value = value
+    for row_no, item in enumerate(summary.get("by_line") or [], 5):
+        hours = float(item.get("horas") or 0)
+        cell_style = "green_body" if hours <= 9 else "yellow_body"
+        values = (
+            item.get("linea"), item.get("cantidad"), item.get("lotes"), hours,
+            "Dentro de capacidad" if hours <= 9 else "Excede las 9 h",
+        )
+        for column, value in enumerate(values, 2):
+            style(ws.cell(row_no, column), cell_style if column < 6 else ("green_note" if hours <= 9 else "yellow_body")).value = value
+        ws.cell(row_no, 3).number_format = "#,##0"
+        ws.cell(row_no, 5).number_format = "0.00"
+    explanation_row = 7 + len(summary.get("by_line") or [])
+    style(ws.cell(explanation_row, 2), "section").value = "Horizonte evaluado"
+    ws.merge_cells(start_row=explanation_row + 1, start_column=2, end_row=explanation_row + 3, end_column=6)
+    shortage_dates = [_plan_date(item.get("fecha_faltante")) for item in rows]
+    shortage_dates = [item for item in shortage_dates if item]
+    shortage_text = (
+        f"Los lotes evitan faltantes entre {min(shortage_dates).isoformat()} y {max(shortage_dates).isoformat()}. "
+        if shortage_dates else ""
+    )
+    style(ws.cell(explanation_row + 1, 2), "note").value = (
+        f"El schedule propuesto cubre {date_from.isoformat()} a {date_to.isoformat()}. "
+        + shortage_text
+        + "La hoja muestra la capacidad usada por línea; los bloques combinan líneas compatibles hasta 9 h."
+    )
+    ws.print_area = f"A1:G{explanation_row + 3}"
+
+    # Lógica
+    ws = wb.create_sheet("Logica")
+    setup(ws)
+    for column, width in {"A": 3, "B": 5, "C": 30, "D": 88, "E": 3}.items():
+        ws.column_dimensions[column].width = width
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells("A1:E1")
+    style(ws["A1"], "title").value = "Cómo se calcula el plan — paso a paso"
+    logic = [
+        ("Inventario inicial (I0)", "Suma LGEMM, ISEMM, SVC, DIF, pendiente, rework, SMT e IMD de la referencia semanal."),
+        ("Proyección diaria", "I(t) = I(t-1) - P(t) + S(t): consumo de LG menos lo ya surtido o programado."),
+        ("Faltante", "Una parte es candidata cuando el inventario proyectado cae debajo de cero dentro de su horizonte."),
+        ("Cantidad", "Se cubre el faltante con margen y caja cerrada; el lote busca conservar el remanente objetivo."),
+        ("Línea", "Se respeta la línea de ensamble registrada. Una parte no se reasigna a una línea incorrecta."),
+        ("Capacidad", "Horas del lote = cantidad / UPH. Las líneas se acomodan en bloques compatibles de hasta 9 h."),
+        ("Orden", "Se priorizan faltantes cercanos y se mantienen juntas las familias para reducir cambios de modelo."),
+        ("Excepciones", "Faltantes de inventario, CT, UPH, pack, línea o capacidad se reportan; no se inventan datos."),
+    ]
+    for index, (label, description) in enumerate(logic, 1):
+        row_no = index + 2
+        ws.row_dimensions[row_no].height = 56
+        style(ws.cell(row_no, 2), "step").value = str(index)
+        style(ws.cell(row_no, 3), "body_bold").value = label
+        style(ws.cell(row_no, 4), "body").value = description
+        ws.cell(row_no, 4).alignment = Alignment(vertical="top", wrap_text=True)
+    ws.print_area = "A1:E10"
+
+    # No planeadas
+    ws = wb.create_sheet("No planeadas")
+    setup(ws)
+    for column, width in {"A": 3, "B": 46, "C": 12, "D": 62}.items():
+        ws.column_dimensions[column].width = width
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells("A1:D1")
+    style(ws["A1"], "title").value = "Partes que NO entraron al plan y por qué"
+    for column, value in enumerate(("Motivo", "Partes", "Qué significa / qué hacer"), 2):
+        style(ws.cell(3, column), "header").value = value
+    exception_counts: Counter[str] = Counter()
+    for item in rows:
+        try:
+            values = json.loads(str(item.get("excepciones_json") or "[]"))
+        except (TypeError, ValueError):
+            values = []
+        exception_counts.update(str(value) for value in values)
+    omitted_rows = [
+        (
+            "Omitidas antes de formar lotes",
+            int(summary.get("omitted_count") or 0),
+            "Revisar inventario base, CT, UPH, pack, línea activa y capacidad disponible.",
+        )
+    ]
+    explanations = {
+        "PARTIAL_CAPACITY": "El lote entró parcialmente por el límite de horas del bloque.",
+        "SHORTAGE_REMAINS": "La cantidad parcial no elimina todo el faltante proyectado.",
+    }
+    omitted_rows.extend(
+        (code, count, explanations.get(code, "Revisar la excepción reportada por el motor."))
+        for code, count in sorted(exception_counts.items())
+    )
+    for row_no, values in enumerate(omitted_rows, 4):
+        for column, value in enumerate(values, 2):
+            style(ws.cell(row_no, column), "body").value = value
+    alert_row = 6 + len(omitted_rows)
+    ws.merge_cells(start_row=alert_row, start_column=2, end_row=alert_row + 2, end_column=4)
+    style(ws.cell(alert_row, 2), "alert").value = (
+        "Las partes omitidas no se agregan de manera automática: el motor conserva la "
+        "excepción para que Planning corrija el dato o autorice capacidad adicional."
+    )
+    ws.print_area = f"A1:D{alert_row + 2}"
+
+    # Part: matriz por parte y fecha
+    ws = wb.create_sheet("Part")
+    setup(ws, landscape=True)
+    ws.column_dimensions["A"].width = 16
+    ws.column_dimensions["B"].width = 7
+    horizon_end = max(date_to, date_from + timedelta(days=9))
+    horizon_dates = [date_from + timedelta(days=offset) for offset in range((horizon_end - date_from).days + 1)][:14]
+    for index in range(len(horizon_dates)):
+        ws.column_dimensions[get_column_letter(index + 3)].width = 10
+    last_column = len(horizon_dates) + 2
+    last_letter = get_column_letter(last_column)
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=last_column)
+    style(ws["A1"], "title").value = "Cómo queda el Part — renglón S (lo que se planea, por fecha)"
+    style(ws["A3"], "header").value = "Parte"
+    style(ws["B3"], "header").value = "Línea"
+    for index, current_date in enumerate(horizon_dates, 3):
+        key = "weekend_header" if current_date.weekday() >= 5 else "header"
+        style(ws.cell(3, index), key).value = _plan_date_label(current_date)
+    parts = sorted({str(item.get("numero_parte") or "") for item in rows})
+    line_by_part = {str(item.get("numero_parte") or ""): item.get("linea") for item in rows}
+    quantities = defaultdict(int)
+    hours = defaultdict(float)
+    for item in rows:
+        part = str(item.get("numero_parte") or "")
+        sched_date = str(item.get("fecha") or "")
+        quantities[(part, sched_date)] += int(item.get("cantidad") or 0)
+        hours[(str(item.get("linea") or ""), sched_date)] += float(item.get("horas") or 0)
+    for row_no, part in enumerate(parts, 4):
+        style(ws.cell(row_no, 1), "body").value = _safe_cell(part)
+        style(ws.cell(row_no, 2), "body_bold").value = line_by_part.get(part)
+        for index, current_date in enumerate(horizon_dates, 3):
+            key = "weekend_body" if current_date.weekday() >= 5 else "green_body"
+            value = quantities.get((part, current_date.isoformat()))
+            style(ws.cell(row_no, index), key).value = value or None
+            ws.cell(row_no, index).number_format = "#,##0"
+    total_row = 4 + len(parts)
+    style(ws.cell(total_row, 1), "part_total_label").value = "TOTAL pzs"
+    for index in range(3, last_column + 1):
+        style(ws.cell(total_row, index), "part_total").value = f"=SUM({get_column_letter(index)}4:{get_column_letter(index)}{total_row - 1})"
+        ws.cell(total_row, index).number_format = "#,##0"
+    capacity_title = total_row + 2
+    style(ws.cell(capacity_title, 1), "section").value = "Horas por línea (límite 9 h)"
+    capacity_header = capacity_title + 1
+    style(ws.cell(capacity_header, 1), "header").value = "Línea"
+    for index, current_date in enumerate(horizon_dates, 3):
+        key = "weekend_header" if current_date.weekday() >= 5 else "header"
+        style(ws.cell(capacity_header, index), key).value = _plan_date_label(current_date)
+    lines = sorted({str(item.get("linea") or "") for item in rows})
+    for row_no, line in enumerate(lines, capacity_header + 1):
+        style(ws.cell(row_no, 1), "part_total_label").value = line
+        for index, current_date in enumerate(horizon_dates, 3):
+            key = "weekend_body" if current_date.weekday() >= 5 else "green_body"
+            value = round(hours.get((line, current_date.isoformat()), 0), 2)
+            style(ws.cell(row_no, index), key).value = value or None
+            ws.cell(row_no, index).number_format = "0.00"
+    note_row = capacity_header + len(lines) + 3
+    ws.merge_cells(start_row=note_row, start_column=1, end_row=note_row, end_column=last_column)
+    style(ws.cell(note_row, 1), "note").value = "Gris = sábado y domingo. Las cantidades aparecen en la fecha propuesta de producción."
+    ws.merge_cells(start_row=note_row + 1, start_column=1, end_row=note_row + 1, end_column=last_column)
+    style(ws.cell(note_row + 1, 1), "note").value = "Ninguna línea debe pasar de 9 h; las excepciones de capacidad se muestran en 'No planeadas'."
+    ws.print_area = f"A1:{last_letter}{note_row + 1}"
+
+    wb.active = 0
+    try:
+        wb.calculation.fullCalcOnLoad = True
+        wb.calculation.forceFullCalc = True
+        wb.calculation.calcMode = "auto"
+    except AttributeError:
+        pass
+    target.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(target)
+    return True
+
+
 def _build_excel(
     result: dict[str, Any],
     title: str,
@@ -349,6 +853,13 @@ def _build_excel(
     is_bom = report == "bom"
     include_summary = (not is_bom) if include_summary is None else bool(include_summary)
     include_charts = (not is_bom) if include_charts is None else bool(include_charts)
+    if report == "plan_proposal":
+        if not _build_plan_proposal_excel(result, title, language, target):
+            raise RuntimeError(
+                "No se pudo cargar la plantilla versionada del plan de produccion; "
+                "se cancelo el archivo para no entregar un formato generico."
+            )
+        return
     if include_charts:
         include_summary = True
     font_name = _preferred_font(language)
@@ -375,7 +886,29 @@ def _build_excel(
         cell.font = Font(name=font_name, bold=True, color="FFFFFF")
         cell.fill = PatternFill("solid", fgColor=navy)
     for key, values in list((summary.get("numeric_summary") or {}).items())[:8]:
-        ws_summary.append([f"{key} - total", values.get("sum")])
+        if report != "plan_proposal":
+            ws_summary.append([f"{key} - total", values.get("sum")])
+    if report == "plan_proposal":
+        plan_summary = result.get("summary") or {}
+        ws_summary.append(["Propuesta", plan_summary.get("proposal_id")])
+        ws_summary.append(["Estado", plan_summary.get("status")])
+        ws_summary.append(["Motor", plan_summary.get("engine_version")])
+        ws_summary.append(["Fecha inicial", plan_summary.get("date_from")])
+        ws_summary.append(["Fecha final", plan_summary.get("date_to")])
+        ws_summary.append(["Cantidad total", plan_summary.get("total_qty", 0)])
+        ws_summary.append(["Horas totales", plan_summary.get("total_hours", 0)])
+        ws_summary.append(["Partes omitidas", plan_summary.get("omitted_count", 0)])
+        ws_summary.append([])
+        ws_summary.append(["Línea", "Lotes", "Cantidad", "Horas"])
+        summary_header = ws_summary.max_row
+        for cell in ws_summary[summary_header]:
+            cell.font = Font(name=font_name, bold=True, color="FFFFFF")
+            cell.fill = PatternFill("solid", fgColor=navy)
+        for item in plan_summary.get("by_line") or []:
+            ws_summary.append([
+                item.get("linea"), item.get("lotes"),
+                item.get("cantidad"), item.get("horas"),
+            ])
     if report == "quality_lqc":
         lqc_summary = result.get("summary") or {}
         ws_summary.append(["Jornada operativa", lqc_summary.get("operational_window")])
@@ -446,6 +979,15 @@ def _build_excel(
             font_name=font_name,
             navy=navy,
             table_name="AnalisisLQC",
+        )
+    elif report == "plan_proposal":
+        _fill_excel_data_sheet(
+            wb.create_sheet("Plan propuesto"),
+            rows,
+            columns,
+            font_name=font_name,
+            navy=navy,
+            table_name="PlanPropuesto",
         )
     else:
         _fill_excel_data_sheet(
@@ -656,6 +1198,9 @@ def create_artifact(
     }:
         include_summary = True
         include_charts = True
+    if artifact_type == "xlsx" and report_key == "plan_proposal":
+        include_summary = True
+        include_charts = False
     max_rows = max(1, min(int(os.getenv("AI_ARTIFACT_MAX_ROWS", "10000")), 10000))
     max_bytes = max(1024, int(os.getenv("AI_ARTIFACT_MAX_BYTES", "20971520")))
     result = run_report(username, report_key, filters or {}, limit=max_rows, for_artifact=True)
@@ -796,7 +1341,7 @@ def artifact_tool_schema(username: str, report_keys: list[str]) -> dict[str, Any
     return {
         "type": "function",
         "name": "create_artifact",
-        "description": "Crea un Excel profesional o PowerPoint ejecutivo usando un reporte MES autorizado. Para solicitudes de análisis usa warehouse_analysis o quality_lqc_analysis según el módulo; estos Excel incluyen detalle por número de parte/turno, resumen y gráficas. En Excel BOM, include_summary e include_charts deben ser false salvo solicitud expresa.",
+        "description": "Crea un Excel profesional o PowerPoint ejecutivo usando un reporte MES autorizado. Para exportar una propuesta pendiente usa plan_proposal con su proposal_id; no uses production_plans porque ese reporte sólo contiene el plan ya aplicado. Para solicitudes de análisis usa warehouse_analysis o quality_lqc_analysis según el módulo; estos Excel incluyen detalle por número de parte/turno, resumen y gráficas. En Excel BOM, include_summary e include_charts deben ser false salvo solicitud expresa.",
         "strict": True,
         "parameters": {
             "type": "object",
@@ -830,10 +1375,12 @@ def artifact_tool_schema(username: str, report_keys: list[str]) -> dict[str, Any
                                 "entradas_salidas", "todos", None,
                             ],
                         },
+                        "proposal_id": {"type": ["string", "null"]},
                     },
                     "required": [
                         "q", "part_number", "serial", "lot", "model", "status",
                         "date_from", "date_to", "language", "shift", "movement_type",
+                        "proposal_id",
                     ],
                     "additionalProperties": False,
                 },

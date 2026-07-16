@@ -94,7 +94,11 @@
     
     // Generar encabezados
     const escapeAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const headerCells = RX.columns.map(col => `<th title="${escapeAttr(col)}">${escapeAttr(col)}</th>`).join("");
+    const displayColumn = (col) => String(col).toLowerCase() === "assy_line" ? "Assy line" : col;
+    const headerCells = RX.columns.map(col => {
+      const label = displayColumn(col);
+      return `<th title="${escapeAttr(label)}">${escapeAttr(label)}</th>`;
+    }).join("");
     thead.innerHTML = `<tr>${headerCells}</tr>`;
     if (table && window.MesColumnResizer) {
       window.MesColumnResizer.setup({

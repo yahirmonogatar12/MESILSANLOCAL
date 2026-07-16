@@ -96,6 +96,17 @@ REPORTS: dict[str, ReportSpec] = {
         ),
         "Consulta el plan diario, modelos, cantidades, fechas y líneas.",
     ),
+    "plan_proposal": ReportSpec(
+        "plan_proposal",
+        "Propuesta pendiente del plan de producción",
+        None,
+        (("LISTA_CONTROLDEPRODUCCION", "Control de plan de produccion", "Proyeccion"),),
+        (
+            "Exporta el borrador calculado por el motor de planeación, aunque todavía "
+            "no se haya aplicado al schedule. Incluye fecha, número de parte, línea, "
+            "cantidad, CT, UPH y horas."
+        ),
+    ),
     "line_status_today": ReportSpec(
         "line_status_today",
         "Avance actual de líneas ASSY, IMT y SMT",
@@ -1588,6 +1599,105 @@ def _bom_report(filters: dict[str, Any], *, limit: int) -> dict[str, Any]:
     }
 
 
+def _plan_proposal_report(
+    username: str,
+    filters: dict[str, Any],
+    *,
+    limit: int,
+) -> dict[str, Any]:
+    """Lee una propuesta persistida sin aplicarla al schedule."""
+    proposal_id = str(filters.get("proposal_id") or "").strip()
+    if not re.fullmatch(
+        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-"
+        r"[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}",
+        proposal_id,
+    ):
+        raise ValueError("proposal_id inválido para exportar la propuesta")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    started = datetime.now()
+    try:
+        cursor.execute(
+            "SELECT id, public_id, version, date_from, date_to, objective, source, "
+            "status, engine_version, total_items, total_qty, omitted_count, created_at "
+            "FROM lg_plan_proposals WHERE public_id=%s AND created_by=%s LIMIT 1",
+            (proposal_id, username),
+        )
+        header = cursor.fetchone()
+        if not header:
+            raise ValueError("Propuesta no encontrada o pertenece a otro usuario")
+        if str(header.get("status") or "") not in {
+            "DRAFT", "PENDING_CONFIRMATION", "APPLIED"
+        }:
+            raise ValueError(
+                f"La propuesta no se puede exportar en estado {header.get('status')}"
+            )
+        cursor.execute(
+            "SELECT sched_date AS fecha, part_no AS numero_parte, linea, "
+            "qty_proposed AS cantidad, ct, uph, hours_required AS horas, turno, "
+            "pack_size, inventory_before AS inventario_antes, "
+            "inventory_after AS inventario_despues, shortage_date AS fecha_faltante, "
+            "priority_no AS prioridad, reason AS motivo, requires_approval, "
+            "exceptions_json AS excepciones_json "
+            "FROM lg_plan_proposal_items WHERE proposal_id=%s "
+            "ORDER BY sched_date, linea, sequence_no LIMIT %s",
+            (header["id"], int(limit) + 1),
+        )
+        fetched = cursor.fetchall() or []
+    finally:
+        cursor.close()
+        conn.close()
+
+    truncated = len(fetched) > limit
+    rows = [_normalize_row(dict(row)) for row in fetched[:limit]]
+    by_line: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        line = str(row.get("linea") or "SIN LÍNEA")
+        item = by_line.setdefault(
+            line, {"linea": line, "lotes": 0, "cantidad": 0, "horas": 0.0}
+        )
+        item["lotes"] += 1
+        item["cantidad"] += int(row.get("cantidad") or 0)
+        item["horas"] += float(row.get("horas") or 0)
+    line_summary = []
+    for line in sorted(by_line):
+        item = dict(by_line[line])
+        item["horas"] = round(float(item["horas"]), 2)
+        line_summary.append(item)
+
+    date_from = _json_value(header.get("date_from"))
+    date_to = _json_value(header.get("date_to"))
+    total_hours = round(sum(float(row.get("horas") or 0) for row in rows), 2)
+    return {
+        "report": "plan_proposal",
+        "title": "Propuesta del plan de producción",
+        "source": "lg_plan_proposals + lg_plan_proposal_items",
+        "columns": ["fecha", "numero_parte", "linea", "cantidad", "ct", "uph", "horas"],
+        "rows": rows,
+        "row_count": len(rows),
+        "truncated": truncated,
+        "filters": {"proposal_id": proposal_id},
+        "summary": {
+            "proposal_id": proposal_id,
+            "version": int(header.get("version") or 1),
+            "status": header.get("status"),
+            "engine_version": header.get("engine_version"),
+            "objective": header.get("objective"),
+            "proposal_source": header.get("source"),
+            "created_at": _json_value(header.get("created_at")),
+            "date_from": date_from,
+            "date_to": date_to,
+            "total_items": int(header.get("total_items") or len(rows)),
+            "total_qty": int(header.get("total_qty") or 0),
+            "total_hours": total_hours,
+            "omitted_count": int(header.get("omitted_count") or 0),
+            "by_line": line_summary,
+        },
+        "duration_ms": int((datetime.now() - started).total_seconds() * 1000),
+    }
+
+
 def run_report(
     username: str,
     report_key: str,
@@ -1623,6 +1733,8 @@ def run_report(
         return _quality_lqc_analysis_report(filters, limit=limit)
     if report_key == "bom":
         return _bom_report(filters, limit=limit)
+    if report_key == "plan_proposal":
+        return _plan_proposal_report(username, filters, limit=limit)
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1781,10 +1893,12 @@ def query_tool_schema(
                                 "entradas_salidas", "todos", None,
                             ],
                         },
+                        "proposal_id": {"type": ["string", "null"]},
                     },
                     "required": [
                         "q", "part_number", "serial", "lot", "model", "status",
                         "date_from", "date_to", "language", "shift", "movement_type",
+                        "proposal_id",
                     ],
                     "additionalProperties": False,
                 },

@@ -84,6 +84,12 @@ _PLAN_CONFIRMATION = re.compile(
     r"(?:\s+(?:por\s+favor|please))?[\s.!]*$",
     re.IGNORECASE,
 )
+_PLAN_EXCEL_REQUEST = re.compile(
+    r"\b(?:excel|xlsx)\b|"
+    r"\b(?:p[aá]same|dame|genera(?:me)?|crea(?:me)?|exporta(?:me)?)\b"
+    r".{0,24}\b(?:archivo|file)\b",
+    re.IGNORECASE,
+)
 
 
 def _automatic_bom_filters(content: str) -> dict[str, str] | None:
@@ -107,6 +113,27 @@ def _artifact_language(preference: str, content: str) -> str:
     if re.search(r"\b(?:please|show|give|get|need|export|for)\b", content, re.IGNORECASE):
         return "en"
     return "es"
+
+
+def _plan_proposal_excel_text(language: str, row_count: int) -> str:
+    """Respuesta determinista para exportar una propuesta sin aplicarla."""
+    if language == "ko":
+        return (
+            f"완료했습니다. 부품 번호, 라인, 수량, CT, UPH 및 시간이 포함된 "
+            f"보류 중인 생산 계획 제안 Excel을 첨부했습니다(**{row_count:,}**행). "
+            "제안은 MES에 적용되지 않았습니다."
+        )
+    if language == "en":
+        return (
+            "Done. I attached the pending production-plan proposal as Excel with "
+            f"part number, line, quantity, CT, UPH, and hours (**{row_count:,}** rows). "
+            "The proposal has not been applied to MES."
+        )
+    return (
+        "Listo, adjunté el Excel de la propuesta pendiente con número de parte, "
+        f"línea, cantidad, CT, UPH y horas (**{row_count:,}** filas). "
+        "La propuesta sigue sin aplicarse al MES."
+    )
 
 
 def _plan_completion_text(action: str, result: dict[str, Any], language: str) -> str:
@@ -140,6 +167,59 @@ def _plan_completion_text(action: str, result: dict[str, Any], language: str) ->
             f"- Partes de inventario: **{int(result.get('inventario_partes') or 0):,}**\n"
             f"- Schedules: **{int(result.get('schedules') or 0):,}**\n\n"
             f"ID de importación: **{result.get('import_id') or 'N/D'}**."
+        )
+
+    if action == "plan_part_sincronizar_ejecutar":
+        parts = int(result.get("parts") or 0)
+        schedules = int(result.get("schedules") or 0)
+        replaced = int(result.get("replaced") or 0)
+        scope = str(result.get("scope") or "todos").upper()
+        excluded = int(result.get("excluded_by_scope") or 0)
+        date_range = (
+            f"{result.get('date_from') or 'N/D'} a {result.get('date_to') or 'N/D'}"
+        )
+        if language == "ko":
+            return (
+                f"**Part 일정 동기화 완료.** 부품 **{parts:,}**개, 일정 "
+                f"**{schedules:,}**개를 반영하고 기존 레코드 **{replaced:,}**개를 "
+                f"교체했습니다. 범위: **{scope}**; 제외: **{excluded:,}**. 기간: "
+                f"**{date_range}**. 재고와 LG 계획은 변경하지 않았습니다."
+            )
+        if language == "en":
+            return (
+                f"**Part schedule synchronized.** Updated **{parts:,}** parts and "
+                f"**{schedules:,}** schedules, replacing **{replaced:,}** prior records. "
+                f"Scope: **{scope}**; excluded: **{excluded:,}**. Range: "
+                f"**{date_range}**. Inventory and the LG plan were not changed."
+            )
+        return (
+            f"**Schedule del Part sincronizado.** Se actualizaron **{parts:,}** partes "
+            f"y **{schedules:,}** schedules, reemplazando **{replaced:,}** registros "
+            f"anteriores. Alcance: **{scope}**; excluidas: **{excluded:,}**. Rango: "
+            f"**{date_range}**. No se modificaron inventario ni plan LG."
+        )
+
+    if action == "plan_propuesta_aplicar":
+        applied = int(result.get("aplicadas") or 0)
+        modified = int(result.get("modificadas") or 0)
+        excluded = int(result.get("excluidas") or 0)
+        total_qty = int(result.get("total_qty") or 0)
+        if language == "ko":
+            return (
+                f"**계획 제안이 적용되었습니다.** **{applied:,}**개 일정, "
+                f"**{total_qty:,}**개 수량이 반영되었습니다. 수정 **{modified:,}**, "
+                f"제외 **{excluded:,}**."
+            )
+        if language == "en":
+            return (
+                f"**Plan proposal applied.** **{applied:,}** schedule entries and "
+                f"**{total_qty:,}** units were applied. Modified: **{modified:,}**; "
+                f"excluded: **{excluded:,}**."
+            )
+        return (
+            f"**Propuesta de plan aplicada.** Se actualizaron **{applied:,}** capturas "
+            f"del schedule por **{total_qty:,}** piezas. Modificadas: **{modified:,}**; "
+            f"excluidas: **{excluded:,}**."
         )
 
     generated = int(result.get("generados") or 0)
@@ -591,13 +671,31 @@ def stream_message(public_id: str):
     plan_tools = ai_plan_tools.tool_schemas(_username())
     if plan_tools and not compact_warehouse_request and not analysis_report_key:
         tools.extend(plan_tools)
+    allowed_model_tool_names = {
+        str(tool.get("name") or "") for tool in tools if tool.get("name")
+    }
     last_file_ref = str(payload.get("file_ref") or "").strip() or None
     attachment = _uploaded_file_info(int(conversation["id"]), last_file_ref)
     if not attachment:
         last_file_ref = None
-    pending_plan_confirmation = (
+    pending_plan_action = (
         get_pending_plan_confirmation(int(conversation["id"]), _username())
-        if plan_tools and _PLAN_CONFIRMATION.fullmatch(content)
+        if plan_tools
+        and (
+            _PLAN_CONFIRMATION.fullmatch(content)
+            or _PLAN_EXCEL_REQUEST.search(content)
+        )
+        else None
+    )
+    pending_plan_confirmation = (
+        pending_plan_action if _PLAN_CONFIRMATION.fullmatch(content) else None
+    )
+    pending_plan_excel = (
+        pending_plan_action
+        if pending_plan_action
+        and pending_plan_action.get("prepare_tool") == "plan_propuesta_preparar"
+        and pending_plan_action.get("proposal_id")
+        and _PLAN_EXCEL_REQUEST.search(content)
         else None
     )
 
@@ -638,9 +736,27 @@ def stream_message(public_id: str):
         exported_report_requests: set[str] = set()
         yield _sse("ack", {"user_message_id": user_message_id, "assistant_message_id": assistant_message_id})
 
-        def execute_tool(name: str, arguments: dict[str, Any], call_id: str) -> dict[str, Any]:
+        def execute_tool(
+            name: str,
+            arguments: dict[str, Any],
+            call_id: str,
+            *,
+            server_confirmed: bool = False,
+        ) -> dict[str, Any]:
             started = datetime.now()
             try:
+                expected_server_tool = (
+                    str(pending_plan_confirmation.get("execute_tool") or "")
+                    if pending_plan_confirmation
+                    else ""
+                )
+                if server_confirmed:
+                    if name != expected_server_tool:
+                        raise PermissionError("Confirmacion de herramienta invalida")
+                elif name not in allowed_model_tool_names:
+                    raise PermissionError(
+                        "El modelo intento ejecutar una herramienta no declarada"
+                    )
                 if name == "query_mes_report":
                     report_key = arguments["report"]
                     report_filters = arguments.get("filters") or {}
@@ -833,7 +949,10 @@ def stream_message(public_id: str):
                     }
                 if name in ai_plan_tools.TOOL_NAMES:
                     # Si la tool no trae file_ref, usa el ultimo adjunto del turno
-                    if name == "plan_importar_preparar" and not arguments.get("file_ref"):
+                    if name in {
+                        "plan_importar_preparar",
+                        "plan_part_sincronizar_preparar",
+                    } and not arguments.get("file_ref"):
                         arguments = {**arguments, "file_ref": last_file_ref}
                     result = ai_plan_tools.execute(
                         name, arguments,
@@ -852,7 +971,116 @@ def stream_message(public_id: str):
                     )
                     _audit("PLAN_IA", f"Tool de plan ejecutada: {name}",
                            {"tool": name, "conversation_id": public_id})
-                    return {"model_output": result, "public_summary": {"tool": name}}
+                    # El token queda exclusivamente en MySQL para que el
+                    # servidor procese la confirmacion del siguiente mensaje.
+                    model_result = {
+                        key: value for key, value in result.items() if key != "confirm_token"
+                    }
+                    response = {
+                        "model_output": model_result,
+                        "public_summary": {"tool": name},
+                    }
+                    if name == "plan_propuesta_preparar" and result.get("proposal_id"):
+                        proposal_id = str(result["proposal_id"])
+                        proposal_date = str(result.get("date_from") or "").strip()
+                        artifact_title = "Plan de producción propuesto"
+                        if proposal_date:
+                            artifact_title += f" - {proposal_date}"
+                        artifact_arguments = {
+                            "artifact_type": "xlsx",
+                            "title": artifact_title,
+                            "language": _artifact_language(language, content),
+                            "report": "plan_proposal",
+                            "filters": {"proposal_id": proposal_id},
+                            "include_summary": True,
+                            "include_charts": False,
+                            "automatic": True,
+                            "reason": "new_plan_proposal",
+                        }
+                        artifact_started = datetime.now()
+                        try:
+                            if not _has(AI_PERMISSION_ARTIFACTS):
+                                raise PermissionError(
+                                    "No tienes permiso para generar archivos IA"
+                                )
+                            allowed, error, _, _ = check_quota(
+                                _username(), model_name(), _roles(), artifact=True
+                            )
+                            if not allowed:
+                                raise PermissionError(error)
+                            artifact = create_artifact(
+                                username=_username(),
+                                conversation_id=int(conversation["id"]),
+                                message_id=assistant_message_id,
+                                artifact_type="xlsx",
+                                title=artifact_title,
+                                language=artifact_arguments["language"],
+                                report_key="plan_proposal",
+                                filters={"proposal_id": proposal_id},
+                                include_summary=True,
+                                include_charts=False,
+                            )
+                            created_artifacts.append(artifact)
+                            exported_report_requests.add(
+                                _artifact_request_key(
+                                    "plan_proposal", {"proposal_id": proposal_id}
+                                )
+                            )
+                            increment_usage(_username(), model_name(), artifacts=1)
+                            record_tool_execution(
+                                conversation_id=int(conversation["id"]),
+                                message_id=assistant_message_id,
+                                username=_username(),
+                                tool_name="create_artifact",
+                                arguments=artifact_arguments,
+                                result_summary=artifact,
+                                status="success",
+                                row_count=artifact.get("row_count", 0),
+                                duration_ms=int(
+                                    (datetime.now() - artifact_started).total_seconds()
+                                    * 1000
+                                ),
+                            )
+                            context["automatic_artifact"] = artifact
+                            model_result["automatic_artifact"] = artifact
+                            model_result["response_policy"] = (
+                                "El Excel de esta propuesta ya está adjunto. Menciona el resumen "
+                                "del plan, confirma brevemente el archivo y aclara que todavía no "
+                                "se aplicó al MES. No llames create_artifact otra vez."
+                            )
+                            response["client_event"] = {
+                                "event": "artifact_ready",
+                                "data": artifact,
+                            }
+                            _audit(
+                                "GENERAR_ARTEFACTO",
+                                "Excel generado automáticamente con la propuesta: "
+                                f"{artifact.get('filename')}",
+                                artifact,
+                            )
+                        except Exception as artifact_exc:
+                            artifact_error = str(artifact_exc)
+                            context["automatic_artifact_error"] = artifact_error
+                            model_result["automatic_artifact_error"] = artifact_error
+                            response["client_event"] = {
+                                "event": "artifact_error",
+                                "data": {"message": artifact_error},
+                            }
+                            record_tool_execution(
+                                conversation_id=int(conversation["id"]),
+                                message_id=assistant_message_id,
+                                username=_username(),
+                                tool_name="create_artifact",
+                                arguments=artifact_arguments,
+                                result_summary={},
+                                status="error",
+                                duration_ms=int(
+                                    (datetime.now() - artifact_started).total_seconds()
+                                    * 1000
+                                ),
+                                error_text=artifact_error,
+                            )
+                    return response
                 raise ValueError("Herramienta no registrada")
             except Exception as exc:
                 error_arguments = {
@@ -877,6 +1105,7 @@ def stream_message(public_id: str):
                     action,
                     {"confirm_token": pending_plan_confirmation["confirm_token"]},
                     call_id,
+                    server_confirmed=True,
                 )
                 yield _sse(
                     "tool_end",
@@ -914,6 +1143,97 @@ def stream_message(public_id: str):
                     {
                         "message_id": assistant_message_id,
                         "artifacts": [],
+                        "visualizations": [],
+                    },
+                )
+                return
+
+            if pending_plan_excel:
+                proposal_id = str(pending_plan_excel["proposal_id"])
+                artifact_language = _artifact_language(language, content)
+                arguments = {
+                    "artifact_type": "xlsx",
+                    "title": "Plan de producción propuesto",
+                    "language": artifact_language,
+                    "report": "plan_proposal",
+                    "filters": {"proposal_id": proposal_id},
+                    "include_summary": True,
+                    "include_charts": False,
+                    "automatic": True,
+                    "reason": "pending_plan_proposal",
+                }
+                started = datetime.now()
+                yield _sse(
+                    "artifact_start",
+                    {"type": "xlsx", "title": arguments["title"]},
+                )
+                yield _sse(
+                    "artifact_progress",
+                    {"progress": 10, "message": "Leyendo la propuesta pendiente"},
+                )
+                allowed, error, _, _ = check_quota(
+                    _username(), model_name(), _roles(), artifact=True
+                )
+                if not allowed:
+                    raise PermissionError(error)
+                if not _has(AI_PERMISSION_ARTIFACTS):
+                    raise PermissionError("No tienes permiso para generar archivos IA")
+                artifact = create_artifact(
+                    username=_username(),
+                    conversation_id=int(conversation["id"]),
+                    message_id=assistant_message_id,
+                    artifact_type="xlsx",
+                    title=arguments["title"],
+                    language=artifact_language,
+                    report_key="plan_proposal",
+                    filters={"proposal_id": proposal_id},
+                    include_summary=True,
+                    include_charts=False,
+                )
+                created_artifacts.append(artifact)
+                increment_usage(_username(), model_name(), artifacts=1)
+                record_tool_execution(
+                    conversation_id=int(conversation["id"]),
+                    message_id=assistant_message_id,
+                    username=_username(),
+                    tool_name="create_artifact",
+                    arguments=arguments,
+                    result_summary=artifact,
+                    status="success",
+                    row_count=artifact.get("row_count", 0),
+                    duration_ms=int((datetime.now() - started).total_seconds() * 1000),
+                )
+                _audit(
+                    "GENERAR_ARTEFACTO",
+                    f"Excel de propuesta pendiente generado: {artifact.get('filename')}",
+                    artifact,
+                )
+                yield _sse(
+                    "artifact_progress",
+                    {"progress": 100, "message": "Excel de la propuesta listo"},
+                )
+                yield _sse("artifact_ready", artifact)
+                final_text = _plan_proposal_excel_text(
+                    artifact_language,
+                    int(artifact.get("row_count") or 0),
+                )
+                assistant_text.append(final_text)
+                yield _sse("delta", {"text": final_text})
+                update_message(
+                    assistant_message_id,
+                    content=final_text,
+                    status="complete",
+                    input_tokens=0,
+                    output_tokens=0,
+                    content_json={"artifacts": created_artifacts, "visualizations": []},
+                )
+                increment_usage(_username(), model_name(), requests=1)
+                refresh_conversation_summary(int(conversation["id"]), keep_recent=12)
+                yield _sse(
+                    "done",
+                    {
+                        "message_id": assistant_message_id,
+                        "artifacts": created_artifacts,
                         "visualizations": [],
                     },
                 )

@@ -92,25 +92,32 @@
   </div>
 
   <!-- ============ Modal: Propuesta de schedule ============ -->
-  <div id="pr-prop-modal" class="pp-modal-overlay" style="display: none;">
-    <div class="pp-modal pp-modal-wide">
+  <div id="pr-prop-modal" class="pp-modal-overlay" role="dialog" aria-modal="true"
+       aria-labelledby="pr-prop-title" aria-busy="false" style="display: none;">
+    <div class="pp-modal pp-modal-plan-proposal">
       <div class="pp-modal-header">
-        <h3>Propuesta de schedule</h3>
+        <h3 id="pr-prop-title">Propuesta de schedule</h3>
         <button id="pr-btn-prop-close" class="pp-modal-x" type="button" title="Cerrar">&times;</button>
       </div>
-      <div id="pr-prop-resumen" class="pp-confirm-box"></div>
+      <div id="pr-prop-resumen" class="pp-confirm-box" aria-live="polite"></div>
       <div id="pr-prop-wrap" class="pp-preview-wrap">
         <table id="pr-prop-table" class="pp-table">
           <thead>
-            <tr><th>Numero de parte</th><th>Fecha</th><th>Cantidad</th><th>Schedule actual</th></tr>
+            <tr>
+              <th>Incluir</th><th>Prioridad</th><th>Numero de parte</th><th>Fecha</th>
+              <th>Linea</th><th>Turno</th><th>Cantidad</th><th>CT</th><th>UPH</th><th>Horas</th>
+              <th>Inventario antes / despues</th><th>Shortage</th><th>Schedule actual</th>
+              <th>Excepciones</th>
+            </tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
       <ul id="pr-prop-omitidas" class="pp-msg-list pp-warnings" style="display: none;"></ul>
       <div class="pp-modal-actions">
-        <button id="pr-btn-prop-cancel" class="pp-btn secondary" type="button">Cancelar</button>
-        <button id="pr-btn-prop-apply" class="pp-btn primary" type="button">Aplicar propuesta</button>
+        <button id="pr-btn-prop-reject" class="pp-btn danger" type="button">Rechazar propuesta</button>
+        <button id="pr-btn-prop-cancel" class="pp-btn secondary" type="button">Cerrar</button>
+        <button id="pr-btn-prop-apply" class="pp-btn primary" type="button">Aprobar y aplicar</button>
       </div>
     </div>
   </div>
@@ -138,4 +145,4 @@
   </div>
 
 </div>
-<script src="{{ url_for('static', filename='js/proyeccion.js') }}?v=20260715c"></script>
+<script src="{{ url_for('static', filename='js/proyeccion.js') }}?v=20260715e"></script>

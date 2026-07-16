@@ -194,6 +194,478 @@ def test_detecta_confirmacion_corta_del_plan():
     assert not ai_assistant._PLAN_CONFIRMATION.fullmatch("si puedes revisa el archivo")
 
 
+def test_confirmacion_pendiente_conserva_proposal_id_para_exportar(monkeypatch):
+    proposal_id = "94508d78-0fc8-41a5-a035-7d2352fbf46f"
+
+    class Cursor:
+        def execute(self, _sql, _params):
+            pass
+
+        def fetchall(self):
+            return [{
+                "tool_name": "plan_propuesta_preparar",
+                "status": "success",
+                "created_at": "2026-07-16 15:33:18",
+                "result_summary_json": json.dumps({
+                    "confirm_token": "token-servidor",
+                    "proposal_id": proposal_id,
+                }),
+            }]
+
+        def close(self):
+            pass
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(ai_store, "get_db_connection", lambda: Connection())
+
+    pending = ai_store.get_pending_plan_confirmation(44, "ana")
+
+    assert pending["prepare_tool"] == "plan_propuesta_preparar"
+    assert pending["execute_tool"] == "plan_propuesta_aplicar"
+    assert pending["proposal_id"] == proposal_id
+
+
+def test_confirmacion_pendiente_reconoce_sync_part(monkeypatch):
+    class Cursor:
+        def execute(self, _sql, _params):
+            pass
+
+        def fetchall(self):
+            return [{
+                "tool_name": "plan_part_sincronizar_preparar",
+                "status": "success",
+                "created_at": "2026-07-16 17:00:00",
+                "result_summary_json": json.dumps({
+                    "confirm_token": "token-sync-part",
+                    "resumen": {"sheet_name": "Part 16", "schedules": 353},
+                }),
+            }]
+
+        def close(self):
+            pass
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(ai_store, "get_db_connection", lambda: Connection())
+
+    pending = ai_store.get_pending_plan_confirmation(44, "ana")
+
+    assert pending["prepare_tool"] == "plan_part_sincronizar_preparar"
+    assert pending["execute_tool"] == "plan_part_sincronizar_ejecutar"
+    assert pending["confirm_token"] == "token-sync-part"
+
+
+def test_texto_confirmacion_sync_part_aclara_alcance():
+    text = ai_assistant._plan_completion_text(
+        "plan_part_sincronizar_ejecutar",
+        {
+            "parts": 31,
+            "schedules": 353,
+            "replaced": 120,
+            "scope": "main",
+            "excluded_by_scope": 47,
+            "date_from": "2026-07-13",
+            "date_to": "2026-09-16",
+        },
+        "es",
+    )
+
+    assert "Schedule del Part sincronizado" in text
+    assert "353" in text
+    assert "120" in text
+    assert "MAIN" in text
+    assert "47" in text
+    assert "No se modificaron inventario ni plan LG" in text
+
+
+def test_solicitud_excel_exporta_propuesta_pendiente_sin_aplicarla(client, monkeypatch):
+    from app.api.shared import permisos
+
+    class SuperadminAuth:
+        def obtener_rol_principal_usuario(self, _username):
+            return "superadmin"
+
+    proposal_id = "94508d78-0fc8-41a5-a035-7d2352fbf46f"
+    message_ids = iter((73, 74))
+    captured = {}
+    artifact = {
+        "id": "artifact-plan-1",
+        "type": "xlsx",
+        "title": "Plan de producción propuesto",
+        "filename": "plan_produccion_propuesto.xlsx",
+        "status": "ready",
+        "row_count": 18,
+        "download_url": "/api/ai/artifacts/artifact-plan-1/download",
+    }
+    monkeypatch.setattr(permisos, "_auth", lambda: SuperadminAuth())
+    monkeypatch.setattr(ai_assistant, "get_conversation", lambda _public_id: {
+        "id": 44,
+        "public_id": "chat-plan",
+        "username": "ana",
+        "title": "Plan MAIN",
+        "language": "es",
+    })
+    monkeypatch.setattr(
+        ai_assistant,
+        "check_quota",
+        lambda *_args, **_kwargs: (True, None, {}, {}),
+    )
+    monkeypatch.setattr(ai_assistant, "get_message_by_client_id", lambda *_args: None)
+    monkeypatch.setattr(ai_assistant, "add_message", lambda *_args, **_kwargs: next(message_ids))
+    monkeypatch.setattr(ai_assistant, "recent_model_messages", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(ai_assistant, "allowed_reports", lambda *_args: [{"key": "plan_proposal"}])
+    monkeypatch.setattr(ai_assistant, "query_tool_schema", lambda *_args: None)
+    monkeypatch.setattr(
+        ai_assistant,
+        "artifact_tool_schema",
+        lambda *_args: {"type": "function", "name": "create_artifact"},
+    )
+    monkeypatch.setattr(ai_assistant, "_has", lambda *_args: True)
+    monkeypatch.setattr(ai_assistant, "permisos_botones", lambda *_args: {})
+    monkeypatch.setattr(ai_assistant, "_uploaded_file_info", lambda *_args: None)
+    monkeypatch.setattr(ai_assistant.ai_plan_tools, "tool_schemas", lambda *_args: [{"name": "plan"}])
+    monkeypatch.setattr(ai_assistant, "get_pending_plan_confirmation", lambda *_args: {
+        "prepare_tool": "plan_propuesta_preparar",
+        "execute_tool": "plan_propuesta_aplicar",
+        "confirm_token": "token-servidor",
+        "proposal_id": proposal_id,
+    })
+
+    def fake_create_artifact(**kwargs):
+        captured.update(kwargs)
+        return artifact
+
+    monkeypatch.setattr(ai_assistant, "create_artifact", fake_create_artifact)
+    monkeypatch.setattr(
+        ai_assistant.ai_plan_tools,
+        "execute",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("Exportar no debe aplicar la propuesta")
+        ),
+    )
+    monkeypatch.setattr(
+        ai_assistant,
+        "stream_response",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("No debe llamar OpenAI")),
+    )
+    monkeypatch.setattr(ai_assistant, "record_tool_execution", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "update_message", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "increment_usage", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "refresh_conversation_summary", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "_audit", lambda *_args, **_kwargs: None)
+
+    with client.session_transaction() as sess:
+        sess["usuario"] = "ana"
+        sess["roles"] = ["superadmin"]
+    response = client.post(
+        "/api/ai/conversations/chat-plan/messages/stream",
+        json={
+            "content": "pásame el excel",
+            "client_message_id": "00000000-0000-4000-8000-000000000092",
+            "language": "es",
+        },
+    )
+
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert captured["report_key"] == "plan_proposal"
+    assert captured["filters"] == {"proposal_id": proposal_id}
+    assert captured["include_summary"] is True
+    assert captured["include_charts"] is False
+    assert "event: artifact_ready" in body
+    assert "plan_produccion_propuesto.xlsx" in body
+    assert "18" in body
+    assert "sin aplicarse al MES" in body
+
+
+def test_nueva_propuesta_adjunta_excel_en_la_misma_respuesta(client, monkeypatch):
+    from app.api.shared import permisos
+
+    class SuperadminAuth:
+        def obtener_rol_principal_usuario(self, _username):
+            return "superadmin"
+
+    proposal_id = "153df596-3135-4990-b052-1a8ef58528e7"
+    message_ids = iter((75, 76))
+    plan_calls = []
+    captured = {}
+    artifact = {
+        "id": "artifact-plan-auto-1",
+        "type": "xlsx",
+        "title": "Plan de producción propuesto - 2026-07-17",
+        "filename": "plan_produccion_propuesto_2026-07-17.xlsx",
+        "status": "ready",
+        "row_count": 18,
+        "download_url": "/api/ai/artifacts/artifact-plan-auto-1/download",
+    }
+    monkeypatch.setattr(permisos, "_auth", lambda: SuperadminAuth())
+    monkeypatch.setattr(ai_assistant, "get_conversation", lambda _public_id: {
+        "id": 45,
+        "public_id": "chat-plan-auto",
+        "username": "ana",
+        "title": "Plan MAIN",
+        "language": "es",
+    })
+    monkeypatch.setattr(
+        ai_assistant,
+        "check_quota",
+        lambda *_args, **_kwargs: (True, None, {}, {}),
+    )
+    monkeypatch.setattr(ai_assistant, "get_message_by_client_id", lambda *_args: None)
+    monkeypatch.setattr(ai_assistant, "add_message", lambda *_args, **_kwargs: next(message_ids))
+    monkeypatch.setattr(ai_assistant, "recent_model_messages", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(ai_assistant, "allowed_reports", lambda *_args: [{"key": "plan_proposal"}])
+    monkeypatch.setattr(ai_assistant, "query_tool_schema", lambda *_args: None)
+    monkeypatch.setattr(
+        ai_assistant,
+        "artifact_tool_schema",
+        lambda *_args: {"type": "function", "name": "create_artifact"},
+    )
+    monkeypatch.setattr(ai_assistant, "_has", lambda *_args: True)
+    monkeypatch.setattr(ai_assistant, "permisos_botones", lambda *_args: {})
+    monkeypatch.setattr(ai_assistant, "_uploaded_file_info", lambda *_args: None)
+    monkeypatch.setattr(
+        ai_assistant.ai_plan_tools,
+        "tool_schemas",
+        lambda *_args: [{"type": "function", "name": "plan_propuesta_preparar"}],
+    )
+
+    def fake_plan_execute(name, arguments, **_kwargs):
+        plan_calls.append((name, arguments))
+        assert name == "plan_propuesta_preparar"
+        return {
+            "proposal_id": proposal_id,
+            "confirm_token": "token-servidor",
+            "version": 1,
+            "engine_version": "mrp-capacity-v3",
+            "date_from": "2026-07-17",
+            "date_to": "2026-07-17",
+            "items": 18,
+            "partes": 18,
+            "total_qty": 8860,
+            "line_summary": [],
+            "omitidas_count": 9,
+        }
+
+    def fake_create_artifact(**kwargs):
+        captured.update(kwargs)
+        return artifact
+
+    def fake_stream_response(**kwargs):
+        result = kwargs["execute_tool"](
+            "plan_propuesta_preparar",
+            {
+                "fecha_inicio": "2026-07-17",
+                "fecha_fin": "2026-07-17",
+                "objetivo": "MAIN",
+                "proceso_actual": None,
+            },
+            "call-plan-auto",
+        )
+        assert result["model_output"]["automatic_artifact"] == artifact
+        assert "ya está adjunto" in result["model_output"]["response_policy"]
+        yield result["client_event"]
+        yield {
+            "event": "delta",
+            "data": {
+                "text": "Propuesta MAIN preparada. También adjunté el Excel; todavía no se aplicó al MES."
+            },
+        }
+        yield {"event": "usage", "data": {"input_tokens": 10, "output_tokens": 5}}
+
+    monkeypatch.setattr(ai_assistant.ai_plan_tools, "execute", fake_plan_execute)
+    monkeypatch.setattr(ai_assistant, "create_artifact", fake_create_artifact)
+    monkeypatch.setattr(ai_assistant, "stream_response", fake_stream_response)
+    monkeypatch.setattr(ai_assistant, "record_tool_execution", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "update_message", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "increment_usage", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "refresh_conversation_summary", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(ai_assistant, "_audit", lambda *_args, **_kwargs: None)
+
+    with client.session_transaction() as sess:
+        sess["usuario"] = "ana"
+        sess["roles"] = ["superadmin"]
+    response = client.post(
+        "/api/ai/conversations/chat-plan-auto/messages/stream",
+        json={
+            "content": "Haz el plan de produccion para main para mañana",
+            "client_message_id": "00000000-0000-4000-8000-000000000093",
+            "language": "es",
+        },
+    )
+
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert len(plan_calls) == 1
+    assert captured["report_key"] == "plan_proposal"
+    assert captured["filters"] == {"proposal_id": proposal_id}
+    assert captured["include_summary"] is True
+    assert captured["include_charts"] is False
+    assert "event: artifact_ready" in body
+    assert "plan_produccion_propuesto_2026-07-17.xlsx" in body
+    assert "todavía no se aplicó al MES" in body
+
+
+def test_reporte_propuesta_conserva_detalle_y_resumen_por_linea(monkeypatch):
+    proposal_id = "94508d78-0fc8-41a5-a035-7d2352fbf46f"
+
+    class Cursor:
+        def __init__(self):
+            self.sql = ""
+            self.executions = []
+
+        def execute(self, sql, params):
+            self.sql = " ".join(str(sql).split())
+            self.executions.append((self.sql, params))
+
+        def fetchone(self):
+            return {
+                "id": 91,
+                "public_id": proposal_id,
+                "version": 1,
+                "date_from": "2026-07-17",
+                "date_to": "2026-07-17",
+                "status": "PENDING_CONFIRMATION",
+                "engine_version": "mrp-capacity-v3",
+                "total_items": 2,
+                "total_qty": 2320,
+                "omitted_count": 9,
+            }
+
+        def fetchall(self):
+            return [
+                {
+                    "fecha": "2026-07-17",
+                    "numero_parte": "EBR80757432",
+                    "linea": "M4",
+                    "cantidad": 1940,
+                    "ct": 12.0,
+                    "uph": 300,
+                    "horas": 6.47,
+                },
+                {
+                    "fecha": "2026-07-17",
+                    "numero_parte": "ACQ91482499",
+                    "linea": "D2",
+                    "cantidad": 380,
+                    "ct": 24.0,
+                    "uph": 150,
+                    "horas": 2.53,
+                },
+            ]
+
+        def close(self):
+            pass
+
+    class Connection:
+        def __init__(self):
+            self.cursor_instance = Cursor()
+
+        def cursor(self):
+            return self.cursor_instance
+
+        def close(self):
+            pass
+
+    connection = Connection()
+    monkeypatch.setattr(ai_reports, "report_allowed", lambda *_args: True)
+    monkeypatch.setattr(ai_reports, "get_db_connection", lambda: connection)
+
+    result = ai_reports.run_report(
+        "ana", "plan_proposal", {"proposal_id": proposal_id}, for_artifact=True
+    )
+
+    assert result["columns"] == [
+        "fecha", "numero_parte", "linea", "cantidad", "ct", "uph", "horas"
+    ]
+    assert result["row_count"] == 2
+    assert result["summary"]["total_qty"] == 2320
+    assert result["summary"]["total_hours"] == 9.0
+    assert result["summary"]["by_line"] == [
+        {"linea": "D2", "lotes": 1, "cantidad": 380, "horas": 2.53},
+        {"linea": "M4", "lotes": 1, "cantidad": 1940, "horas": 6.47},
+    ]
+    assert connection.cursor_instance.executions[0][1] == (proposal_id, "ana")
+
+
+def test_excel_propuesta_incluye_plan_y_resumen_por_linea(tmp_path):
+    target = tmp_path / "plan_propuesto.xlsx"
+    result = {
+        "report": "plan_proposal",
+        "title": "Propuesta del plan de producción",
+        "source": "lg_plan_proposals + lg_plan_proposal_items",
+        "filters": {"proposal_id": "94508d78-0fc8-41a5-a035-7d2352fbf46f"},
+        "columns": ["fecha", "numero_parte", "linea", "cantidad", "ct", "uph", "horas"],
+        "rows": [{
+            "fecha": "2026-07-17",
+            "numero_parte": "EBR80757432",
+            "linea": "M4",
+            "cantidad": 1940,
+            "ct": 12.0,
+            "uph": 300,
+            "horas": 6.47,
+            "inventario_antes": -626,
+            "inventario_despues": 1314,
+            "fecha_faltante": "2026-07-20",
+            "excepciones_json": "[]",
+        }],
+        "row_count": 1,
+        "truncated": False,
+        "summary": {
+            "proposal_id": "94508d78-0fc8-41a5-a035-7d2352fbf46f",
+            "status": "PENDING_CONFIRMATION",
+            "engine_version": "mrp-capacity-v3",
+            "date_from": "2026-07-17",
+            "date_to": "2026-07-17",
+            "total_qty": 1940,
+            "total_hours": 6.47,
+            "omitted_count": 9,
+            "by_line": [{"linea": "M4", "lotes": 1, "cantidad": 1940, "horas": 6.47}],
+        },
+    }
+
+    ai_artifacts._build_excel(
+        result,
+        "Plan de producción propuesto",
+        "es",
+        target,
+        include_summary=True,
+        include_charts=False,
+    )
+
+    workbook = load_workbook(target, data_only=False)
+    assert workbook.sheetnames == [
+        "Resumen", "Plan 17-jul", "Horizonte", "Logica", "No planeadas", "Part"
+    ]
+    plan = workbook["Plan 17-jul"]
+    assert [cell.value for cell in plan[3]] == [
+        "Bloque", "Línea", "Parte", "Cantidad", "UPH", "Horas",
+        "Inv. antes", "Inv. después", "Falta el",
+    ]
+    assert plan["A4"].value == "B1"
+    assert plan["C4"].value == "EBR80757432"
+    assert plan["F4"].value == 6.47
+    assert plan["G4"].value == -626
+    assert plan["D5"].value == "=SUM(D4:D4)"
+    assert plan["D7"].value == "=D5"
+    assert workbook["Resumen"]["E11"].value == 1940
+    assert workbook["Resumen"]["C12"].value == 6.47
+    assert workbook["Part"]["A4"].value == "EBR80757432"
+    assert workbook["Part"]["C4"].value == 1940
+    assert all(not sheet.sheet_view.showGridLines for sheet in workbook.worksheets)
+
+
 def test_excel_profesional_y_formula_injection(tmp_path):
     target = tmp_path / "reporte.xlsx"
     ai_artifacts._build_excel(_sample_report(), "Reporte inventario", "es", target)
@@ -625,7 +1097,11 @@ def test_consulta_masiva_genera_excel_y_no_entrega_tabla_larga(client, monkeypat
         "allowed_reports",
         lambda *_args: [{"key": "raw_model_standards"}],
     )
-    monkeypatch.setattr(ai_assistant, "query_tool_schema", lambda *_args: {"type": "function"})
+    monkeypatch.setattr(
+        ai_assistant,
+        "query_tool_schema",
+        lambda *_args: {"type": "function", "name": "query_mes_report"},
+    )
     monkeypatch.setattr(ai_assistant, "artifact_tool_schema", lambda *_args: None)
     monkeypatch.setattr(ai_assistant, "_has", lambda *_args: True)
     monkeypatch.setattr(ai_assistant, "permisos_botones", lambda *_args: {})
@@ -825,6 +1301,14 @@ def test_instrucciones_priorizan_raw_para_uph_y_ct():
     assert "consulta primero raw_model_standards" in instructions
     assert "No calcules ni infieras UPH" in instructions
     assert "7421 debe encontrar EBR80757421" in instructions
+
+
+def test_instrucciones_exigen_proceso_actual_al_replanear_hoy():
+    instructions = ai_openai.build_instructions(
+        {"language": "es", "plan_tools_enabled": True}
+    )
+    assert "¿en qué proceso o lote van las líneas?" in instructions
+    assert "proceso_actual" in instructions
 
 
 def test_instrucciones_lqc_explican_fecha_de_hoy():
