@@ -46,6 +46,7 @@ def _proposal_result():
             }
         ],
         "omitidas_count": 0,
+        "excluded_parts": ["EBR30299365", "EBR30299369"],
         "exceptions": [],
     }
 
@@ -198,8 +199,12 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
     monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
     monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
 
-    def fake_crear(fecha_inicio, fecha_fin, username, *, source, objective):
-        created.append((fecha_inicio, fecha_fin, username, source, objective))
+    def fake_crear(
+        fecha_inicio, fecha_fin, username, *, source, objective, excluded_parts
+    ):
+        created.append(
+            (fecha_inicio, fecha_fin, username, source, objective, excluded_parts)
+        )
         return _proposal_result()
 
     monkeypatch.setattr(ai_plan_tools.pp, "_ppy_crear_propuesta", fake_crear)
@@ -216,6 +221,7 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
             "fecha_fin": "2099-07-25",
             "objetivo": "Priorizar faltantes críticos",
             "proceso_actual": None,
+            "partes_excluidas": ["EBR30299365", "EBR30299369"],
         },
         username="ana",
         file_lookup=lambda ref: file_lookups.append(ref),
@@ -228,6 +234,7 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
             "ana",
             "AI",
             "Priorizar faltantes críticos",
+            ["EBR30299365", "EBR30299369"],
         )
     ]
     assert pending == [(result["proposal_id"], "ana")]
@@ -235,6 +242,7 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
     assert result["items"] == 1
     assert result["partes"] == 1
     assert result["total_qty"] == 200
+    assert result["excluded_parts"] == ["EBR30299365", "EBR30299369"]
     assert result["sample"][0] == {
         "fecha": "2099-07-20",
         "linea": "M1",

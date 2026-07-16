@@ -608,6 +608,23 @@ def test_ppy_hash_y_resumen_lineas_son_estables():
     ]
 
 
+def test_partes_excluidas_de_propuesta_se_normalizan_y_validan():
+    from app.api.control_produccion.part_planning import (
+        _ppy_normalizar_partes_excluidas,
+        _ppy_partes_excluidas_propuesta,
+    )
+
+    assert _ppy_normalizar_partes_excluidas(
+        [" ebr30299365 ", "EBR30299369", "ebr30299365"]
+    ) == ["EBR30299365", "EBR30299369"]
+    assert _ppy_partes_excluidas_propuesta(
+        '["EBR30299365", "EBR30299369"]'
+    ) == ["EBR30299365", "EBR30299369"]
+    assert _ppy_partes_excluidas_propuesta(None) == []
+    with pytest.raises(ValueError, match="Numero de parte invalido"):
+        _ppy_normalizar_partes_excluidas(["EBR 30299365"])
+
+
 def test_ref_lunes_sale_del_nombre_no_de_hoy():
     # 20260715 (mie, W29) -> lunes 2026-07-13. Validado contra la fila I de
     # "Part 15": con este lunes cuadran 404/404 partes, con el de hoy no.
@@ -980,7 +997,11 @@ def test_sync_part_reutiliza_reemplazo_del_boton(monkeypatch):
         "date_from": "2026-07-13",
         "date_to": "2026-07-20",
         "scope": "todos",
+        "source_parts": 1,
         "excluded_by_scope": 0,
+        "skipped_without_active_line": 0,
+        "skipped_parts_without_active_line": [],
+        "warnings": [],
         "applied": False,
     }
 
@@ -1068,6 +1089,35 @@ def test_sync_part_main_filtra_lineas_fuera_de_m1_m4(monkeypatch):
     assert preview["parts"] == 1
     assert preview["schedules"] == 1
     assert preview["excluded_by_scope"] == 1
+
+
+def test_sync_part_omite_sin_linea_y_sincroniza_las_demas(monkeypatch):
+    import app.api.control_produccion.part_planning as pp
+
+    parsed = {
+        "sheet_name": "Part 16",
+        "ref_date": date(2026, 7, 13),
+        "date_to": date(2026, 7, 20),
+        "inventory": {"P-VALIDA": {"line": "M1"}, "P-SIN-LINEA": {"line": None}},
+        "schedules": {
+            ("P-VALIDA", date(2026, 7, 16)): 100,
+            ("P-SIN-LINEA", date(2026, 7, 16)): 50,
+        },
+    }
+    monkeypatch.setattr(pp, "_parse_part10_workbook", lambda *_args: (parsed, None))
+    monkeypatch.setattr(pp, "_ppy_config_lineas", lambda: ["M1", "M2"])
+    monkeypatch.setattr(pp, "_ppy_datos_raw", lambda _parts: {})
+
+    preview = pp._pp_sincronizar_schedule_excel(
+        b"excel", "plan.xlsm", "ana", aplicar=False, alcance="todos"
+    )
+
+    assert preview["source_parts"] == 2
+    assert preview["parts"] == 1
+    assert preview["schedules"] == 1
+    assert preview["skipped_without_active_line"] == 1
+    assert preview["skipped_parts_without_active_line"] == ["P-SIN-LINEA"]
+    assert preview["warnings"][0]["code"] == "SCHEDULE_PARTS_SKIPPED_NO_ACTIVE_LINE"
 
 
 def test_parse_cal_diario_layout_distinto():

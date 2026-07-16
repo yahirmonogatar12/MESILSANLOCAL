@@ -363,9 +363,19 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                                 "futuras debe ser null."
                             ),
                         },
+                        "partes_excluidas": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "maxItems": 50,
+                            "description": (
+                                "Numeros de parte completos que Planning ordeno omitir "
+                                "de esta propuesta. Usa [] cuando no haya exclusiones."
+                            ),
+                        },
                     },
                     "required": [
-                        "fecha_inicio", "fecha_fin", "objetivo", "proceso_actual"
+                        "fecha_inicio", "fecha_fin", "objetivo", "proceso_actual",
+                        "partes_excluidas",
                     ],
                     "additionalProperties": False,
                 },
@@ -423,8 +433,9 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "instruccion": (
                 "Explica que solo se sincronizara el renglon S de Part N, muestra "
                 "hoja, alcance, partes, schedules, exclusiones por alcance y rango, "
-                "aclara que plan LG e inventario no cambian, y pide confirmacion en "
-                "un mensaje posterior."
+                "avisa qué partes se omitirán por no tener Assy line activa, aclara "
+                "que plan LG e inventario no cambian, y pide confirmacion en un "
+                "mensaje posterior."
             ),
         }
 
@@ -467,6 +478,9 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
                 "las lineas y envia la respuesta en proceso_actual."
             )
         objetivo = str(arguments.get("objetivo") or "").strip()
+        partes_excluidas = pp._ppy_normalizar_partes_excluidas(
+            arguments.get("partes_excluidas")
+        )
         if proceso_actual:
             contexto = "Proceso actual reportado por Planning: " + proceso_actual
             objetivo = (objetivo + "\n" + contexto).strip()
@@ -476,6 +490,7 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             username,
             source="AI",
             objective=objetivo or None,
+            excluded_parts=partes_excluidas,
         )
         pp._ppy_mark_proposal_pending(propuesta["proposal_id"], username)
         token = _make_token(
@@ -514,13 +529,15 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "total_qty": propuesta["total_qty"],
             "line_summary": propuesta["line_summary"],
             "omitted_count": propuesta["omitidas_count"],
+            "excluded_parts": propuesta["excluded_parts"],
             "exceptions": propuesta["exceptions"][:20],
             "sample": muestra,
             "proceso_actual": proceso_actual or None,
             "confirm_token": token,
             "instruccion": (
                 "Explica que es una propuesta calculada por el motor, resume capacidad y "
-                "excepciones, y pide confirmacion en un mensaje posterior para aplicarla."
+                "excepciones, confirma expresamente las partes excluidas y pide "
+                "confirmacion en un mensaje posterior para aplicarla."
             ),
         }
 

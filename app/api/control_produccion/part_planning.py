@@ -138,7 +138,7 @@ PPY_LINEAS_DEFAULT = "M1,M2,M3"
 # distinga: ACQ30500849 se ve igual que sus vecinas (misma linea, CT y UPH).
 PPY_EXCLUIDAS_DEFAULT = "ACQ30500849"  # la vende ILSAN Corea aparte
 PPY_PACK_DEFAULT = 20  # std pack asumido en la propuesta de schedule para partes sin registro
-PPY_PROPOSAL_ENGINE_VERSION = "mrp-capacity-v3"
+PPY_PROPOSAL_ENGINE_VERSION = "mrp-capacity-v4"
 
 PP_SHEET_NAME = "LG"
 # Campos de inventario por parte (editables en Proyeccion; suman al I inicial)
@@ -370,6 +370,7 @@ def init_part_planning_tables():
             date_from DATE NOT NULL,
             date_to DATE NOT NULL,
             objective VARCHAR(500) NULL,
+            excluded_parts_json LONGTEXT NULL,
             source VARCHAR(20) NOT NULL DEFAULT 'UI',
             engine_version VARCHAR(50) NOT NULL,
             input_hash CHAR(64) NOT NULL,
@@ -433,6 +434,21 @@ def init_part_planning_tables():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
     )
+    proposal_columns = (
+        ("excluded_parts_json", "LONGTEXT NULL AFTER objective"),
+    )
+    for column_name, column_ddl in proposal_columns:
+        existe = execute_query(
+            "SELECT COUNT(*) AS c FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lg_plan_proposals' "
+            "AND COLUMN_NAME = %s",
+            (column_name,),
+            fetch="one",
+        )
+        if not existe["c"]:
+            execute_query(
+                f"ALTER TABLE lg_plan_proposals ADD COLUMN {column_name} {column_ddl}"
+            )
     # Migracion idempotente para propuestas creadas con la primera version.
     proposal_item_columns = (
         ("ct", "DECIMAL(12,4) NULL AFTER qty_final"),
@@ -1376,24 +1392,36 @@ def _pp_sincronizar_schedule_excel(
         if assy_line:
             linea_por_parte[part] = assy_line
     partes_archivo = set(por_parte)
-    if alcance == "main":
-        por_parte = {
-            part: celdas
-            for part, celdas in por_parte.items()
-            if linea_por_parte.get(part) in {"M1", "M2", "M3", "M4"}
-        }
     sin_linea = sorted(
         part
-        for part in por_parte
+        for part in partes_archivo
         if linea_por_parte.get(part) not in lineas_activas
     )
+    partes_validas = partes_archivo - set(sin_linea)
+    if alcance == "main":
+        partes_alcance = {
+            part
+            for part in partes_validas
+            if linea_por_parte.get(part) in {"M1", "M2", "M3", "M4"}
+        }
+    else:
+        partes_alcance = partes_validas
+    por_parte = {
+        part: celdas for part, celdas in por_parte.items() if part in partes_alcance
+    }
+
+    warnings = []
     if sin_linea:
-        muestra = ", ".join(sin_linea[:10])
-        extra = f" y {len(sin_linea) - 10} mas" if len(sin_linea) > 10 else ""
-        raise ValueError(
-            "El Excel contiene schedules sin una linea activa explicita: "
-            f"{muestra}{extra}. Captura Assy line en Control de modelos antes "
-            "de sincronizar."
+        warnings.append(
+            {
+                "code": "SCHEDULE_PARTS_SKIPPED_NO_ACTIVE_LINE",
+                "count": len(sin_linea),
+                "parts": sin_linea[:50],
+                "message": (
+                    "Se omitieron schedules de partes sin Assy line activa; "
+                    "las demas partes sí se pueden sincronizar."
+                ),
+            }
         )
 
     summary = {
@@ -1404,11 +1432,17 @@ def _pp_sincronizar_schedule_excel(
         "date_from": rango_desde.isoformat(),
         "date_to": rango_hasta.isoformat(),
         "scope": alcance,
-        "excluded_by_scope": len(partes_archivo - set(por_parte)),
+        "source_parts": len(partes_archivo),
+        "excluded_by_scope": len(partes_validas - partes_alcance),
+        "skipped_without_active_line": len(sin_linea),
+        "skipped_parts_without_active_line": sin_linea[:50],
+        "warnings": warnings,
         "applied": False,
     }
     if not aplicar:
         return summary
+    if not por_parte:
+        return {**summary, "replaced": 0, "applied": True}
 
     conn = None
     cursor = None
@@ -1592,8 +1626,45 @@ def _ppy_proposal_hash(fecha_ini, fecha_fin, propuestas, excepciones):
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _ppy_normalizar_partes_excluidas(values):
+    """Normaliza restricciones explícitas de Planning para una propuesta."""
+    if values in (None, ""):
+        return []
+    if isinstance(values, str):
+        values = re.split(r"[\s,;]+", values)
+    if not isinstance(values, (list, tuple, set)):
+        raise ValueError("partes_excluidas debe ser una lista")
+    salida = []
+    vistas = set()
+    for raw in values:
+        part_no = str(raw or "").strip().upper()
+        if not part_no:
+            continue
+        if not re.fullmatch(r"[A-Z0-9._-]{3,100}", part_no):
+            raise ValueError(f"Numero de parte invalido para excluir: {part_no}")
+        if part_no not in vistas:
+            vistas.add(part_no)
+            salida.append(part_no)
+    if len(salida) > 50:
+        raise ValueError("Solo se pueden excluir hasta 50 partes por propuesta")
+    return salida
+
+
+def _ppy_partes_excluidas_propuesta(value):
+    """Lee la lista persistida; propuestas legacy equivalen a lista vacía."""
+    if not value:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return _ppy_normalizar_partes_excluidas(value)
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError):
+        parsed = value
+    return _ppy_normalizar_partes_excluidas(parsed)
+
+
 def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
-                          replanear=True):
+                          replanear=True, excluded_parts=None):
     """Propone schedule con MRP y capacidad, sin escribir datos operativos.
 
     replanear=True (default): el plan de cada dia del rango se rehace COMPLETO
@@ -1630,7 +1701,8 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
         proy = _ppy_proyeccion_rango(fecha_ini, proy_fin, query,
                                      replanear_desde=replanear_desde)
     # Las partes que no producimos no entran al plan aunque LG las pida.
-    excluidas = _ppy_partes_excluidas(query)
+    excluidas_solicitadas = _ppy_normalizar_partes_excluidas(excluded_parts)
+    excluidas = _ppy_partes_excluidas(query) | set(excluidas_solicitadas)
     partes = sorted(p for p in proy if p.upper() not in excluidas)
     if query is None:
         datos_raw = _ppy_datos_raw(partes)
@@ -1656,6 +1728,17 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             }
         )
 
+    omitidas = {
+        f"{part_no} (excluida expresamente por Planning)"
+        for part_no in excluidas_solicitadas
+    }
+    for part_no in excluidas_solicitadas:
+        agregar_excepcion(
+            part_no,
+            "PLANNING_EXCLUDED",
+            "La parte fue excluida expresamente por Planning para esta propuesta",
+        )
+
     # Una parte con demanda pero sin inventario no aparece en la proyeccion;
     # hacerla visible evita asumir inventario cero y crear un plan inseguro.
     plan_rows = run_query(
@@ -1666,7 +1749,7 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
     ) or []
     for row in plan_rows:
         part_no = str(row.get("part_no") or "").strip()
-        if part_no and part_no not in proy:
+        if part_no and part_no.upper() not in excluidas and part_no not in proy:
             agregar_excepcion(
                 part_no,
                 "INVENTORY_MISSING",
@@ -1786,7 +1869,6 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
 
     propuestas = []
     acum = {p: 0 for p in partes}
-    omitidas = set()
     d = fecha_ini
     while d <= fecha_fin:
         if not _ppy_es_dia_produccion(d):
@@ -1988,10 +2070,12 @@ def _ppy_crear_propuesta(
     *,
     source="UI",
     objective=None,
+    excluded_parts=None,
 ):
     """Calcula y persiste un borrador; no modifica schedule ni lotes."""
+    excluded_parts = _ppy_normalizar_partes_excluidas(excluded_parts)
     propuestas, omitidas, excepciones = _ppy_simular_schedule(
-        fecha_ini, fecha_fin, detailed=True
+        fecha_ini, fecha_fin, detailed=True, excluded_parts=excluded_parts
     )
     _ppy_attach_schedule_actual(propuestas, fecha_ini, fecha_fin)
     input_hash = _ppy_proposal_hash(fecha_ini, fecha_fin, propuestas, excepciones)
@@ -2012,15 +2096,16 @@ def _ppy_crear_propuesta(
         )
         cursor.execute(
             "INSERT INTO lg_plan_proposals "
-            "(public_id, version, date_from, date_to, objective, source, "
+            "(public_id, version, date_from, date_to, objective, excluded_parts_json, source, "
             "engine_version, input_hash, status, total_items, total_qty, "
             "omitted_count, created_by) "
-            "VALUES (%s, 1, %s, %s, %s, %s, %s, %s, 'DRAFT', %s, %s, %s, %s)",
+            "VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, 'DRAFT', %s, %s, %s, %s)",
             (
                 public_id,
                 fecha_ini,
                 fecha_fin,
                 objective,
+                json.dumps(excluded_parts, ensure_ascii=False),
                 source,
                 PPY_PROPOSAL_ENGINE_VERSION,
                 input_hash,
@@ -2093,6 +2178,7 @@ def _ppy_crear_propuesta(
         "partes": len({item["part_no"] for item in propuestas}),
         "omitidas": omitidas[:20],
         "omitidas_count": len(omitidas),
+        "excluded_parts": excluded_parts,
         "exceptions": excepciones,
         "requires_approval_count": sum(
             1 for item in propuestas if item.get("requiere_aprobacion")
@@ -2283,7 +2369,13 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
             else locked["date_to"]
         )
         actuales, _omitidas, excepciones = _ppy_simular_schedule(
-            fecha_ini, fecha_fin, detailed=True, query=tx_query
+            fecha_ini,
+            fecha_fin,
+            detailed=True,
+            query=tx_query,
+            excluded_parts=_ppy_partes_excluidas_propuesta(
+                locked.get("excluded_parts_json")
+            ),
         )
         _ppy_attach_schedule_actual(
             actuales, fecha_ini, fecha_fin, query=tx_query
@@ -2668,6 +2760,7 @@ def api_pp_schedule_proponer():
             usuario,
             source="UI",
             objective=data.get("objective"),
+            excluded_parts=data.get("excluded_parts"),
         )
         return jsonify({"success": True, **propuesta})
     except Exception as e:

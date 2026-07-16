@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -1619,7 +1620,8 @@ def _plan_proposal_report(
     started = datetime.now()
     try:
         cursor.execute(
-            "SELECT id, public_id, version, date_from, date_to, objective, source, "
+            "SELECT id, public_id, version, date_from, date_to, objective, "
+            "excluded_parts_json, source, "
             "status, engine_version, total_items, total_qty, omitted_count, created_at "
             "FROM lg_plan_proposals WHERE public_id=%s AND created_by=%s LIMIT 1",
             (proposal_id, username),
@@ -1669,6 +1671,11 @@ def _plan_proposal_report(
     date_from = _json_value(header.get("date_from"))
     date_to = _json_value(header.get("date_to"))
     total_hours = round(sum(float(row.get("horas") or 0) for row in rows), 2)
+    try:
+        excluded_parts = json.loads(str(header.get("excluded_parts_json") or "[]"))
+    except (TypeError, ValueError):
+        excluded_parts = []
+    excluded_parts = [str(part).strip().upper() for part in excluded_parts if str(part).strip()]
     return {
         "report": "plan_proposal",
         "title": "Propuesta del plan de producción",
@@ -1684,6 +1691,7 @@ def _plan_proposal_report(
             "status": header.get("status"),
             "engine_version": header.get("engine_version"),
             "objective": header.get("objective"),
+            "excluded_parts": excluded_parts,
             "proposal_source": header.get("source"),
             "created_at": _json_value(header.get("created_at")),
             "date_from": date_from,

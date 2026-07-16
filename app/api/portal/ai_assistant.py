@@ -175,6 +175,10 @@ def _plan_completion_text(action: str, result: dict[str, Any], language: str) ->
         replaced = int(result.get("replaced") or 0)
         scope = str(result.get("scope") or "todos").upper()
         excluded = int(result.get("excluded_by_scope") or 0)
+        skipped = int(result.get("skipped_without_active_line") or 0)
+        skipped_parts = ", ".join(
+            str(part) for part in (result.get("skipped_parts_without_active_line") or [])
+        )
         date_range = (
             f"{result.get('date_from') or 'N/D'} a {result.get('date_to') or 'N/D'}"
         )
@@ -183,20 +187,28 @@ def _plan_completion_text(action: str, result: dict[str, Any], language: str) ->
                 f"**Part 일정 동기화 완료.** 부품 **{parts:,}**개, 일정 "
                 f"**{schedules:,}**개를 반영하고 기존 레코드 **{replaced:,}**개를 "
                 f"교체했습니다. 범위: **{scope}**; 제외: **{excluded:,}**. 기간: "
-                f"**{date_range}**. 재고와 LG 계획은 변경하지 않았습니다."
+                f"**{date_range}**. 활성 Assy line이 없어 건너뜀: **{skipped:,}**"
+                + (f" ({skipped_parts})" if skipped_parts else "")
+                + ". 재고와 LG 계획은 변경하지 않았습니다."
             )
         if language == "en":
             return (
                 f"**Part schedule synchronized.** Updated **{parts:,}** parts and "
                 f"**{schedules:,}** schedules, replacing **{replaced:,}** prior records. "
                 f"Scope: **{scope}**; excluded: **{excluded:,}**. Range: "
-                f"**{date_range}**. Inventory and the LG plan were not changed."
+                f"**{date_range}**. Skipped without an active Assy line: "
+                f"**{skipped:,}**"
+                + (f" ({skipped_parts})" if skipped_parts else "")
+                + ". Inventory and the LG plan were not changed."
             )
         return (
             f"**Schedule del Part sincronizado.** Se actualizaron **{parts:,}** partes "
             f"y **{schedules:,}** schedules, reemplazando **{replaced:,}** registros "
             f"anteriores. Alcance: **{scope}**; excluidas: **{excluded:,}**. Rango: "
-            f"**{date_range}**. No se modificaron inventario ni plan LG."
+            f"**{date_range}**. Omitidas por no tener Assy line activa: "
+            f"**{skipped:,}**"
+            + (f" ({skipped_parts})" if skipped_parts else "")
+            + ". No se modificaron inventario ni plan LG."
         )
 
     if action == "plan_propuesta_aplicar":

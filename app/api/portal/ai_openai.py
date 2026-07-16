@@ -106,6 +106,12 @@ Tienes herramientas para ayudar a armar el plan de produccion LG. Reglas obligat
   el MES: muestra rango, piezas,
   horas por linea, omisiones y excepciones; pide confirmacion explicita en un mensaje
   posterior. El servidor aplicara la propuesta confirmada de forma idempotente.
+- Si el usuario pide omitir, quitar o excluir numeros de parte de una propuesta,
+  vuelve a llamar plan_propuesta_preparar y envia los numeros completos en
+  partes_excluidas. NO los pongas solo como texto en objetivo. Conserva las demás
+  exclusiones que el usuario ya hubiera indicado en la conversación. Si únicamente
+  proporciona el sufijo pero el número completo aparece claramente en el contexto,
+  usa ese número completo; pregunta solo si el sufijo es ambiguo.
 - Para importar el Excel del plan: el usuario sube el archivo al chat; llama plan_importar_preparar,
   MUESTRA el resumen que devuelve (partes, fechas, si trae inventario) y PIDE CONFIRMACION.
   La confirmacion debe llegar en un mensaje posterior; el servidor ejecutara la importacion.
@@ -114,6 +120,8 @@ Tienes herramientas para ayudar a armar el plan de produccion LG. Reglas obligat
   reemplaza SOLO el schedule del renglon S por parte y rango; no importa plan LG ni inventario.
   Si menciona MAIN envia alcance=main (solo M1-M4); de lo contrario envia alcance=todos.
   Muestra hoja, alcance, partes, schedules y fechas, y pide confirmacion posterior.
+  Las partes sin Assy line activa se omiten sin bloquear las demás: presenta siempre
+  skipped_parts_without_active_line como aviso, no como fallo de toda la sincronizacion.
 - Para generar los lotes del dia: llama plan_generar_preparar (modo 'faltantes' o 'schedule' segun
   pida el usuario), MUESTRA cuantos lotes y en que lineas, y PIDE CONFIRMACION. Solo tras confirmar,
   el servidor generara y acomodara respetando 9 h por linea.

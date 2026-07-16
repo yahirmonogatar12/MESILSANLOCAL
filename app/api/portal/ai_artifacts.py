@@ -743,6 +743,19 @@ def _build_plan_proposal_excel(
             "Revisar inventario base, CT, UPH, pack, línea activa y capacidad disponible.",
         )
     ]
+    excluded_parts = [
+        str(part).strip()
+        for part in (summary.get("excluded_parts") or [])
+        if str(part).strip()
+    ]
+    if excluded_parts:
+        omitted_rows.append(
+            (
+                "Excluidas expresamente por Planning",
+                len(excluded_parts),
+                ", ".join(excluded_parts),
+            )
+        )
     explanations = {
         "PARTIAL_CAPACITY": "El lote entró parcialmente por el límite de horas del bloque.",
         "SHORTAGE_REMAINS": "La cantidad parcial no elimina todo el faltante proyectado.",

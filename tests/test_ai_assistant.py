@@ -275,6 +275,8 @@ def test_texto_confirmacion_sync_part_aclara_alcance():
             "replaced": 120,
             "scope": "main",
             "excluded_by_scope": 47,
+            "skipped_without_active_line": 2,
+            "skipped_parts_without_active_line": ["P-SIN-1", "P-SIN-2"],
             "date_from": "2026-07-13",
             "date_to": "2026-09-16",
         },
@@ -286,6 +288,8 @@ def test_texto_confirmacion_sync_part_aclara_alcance():
     assert "120" in text
     assert "MAIN" in text
     assert "47" in text
+    assert "P-SIN-1" in text
+    assert "P-SIN-2" in text
     assert "No se modificaron inventario ni plan LG" in text
 
 
@@ -631,6 +635,7 @@ def test_excel_propuesta_incluye_plan_y_resumen_por_linea(tmp_path):
             "total_qty": 1940,
             "total_hours": 6.47,
             "omitted_count": 9,
+            "excluded_parts": ["EBR30299365", "EBR30299369"],
             "by_line": [{"linea": "M4", "lotes": 1, "cantidad": 1940, "horas": 6.47}],
         },
     }
@@ -663,6 +668,9 @@ def test_excel_propuesta_incluye_plan_y_resumen_por_linea(tmp_path):
     assert workbook["Resumen"]["C12"].value == 6.47
     assert workbook["Part"]["A4"].value == "EBR80757432"
     assert workbook["Part"]["C4"].value == 1940
+    assert workbook["No planeadas"]["B5"].value == "Excluidas expresamente por Planning"
+    assert workbook["No planeadas"]["C5"].value == 2
+    assert workbook["No planeadas"]["D5"].value == "EBR30299365, EBR30299369"
     assert all(not sheet.sheet_view.showGridLines for sheet in workbook.worksheets)
 
 
