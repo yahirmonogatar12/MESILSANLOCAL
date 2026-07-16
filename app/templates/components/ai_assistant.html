@@ -80,9 +80,13 @@
                 <label class="sr-only" for="ai-input" data-ai-i18n="message">Mensaje</label>
                 <textarea id="ai-input" rows="2" maxlength="8000" data-ai-i18n-placeholder="placeholder"
                           placeholder="Pregunta sobre el MES o solicita un Excel/PowerPoint"></textarea>
-                <div id="ai-attach-info" class="ai-attach-info" hidden>
-                    <span id="ai-attach-name"></span>
-                    <button id="ai-attach-clear" type="button" title="Quitar archivo">&times;</button>
+                <div id="ai-attach-info" class="ai-attach-info" role="status" aria-live="polite" hidden>
+                    <span class="ai-attach-file-icon" aria-hidden="true">XLS</span>
+                    <span class="ai-attach-copy">
+                        <strong id="ai-attach-name" class="ai-attach-name"></strong>
+                        <span id="ai-attach-status" class="ai-attach-status"></span>
+                    </span>
+                    <button id="ai-attach-clear" type="button" title="Quitar archivo" aria-label="Quitar archivo">&times;</button>
                 </div>
                 <input type="file" id="ai-attach-file" accept=".xlsx,.xlsm" hidden>
                 <div class="ai-composer-actions">

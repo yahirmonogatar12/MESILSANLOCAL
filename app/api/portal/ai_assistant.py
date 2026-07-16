@@ -628,9 +628,16 @@ def stream_message(public_id: str):
     if existing:
         return jsonify({"success": False, "error": "El mensaje ya fue procesado", "message_id": existing["id"]}), 409
 
+    last_file_ref = str(payload.get("file_ref") or "").strip() or None
+    attachment = _uploaded_file_info(int(conversation["id"]), last_file_ref)
+    if not attachment:
+        last_file_ref = None
+
     user_message_id = add_message(
         int(conversation["id"]), "user", content,
-        client_message_id=client_message_id, model=model_name(),
+        client_message_id=client_message_id,
+        model=model_name(),
+        content_json={"attachment": attachment} if attachment else None,
     )
     if conversation.get("title") == "Nueva conversación":
         update_conversation(public_id, _username(), title=content[:80])
@@ -686,10 +693,6 @@ def stream_message(public_id: str):
     allowed_model_tool_names = {
         str(tool.get("name") or "") for tool in tools if tool.get("name")
     }
-    last_file_ref = str(payload.get("file_ref") or "").strip() or None
-    attachment = _uploaded_file_info(int(conversation["id"]), last_file_ref)
-    if not attachment:
-        last_file_ref = None
     pending_plan_action = (
         get_pending_plan_confirmation(int(conversation["id"]), _username())
         if plan_tools

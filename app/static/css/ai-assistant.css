@@ -439,11 +439,96 @@
 
 /* Adjuntar Excel del plan al chat */
 .ai-attach-info {
-    display:flex; align-items:center; gap:8px;
-    margin:4px 0; padding:4px 10px;
-    background:rgba(32,104,140,0.15); border:1px solid #20688c; border-radius:6px;
-    font-size:12px; color:#cfe6f2;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+    margin:6px 0 2px;
+    padding:8px 10px;
+    border:1px solid #6daed0;
+    border-left:4px solid #247cac;
+    border-radius:8px;
+    color:#163f59;
+    background:#edf7fc;
+    box-shadow:0 1px 3px rgba(17,63,88,.12);
 }
+.ai-attach-info[hidden] { display:none !important; }
+.ai-attach-info[data-state="ready"] { border-color:#78b89a; border-left-color:#26845a; background:#effaf4; }
+.ai-attach-info[data-state="error"] { border-color:#d58a8a; border-left-color:#b83d3d; background:#fff2f2; }
+.ai-attach-file-icon,
+.ai-message-attachment-icon {
+    flex:none;
+    display:grid;
+    place-items:center;
+    width:34px;
+    height:34px;
+    border-radius:6px;
+    color:#fff;
+    background:#1f7a4d;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.04em;
+}
+.ai-attach-copy,
+.ai-message-attachment-copy { display:flex; flex:1; flex-direction:column; min-width:0; }
+.ai-attach-name {
+    overflow:hidden;
+    color:#12384f;
+    font-size:12px;
+    line-height:1.35;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.ai-attach-status { color:#4c6d80; font-size:10px; font-weight:700; line-height:1.35; }
+.ai-attach-info[data-state="ready"] .ai-attach-status { color:#27744f; }
+.ai-attach-info[data-state="error"] .ai-attach-status { color:#a33131; }
 .ai-attach-info button {
-    background:none; border:none; color:#ffb3b3; cursor:pointer; font-size:16px; line-height:1;
+    flex:none;
+    display:grid;
+    place-items:center;
+    width:28px;
+    height:28px;
+    padding:0;
+    border:0;
+    border-radius:50%;
+    color:#8b2f2f;
+    background:transparent;
+    cursor:pointer;
+    font-size:19px;
+    line-height:1;
+}
+.ai-attach-info button:hover { color:#fff; background:#b83d3d; }
+
+.ai-message-attachment {
+    display:flex;
+    align-items:center;
+    gap:9px;
+    min-width:220px;
+    max-width:100%;
+    margin-top:9px;
+    padding:8px 10px;
+    border:1px solid rgba(255,255,255,.42);
+    border-radius:8px;
+    color:#fff;
+    background:rgba(6,45,68,.22);
+}
+.ai-message-attachment-icon { width:32px; height:32px; background:#176b43; }
+.ai-message-attachment-name {
+    overflow:hidden;
+    color:inherit;
+    font-size:11px;
+    line-height:1.35;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.ai-message-attachment-details { color:rgba(255,255,255,.82); font-size:9px; line-height:1.35; }
+.ai-message.assistant .ai-message-attachment {
+    border-color:#b8ceda;
+    color:#173e55;
+    background:#eef6fa;
+}
+.ai-message.assistant .ai-message-attachment-details { color:#527185; }
+
+@media (max-width:600px) {
+    .ai-message-attachment { min-width:0; }
 }

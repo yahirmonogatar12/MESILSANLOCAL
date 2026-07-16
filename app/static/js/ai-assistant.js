@@ -30,6 +30,9 @@
             this.transitioning = false;
             this.artifactIds = new Set();
             this.visualizationIds = new Set();
+            this.pendingFileRef = null;
+            this.pendingAttachment = null;
+            this.attachmentUploading = false;
         }
 
         async init() {
@@ -535,7 +538,13 @@
             this.artifactIds.clear();
             this.visualizationIds.clear();
             data.messages.forEach(message => {
-                const bubble = this.appendMessage(message.role, message.content, message.created_at, message.status);
+                const bubble = this.appendMessage(
+                    message.role,
+                    message.content,
+                    message.created_at,
+                    message.status,
+                    message.content_json?.attachment || null
+                );
                 const artifacts = message.content_json?.artifacts || [];
                 artifacts.forEach(artifact => this.appendArtifact(artifact, bubble.parentElement));
                 const visualizations = message.content_json?.visualizations || [];
@@ -583,14 +592,33 @@
             return {path: location.pathname, container_id: visible?.id || null, title: document.title};
         }
 
-        appendMessage(role, content = '', date = null, status = 'complete') {
+        appendMessage(role, content = '', date = null, status = 'complete', attachment = null) {
             this.messages.querySelector('.ai-empty')?.remove();
             const wrapper = document.createElement('div'); wrapper.className = `ai-message ${role === 'user' ? 'user' : 'assistant'}`;
             const bubble = document.createElement('div'); bubble.className = 'ai-bubble';
             if (role === 'user') bubble.textContent = content;
             else this.renderMarkdown(bubble, content);
+            if (attachment?.filename) this.appendMessageAttachment(bubble, attachment);
             const meta = document.createElement('div'); meta.className = 'ai-message-meta'; meta.textContent = `${this.formatDate(date || new Date())}${status !== 'complete' ? ` · ${status}` : ''}`;
             wrapper.append(bubble, meta); this.messages.appendChild(wrapper); this.scrollBottom(); return bubble;
+        }
+
+        appendMessageAttachment(bubble, attachment) {
+            const card = document.createElement('div'); card.className = 'ai-message-attachment';
+            const icon = document.createElement('span'); icon.className = 'ai-message-attachment-icon'; icon.textContent = 'XLS';
+            const copy = document.createElement('span'); copy.className = 'ai-message-attachment-copy';
+            const filename = document.createElement('strong'); filename.className = 'ai-message-attachment-name'; filename.textContent = attachment.filename;
+            const details = document.createElement('span'); details.className = 'ai-message-attachment-details';
+            const size = Number(attachment.size_bytes || 0);
+            details.textContent = size ? `Excel · ${this.formatFileSize(size)}` : 'Archivo Excel adjunto';
+            copy.append(filename, details); card.append(icon, copy); bubble.appendChild(card);
+        }
+
+        formatFileSize(bytes) {
+            const size = Math.max(0, Number(bytes) || 0);
+            if (size < 1024) return `${size} B`;
+            if (size < 1024 * 1024) return `${(size / 1024).toFixed(size < 10240 ? 1 : 0)} KB`;
+            return `${(size / (1024 * 1024)).toFixed(1)} MB`;
         }
 
         appendInlineMarkdown(parent, source) {
@@ -907,10 +935,10 @@
             }
             if (!this.currentConversation) await this.newChat(false);
             if (!this.currentConversation) return;
-            const info = this.root.querySelector('#ai-attach-info');
-            const nameEl = this.root.querySelector('#ai-attach-name');
-            nameEl.textContent = 'Subiendo ' + file.name + '...';
-            info.hidden = false;
+            this.pendingFileRef = null;
+            this.pendingAttachment = null;
+            this.attachmentUploading = true;
+            this.setAttachmentState(file.name, 'uploading');
             try {
                 const fd = new FormData();
                 fd.append('file', file);
@@ -918,29 +946,65 @@
                     `/api/ai/conversations/${this.currentConversation.public_id}/upload`,
                     { method: 'POST', body: fd });
                 this.pendingFileRef = data.file_ref;
-                nameEl.textContent = '📎 ' + data.filename;
+                this.pendingAttachment = {
+                    filename: data.filename || file.name,
+                    extension: name.endsWith('.xlsm') ? '.xlsm' : '.xlsx',
+                    size_bytes: file.size,
+                    kind: 'excel'
+                };
+                this.attachmentUploading = false;
+                this.setAttachmentState(this.pendingAttachment.filename, 'ready');
             } catch (error) {
                 this.pendingFileRef = null;
-                info.hidden = true;
+                this.pendingAttachment = null;
+                this.attachmentUploading = false;
+                this.setAttachmentState(file.name, 'error');
                 this.notice(error.message || 'No se pudo subir el archivo');
             }
         }
 
+        setAttachmentState(filename, state) {
+            const info = this.root.querySelector('#ai-attach-info');
+            const nameEl = this.root.querySelector('#ai-attach-name');
+            const statusEl = this.root.querySelector('#ai-attach-status');
+            info.hidden = false;
+            info.dataset.state = state;
+            info.setAttribute('aria-busy', state === 'uploading' ? 'true' : 'false');
+            nameEl.textContent = filename;
+            statusEl.textContent = state === 'uploading'
+                ? 'Subiendo archivo…'
+                : (state === 'ready' ? 'Listo para enviar' : 'No se pudo subir');
+        }
+
         clearAttachment() {
             this.pendingFileRef = null;
-            this.root.querySelector('#ai-attach-info').hidden = true;
+            this.pendingAttachment = null;
+            this.attachmentUploading = false;
+            const info = this.root.querySelector('#ai-attach-info');
+            info.hidden = true;
+            delete info.dataset.state;
+            info.setAttribute('aria-busy', 'false');
             this.root.querySelector('#ai-attach-name').textContent = '';
+            this.root.querySelector('#ai-attach-status').textContent = '';
+            const input = this.root.querySelector('#ai-attach-file');
+            if (input) input.value = '';
         }
 
         async send() {
             const content = this.input.value.trim();
             if (!content || this.streaming) return;
+            if (this.attachmentUploading) {
+                this.notice('Espera a que termine de subir el archivo.');
+                return;
+            }
             if (!this.currentConversation) await this.newChat(false);
             if (!this.currentConversation) return;
+            const fileRef = this.pendingFileRef;
+            const attachment = this.pendingAttachment ? {...this.pendingAttachment} : null;
             this.lastUserMessage = content;
             this.root.querySelector('#ai-retry').hidden = true;
             this.input.value = '';
-            this.appendMessage('user', content);
+            this.appendMessage('user', content, null, 'complete', attachment);
             this.activeAssistantBubble = this.appendMessage('assistant', '');
             this.activeAssistantText = '';
             this.setStreaming(true, this.t('thinking'));
@@ -956,7 +1020,7 @@
                 const response = await fetch(`/api/ai/conversations/${this.currentConversation.public_id}/messages/stream`, {
                     method:'POST', signal:this.controller.signal,
                     headers:{'Content-Type':'application/json','Accept':'text/event-stream','X-Requested-With':'XMLHttpRequest'},
-                    body:JSON.stringify({content, client_message_id:clientId, language:this.language.value, page_context:this.pageContext(), file_ref:this.pendingFileRef || null})
+                    body:JSON.stringify({content, client_message_id:clientId, language:this.language.value, page_context:this.pageContext(), file_ref:fileRef || null})
                 });
                 if (!response.ok) {
                     const data = await response.json().catch(() => ({}));

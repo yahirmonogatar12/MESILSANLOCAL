@@ -105,6 +105,22 @@ def test_adjunto_rechaza_referencia_ajena_o_manipulada(tmp_path, monkeypatch):
     assert ai_assistant._uploaded_file_info(45, "safe") is None
 
 
+def test_cliente_muestra_y_recupera_el_nombre_del_adjunto():
+    root = Path(__file__).resolve().parents[1]
+    javascript = (root / "app/static/js/ai-assistant.js").read_text(encoding="utf-8")
+    stylesheet = (root / "app/static/css/ai-assistant.css").read_text(encoding="utf-8")
+    template = (root / "app/templates/components/ai_assistant.html").read_text(encoding="utf-8")
+
+    assert "message.content_json?.attachment || null" in javascript
+    assert "appendMessageAttachment(bubble, attachment)" in javascript
+    assert "setAttachmentState(file.name, 'uploading')" in javascript
+    assert "this.attachmentUploading" in javascript
+    assert ".ai-attach-info[hidden]" in stylesheet
+    assert '.ai-attach-info[data-state="ready"]' in stylesheet
+    assert ".ai-message-attachment-name" in stylesheet
+    assert 'id="ai-attach-status"' in template
+
+
 def test_confirmacion_pendiente_ejecuta_importacion_sin_volver_a_preparar(client, monkeypatch):
     from app.api.shared import permisos
 
@@ -1755,7 +1771,7 @@ def test_main_template_incluye_panel_y_metadatos_de_permiso():
     assert 'class="ai-launcher-logo"' in partial
     assert "icons/1538298822.svg" in partial
     assert '>Asistente</span>' not in partial.split('</button>', 1)[0]
-    assert "20260715a" in main
+    assert "20260716b" in main
 
 
 def test_cliente_permite_eliminar_chat_con_confirmacion():
