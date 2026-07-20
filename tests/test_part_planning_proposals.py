@@ -100,10 +100,12 @@ def test_aplicar_propuesta_rechaza_hash_stale_y_marca_estado(monkeypatch):
 
 
 class _ProposalCursor:
-    def __init__(self, locked_header, stored_item, schedule_rows=None):
+    def __init__(self, locked_header, stored_item, schedule_rows=None,
+                 confirmed_rows=None):
         self.locked_header = locked_header
         self.stored_item = stored_item
         self.schedule_rows = list(schedule_rows or [])
+        self.confirmed_rows = list(confirmed_rows or [])
         self.calls = []
         self._one = None
         self._many = []
@@ -118,7 +120,9 @@ class _ProposalCursor:
         elif "FROM lg_plan_proposal_items" in sql:
             self._many = [self.stored_item]
         elif "FROM lg_lote_plan" in sql:
-            self._many = []
+            self._many = (
+                list(self.confirmed_rows) if "status='CONFIRMADO'" in sql else []
+            )
         elif "FROM lg_schedule_daily" in sql and sql.lstrip().startswith("SELECT"):
             self._many = list(self.schedule_rows)
 
@@ -173,9 +177,13 @@ def _stored_item(**overrides):
     return row
 
 
-def _mock_apply_dependencies(monkeypatch, stored_item, schedule_rows=None):
+def _mock_apply_dependencies(monkeypatch, stored_item, schedule_rows=None,
+                            confirmed_rows=None):
     header = _header()
-    cursor = _ProposalCursor(header, stored_item, schedule_rows=schedule_rows)
+    cursor = _ProposalCursor(
+        header, stored_item, schedule_rows=schedule_rows,
+        confirmed_rows=confirmed_rows,
+    )
     connection = _ProposalConnection()
     monkeypatch.setattr(pp, "execute_query", lambda *_args, **_kwargs: header)
     monkeypatch.setattr(
@@ -227,7 +235,7 @@ def test_aplicar_propuesta_rechaza_tipos_de_item_invalidos(
     )
 
 
-def test_aplicar_propuesta_no_reasigna_schedule_base_a_otra_linea(monkeypatch):
+def test_aplicar_propuesta_puede_optimizar_linea_y_reemplaza_schedule(monkeypatch):
     stored_item = _stored_item(
         linea="M2",
         base_sched_qty=100,
@@ -247,27 +255,99 @@ def test_aplicar_propuesta_no_reasigna_schedule_base_a_otra_linea(monkeypatch):
         monkeypatch, stored_item, schedule_rows=schedule_rows
     )
 
-    with pytest.raises(ValueError, match=r"ampliacion.*conservar M1/DIA"):
-        pp._ppy_aplicar_propuesta(
-            PROPOSAL_PUBLIC_ID,
-            "ana",
-            version=1,
-            items=[
-                {
-                    "item_id": stored_item["public_id"],
-                    "included": True,
-                    "linea": "M2",
-                    "turno": "DIA",
-                }
-            ],
-        )
-
-    assert connection.commits == 0
-    assert connection.rollbacks == 1
-    assert not any(
-        sql.startswith("INSERT INTO lg_schedule_daily")
-        for sql, _params in cursor.calls
+    result = pp._ppy_aplicar_propuesta(
+        PROPOSAL_PUBLIC_ID,
+        "ana",
+        version=1,
+        items=[
+            {
+                "item_id": stored_item["public_id"],
+                "included": True,
+                "linea": "M2",
+                "turno": "DIA",
+            }
+        ],
     )
+
+    upserts = [
+        params for sql, params in cursor.calls
+        if sql.startswith("INSERT INTO lg_schedule_daily")
+    ]
+    assert upserts == [(
+        stored_item["part_no"], stored_item["sched_date"], 200,
+        "M2", "DIA", PROPOSAL_PUBLIC_ID, "ana",
+    )]
+    assert result["schedule_change_summary"]["MODIFICAR"] == 1
+    assert connection.commits == 1
+    assert connection.rollbacks == 0
+
+
+def test_aplicar_propuesta_nunca_borra_un_lote_confirmado(monkeypatch):
+    """El motor optimiza libremente el Schedule, pero un CONFIRMADO es el piso:
+    aunque no quede en el plan nuevo, se conserva; jamas se elimina."""
+    stored_item = _stored_item()  # propuesta de OTRA parte (EBR80757421 / M1)
+    # una parte con schedule capturado y un lote CONFIRMADO detras, que la
+    # propuesta NO incluye: sin la guarda, seria candidata a ELIMINAR.
+    confirmada_dia = date(2026, 7, 21)
+    schedule_rows = [{
+        "part_no": "EBR30299369", "sched_date": confirmada_dia,
+        "sched_qty": 500, "linea": "M2", "turno": "DIA",
+    }]
+    confirmed_rows = [{
+        "part_no": "EBR30299369", "plan_date": confirmada_dia,
+        "linea": "M2", "turno": "DIA", "qty_plan": 500, "uph": 100,
+    }]
+    cursor, connection = _mock_apply_dependencies(
+        monkeypatch, stored_item,
+        schedule_rows=schedule_rows, confirmed_rows=confirmed_rows,
+    )
+
+    result = pp._ppy_aplicar_propuesta(PROPOSAL_PUBLIC_ID, "ana", version=1)
+
+    # NO se borra el confirmado
+    deletes = [
+        params for sql, params in cursor.calls
+        if sql.startswith("DELETE FROM lg_schedule_daily")
+    ]
+    assert ("EBR30299369", confirmada_dia) not in deletes
+    assert deletes == []
+    # se conserva su cantidad via UPDATE (piso inamovible)
+    updates = [
+        params for sql, params in cursor.calls
+        if sql.startswith("UPDATE lg_schedule_daily")
+    ]
+    assert (500, PROPOSAL_PUBLIC_ID, "ana", "EBR30299369", confirmada_dia) in updates
+    assert result["schedule_change_summary"]["ELIMINAR"] == 0
+    assert result["schedule_change_summary"]["CONSERVAR"] == 1  # el confirmado
+    assert connection.commits == 1 and connection.rollbacks == 0
+
+
+def test_aplicar_propuesta_elimina_schedule_que_no_quedo_en_plan(monkeypatch):
+    stored_item = _stored_item()
+    extra = {
+        "part_no": "EBR30299369",
+        "sched_date": date(2026, 7, 21),
+        "sched_qty": 1200,
+        "linea": "M2",
+        "turno": "DIA",
+    }
+    cursor, _connection = _mock_apply_dependencies(
+        monkeypatch, stored_item, schedule_rows=[extra]
+    )
+
+    result = pp._ppy_aplicar_propuesta(PROPOSAL_PUBLIC_ID, "ana", version=1)
+
+    deletes = [
+        params for sql, params in cursor.calls
+        if sql.startswith("DELETE FROM lg_schedule_daily")
+    ]
+    assert deletes == [("EBR30299369", date(2026, 7, 21))]
+    assert result["schedule_change_summary"] == {
+        "CONSERVAR": 0,
+        "MODIFICAR": 0,
+        "AGREGAR": 1,
+        "ELIMINAR": 1,
+    }
 
 
 def test_aplicar_propuesta_preserva_linea_turno_y_origen_en_schedule(monkeypatch):
@@ -328,6 +408,12 @@ def test_aplicar_propuesta_preserva_linea_turno_y_origen_en_schedule(monkeypatch
         "modificadas": 0,
         "excluidas": 0,
         "total_qty": 200,
+        "schedule_change_summary": {
+            "CONSERVAR": 0,
+            "MODIFICAR": 0,
+            "AGREGAR": 1,
+            "ELIMINAR": 0,
+        },
     }
     assert connection.commits == 1
     assert connection.rollbacks == 0

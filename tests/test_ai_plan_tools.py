@@ -48,6 +48,21 @@ def _proposal_result():
         "omitidas_count": 0,
         "excluded_parts": ["EBR30299365", "EBR30299369"],
         "exceptions": [],
+        "schedule_changes": [
+            {
+                "accion": "AGREGAR",
+                "part_no": "EBR80757421",
+                "sched_date": "2099-07-20",
+                "antes_qty": 0,
+                "despues_qty": 200,
+                "antes_linea": None,
+                "despues_linea": "M1",
+                "turno": "DIA",
+            }
+        ],
+        "schedule_change_summary": {
+            "CONSERVAR": 0, "MODIFICAR": 0, "AGREGAR": 1, "ELIMINAR": 0,
+        },
     }
 
 
@@ -264,7 +279,76 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
         "proposal_id": result["proposal_id"],
         "version": 1,
         "username": "ana",
+        "items": [],  # sin ajustes manuales
     }
+    assert result["ajustes_manuales"] == []
+
+
+def _mock_preparar_con_item(monkeypatch, pack_size=20):
+    """preparar mockeado + el item del borrador para resolver ajustes por parte."""
+    monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
+    monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
+    monkeypatch.setattr(
+        ai_plan_tools.pp, "_ppy_crear_propuesta",
+        lambda *a, **k: _proposal_result())
+    monkeypatch.setattr(
+        ai_plan_tools.pp, "_ppy_mark_proposal_pending", lambda *a, **k: None)
+    # _ajustes_a_items consulta los items del borrador (parte -> item_id/pack)
+    monkeypatch.setattr(
+        ai_plan_tools, "execute_query",
+        lambda *a, **k: [{"public_id": "item-abc", "part_no": "EBR80757421",
+                          "pack_size": pack_size}])
+
+
+def _preparar(monkeypatch, ajustes):
+    return ai_plan_tools.execute(
+        "plan_propuesta_preparar",
+        {"fecha_inicio": "2099-07-20", "fecha_fin": "2099-07-20",
+         "objetivo": None, "proceso_actual": None, "partes_excluidas": [],
+         "ajustes": ajustes},
+        username="ana", file_lookup=lambda _ref=None: (None, None),
+    )
+
+
+def test_plan_propuesta_ajuste_capa_cantidad_y_turno(monkeypatch):
+    """'solo produce 160 de X' + 'X llega de noche' -> item con qty y turno."""
+    _mock_preparar_con_item(monkeypatch, pack_size=20)
+    result = _preparar(monkeypatch, [{
+        "numero_parte": "EBR80757421", "cantidad": 160,
+        "turno": "NOCHE", "linea": None, "excluir": False,
+    }])
+    items = ai_plan_tools._read_token(
+        result["confirm_token"], "aplicar_propuesta")["items"]
+    assert items == [{"item_id": "item-abc", "included": True,
+                      "qty": 160, "turno": "NOCHE"}]
+    assert result["ajustes_manuales"] == items  # el LLM lo muestra antes de confirmar
+
+
+def test_plan_propuesta_ajuste_excluir_una_parte(monkeypatch):
+    _mock_preparar_con_item(monkeypatch)
+    result = _preparar(monkeypatch, [{
+        "numero_parte": "EBR80757421", "cantidad": None,
+        "turno": None, "linea": None, "excluir": True,
+    }])
+    items = ai_plan_tools._read_token(
+        result["confirm_token"], "aplicar_propuesta")["items"]
+    assert items == [{"item_id": "item-abc", "included": False}]
+
+
+def test_plan_propuesta_ajuste_valida_caja_cerrada_y_parte_inexistente(monkeypatch):
+    _mock_preparar_con_item(monkeypatch, pack_size=80)
+    # 200 no es multiplo de 80 -> se rechaza ANTES de confirmar
+    with pytest.raises(ValueError, match="multiplo del empaque 80"):
+        _preparar(monkeypatch, [{
+            "numero_parte": "EBR80757421", "cantidad": 200,
+            "turno": None, "linea": None, "excluir": False,
+        }])
+    # una parte que no esta en el plan -> error claro
+    with pytest.raises(ValueError, match="no esta en la propuesta"):
+        _preparar(monkeypatch, [{
+            "numero_parte": "NOEXISTE001", "cantidad": None,
+            "turno": None, "linea": None, "excluir": True,
+        }])
 
 
 def test_plan_propuesta_de_hoy_exige_proceso_actual(monkeypatch):

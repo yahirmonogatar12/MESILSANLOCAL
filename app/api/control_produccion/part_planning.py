@@ -138,7 +138,7 @@ PPY_LINEAS_DEFAULT = "M1,M2,M3"
 # distinga: ACQ30500849 se ve igual que sus vecinas (misma linea, CT y UPH).
 PPY_EXCLUIDAS_DEFAULT = "ACQ30500849"  # la vende ILSAN Corea aparte
 PPY_PACK_DEFAULT = 20  # std pack asumido en la propuesta de schedule para partes sin registro
-PPY_PROPOSAL_ENGINE_VERSION = "mrp-capacity-v4"
+PPY_PROPOSAL_ENGINE_VERSION = "mrp-capacity-v6"
 
 PP_SHEET_NAME = "LG"
 # Campos de inventario por parte (editables en Proyeccion; suman al I inicial)
@@ -1613,7 +1613,87 @@ def _ppy_omission_codes(motivo):
     return codigos or ["NOT_SCHEDULABLE"]
 
 
-def _ppy_proposal_hash(fecha_ini, fecha_fin, propuestas, excepciones):
+def _ppy_schedule_snapshot(fecha_ini, fecha_fin, query=None):
+    """Foto del Schedule MAIN que Planning entrego como punto de partida."""
+    run_query = query or execute_query
+    rows = run_query(
+        "SELECT part_no, sched_date, sched_qty, linea, turno FROM lg_schedule_daily "
+        "WHERE sched_date BETWEEN %s AND %s ORDER BY sched_date, part_no",
+        (fecha_ini, fecha_fin),
+        fetch="all",
+    ) or []
+    parts = sorted({str(row.get("part_no") or "").strip() for row in rows})
+    raw = _ppy_datos_raw(parts, run_query) if parts else {}
+    active_lines = set(_ppy_config_lineas(run_query))
+    snapshot = []
+    for row in rows:
+        part_no = str(row.get("part_no") or "").strip()
+        explicit_line = str(row.get("linea") or "").strip().upper()
+        raw_line = str((raw.get(part_no) or {}).get("assy_line") or "").strip().upper()
+        if explicit_line not in active_lines and raw_line not in active_lines:
+            continue
+        fecha = row.get("sched_date")
+        if isinstance(fecha, datetime):
+            fecha = fecha.date()
+        snapshot.append(
+            {
+                "part_no": part_no,
+                "sched_date": fecha.isoformat() if isinstance(fecha, date) else str(fecha or ""),
+                "qty": int(row.get("sched_qty") or 0),
+                "linea": explicit_line or raw_line or None,
+                "turno": str(row.get("turno") or "DIA").strip().upper(),
+            }
+        )
+    return snapshot
+
+
+def _ppy_schedule_changes(propuestas, schedule_snapshot):
+    """Compara el Schedule recibido contra el plan final optimizado."""
+    base = {
+        (item["part_no"], item["sched_date"]): item
+        for item in schedule_snapshot
+    }
+    final = {
+        (item["part_no"], str(item["sched_date"])): {
+            "part_no": item["part_no"],
+            "sched_date": str(item["sched_date"]),
+            "qty": int(item["qty"]),
+            "linea": str(item.get("linea") or "").strip().upper() or None,
+            "turno": str(item.get("turno") or "DIA").strip().upper(),
+        }
+        for item in propuestas
+    }
+    changes = []
+    for key in sorted(set(base) | set(final), key=lambda value: (value[1], value[0])):
+        before = base.get(key)
+        after = final.get(key)
+        if before and after:
+            action = "CONSERVAR" if all(
+                before.get(field) == after.get(field)
+                for field in ("qty", "linea", "turno")
+            ) else "MODIFICAR"
+        elif after:
+            action = "AGREGAR"
+        else:
+            action = "ELIMINAR"
+        changes.append(
+            {
+                "accion": action,
+                "part_no": key[0],
+                "sched_date": key[1],
+                "antes_qty": int((before or {}).get("qty") or 0),
+                "despues_qty": int((after or {}).get("qty") or 0),
+                "antes_linea": (before or {}).get("linea"),
+                "despues_linea": (after or {}).get("linea"),
+                "turno": (after or before or {}).get("turno"),
+            }
+        )
+    return changes
+
+
+def _ppy_proposal_hash(
+    fecha_ini, fecha_fin, propuestas, excepciones, schedule_snapshot=None
+):
     """Huella estable de la salida deterministica para detectar propuestas viejas."""
     payload = {
         "engine": PPY_PROPOSAL_ENGINE_VERSION,
@@ -1621,6 +1701,7 @@ def _ppy_proposal_hash(fecha_ini, fecha_fin, propuestas, excepciones):
         "date_to": fecha_fin.isoformat(),
         "proposals": propuestas,
         "exceptions": excepciones,
+        "schedule_snapshot": schedule_snapshot or [],
     }
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -1667,14 +1748,13 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                           replanear=True, excluded_parts=None):
     """Propone schedule con MRP y capacidad, sin escribir datos operativos.
 
-    replanear=True (default): el plan de cada dia del rango se rehace COMPLETO
-    e incluye lo que ya se habia puesto antes. Es lo correcto para el plan
-    diario, porque el plan de LG cambia y el schedule de mañana que se capturo
-    ayer quedo viejo. El schedule ANTERIOR a fecha_ini si cuenta: ya se
-    produjo. Ojo: al aplicar, un plan completo REEMPLAZA el renglon S, no se
-    le suma.
-    replanear=False: propone solo lo que falta ADEMAS del schedule ya
-    capturado (delta).
+    replanear=True (default): toma el Schedule capturado como linea base para
+    comparar, pero reconstruye el resultado final del rango. El motor puede
+    conservar, modificar, agregar o eliminar renglones para mejorar el plan.
+    El Schedule anterior a fecha_ini si cuenta como material ya producido.
+
+    replanear=False: calcula solamente incrementos sobre el Schedule vigente;
+    se conserva para consultas de diagnostico, no para la propuesta completa.
 
     Formula base: I(t) = I(t-1) - P(t) + S(t). Cada faltante se cubre con
     +10 %, caja cerrada, linea permitida y un maximo de 9 h del turno DIA.
@@ -2077,8 +2157,16 @@ def _ppy_crear_propuesta(
     propuestas, omitidas, excepciones = _ppy_simular_schedule(
         fecha_ini, fecha_fin, detailed=True, excluded_parts=excluded_parts
     )
+    schedule_snapshot = _ppy_schedule_snapshot(fecha_ini, fecha_fin)
     _ppy_attach_schedule_actual(propuestas, fecha_ini, fecha_fin)
-    input_hash = _ppy_proposal_hash(fecha_ini, fecha_fin, propuestas, excepciones)
+    schedule_changes = _ppy_schedule_changes(propuestas, schedule_snapshot)
+    input_hash = _ppy_proposal_hash(
+        fecha_ini,
+        fecha_fin,
+        propuestas,
+        excepciones,
+        schedule_snapshot,
+    )
     public_id = str(uuid.uuid4())
     source = str(source or "UI").strip().upper()[:20] or "UI"
     objective = str(objective or "").strip()[:500] or None
@@ -2184,6 +2272,11 @@ def _ppy_crear_propuesta(
             1 for item in propuestas if item.get("requiere_aprobacion")
         ),
         "line_summary": _ppy_resumen_lineas(propuestas),
+        "schedule_changes": schedule_changes,
+        "schedule_change_summary": {
+            action: sum(1 for item in schedule_changes if item["accion"] == action)
+            for action in ("CONSERVAR", "MODIFICAR", "AGREGAR", "ELIMINAR")
+        },
         "input_hash": input_hash,
     }
 
@@ -2380,8 +2473,15 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
         _ppy_attach_schedule_actual(
             actuales, fecha_ini, fecha_fin, query=tx_query
         )
+        schedule_snapshot = _ppy_schedule_snapshot(
+            fecha_ini, fecha_fin, query=tx_query
+        )
         hash_actual = _ppy_proposal_hash(
-            fecha_ini, fecha_fin, actuales, excepciones
+            fecha_ini,
+            fecha_fin,
+            actuales,
+            excepciones,
+            schedule_snapshot,
         )
         if hash_actual != locked.get("input_hash"):
             cursor.execute(
@@ -2528,39 +2628,9 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
             clave = (fecha, linea, turno)
             horas[clave] = horas.get(clave, 0.0) + int(row.get("qty_plan") or 0) / uph
 
-        cursor.execute(
-            "SELECT part_no, sched_date, sched_qty, linea, turno FROM lg_schedule_daily "
-            "WHERE sched_date BETWEEN %s AND %s AND sched_qty > 0 FOR UPDATE",
-            (fecha_ini, fecha_fin),
-        )
-        schedule_cap_rows = cursor.fetchall() or []
-        schedule_cap_raw = _ppy_datos_raw(
-            sorted(
-                {str(row.get("part_no") or "").strip() for row in schedule_cap_rows}
-            ),
-            tx_query,
-        )
-        for row in schedule_cap_rows:
-            part_no = str(row.get("part_no") or "").strip()
-            fecha = row["sched_date"].date() if isinstance(row["sched_date"], datetime) else row["sched_date"]
-            residual = max(
-                int(row.get("sched_qty") or 0) - confirmadas_qty.get((part_no, fecha), 0),
-                0,
-            )
-            if residual <= 0:
-                continue
-            linea = str(row.get("linea") or "").strip().upper()
-            turno = str(row.get("turno") or "DIA").strip().upper()
-            uph = _ppy_parse_uph((schedule_cap_raw.get(part_no) or {}).get("uph"))
-            if not linea or linea not in lineas_activas or not uph:
-                if (fecha, turno) in requested_date_turns:
-                    raise ValueError(
-                        f"Schedule existente {part_no} sin linea activa o UPH; "
-                        "capacidad no verificable"
-                    )
-                continue
-            clave = (fecha, linea, turno)
-            horas[clave] = horas.get(clave, 0.0) + residual / uph
+        # El Schedule vigente es la linea base que esta propuesta REEMPLAZA;
+        # sumarlo aqui duplicaria sus horas. Los lotes CONFIRMADOS de arriba
+        # si son inamovibles y consumen capacidad adicional al plan nuevo.
         excedidas = [
             (clave, total)
             for clave, total in horas.items()
@@ -2573,18 +2643,24 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
             )
             raise ValueError(f"La propuesta excede {PPY_HORAS_TURNO:g} h: {detalle}")
 
-        partes = sorted({row["part_no"] for row in stored_items})
-        placeholders = ", ".join(["%s"] * len(partes)) if partes else "''"
         cursor.execute(
             "SELECT part_no, sched_date, sched_qty, linea, turno "
             "FROM lg_schedule_daily "
-            f"WHERE sched_date BETWEEN %s AND %s AND part_no IN ({placeholders}) FOR UPDATE",
-            tuple([fecha_ini, fecha_fin] + partes),
+            "WHERE sched_date BETWEEN %s AND %s FOR UPDATE",
+            (fecha_ini, fecha_fin),
         )
         schedule_actual = {}
+        managed_schedule_keys = {
+            (item["part_no"], _ppy_parse_fecha(item["sched_date"]))
+            for item in schedule_snapshot
+        }
+        proposal_parts = {row["part_no"] for row in stored_items}
         for row in cursor.fetchall() or []:
             fecha = row["sched_date"].date() if isinstance(row["sched_date"], datetime) else row["sched_date"]
-            schedule_actual[(row["part_no"], fecha)] = {
+            key = (row["part_no"], fecha)
+            if key not in managed_schedule_keys and row["part_no"] not in proposal_parts:
+                continue
+            schedule_actual[key] = {
                 "qty": int(row.get("sched_qty") or 0),
                 "linea": str(row.get("linea") or "").strip().upper() or None,
                 "turno": str(row.get("turno") or "DIA").strip().upper(),
@@ -2625,19 +2701,6 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
                         "en el schedule actual"
                     )
                 if not existente:
-                    base_schedule = schedule_actual.get(clave) or {
-                        "qty": 0,
-                        "linea": None,
-                        "turno": None,
-                    }
-                    if base_schedule["qty"] > 0 and (
-                        base_schedule["linea"] != after["linea"]
-                        or base_schedule["turno"] != after["turno"]
-                    ):
-                        raise ValueError(
-                            f"{row['part_no']}: la ampliacion del schedule debe conservar "
-                            f"{base_schedule['linea']}/{base_schedule['turno']}"
-                        )
                     existente = {
                         "qty": 0,
                         "linea": after["linea"],
@@ -2645,9 +2708,57 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
                     }
                     incrementos[clave] = existente
                 existente["qty"] += int(after["qty"])
+        target_schedule = {}
+        for key, sched in incrementos.items():
+            target_schedule[key] = {
+                "qty": int(confirmadas_qty.get(key, 0)) + sched["qty"],
+                "linea": sched["linea"],
+                "turno": sched["turno"],
+            }
+        for key, current in schedule_actual.items():
+            if key not in target_schedule and int(confirmadas_qty.get(key, 0)) > 0:
+                target_schedule[key] = {
+                    "qty": int(confirmadas_qty[key]),
+                    "linea": current.get("linea"),
+                    "turno": current.get("turno"),
+                }
+        change_counts = {
+            "CONSERVAR": 0, "MODIFICAR": 0, "AGREGAR": 0, "ELIMINAR": 0
+        }
+        for key in set(schedule_actual) | set(target_schedule):
+            before = schedule_actual.get(key)
+            after = target_schedule.get(key)
+            action = (
+                "ELIMINAR" if after is None else
+                "AGREGAR" if before is None else
+                "CONSERVAR" if before == after else
+                "MODIFICAR"
+            )
+            change_counts[action] += 1
+
+        # El resultado es un Schedule final completo. Lo que ya no aparece se
+        # elimina; lo modificado se reemplaza y lo nuevo se agrega. Un lote ya
+        # CONFIRMADO nunca se borra: su cantidad queda como base inamovible.
+        for (part_no, sched_date), current in schedule_actual.items():
+            if (part_no, sched_date) in incrementos:
+                continue
+            qty_confirmada = int(confirmadas_qty.get((part_no, sched_date), 0))
+            if qty_confirmada > 0:
+                cursor.execute(
+                    "UPDATE lg_schedule_daily SET sched_qty=%s, proposal_public_id=%s, "
+                    "updated_by=%s WHERE part_no=%s AND sched_date=%s",
+                    (qty_confirmada, public_id, usuario, part_no, sched_date),
+                )
+            else:
+                cursor.execute(
+                    "DELETE FROM lg_schedule_daily WHERE part_no=%s AND sched_date=%s",
+                    (part_no, sched_date),
+                )
+
+        cantidades_finales = {}
         for (part_no, sched_date), sched in incrementos.items():
-            base_schedule = schedule_actual.get((part_no, sched_date)) or {"qty": 0}
-            nueva_qty = int(base_schedule["qty"]) + sched["qty"]
+            nueva_qty = int(confirmadas_qty.get((part_no, sched_date), 0)) + sched["qty"]
+            cantidades_finales[(part_no, sched_date)] = nueva_qty
             cursor.execute(
                 "INSERT INTO lg_schedule_daily "
                 "(part_no, sched_date, sched_qty, linea, turno, proposal_public_id, updated_by) "
@@ -2712,7 +2823,8 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
             "aplicadas": aplicadas,
             "modificadas": modificadas,
             "excluidas": excluidas,
-            "total_qty": sum(value["qty"] for value in incrementos.values()),
+            "total_qty": sum(cantidades_finales.values()),
+            "schedule_change_summary": change_counts,
         }
     except PPYProposalStaleError:
         conn.rollback()
@@ -3460,6 +3572,26 @@ def _ppy_proyeccion_rango(fecha_ini, fecha_fin, query=None, replanear_desde=None
                 if f >= ref:
                     clave = (r["part_no"], f)
                     movs[clave] = movs.get(clave, 0) + signo * int(r["q"] or 0)
+
+        if replanear_desde:
+            # El Schedule futuro se puede reemplazar, pero los lotes ya
+            # confirmados no. Se reincorporan a la proyeccion para que el plan
+            # nuevo calcule solo lo adicional a esa produccion inamovible.
+            confirmed_rows = run_query(
+                "SELECT part_no, plan_date AS f, SUM(qty_plan) AS q "
+                "FROM lg_lote_plan WHERE status='CONFIRMADO' "
+                "AND plan_date BETWEEN %s AND %s GROUP BY part_no, plan_date",
+                (replanear_desde, fecha_fin),
+                fetch="all",
+            ) or []
+            for row in confirmed_rows:
+                ref = refs.get(row["part_no"])
+                if not ref:
+                    continue
+                f = row["f"].date() if isinstance(row["f"], datetime) else row["f"]
+                if f >= ref:
+                    key = (row["part_no"], f)
+                    movs[key] = movs.get(key, 0) + int(row.get("q") or 0)
 
     resultado = {}
     for p, d in base.items():

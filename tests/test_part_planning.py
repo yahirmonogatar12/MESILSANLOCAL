@@ -1196,13 +1196,8 @@ def test_pp_import_mas_reciente_avisa_retroceso(monkeypatch):
         None, date(2026, 7, 15), date(2026, 9, 14)) is None
 
 
-def test_ppy_replanear_incluye_lo_ya_puesto(monkeypatch):
-    """El plan del dia es COMPLETO: incluye lo que ya se habia puesto antes.
-
-    Planning: "tiene que dar incluso lo que ya se habia puesto antes, se planea
-    diario porque cambia plan de LG". El schedule de mañana capturado ayer esta
-    viejo, asi que no cuenta como cubierto: se rehace.
-    """
+def test_ppy_propuesta_normal_reconstruye_schedule_completo(monkeypatch):
+    """La propuesta normal produce el resultado final, no solamente el delta."""
     import app.api.control_produccion.part_planning as pp
 
     fecha = date(2026, 7, 15)
@@ -1215,18 +1210,43 @@ def test_ppy_replanear_incluye_lo_ya_puesto(monkeypatch):
     proy_replan = {parte: {"line": "M1",
                            "proj": {fecha: 500, fecha + timedelta(days=1): -60}}}
 
-    # replanear=False: el schedule cubre, no hay nada que agregar
+    # Modo normal: reconstruye el plan completo y puede reducir/eliminar S.
+    pp2 = _mock_ppy_schedule_dependencies(monkeypatch, proy_replan, raw)
+    props, _om, _ex = pp2._ppy_simular_schedule(
+        fecha, fecha + timedelta(days=1), detailed=True)
+    assert len(props) == 1
+    assert props[0]["qty"] == 140
+
+    # El modo delta conserva S y queda disponible para diagnostico.
     pp2 = _mock_ppy_schedule_dependencies(monkeypatch, proy_con_sched, raw)
     props, _om, _ex = pp2._ppy_simular_schedule(
         fecha, fecha + timedelta(days=1), detailed=True, replanear=False)
     assert props == []
 
-    # replanear=True: se ignora ese schedule y el plan sale completo
-    pp2 = _mock_ppy_schedule_dependencies(monkeypatch, proy_replan, raw)
-    props, _om, _ex = pp2._ppy_simular_schedule(
-        fecha, fecha + timedelta(days=1), detailed=True, replanear=True)
-    assert len(props) == 1
-    assert props[0]["qty"] == 140   # 60-(-60)=120 -> +10% -> caja 20 -> 140
+
+def test_ppy_schedule_changes_declara_agregar_modificar_y_eliminar():
+    import app.api.control_produccion.part_planning as pp
+
+    snapshot = [
+        {"part_no": "P1", "sched_date": "2026-07-17", "qty": 100,
+         "linea": "M1", "turno": "DIA"},
+        {"part_no": "P2", "sched_date": "2026-07-17", "qty": 200,
+         "linea": "M2", "turno": "DIA"},
+    ]
+    final = [
+        {"part_no": "P1", "sched_date": "2026-07-17", "qty": 120,
+         "linea": "M1", "turno": "DIA"},
+        {"part_no": "P3", "sched_date": "2026-07-17", "qty": 300,
+         "linea": "M3", "turno": "DIA"},
+    ]
+
+    changes = pp._ppy_schedule_changes(final, snapshot)
+
+    assert {item["part_no"]: item["accion"] for item in changes} == {
+        "P1": "MODIFICAR",
+        "P2": "ELIMINAR",
+        "P3": "AGREGAR",
+    }
 
 
 def test_ppy_proyeccion_replanear_desde_ignora_sched_futuro(monkeypatch):

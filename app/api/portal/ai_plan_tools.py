@@ -90,6 +90,72 @@ def _parse_fecha(texto: str | None) -> date:
     return pp._ppy_parse_fecha(texto) or date.today()
 
 
+def _ajustes_a_items(proposal_id: str, ajustes: list) -> list[dict[str, Any]]:
+    """Traduce ajustes por PARTE (lo que conoce el LLM) a items por item_id
+    (lo que espera el motor). Valida contra el borrador ya calculado.
+
+    Un ajuste puede: excluir la parte, capar su cantidad (material faltante),
+    cambiar su turno (material que llega de noche) o su linea. El motor vuelve
+    a validar caja cerrada, linea activa/permitida, turno y capacidad al
+    aplicar; aqui se rechaza temprano lo obvio para no fallar tras confirmar.
+    """
+    if not ajustes:
+        return []
+    rows = execute_query(
+        "SELECT i.public_id, i.part_no, i.pack_size FROM lg_plan_proposal_items i "
+        "JOIN lg_plan_proposals p ON p.id = i.proposal_id WHERE p.public_id = %s",
+        (proposal_id,),
+        fetch="all",
+    ) or []
+    por_parte: dict[str, list] = {}
+    for r in rows:
+        por_parte.setdefault(str(r["part_no"]).strip().upper(), []).append(r)
+
+    items = []
+    for aj in ajustes:
+        parte = str(aj.get("numero_parte") or "").strip().upper()
+        matches = por_parte.get(parte)
+        if not matches:
+            raise ValueError(
+                f"{parte or '(vacio)'} no esta en la propuesta de mañana; "
+                "no se puede ajustar una parte que el motor no planeo."
+            )
+        if len(matches) > 1:
+            raise ValueError(
+                f"{parte} aparece en varias fechas de la propuesta; ajustala "
+                "desde la pantalla de Proyeccion, no por el asistente."
+            )
+        row = matches[0]
+        item: dict[str, Any] = {"item_id": row["public_id"]}
+        if aj.get("excluir"):
+            item["included"] = False
+            items.append(item)
+            continue
+        item["included"] = True
+        cap = aj.get("cantidad")
+        if cap is not None:
+            cap = int(cap)
+            pack = int(row.get("pack_size") or 0)
+            if cap <= 0 or (pack and cap % pack != 0):
+                raise ValueError(
+                    f"{parte}: la cantidad {cap} debe ser positiva y multiplo del "
+                    f"empaque {pack or 'N/D'} (caja cerrada)."
+                )
+            item["qty"] = cap
+        turno = str(aj.get("turno") or "").strip().upper()
+        if turno:
+            if turno not in pp.PPY_TURNOS:
+                raise ValueError(
+                    f"{parte}: turno '{turno}' invalido (usa {', '.join(pp.PPY_TURNOS)})."
+                )
+            item["turno"] = turno
+        linea = str(aj.get("linea") or "").strip().upper()
+        if linea:
+            item["linea"] = linea
+        items.append(item)
+    return items
+
+
 # ============================================================
 # Nucleo reutilizable (misma logica que los endpoints)
 # ============================================================
@@ -333,8 +399,11 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                 "name": "plan_propuesta_preparar",
                 "description": (
                     "Genera una propuesta deterministica y revisable de schedule usando plan LG, "
-                    "inventario, RAW (CT/UPH/empaque), lineas permitidas y capacidad. No modifica "
-                    "schedule ni lotes. Usala cuando pidan 'haz una propuesta del plan'."
+                    "inventario, el Schedule vigente, RAW (CT/UPH/empaque), lineas permitidas y "
+                    "capacidad. El resultado es el Schedule final optimizado: puede conservar, "
+                    "modificar, agregar o eliminar lo capturado por Planning. No modifica "
+                    "schedule ni lotes hasta la confirmacion. Usala cuando pidan 'haz una "
+                    "propuesta del plan'."
                 ),
                 "strict": True,
                 "parameters": {
@@ -372,10 +441,49 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                                 "de esta propuesta. Usa [] cuando no haya exclusiones."
                             ),
                         },
+                        "ajustes": {
+                            "type": "array",
+                            "maxItems": 30,
+                            "description": (
+                                "Ajustes manuales por parte sobre el plan calculado. "
+                                "Usa [] si no hay. Ejemplos: 'solo produce 200 de X "
+                                "porque falta material' -> cantidad=200; 'X llega "
+                                "material de noche' -> turno='NOCHE'. La cantidad debe "
+                                "ser multiplo del empaque (caja cerrada)."
+                            ),
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "numero_parte": {"type": "string"},
+                                    "cantidad": {
+                                        "type": ["integer", "null"],
+                                        "description": "Cap de piezas (multiplo del empaque); null = no cambia",
+                                    },
+                                    "turno": {
+                                        "type": ["string", "null"],
+                                        "enum": ["DIA", "TIEMPO EXTRA", "NOCHE", None],
+                                        "description": "Turno; null = no cambia",
+                                    },
+                                    "linea": {
+                                        "type": ["string", "null"],
+                                        "description": "Linea; null = no cambia",
+                                    },
+                                    "excluir": {
+                                        "type": "boolean",
+                                        "description": "true saca la parte del plan de mañana",
+                                    },
+                                },
+                                "required": [
+                                    "numero_parte", "cantidad", "turno", "linea",
+                                    "excluir",
+                                ],
+                                "additionalProperties": False,
+                            },
+                        },
                     },
                     "required": [
                         "fecha_inicio", "fecha_fin", "objetivo", "proceso_actual",
-                        "partes_excluidas",
+                        "partes_excluidas", "ajustes",
                     ],
                     "additionalProperties": False,
                 },
@@ -474,7 +582,7 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         proceso_actual = str(arguments.get("proceso_actual") or "").strip()
         if fecha_inicio <= hoy <= fecha_fin and not proceso_actual:
             raise ValueError(
-                "Antes de replanear hoy, pregunta en que proceso o lote van "
+                "Antes de planear hoy, pregunta en que proceso o lote van "
                 "las lineas y envia la respuesta en proceso_actual."
             )
         objetivo = str(arguments.get("objetivo") or "").strip()
@@ -493,12 +601,20 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             excluded_parts=partes_excluidas,
         )
         pp._ppy_mark_proposal_pending(propuesta["proposal_id"], username)
+        # Ajustes manuales por parte (capar cantidad, cambiar turno/linea o
+        # excluir). Se traducen a items del motor y viajan en el token: el
+        # apply se dispara con solo el token, asi que lo que se confirma es
+        # exactamente esto.
+        items_ajuste = _ajustes_a_items(
+            propuesta["proposal_id"], arguments.get("ajustes") or []
+        )
         token = _make_token(
             "aplicar_propuesta",
             {
                 "proposal_id": propuesta["proposal_id"],
                 "version": propuesta["version"],
                 "username": username,
+                "items": items_ajuste,
             },
         )
         muestra = [
@@ -533,11 +649,18 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "exceptions": propuesta["exceptions"][:20],
             "sample": muestra,
             "proceso_actual": proceso_actual or None,
+            "schedule_usado_como_referencia": True,
+            "resultado_es_schedule_final": True,
+            "schedule_change_summary": propuesta["schedule_change_summary"],
+            "schedule_changes": propuesta["schedule_changes"][:50],
+            "ajustes_manuales": items_ajuste,
             "confirm_token": token,
             "instruccion": (
                 "Explica que es una propuesta calculada por el motor, resume capacidad y "
-                "excepciones, confirma expresamente las partes excluidas y pide "
-                "confirmacion en un mensaje posterior para aplicarla."
+                "excepciones, aclara que tomo el Schedule vigente como punto de partida, "
+                "resume cuantos renglones conserva, modifica, agrega y elimina, confirma "
+                "expresamente las partes excluidas y pide confirmacion en un mensaje posterior "
+                "para reemplazar el Schedule del rango por este resultado final."
             ),
         }
 
@@ -549,7 +672,7 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             str(payload.get("proposal_id") or ""),
             username,
             version=payload.get("version") or 1,
-            items=None,
+            items=payload.get("items") or None,
         )
 
     if name == "plan_importar_preparar":

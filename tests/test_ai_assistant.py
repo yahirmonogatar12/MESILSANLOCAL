@@ -564,6 +564,23 @@ def test_reporte_propuesta_conserva_detalle_y_resumen_por_linea(monkeypatch):
             }
 
         def fetchall(self):
+            if "FROM lg_schedule_daily" in self.sql:
+                return [
+                    {
+                        "part_no": "EBR80757432",
+                        "sched_date": "2026-07-17",
+                        "sched_qty": 1940,
+                        "linea": "M4",
+                        "turno": "DIA",
+                    },
+                    {
+                        "part_no": "ACQ91482499",
+                        "sched_date": "2026-07-17",
+                        "sched_qty": 300,
+                        "linea": "D2",
+                        "turno": "DIA",
+                    },
+                ]
             return [
                 {
                     "fecha": "2026-07-17",
@@ -607,7 +624,8 @@ def test_reporte_propuesta_conserva_detalle_y_resumen_por_linea(monkeypatch):
     )
 
     assert result["columns"] == [
-        "fecha", "numero_parte", "linea", "cantidad", "ct", "uph", "horas"
+        "fecha", "numero_parte", "linea", "cantidad", "ct", "uph", "horas",
+        "accion_schedule",
     ]
     assert result["row_count"] == 2
     assert result["summary"]["total_qty"] == 2320
@@ -616,6 +634,12 @@ def test_reporte_propuesta_conserva_detalle_y_resumen_por_linea(monkeypatch):
         {"linea": "D2", "lotes": 1, "cantidad": 380, "horas": 2.53},
         {"linea": "M4", "lotes": 1, "cantidad": 1940, "horas": 6.47},
     ]
+    assert result["summary"]["schedule_change_summary"] == {
+        "CONSERVAR": 1,
+        "MODIFICAR": 1,
+        "AGREGAR": 0,
+        "ELIMINAR": 0,
+    }
     assert connection.cursor_instance.executions[0][1] == (proposal_id, "ana")
 
 
@@ -639,6 +663,16 @@ def test_excel_propuesta_incluye_plan_y_resumen_por_linea(tmp_path):
             "inventario_despues": 1314,
             "fecha_faltante": "2026-07-20",
             "excepciones_json": "[]",
+        }],
+        "schedule_changes": [{
+            "accion": "ELIMINAR",
+            "numero_parte": "EBR30299369",
+            "fecha": "2026-07-17",
+            "cantidad_antes": 600,
+            "cantidad_final": 0,
+            "linea_antes": "M3",
+            "linea_final": None,
+            "turno": "DIA",
         }],
         "row_count": 1,
         "truncated": False,
@@ -667,7 +701,8 @@ def test_excel_propuesta_incluye_plan_y_resumen_por_linea(tmp_path):
 
     workbook = load_workbook(target, data_only=False)
     assert workbook.sheetnames == [
-        "Resumen", "Plan 17-jul", "Horizonte", "Logica", "No planeadas", "Part"
+        "Resumen", "Plan 17-jul", "Horizonte", "Logica", "No planeadas",
+        "Cambios Schedule", "Part"
     ]
     plan = workbook["Plan 17-jul"]
     assert [cell.value for cell in plan[3]] == [
@@ -687,6 +722,10 @@ def test_excel_propuesta_incluye_plan_y_resumen_por_linea(tmp_path):
     assert workbook["No planeadas"]["B5"].value == "Excluidas expresamente por Planning"
     assert workbook["No planeadas"]["C5"].value == 2
     assert workbook["No planeadas"]["D5"].value == "EBR30299365, EBR30299369"
+    assert workbook["Cambios Schedule"]["A4"].value == "ELIMINAR"
+    assert workbook["Cambios Schedule"]["B4"].value == "EBR30299369"
+    assert workbook["Cambios Schedule"]["D4"].value == 600
+    assert workbook["Cambios Schedule"]["E4"].value == 0
     assert all(not sheet.sheet_view.showGridLines for sheet in workbook.worksheets)
 
 

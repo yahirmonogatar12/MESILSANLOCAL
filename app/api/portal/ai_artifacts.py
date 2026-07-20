@@ -527,6 +527,7 @@ def _build_plan_proposal_excel(
 
     rows = list(result.get("rows") or [])
     summary = dict(result.get("summary") or {})
+    schedule_change_summary = dict(summary.get("schedule_change_summary") or {})
     proposal_id = str(summary.get("proposal_id") or "")
     date_from = _plan_date(summary.get("date_from")) or date.today()
     date_to = _plan_date(summary.get("date_to")) or date_from
@@ -563,6 +564,14 @@ def _build_plan_proposal_excel(
         ("Partes / lotes", summary.get("total_items", len(rows)), "Cantidad total", summary.get("total_qty", 0)),
         ("Horas totales", summary.get("total_hours", 0), "Bloques de 9 h", block_count),
         ("Partes omitidas", summary.get("omitted_count", 0), "Objetivo", summary.get("objective") or "Plan de producción"),
+        (
+            "Cambios al Schedule",
+            f"{schedule_change_summary.get('MODIFICAR', 0)} modificar / "
+            f"{schedule_change_summary.get('ELIMINAR', 0)} eliminar",
+            "Nuevos / conservados",
+            f"{schedule_change_summary.get('AGREGAR', 0)} / "
+            f"{schedule_change_summary.get('CONSERVAR', 0)}",
+        ),
     ]
     for row_no, values in enumerate(summary_rows, 9):
         for column, value in enumerate(values, 2):
@@ -580,8 +589,8 @@ def _build_plan_proposal_excel(
     ws.merge_cells(start_row=note_row, start_column=2, end_row=note_row + 1, end_column=5)
     style(ws.cell(note_row, 2), "note").value = (
         f"Se omitieron {int(summary.get('omitted_count') or 0)} partes. "
-        "Consulta la hoja 'No planeadas'. La propuesta permanece pendiente hasta "
-        "que se confirme expresamente su aplicación al MES."
+        "Consulta 'No planeadas' y 'Cambios Schedule'. La propuesta permanece "
+        "pendiente hasta confirmar que reemplazará el Schedule del rango."
     )
     ws.print_area = f"A1:F{note_row + 1}"
 
@@ -703,6 +712,7 @@ def _build_plan_proposal_excel(
     logic = [
         ("Inventario inicial (I0)", "Suma LGEMM, ISEMM, SVC, DIF, pendiente, rework, SMT e IMD de la referencia semanal."),
         ("Proyección diaria", "I(t) = I(t-1) - P(t) + S(t): consumo de LG menos lo ya surtido o programado."),
+        ("Schedule de Planning", "Se usa como punto de partida y se compara contra el resultado final; el motor puede conservar, modificar, agregar o eliminar renglones."),
         ("Faltante", "Una parte es candidata cuando el inventario proyectado cae debajo de cero dentro de su horizonte."),
         ("Cantidad", "Se cubre el faltante con margen y caja cerrada; el lote busca conservar el remanente objetivo."),
         ("Línea", "Se respeta la línea de ensamble registrada. Una parte no se reasigna a una línea incorrecta."),
@@ -717,7 +727,7 @@ def _build_plan_proposal_excel(
         style(ws.cell(row_no, 3), "body_bold").value = label
         style(ws.cell(row_no, 4), "body").value = description
         ws.cell(row_no, 4).alignment = Alignment(vertical="top", wrap_text=True)
-    ws.print_area = "A1:E10"
+    ws.print_area = f"A1:E{len(logic) + 2}"
 
     # No planeadas
     ws = wb.create_sheet("No planeadas")
@@ -774,6 +784,43 @@ def _build_plan_proposal_excel(
         "excepción para que Planning corrija el dato o autorice capacidad adicional."
     )
     ws.print_area = f"A1:D{alert_row + 2}"
+
+    # Comparativo contra lo que Planning capturo en Schedule.
+    ws = wb.create_sheet("Cambios Schedule")
+    setup(ws, landscape=True)
+    for column, width in {
+        "A": 13, "B": 17, "C": 13, "D": 15, "E": 15,
+        "F": 14, "G": 14, "H": 12,
+    }.items():
+        ws.column_dimensions[column].width = width
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells("A1:H1")
+    style(ws["A1"], "title").value = "Cambios propuestos sobre el Schedule de Planning"
+    change_headers = (
+        "Acción", "Parte", "Fecha", "Cantidad antes", "Cantidad final",
+        "Línea antes", "Línea final", "Turno",
+    )
+    for column, value in enumerate(change_headers, 1):
+        style(ws.cell(3, column), "header").value = value
+    schedule_changes = list(result.get("schedule_changes") or [])
+    for row_no, item in enumerate(schedule_changes, 4):
+        values = (
+            item.get("accion"), item.get("numero_parte"), item.get("fecha"),
+            item.get("cantidad_antes"), item.get("cantidad_final"),
+            item.get("linea_antes"), item.get("linea_final"), item.get("turno"),
+        )
+        for column, value in enumerate(values, 1):
+            key = "negative" if item.get("accion") == "ELIMINAR" and column == 1 else "body"
+            style(ws.cell(row_no, column), key).value = _safe_cell(value)
+        ws.cell(row_no, 4).number_format = "#,##0"
+        ws.cell(row_no, 5).number_format = "#,##0"
+    change_note_row = 5 + len(schedule_changes)
+    ws.merge_cells(start_row=change_note_row, start_column=1, end_row=change_note_row + 1, end_column=8)
+    style(ws.cell(change_note_row, 1), "note").value = (
+        "CONSERVAR mantiene lo capturado; MODIFICAR reemplaza cantidad o línea; "
+        "AGREGAR crea un renglón; ELIMINAR lo borra al confirmar."
+    )
+    ws.print_area = f"A1:H{change_note_row + 1}"
 
     # Part: matriz por parte y fecha
     ws = wb.create_sheet("Part")

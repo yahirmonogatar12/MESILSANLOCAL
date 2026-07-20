@@ -1647,12 +1647,71 @@ def _plan_proposal_report(
             (header["id"], int(limit) + 1),
         )
         fetched = cursor.fetchall() or []
+        cursor.execute(
+            "SELECT part_no, sched_date, sched_qty, linea, turno "
+            "FROM lg_schedule_daily WHERE sched_date BETWEEN %s AND %s "
+            "ORDER BY sched_date, part_no",
+            (header.get("date_from"), header.get("date_to")),
+        )
+        schedule_rows = cursor.fetchall() or []
     finally:
         cursor.close()
         conn.close()
 
     truncated = len(fetched) > limit
     rows = [_normalize_row(dict(row)) for row in fetched[:limit]]
+    main_lines = {"M1", "M2", "M3", "M4", "D1", "D2", "D3"}
+    main_lines.update(
+        str(row.get("linea") or "").strip().upper()
+        for row in rows
+        if str(row.get("linea") or "").strip()
+    )
+    schedule_base = {}
+    for raw in schedule_rows:
+        item = _normalize_row(dict(raw))
+        line = str(item.get("linea") or "").strip().upper()
+        if line not in main_lines:
+            continue
+        key = (str(item.get("part_no") or ""), str(item.get("sched_date") or ""))
+        schedule_base[key] = {
+            "cantidad": int(item.get("sched_qty") or 0),
+            "linea": line or None,
+            "turno": str(item.get("turno") or "DIA").strip().upper(),
+        }
+    schedule_final = {}
+    schedule_changes = []
+    for row in rows:
+        key = (str(row.get("numero_parte") or ""), str(row.get("fecha") or ""))
+        after = {
+            "cantidad": int(row.get("cantidad") or 0),
+            "linea": str(row.get("linea") or "").strip().upper() or None,
+            "turno": str(row.get("turno") or "DIA").strip().upper(),
+        }
+        schedule_final[key] = after
+        before = schedule_base.get(key)
+        action = "AGREGAR" if before is None else (
+            "CONSERVAR" if before == after else "MODIFICAR"
+        )
+        row["accion_schedule"] = action
+    for key in sorted(set(schedule_base) | set(schedule_final), key=lambda value: (value[1], value[0])):
+        before = schedule_base.get(key)
+        after = schedule_final.get(key)
+        action = (
+            "ELIMINAR" if after is None else
+            "AGREGAR" if before is None else
+            "CONSERVAR" if before == after else
+            "MODIFICAR"
+        )
+        schedule_changes.append({
+            "accion": action,
+            "numero_parte": key[0],
+            "fecha": key[1],
+            "cantidad_antes": int((before or {}).get("cantidad") or 0),
+            "cantidad_final": int((after or {}).get("cantidad") or 0),
+            "linea_antes": (before or {}).get("linea"),
+            "linea_final": (after or {}).get("linea"),
+            "turno": (after or before or {}).get("turno"),
+        })
     by_line: dict[str, dict[str, Any]] = {}
     for row in rows:
         line = str(row.get("linea") or "SIN LÍNEA")
@@ -1679,9 +1738,10 @@ def _plan_proposal_report(
     return {
         "report": "plan_proposal",
         "title": "Propuesta del plan de producción",
-        "source": "lg_plan_proposals + lg_plan_proposal_items",
-        "columns": ["fecha", "numero_parte", "linea", "cantidad", "ct", "uph", "horas"],
+        "source": "lg_plan_proposals + lg_plan_proposal_items + lg_schedule_daily",
+        "columns": ["fecha", "numero_parte", "linea", "cantidad", "ct", "uph", "horas", "accion_schedule"],
         "rows": rows,
+        "schedule_changes": schedule_changes,
         "row_count": len(rows),
         "truncated": truncated,
         "filters": {"proposal_id": proposal_id},
@@ -1696,11 +1756,15 @@ def _plan_proposal_report(
             "created_at": _json_value(header.get("created_at")),
             "date_from": date_from,
             "date_to": date_to,
-            "total_items": int(header.get("total_items") or len(rows)),
-            "total_qty": int(header.get("total_qty") or 0),
+            "total_items": len(rows),
+            "total_qty": sum(int(row.get("cantidad") or 0) for row in rows),
             "total_hours": total_hours,
             "omitted_count": int(header.get("omitted_count") or 0),
             "by_line": line_summary,
+            "schedule_change_summary": {
+                action: sum(1 for item in schedule_changes if item["accion"] == action)
+                for action in ("CONSERVAR", "MODIFICAR", "AGREGAR", "ELIMINAR")
+            },
         },
         "duration_ms": int((datetime.now() - started).total_seconds() * 1000),
     }
