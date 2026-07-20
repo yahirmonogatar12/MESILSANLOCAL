@@ -312,7 +312,7 @@ function renderTableWithVisualGroups(data) {
     const groupHeaderRow = document.createElement('tr');
     groupHeaderRow.className = 'group-header-row';
     groupHeaderRow.innerHTML = `
-      <td colspan="22" style="background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #20688C;">
+      <td colspan="23" style="background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #20688C;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span>${group.name}</span>
           <div>
@@ -329,7 +329,7 @@ function renderTableWithVisualGroups(data) {
     dropZoneRow.className = 'group-drop-zone';
     dropZoneRow.dataset.groupIndex = groupIndex;
     dropZoneRow.innerHTML = `
-      <td colspan="22" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
+      <td colspan="23" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
         <div class="drop-zone-content">
           ${group.plans.length === 0 ? 'Arrastra planes aquo para asignarlos a este grupo' : ''}
         </div>
@@ -359,6 +359,7 @@ function renderTableWithVisualGroups(data) {
         <td>${routingToTurno(plan.routing)}</td>
         <td>${plan.model_code}</td>
         <td>${partNoWithBomRevision(plan)}</td>
+        <td>${plan.sub_assy || ''}</td>
         <td>${plan.project}</td>
         <td>${plan.process || ""}</td>
         <td>${plan.ct || "0"}</td>
@@ -381,7 +382,7 @@ function renderTableWithVisualGroups(data) {
     if (groupIndex < visualGroups.groups.length - 1) {
       const spacerRow = document.createElement('tr');
       spacerRow.className = 'group-spacer';
-      spacerRow.innerHTML = `<td colspan="22" style="height: 10px; background-color: #2c2c2c;"></td>`;
+      spacerRow.innerHTML = `<td colspan="23" style="height: 10px; background-color: #2c2c2c;"></td>`;
       tbody.appendChild(spacerRow);
     }
   });
@@ -527,10 +528,10 @@ function resaltarConflictosLineaHorario() {
           cells[5].style.color = '#ffffff';
         }
         // Columna 19: Inicio (hora de inicio)
-        if (cells[19]) {
-          cells[19].style.backgroundColor = '#e74c3c';
-          cells[19].style.fontWeight = 'bold';
-          cells[19].style.color = '#ffffff';
+        if (cells[20]) {
+          cells[20].style.backgroundColor = '#e74c3c';
+          cells[20].style.fontWeight = 'bold';
+          cells[20].style.color = '#ffffff';
         }
       }
       
@@ -626,7 +627,7 @@ function setupGroupDragDrop() {
   function createDropIndicator() {
     const indicator = document.createElement('tr');
     indicator.className = 'drop-indicator';
-    indicator.innerHTML = `<td colspan="22" style="height: 3px; background: #3498db; border: none; padding: 0;"></td>`;
+    indicator.innerHTML = `<td colspan="23" style="height: 3px; background: #3498db; border: none; padding: 0;"></td>`;
     return indicator;
   }
 
@@ -987,10 +988,10 @@ function updatePlanRows() {
 
       // Si el plan esto cancelado, mostrar tiempos como -- y marcar como cancelado
       if (calc.isCancelled) {
-        if (cells[18]) cells[18].textContent = '--'; // Tiempo Productivo
-        if (cells[19]) cells[19].textContent = '--'; // Inicio
-        if (cells[20]) cells[20].textContent = '--'; // Fin
-        if (cells[21]) cells[21].innerHTML = '<span class="status-cancelled">CANCELADO</span>'; // Turno
+        if (cells[19]) cells[19].textContent = '--'; // Tiempo Productivo
+        if (cells[20]) cells[20].textContent = '--'; // Inicio
+        if (cells[21]) cells[21].textContent = '--'; // Fin
+        if (cells[22]) cells[22].innerHTML = '<span class="status-cancelled">CANCELADO</span>'; // Turno
 
         // Resaltar fila como cancelada
         row.style.backgroundColor = '#6c6c6c';
@@ -998,13 +999,13 @@ function updatePlanRows() {
         row.style.textDecoration = 'line-through';
       } else {
         // Plan activo - mostrar colculos normales
-        if (cells[18]) cells[18].textContent = minutesToTime(calc.productionTime);
-        if (cells[19]) cells[19].textContent = calc.startTime;
-        if (cells[20]) cells[20].textContent = calc.endTime;
+        if (cells[19]) cells[19].textContent = minutesToTime(calc.productionTime);
+        if (cells[20]) cells[20].textContent = calc.startTime;
+        if (cells[21]) cells[21].textContent = calc.endTime;
 
         // Actualizar indicador de tiempo extra en la columna Turno
-        if (cells[21]) {
-          cells[21].innerHTML = calc.isOvertime ?
+        if (cells[22]) {
+          cells[22].innerHTML = calc.isOvertime ?
             '<span class="status-extra">EXTRA</span>' :
             '<span class="status-normal">NORMAL</span>';
         }
@@ -1021,7 +1022,7 @@ function updatePlanRows() {
         }
       }
 
-    // NO sobrescribir el status real de la base de datos (cells[17])
+    // NO sobrescribir el status real de la base de datos (cells[18])
       // El status real (PLAN, EN PROGRESO, CANCELADO, etc.) debe mantenerse
     }
   });
@@ -1040,7 +1041,7 @@ function renderCurrentVisualGroups() {
     const groupHeaderRow = document.createElement('tr');
     groupHeaderRow.className = 'group-header-row';
     groupHeaderRow.innerHTML = `
-      <td colspan="22" style="background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #20688C;">
+      <td colspan="23" style="background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #20688C;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span>${group.name}</span>
           <div>
@@ -1057,7 +1058,7 @@ function renderCurrentVisualGroups() {
     dropZoneRow.className = 'group-drop-zone';
     dropZoneRow.dataset.groupIndex = groupIndex;
     dropZoneRow.innerHTML = `
-      <td colspan="22" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
+      <td colspan="23" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
         <div class="drop-zone-content">
           ${group.plans.length === 0 ? 'Arrastra planes aquo para asignarlos a este grupo' : ''}
         </div>
@@ -1086,6 +1087,7 @@ function renderCurrentVisualGroups() {
         <td>${routingToTurno(plan.routing)}</td>
         <td>${plan.model_code}</td>
         <td>${partNoWithBomRevision(plan)}</td>
+        <td>${plan.sub_assy || ''}</td>
         <td>${plan.project}</td>
         <td>${plan.process || ""}</td>
         <td>${plan.ct || "0"}</td>
@@ -1108,7 +1110,7 @@ function renderCurrentVisualGroups() {
     if (groupIndex < visualGroups.groups.length - 1) {
       const spacerRow = document.createElement('tr');
       spacerRow.className = 'group-spacer';
-      spacerRow.innerHTML = `<td colspan="22" style="height: 10px; background-color: #2c2c2c;"></td>`;
+      spacerRow.innerHTML = `<td colspan="23" style="height: 10px; background-color: #2c2c2c;"></td>`;
       tbody.appendChild(spacerRow);
     }
   });
@@ -1152,15 +1154,15 @@ function reloadTableWithCurrentData() {
         routing: turnoToRouting(cells[6]?.textContent?.trim()) || 1,
         model_code: cells[7]?.textContent?.trim() || '',
         part_no: cells[8]?.textContent?.trim() || '',
-        project: cells[9]?.textContent?.trim() || '',
-        process: cells[10]?.textContent?.trim() || 'MAIN',
-        ct: cells[11]?.textContent?.trim() || '0',
-        uph: parseInt(cells[12]?.textContent?.trim()) || 0,
-        plan_count: parseInt(cells[13]?.textContent?.trim()) || 0,
-        produced: parseInt(cells[14]?.textContent?.trim()) || 0,
-        output: parseInt(cells[15]?.textContent?.trim()) || 0,
-        entregadas_main: parseInt(cells[16]?.textContent?.trim()) || 0,
-        status: cells[17]?.textContent?.trim() || 'PLAN' // ? CORREGIDO: cells[16] no cells[15]
+        project: cells[10]?.textContent?.trim() || '',
+        process: cells[11]?.textContent?.trim() || 'MAIN',
+        ct: cells[12]?.textContent?.trim() || '0',
+        uph: parseInt(cells[13]?.textContent?.trim()) || 0,
+        plan_count: parseInt(cells[14]?.textContent?.trim()) || 0,
+        produced: parseInt(cells[15]?.textContent?.trim()) || 0,
+        output: parseInt(cells[16]?.textContent?.trim()) || 0,
+        entregadas_main: parseInt(cells[17]?.textContent?.trim()) || 0,
+        status: cells[18]?.textContent?.trim() || 'PLAN' // ? CORREGIDO: cells[17] no cells[16]
       };
     }
 
@@ -1207,11 +1209,11 @@ function autoArrangePlans() {
     return {
       lot_no: lotNo,
       line: cells[5]?.textContent?.trim() || '',
-      uph: parseInt(cells[12]?.textContent) || 0,
-      plan_count: parseInt(cells[13]?.textContent) || 0,
+      uph: parseInt(cells[13]?.textContent) || 0,
+      plan_count: parseInt(cells[14]?.textContent) || 0,
       productionTime: calculateProductionTime(
-        parseInt(cells[13]?.textContent) || 0,
-        parseInt(cells[12]?.textContent) || 0
+        parseInt(cells[14]?.textContent) || 0,
+        parseInt(cells[13]?.textContent) || 0
       ),
       // Datos completos del plan
       wo_code: cells[2]?.textContent?.trim() || '',
@@ -1222,13 +1224,13 @@ function autoArrangePlans() {
           cells[6]?.textContent?.trim() === 'NOCHE' ? 3 : 1,
       model_code: cells[7]?.textContent?.trim() || '',
       part_no: cells[8]?.textContent?.trim() || '',
-      project: cells[9]?.textContent?.trim() || '',
-      process: cells[10]?.textContent?.trim() || 'MAIN',
-      ct: cells[11]?.textContent?.trim() || '0',
-      produced: parseInt(cells[14]?.textContent) || 0,
-      output: parseInt(cells[15]?.textContent) || 0,
-      entregadas_main: parseInt(cells[16]?.textContent) || 0,
-      status: cells[17]?.textContent?.trim() || 'PLAN'
+      project: cells[10]?.textContent?.trim() || '',
+      process: cells[11]?.textContent?.trim() || 'MAIN',
+      ct: cells[12]?.textContent?.trim() || '0',
+      produced: parseInt(cells[15]?.textContent) || 0,
+      output: parseInt(cells[16]?.textContent) || 0,
+      entregadas_main: parseInt(cells[17]?.textContent) || 0,
+      status: cells[18]?.textContent?.trim() || 'PLAN'
     };
   });
 
@@ -1556,7 +1558,7 @@ function renderTableByLines(filterLine) {
     const headerRow = document.createElement('tr');
     headerRow.className = 'group-header-row line-header-row';
     headerRow.innerHTML = `
-      <td colspan="22" style="background-color: #1a3a4a; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #16a085;">
+      <td colspan="23" style="background-color: #1a3a4a; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #16a085;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 14px;">LINEA ${line}</span>
           <div>
@@ -1604,6 +1606,7 @@ function renderTableByLines(filterLine) {
         <td>${routingToTurno(plan.routing)}</td>
         <td>${plan.model_code || ''}</td>
         <td>${partNoWithBomRevision(plan)}</td>
+        <td>${plan.sub_assy || ''}</td>
         <td>${plan.project || ''}</td>
         <td>${plan.process || ''}</td>
         <td>${plan.ct || '0'}</td>
@@ -1636,7 +1639,7 @@ function renderTableByLines(filterLine) {
     if (lineIdx < sortedLines.length - 1) {
       const spacerRow = document.createElement('tr');
       spacerRow.className = 'group-spacer';
-      spacerRow.innerHTML = `<td colspan="22" style="height: 10px; background-color: #2c2c2c;"></td>`;
+      spacerRow.innerHTML = `<td colspan="23" style="height: 10px; background-color: #2c2c2c;"></td>`;
       tbody.appendChild(spacerRow);
     }
   });
@@ -1644,7 +1647,7 @@ function renderTableByLines(filterLine) {
   // Si no hay planes
   if (sortedLines.length === 0) {
     const emptyRow = document.createElement('tr');
-    emptyRow.innerHTML = `<td colspan="22" style="text-align: center; padding: 20px; color: #888;">No hay planes para mostrar</td>`;
+    emptyRow.innerHTML = `<td colspan="23" style="text-align: center; padding: 20px; color: #888;">No hay planes para mostrar</td>`;
     tbody.appendChild(emptyRow);
   }
 
@@ -1666,8 +1669,8 @@ function calculateAndUpdateTimes() {
     return {
       lot_no: row.dataset.lot,
       line: cells[5]?.textContent || '',
-      uph: parseInt(cells[12]?.textContent) || 0,
-      plan_count: parseInt(cells[13]?.textContent) || 0
+      uph: parseInt(cells[13]?.textContent) || 0,
+      plan_count: parseInt(cells[14]?.textContent) || 0
     };
   });
 
@@ -1685,8 +1688,8 @@ function calculateAndUpdateTimes() {
 
       // Tiempo de produccion
       if (cells.length >= 19) {
-        cells[18].textContent = minutesToTime(calc.productionTime);
-        cells[18].className = 'tiempo-cell';
+        cells[19].textContent = minutesToTime(calc.productionTime);
+        cells[19].className = 'tiempo-cell';
       } else {
         const timeCell = document.createElement('td');
         timeCell.textContent = minutesToTime(calc.productionTime);
@@ -1696,8 +1699,8 @@ function calculateAndUpdateTimes() {
 
       // Hora inicio
       if (cells.length >= 20) {
-        cells[19].textContent = calc.startTime;
-        cells[19].className = 'tiempo-cell fecha-inicio-cell';
+        cells[20].textContent = calc.startTime;
+        cells[20].className = 'tiempo-cell fecha-inicio-cell';
       } else {
         const startCell = document.createElement('td');
         startCell.textContent = calc.startTime;
@@ -1707,8 +1710,8 @@ function calculateAndUpdateTimes() {
 
       // Hora fin
       if (cells.length >= 21) {
-        cells[20].textContent = calc.endTime;
-        cells[20].className = 'tiempo-cell';
+        cells[21].textContent = calc.endTime;
+        cells[21].className = 'tiempo-cell';
       } else {
         const endCell = document.createElement('td');
         endCell.textContent = calc.endTime;
@@ -1718,7 +1721,7 @@ function calculateAndUpdateTimes() {
 
       // Indicador de tiempo extra en la oltima columna (Turno)
       if (cells.length >= 22) {
-        cells[21].innerHTML = calc.isOvertime ?
+        cells[22].innerHTML = calc.isOvertime ?
           '<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">EXTRA</span>' :
           '<span style="background:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">NORMAL</span>';
       } else {

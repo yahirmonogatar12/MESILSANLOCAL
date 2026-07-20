@@ -139,7 +139,12 @@ def api_plan_list():
             "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
             "COALESCE(produced_count,0) AS input, COALESCE(output,0) AS output, COALESCE(entregadas_main,0) AS entregadas_main, "
             "COALESCE(produced_count,0) AS produced, status, group_no, sequence, "
-            "assigned_bom_rev, assigned_bom_rev_by, assigned_bom_rev_at FROM plan_main"
+            "assigned_bom_rev, assigned_bom_rev_by, assigned_bom_rev_at, "
+            # sub_assy viene de Control de modelos (raw); subquery escalar para no
+            # multiplicar filas del plan (raw puede tener varias filas por part_no).
+            "(SELECT r.sub_assy FROM raw r WHERE TRIM(r.part_no) = TRIM(plan_main.part_no) "
+            "AND r.sub_assy IS NOT NULL AND r.sub_assy <> '' LIMIT 1) AS sub_assy "
+            "FROM plan_main"
         )
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -178,6 +183,7 @@ def api_plan_list():
                     "assigned_bom_rev_at": str(
                         (r.get("assigned_bom_rev_at") if isinstance(r, dict) else r[23]) or ""
                     ),
+                    "sub_assy": r.get("sub_assy") if isinstance(r, dict) else r[24],
                 }
             )
         return jsonify(data)

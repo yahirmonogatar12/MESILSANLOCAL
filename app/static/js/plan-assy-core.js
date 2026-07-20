@@ -21,7 +21,7 @@
 // y reemplazaba la version plana. Aqui ya es la unica version.
 async function loadPlans() {
   try {
-    showTableBodyLoading('assy-tableBody', 'Cargando planes...', 22);
+    showTableBodyLoading('assy-tableBody', 'Cargando planes...', 23);
 
     setDefaultDateFilters();
     const fs = document.getElementById("assy-filter-start")?.value;
@@ -60,7 +60,7 @@ async function loadPlans() {
     alert("Error al cargar planes: " + (error.response?.data?.error || error.message));
     let tbody = document.getElementById("assy-tableBody");
     if (tbody) {
-      tbody.innerHTML = `<tr class="message-row"><td colspan="22" style="display: table-cell; text-align: center; padding: 20px; color: #888;">Error al cargar los datos</td></tr>`;
+      tbody.innerHTML = `<tr class="message-row"><td colspan="23" style="display: table-cell; text-align: center; padding: 20px; color: #888;">Error al cargar los datos</td></tr>`;
     }
   }
 }

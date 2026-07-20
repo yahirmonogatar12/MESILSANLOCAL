@@ -576,15 +576,15 @@ function syncVisualGroupsWithTableOrder() {
         routing: turnoToRouting(cells[6]?.textContent) || 1,
         model_code: cells[7]?.textContent || '',
         part_no: cells[8]?.textContent || '',
-        project: cells[9]?.textContent || '',
-        process: cells[10]?.textContent || 'MAIN',
-        ct: parseFloat(cells[11]?.textContent) || 0,
-        uph: parseInt(cells[12]?.textContent) || 0,
-        plan_count: parseInt(cells[13]?.textContent) || 0,
-        produced: parseInt(cells[14]?.textContent) || 0,
-        output: parseInt(cells[15]?.textContent) || 0,
-        entregadas_main: parseInt(cells[16]?.textContent) || 0,
-        status: cells[17]?.textContent?.trim() || 'PLAN' // Preservar status desde la celda
+        project: cells[10]?.textContent || '',
+        process: cells[11]?.textContent || 'MAIN',
+        ct: parseFloat(cells[12]?.textContent) || 0,
+        uph: parseInt(cells[13]?.textContent) || 0,
+        plan_count: parseInt(cells[14]?.textContent) || 0,
+        produced: parseInt(cells[15]?.textContent) || 0,
+        output: parseInt(cells[16]?.textContent) || 0,
+        entregadas_main: parseInt(cells[17]?.textContent) || 0,
+        status: cells[18]?.textContent?.trim() || 'PLAN' // Preservar status desde la celda
       };
     }
 
