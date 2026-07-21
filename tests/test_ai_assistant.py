@@ -164,7 +164,8 @@ def test_confirmacion_pendiente_ejecuta_importacion_sin_volver_a_preparar(client
             "plan_registros": 12000,
             "rango": "2026-06-29 a 2026-09-16",
             "inventario_partes": 404,
-            "schedules": 800,
+            "schedules_disponibles": 800,
+            "inventario_encontrado": True,
         }
 
     monkeypatch.setattr(ai_assistant.ai_plan_tools, "execute", fake_execute)
@@ -202,6 +203,9 @@ def test_confirmacion_pendiente_ejecuta_importacion_sin_volver_a_preparar(client
     assert "Importación completada correctamente" in body
     assert "487" in body
     assert "vuelve a preparar" not in body
+    # el import ya no sincroniza el Schedule: lo pregunta
+    assert "sincronizar también el Schedule" in body
+    assert "800" in body
 
 
 def test_detecta_confirmacion_corta_del_plan():

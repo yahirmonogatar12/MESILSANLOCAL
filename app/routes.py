@@ -1,9 +1,17 @@
 import logging
 import os
-import secrets
 import time
 import traceback
 from functools import wraps
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Cargar siempre el .env del proyecto, incluso cuando un servidor WSGI importa
+# ``app.routes:app`` directamente y no pasa por app_factory.py. Todas las
+# instancias deben compartir la misma SECRET_KEY para poder leer la cookie que
+# firmo cualquiera de ellas.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # Intentar importar MySQLdb, si no esta disponible usar PyMySQL como alternativa.
 # Solo necesario para garantizar disponibilidad del binding para otros modulos
@@ -72,20 +80,14 @@ def _env_flag(name, default=False):
 # ---------------------------------------------------------------------------
 # SECRET_KEY: nunca usar una clave hardcodeada/publica para firmar cookies.
 #   - Si esta en el entorno, se usa (camino correcto).
-#   - Si NO esta y MES_ENV=production -> abortar el arranque (fail-loud).
-#   - Si NO esta en dev/local -> clave efimera aleatoria (las sesiones no
-#     sobreviven a un reinicio; se avisa para configurar SECRET_KEY).
+#   - Si NO esta -> abortar el arranque. Una clave aleatoria por proceso hace
+#     que el POST /login funcione, pero el siguiente GET /inicio no pueda leer
+#     la sesion cuando lo atiende otra instancia.
 _secret_key = os.getenv("SECRET_KEY")
 if not _secret_key:
-    if os.getenv("MES_ENV", "development").strip().lower() == "production":
-        raise RuntimeError(
-            "SECRET_KEY no esta definida y MES_ENV=production. "
-            "Define SECRET_KEY en el entorno antes de arrancar."
-        )
-    _secret_key = secrets.token_hex(32)
-    logger.warning(
-        "SECRET_KEY no definida: usando clave efimera aleatoria. Las sesiones "
-        "se invalidaran al reiniciar. Define SECRET_KEY en .env."
+    raise RuntimeError(
+        "SECRET_KEY no esta definida. Define una clave estable en el archivo "
+        ".env antes de arrancar el servidor."
     )
 app.secret_key = _secret_key
 
@@ -94,6 +96,10 @@ app.secret_key = _secret_key
 #   - SECURE solo bajo HTTPS: MES_SESSION_COOKIE_SECURE (default False para
 #     server local en HTTP). Ponlo en 1 cuando se sirva por HTTPS.
 app.config.update(
+    # Evita colisiones con la cookie generica "session" de otras aplicaciones
+    # Flask publicadas en el mismo host (las cookies no se separan por puerto).
+    SESSION_COOKIE_NAME=os.getenv("MES_SESSION_COOKIE_NAME", "mes_ilsan_session"),
+    SESSION_COOKIE_PATH="/",
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=_env_flag("MES_SESSION_COOKIE_SECURE", False),

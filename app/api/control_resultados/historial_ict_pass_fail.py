@@ -21,12 +21,13 @@ Helpers compartidos con los otros 2 modulos ICT viven en
 app/api/shared/ict_helpers.py.
 """
 
+import re
 from datetime import datetime, timedelta
 from datetime import time as dt_time
 
 from flask import Blueprint, jsonify, redirect, render_template, request
 
-from app.api.shared import execute_query, login_requerido
+from app.api.shared import excel_response_ict, execute_query, login_requerido
 from app.api.shared.ict_helpers import (
     _ict_format_row,
     _ict_load_operator_sessions,
@@ -58,6 +59,24 @@ def _fmt_hms(segundos):
     h, rem = divmod(segundos, 3600)
     m, s = divmod(rem, 60)
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+def _parse_numeros_parte(raw, limit=200):
+    """Divide una lista de numeros de parte (coma/;/salto/espacio) y deduplica.
+
+    ponytail: cap de 200 para no armar un OR gigante; sube el limite si hace falta.
+    Asume que no_parte no contiene espacios internos (cierto en history_ict).
+    """
+    if not raw:
+        return []
+    seen = []
+    for tok in re.split(r"[\s,;]+", raw):
+        tok = tok.strip()
+        if tok and tok not in seen:
+            seen.append(tok)
+        if len(seen) >= limit:
+            break
+    return seen
 
 
 def _ict_pass_fail_fecha_jornada_expr(ts_column="ts"):
@@ -122,6 +141,7 @@ def _build_history_ict_pass_fail_summary_query():
         request.args.get("numero_parte", "").strip()
         or request.args.get("no_parte", "").strip()
     )
+    numeros_parte = _parse_numeros_parte(request.args.get("numeros_parte", ""))
     turno = request.args.get("turno", "").strip().upper()
     barcode = (
         request.args.get("barcode", "").strip()
@@ -205,7 +225,11 @@ def _build_history_ict_pass_fail_summary_query():
         end_date = datetime.strptime(fecha_hasta, "%Y-%m-%d").date()
         params.append(datetime.combine(end_date + timedelta(days=1), dt_time(7, 30)))
         sql += " AND h.ts < %s"
-    if numero_parte:
+    if numeros_parte:
+        placeholders = " OR ".join(["h.no_parte LIKE %s"] * len(numeros_parte))
+        sql += f" AND ({placeholders})"
+        params.extend(f"{p}%" for p in numeros_parte)
+    elif numero_parte:
         sql += " AND h.no_parte LIKE %s"
         params.append(f"{numero_parte}%")
     if barcode:
@@ -535,6 +559,82 @@ def ict_pass_fail_detail_api():
         })
     except ValueError:
         return jsonify({"error": "Fecha invalida para consultar detalle."}), 400
+    except Exception as e:
+        logger.exception("Error en endpoint ICT Pass/Fail")
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/ict/pass-fail/consolidado/export")
+@login_requerido
+def ict_pass_fail_consolidado_export():
+    """Exportar a Excel el consolidado por numero de parte del rango.
+
+    Reusa el query del resumen (que ya respeta numeros_parte) y agrupa por
+    numero de parte igual que el modal: intentos crudos sumados sobre el rango.
+    """
+    try:
+        sql, params = _build_history_ict_pass_fail_summary_query()
+        rows = execute_query(sql, params, fetch="all") or []
+
+        grupos = {}
+        for row in rows:
+            parte = row.get("numero_parte") or "SIN NUMERO DE PARTE"
+            ict = row.get("ict")
+            ict = "" if ict is None else ict
+            g = grupos.setdefault(
+                (parte, ict),
+                {"parte": parte, "ict": ict, "dias": set(), "total": 0, "ok": 0, "ng": 0},
+            )
+            g["dias"].add(_fmt_fecha(row.get("fecha")))
+            g["total"] += int(row.get("total_intentos") or 0)
+            g["ok"] += int(row.get("ok_count_raw") or 0)
+            g["ng"] += int(row.get("ng_count_raw") or 0)
+
+        def _pct(part, whole):
+            return f"{round((part / whole) * 100, 2) if whole else 0}%"
+
+        def _ict_sort_key(ict):
+            try:
+                return (0, float(ict))
+            except (TypeError, ValueError):
+                return (1, str(ict))
+
+        items = []
+        tot_total = tot_ok = tot_ng = 0
+        for key in sorted(grupos, key=lambda k: (str(k[0]), _ict_sort_key(k[1]))):
+            g = grupos[key]
+            items.append({
+                "numero_parte": g["parte"],
+                "ict": g["ict"],
+                "dias": len(g["dias"]),
+                "total": g["total"],
+                "ok": g["ok"],
+                "ng": g["ng"],
+                "pass_pct": _pct(g["ok"], g["total"]),
+                "fail_pct": _pct(g["ng"], g["total"]),
+            })
+            tot_total += g["total"]
+            tot_ok += g["ok"]
+            tot_ng += g["ng"]
+
+        items.append({
+            "numero_parte": f"TOTAL ({len(grupos)})",
+            "ict": "",
+            "dias": "",
+            "total": tot_total,
+            "ok": tot_ok,
+            "ng": tot_ng,
+            "pass_pct": _pct(tot_ok, tot_total),
+            "fail_pct": _pct(tot_ng, tot_total),
+        })
+
+        headers = ["Numero de parte", "ICT", "Dias", "Total", "OK", "NG", "% Pass", "% Fail"]
+        keys = ["numero_parte", "ict", "dias", "total", "ok", "ng", "pass_pct", "fail_pct"]
+        filename = f"ict_pass_fail_consolidado_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        return excel_response_ict(
+            items, headers, keys, widths=[28, 8, 8, 12, 10, 10, 12, 12],
+            sheet="Consolidado ICT", filename=filename,
+        )
     except Exception as e:
         logger.exception("Error en endpoint ICT Pass/Fail")
         return jsonify({"error": str(e)}), 500

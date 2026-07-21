@@ -54,6 +54,23 @@ bp = Blueprint("auth_sesion", __name__)
 # ese path comparaba contrasenas en texto plano.
 
 
+@bp.after_request
+def disable_session_page_cache(response):
+    """Impedir que navegador/proxy reutilice una landing sin sesion."""
+    if request.endpoint in {
+        "auth_sesion.index",
+        "auth_sesion.inicio",
+        "auth_sesion.login",
+    }:
+        response.headers["Cache-Control"] = (
+            "no-store, no-cache, must-revalidate, private"
+        )
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        response.vary.add("Cookie")
+    return response
+
+
 # ---------------------------------------------------------------------------
 # Helper compartido: render de la landing page (con o sin sesion)
 # ---------------------------------------------------------------------------
@@ -141,6 +158,9 @@ def login():
 
     if auth_success:
         logger.info(f" Login exitoso con sistema BD: {user}")
+        # Eliminar cualquier contenido anonimo o firmado con una configuracion
+        # anterior antes de construir la nueva sesion autenticada.
+        session.clear()
         session["usuario"] = user
 
         info_usuario = auth_system.obtener_informacion_usuario(user)

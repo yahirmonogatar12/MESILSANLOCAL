@@ -334,6 +334,70 @@
     box-shadow: inset 0 0 0 9999px rgba(52, 152, 219, 0.08);
 }
 
+/* ===== Consolidado por numero de parte (modal) ===== */
+.ict-pass-fail-btn-consolidado {
+    background: #3a5a8c;
+}
+
+.ict-pass-fail-consolidado-partes-group {
+    flex: 1 1 320px;
+    min-width: 240px;
+}
+
+#ict-pass-fail-consolidado-partes {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 8px 10px;
+    color: var(--ilsan-text-light);
+    background: rgba(15, 30, 48, 0.55);
+    border: 1px solid rgba(52, 152, 219, 0.28);
+    border-radius: 7px;
+}
+
+#ict-pass-fail-consolidado-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--ilsan-dark-secondary);
+}
+
+#ict-pass-fail-consolidado-table th,
+#ict-pass-fail-consolidado-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 7px 6px;
+    text-align: center;
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
+#ict-pass-fail-consolidado-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: linear-gradient(135deg, #102844 0%, #223047 100%);
+    color: var(--ilsan-text-light);
+    text-transform: uppercase;
+    font-size: 0.62rem;
+    letter-spacing: 0.3px;
+}
+
+#ict-pass-fail-consolidado-table tbody td {
+    color: var(--ilsan-text-secondary);
+    background: var(--ilsan-dark-secondary);
+}
+
+#ict-pass-fail-consolidado-table tbody tr:nth-child(even) td {
+    background: #44475A;
+}
+
+#ict-pass-fail-consolidado-table tbody tr.ict-pass-fail-consolidado-total-row td {
+    font-weight: 800;
+    color: var(--ilsan-text-light);
+    background: #1c2a44;
+}
+
 body.ict-pass-fail-detail-open {
     overflow: hidden;
 }

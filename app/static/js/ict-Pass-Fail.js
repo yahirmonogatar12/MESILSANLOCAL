@@ -3,7 +3,7 @@
   const sheets = [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
     { id: "ict-css", href: "/static/css/ict.css?v=20260630a" },
-    { id: "ict-pass-fail-css", href: "/static/css/ict-Pass-Fail.css?v=20260528e" },
+    { id: "ict-pass-fail-css", href: "/static/css/ict-Pass-Fail.css?v=20260721c" },
   ];
   sheets.forEach(({ id, href }) => {
     let link = document.getElementById(id);
@@ -29,7 +29,7 @@ let ictPassFailDetailRows = [];
 let ictPassFailDetailSummaryData = {};
 const ICT_PASS_FAIL_FILTERS_STORAGE_KEY = "historialIctPassFailFilters";
 const ICT_PASS_FAIL_MODE_STORAGE_KEY = "historialIctPassFailMode";
-const ICT_PASS_FAIL_LISTENER_VERSION = "20260528f";
+const ICT_PASS_FAIL_LISTENER_VERSION = "20260721c";
 
 function getIctPassFailToday() {
   return new Date().toISOString().split("T")[0];
@@ -284,6 +284,7 @@ function hideIctPassFailLoading() {
 function cleanupIctPassFailModule() {
   hideIctPassFailLoading();
   closeIctPassFailDetailModal({ restoreToContainer: true });
+  closeIctPassFailConsolidadoModal({ restoreToContainer: true });
 }
 
 window.limpiarHistorialICTPassFail = cleanupIctPassFailModule;
@@ -854,6 +855,309 @@ async function exportHistorialIctPassFailToExcel() {
   );
 }
 
+// ====== Consolidado por numero de parte ======
+// Reusa el endpoint /api/ict/pass-fail (una fila por dia/turno/parte) y agrupa
+// en cliente por numero de parte para sacar el % total del rango.
+
+function parseIctPassFailPartNumbers(text) {
+  return Array.from(
+    new Set(
+      String(text || "")
+        .split(/[\s,;]+/)
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 200);
+}
+
+function getIctPassFailConsolidadoModal() {
+  const modals = Array.from(
+    document.querySelectorAll("#ict-pass-fail-consolidado-modal"),
+  );
+  if (modals.length <= 1) {
+    return modals[0] || null;
+  }
+
+  const rootModal = document
+    .getElementById("historial-ict-pass-fail-root")
+    ?.querySelector("#ict-pass-fail-consolidado-modal");
+  const keepModal = rootModal || modals[modals.length - 1];
+
+  modals.forEach((modal) => {
+    if (modal !== keepModal) {
+      modal.remove();
+    }
+  });
+
+  return keepModal;
+}
+
+function openIctPassFailConsolidadoModal() {
+  const modal = getIctPassFailConsolidadoModal();
+  if (!modal) {
+    return;
+  }
+
+  if (modal.parentNode !== document.body) {
+    document.body.appendChild(modal);
+  }
+
+  const filters = getIctPassFailFilterElements();
+  const desde = document.getElementById("ict-pass-fail-consolidado-desde");
+  const hasta = document.getElementById("ict-pass-fail-consolidado-hasta");
+  const partes = document.getElementById("ict-pass-fail-consolidado-partes");
+  const today = getIctPassFailToday();
+
+  if (desde && !desde.value) {
+    desde.value = filters.fechaDesde?.value || today;
+  }
+  if (hasta && !hasta.value) {
+    hasta.value = filters.fechaHasta?.value || today;
+  }
+  if (partes && !partes.value && filters.numeroParte?.value) {
+    partes.value = filters.numeroParte.value;
+  }
+
+  modal.classList.add("is-open");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("ict-pass-fail-detail-open");
+  partes?.focus();
+}
+
+function closeIctPassFailConsolidadoModal(options = {}) {
+  const modal = getIctPassFailConsolidadoModal();
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.remove("is-open");
+  modal.setAttribute("aria-hidden", "true");
+
+  if (!getIctPassFailDetailModal()?.classList.contains("is-open")) {
+    document.body.classList.remove("ict-pass-fail-detail-open");
+  }
+
+  if (options.restoreToContainer) {
+    const root = document.getElementById("historial-ict-pass-fail-root");
+    if (root && modal.parentNode === document.body) {
+      root.appendChild(modal);
+    }
+  }
+}
+
+function setIctPassFailConsolidadoLoading(isLoading) {
+  document
+    .getElementById("ict-pass-fail-consolidado-loading")
+    ?.classList.toggle("active", Boolean(isLoading));
+}
+
+function setIctPassFailConsolidadoSummary(summary) {
+  const container = document.getElementById("ict-pass-fail-consolidado-summary");
+  if (!container) {
+    return;
+  }
+  if (!summary) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const cards = [
+    ["N/P x ICT", formatIctPassFailNumber(summary.parts)],
+    ["Total pruebas", formatIctPassFailNumber(summary.total)],
+    ["OK", formatIctPassFailNumber(summary.ok), "good"],
+    ["NG", formatIctPassFailNumber(summary.ng), "bad"],
+    ["% Pass", formatIctPassFailPercent(summary.pass), summary.pass >= 90 ? "good" : ""],
+    ["% Fail", formatIctPassFailPercent(summary.fail), summary.fail > 10 ? "bad" : ""],
+  ];
+
+  container.innerHTML = cards
+    .map(([label, value, status]) => {
+      const statusClass =
+        status === "good"
+          ? " ict-pass-fail-detail-stat-good"
+          : status === "bad"
+            ? " ict-pass-fail-detail-stat-bad"
+            : "";
+      return `
+        <div class="ict-pass-fail-detail-stat${statusClass}">
+          <span>${escapeIctPassFailHtml(label)}</span>
+          <strong>${escapeIctPassFailHtml(value)}</strong>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderIctPassFailConsolidado(rows) {
+  const tbody = document.getElementById("ict-pass-fail-consolidado-body");
+  if (!tbody) {
+    return;
+  }
+
+  renderIctPassFailHeader("ict-pass-fail-consolidado-table", [
+    "No. parte",
+    "ICT",
+    "Dias",
+    "Total",
+    "OK",
+    "NG",
+    "% Pass",
+    "% Fail",
+    "Porcentaje",
+  ]);
+
+  const groups = new Map();
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const parte = row.numero_parte || "SIN NUMERO DE PARTE";
+    const ict = row.ict ?? "";
+    const key = `${parte} ${ict}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { parte, ict, dias: new Set(), total: 0, ok: 0, ng: 0 };
+      groups.set(key, group);
+    }
+    group.dias.add(row.fecha || "");
+    group.total += Number(row.total_intentos ?? row.total ?? 0);
+    group.ok += Number(row.ok_count_raw ?? row.ok_count ?? 0);
+    group.ng += Number(row.ng_count_raw ?? row.ng_count ?? 0);
+  });
+
+  const list = Array.from(groups.values()).sort(
+    (a, b) =>
+      String(a.parte).localeCompare(String(b.parte)) ||
+      (Number(a.ict) || 0) - (Number(b.ict) || 0),
+  );
+
+  if (list.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="9" class="ict-pass-fail-table-empty">No se encontraron registros para esos numeros de parte.</td></tr>';
+    setIctPassFailConsolidadoSummary(null);
+    return;
+  }
+
+  let grandTotal = 0;
+  let grandOk = 0;
+  let grandNg = 0;
+
+  const bodyRows = list.map((group) => {
+    const passRate = group.total > 0 ? (group.ok / group.total) * 100 : 0;
+    const failRate = group.total > 0 ? (group.ng / group.total) * 100 : 0;
+    grandTotal += group.total;
+    grandOk += group.ok;
+    grandNg += group.ng;
+
+    return `
+      <tr>
+        <td>${escapeIctPassFailHtml(group.parte)}</td>
+        <td>${escapeIctPassFailHtml(group.ict)}</td>
+        <td>${group.dias.size}</td>
+        <td>${formatIctPassFailNumber(group.total)}</td>
+        <td>${formatIctPassFailNumber(group.ok)}</td>
+        <td>${formatIctPassFailNumber(group.ng)}</td>
+        <td class="${passRate >= 90 ? "ict-pass-fail-rate-good" : "ict-pass-fail-rate-neutral"}">${escapeIctPassFailHtml(formatIctPassFailPercent(passRate))}</td>
+        <td class="${failRate > 10 ? "ict-pass-fail-rate-bad" : "ict-pass-fail-rate-neutral"}">${escapeIctPassFailHtml(formatIctPassFailPercent(failRate))}</td>
+        <td>${buildIctPassFailBar(passRate, failRate)}</td>
+      </tr>
+    `;
+  });
+
+  const grandPass = grandTotal > 0 ? (grandOk / grandTotal) * 100 : 0;
+  const grandFail = grandTotal > 0 ? (grandNg / grandTotal) * 100 : 0;
+
+  bodyRows.push(`
+    <tr class="ict-pass-fail-consolidado-total-row">
+      <td>TOTAL (${list.length})</td>
+      <td>-</td>
+      <td>-</td>
+      <td>${formatIctPassFailNumber(grandTotal)}</td>
+      <td>${formatIctPassFailNumber(grandOk)}</td>
+      <td>${formatIctPassFailNumber(grandNg)}</td>
+      <td>${escapeIctPassFailHtml(formatIctPassFailPercent(grandPass))}</td>
+      <td>${escapeIctPassFailHtml(formatIctPassFailPercent(grandFail))}</td>
+      <td>${buildIctPassFailBar(grandPass, grandFail)}</td>
+    </tr>
+  `);
+
+  tbody.innerHTML = bodyRows.join("");
+  setIctPassFailConsolidadoSummary({
+    parts: list.length,
+    total: grandTotal,
+    ok: grandOk,
+    ng: grandNg,
+    pass: grandPass,
+    fail: grandFail,
+  });
+}
+
+function resolveIctPassFailConsolidadoInputs() {
+  const desde = document.getElementById("ict-pass-fail-consolidado-desde")?.value || "";
+  const hasta = document.getElementById("ict-pass-fail-consolidado-hasta")?.value || "";
+  const partes = parseIctPassFailPartNumbers(
+    document.getElementById("ict-pass-fail-consolidado-partes")?.value,
+  );
+
+  if (!desde || !hasta) {
+    showIctPassFailNotification("Selecciona el rango de fechas", "error");
+    return null;
+  }
+  if (partes.length === 0) {
+    showIctPassFailNotification("Escribe al menos un numero de parte", "error");
+    return null;
+  }
+
+  return { desde, hasta, partes };
+}
+
+function buildIctPassFailConsolidadoQuery({ desde, hasta, partes }) {
+  return (
+    `fecha_desde=${encodeURIComponent(desde)}` +
+    `&fecha_hasta=${encodeURIComponent(hasta)}` +
+    `&numeros_parte=${encodeURIComponent(partes.join("\n"))}`
+  );
+}
+
+function exportIctPassFailConsolidado() {
+  const inputs = resolveIctPassFailConsolidadoInputs();
+  if (!inputs) {
+    return;
+  }
+
+  const url = `/api/ict/pass-fail/consolidado/export?${buildIctPassFailConsolidadoQuery(inputs)}`;
+  downloadIctPassFailFile(
+    url,
+    `ict_pass_fail_consolidado_${Date.now()}.xlsx`,
+    "Exportacion completada",
+  );
+}
+
+async function loadIctPassFailConsolidado() {
+  const inputs = resolveIctPassFailConsolidadoInputs();
+  if (!inputs) {
+    return;
+  }
+
+  setIctPassFailConsolidadoLoading(true);
+
+  try {
+    const url = `/api/ict/pass-fail?${buildIctPassFailConsolidadoQuery(inputs)}`;
+
+    const response = await fetch(url, { credentials: "same-origin" });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.error || "Error al consultar consolidado ICT Pass/Fail");
+    }
+
+    renderIctPassFailConsolidado(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.error(error);
+    renderIctPassFailConsolidado([]);
+    showIctPassFailNotification("Error al calcular consolidado", "error");
+  } finally {
+    setIctPassFailConsolidadoLoading(false);
+  }
+}
+
 function initializeHistorialIctPassFailEventListeners() {
   if (
     document.body.dataset.ictPassFailListenersAttached ===
@@ -899,6 +1203,39 @@ function initializeHistorialIctPassFailEventListeners() {
       return;
     }
 
+    if (
+      target.id === "ict-pass-fail-btn-consolidado" ||
+      target.closest("#ict-pass-fail-btn-consolidado")
+    ) {
+      e.preventDefault();
+      openIctPassFailConsolidadoModal();
+      return;
+    }
+
+    if (
+      target.id === "ict-pass-fail-consolidado-calcular" ||
+      target.closest("#ict-pass-fail-consolidado-calcular")
+    ) {
+      e.preventDefault();
+      loadIctPassFailConsolidado();
+      return;
+    }
+
+    if (
+      target.id === "ict-pass-fail-consolidado-export" ||
+      target.closest("#ict-pass-fail-consolidado-export")
+    ) {
+      e.preventDefault();
+      exportIctPassFailConsolidado();
+      return;
+    }
+
+    if (target.closest("[data-ict-pass-fail-consolidado-close]")) {
+      e.preventDefault();
+      closeIctPassFailConsolidadoModal();
+      return;
+    }
+
     if (target.closest("[data-ict-pass-fail-detail-close]")) {
       e.preventDefault();
       closeIctPassFailDetailModal();
@@ -921,6 +1258,24 @@ function initializeHistorialIctPassFailEventListeners() {
   }, listenerOptions);
 
   document.body.addEventListener("keydown", function (e) {
+    if (
+      e.key === "Escape" &&
+      getIctPassFailConsolidadoModal()?.classList.contains("is-open")
+    ) {
+      closeIctPassFailConsolidadoModal();
+      return;
+    }
+
+    if (
+      e.key === "Enter" &&
+      (e.ctrlKey || e.metaKey) &&
+      e.target?.id === "ict-pass-fail-consolidado-partes"
+    ) {
+      e.preventDefault();
+      loadIctPassFailConsolidado();
+      return;
+    }
+
     if (e.key === "Escape" && getIctPassFailDetailModal()?.classList.contains("is-open")) {
       closeIctPassFailDetailModal();
       return;

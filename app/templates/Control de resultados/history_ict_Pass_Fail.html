@@ -84,6 +84,13 @@
           </svg>
           Consultar
         </button>
+
+        <button id="ict-pass-fail-btn-consolidado" class="btn-primary ict-pass-fail-btn-consolidado" type="button">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 12h16M4 18h10"></path>
+          </svg>
+          Consolidado por N/P
+        </button>
       </div>
     </div>
 
@@ -176,7 +183,65 @@
         </div>
       </div>
     </div>
+
+    <div id="ict-pass-fail-consolidado-modal" class="ict-pass-fail-detail-modal" aria-hidden="true">
+      <div class="ict-pass-fail-detail-backdrop" data-ict-pass-fail-consolidado-close></div>
+      <div class="ict-pass-fail-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="ict-pass-fail-consolidado-title">
+        <div class="ict-pass-fail-detail-header">
+          <div>
+            <h3 id="ict-pass-fail-consolidado-title">Consolidado por numero de parte</h3>
+            <p>Escribe varios numeros de parte y un rango de fechas: junta todos los dias y saca el % total del ICT por parte.</p>
+          </div>
+          <div class="ict-pass-fail-detail-header-actions">
+            <button id="ict-pass-fail-consolidado-export" class="btn-export" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Exportar Excel
+            </button>
+            <button type="button" class="ict-pass-fail-detail-close" data-ict-pass-fail-consolidado-close aria-label="Cerrar">X</button>
+          </div>
+        </div>
+
+        <div class="ict-pass-fail-detail-body">
+          <div class="ict-pass-fail-detail-controls">
+            <div class="filter-group">
+              <label for="ict-pass-fail-consolidado-desde">Fecha desde</label>
+              <input type="date" id="ict-pass-fail-consolidado-desde">
+            </div>
+            <div class="filter-group">
+              <label for="ict-pass-fail-consolidado-hasta">Fecha hasta</label>
+              <input type="date" id="ict-pass-fail-consolidado-hasta">
+            </div>
+            <div class="filter-group ict-pass-fail-consolidado-partes-group">
+              <label for="ict-pass-fail-consolidado-partes">Numeros de parte (uno por linea o separados por coma)</label>
+              <textarea id="ict-pass-fail-consolidado-partes" rows="4" placeholder="EBR000001&#10;EBR000002&#10;EBR000003"></textarea>
+            </div>
+            <button id="ict-pass-fail-consolidado-calcular" class="btn-primary" type="button">Calcular</button>
+          </div>
+
+          <div class="ict-pass-fail-detail-summary" id="ict-pass-fail-consolidado-summary"></div>
+
+          <div class="ict-pass-fail-detail-table-wrap">
+            <div class="table-loading" id="ict-pass-fail-consolidado-loading">
+              <div class="spinner"></div>
+              <span>Calculando...</span>
+            </div>
+            <table id="ict-pass-fail-consolidado-table">
+              <thead>
+                <tr></tr>
+              </thead>
+              <tbody id="ict-pass-fail-consolidado-body">
+                <tr>
+                  <td colspan="9" class="ict-pass-fail-table-empty">Escribe numeros de parte y presiona Calcular.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/ict-Pass-Fail.js', v='20260528f') }}"></script>
+<script src="{{ url_for('static', filename='js/ict-Pass-Fail.js', v='20260721c') }}"></script>

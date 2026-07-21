@@ -138,6 +138,7 @@
             border-radius: 999px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(4px);
+            position: relative;
         }
 
         .login-avatar {
@@ -203,6 +204,19 @@
         .login-inline-form.error input:focus {
             border-color: rgba(231, 76, 60, 0.9);
             box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.25);
+        }
+
+        .login-error-message {
+            position: absolute;
+            top: calc(100% + 0.35rem);
+            right: 0.75rem;
+            color: #ffd6d2;
+            background: rgba(145, 25, 18, 0.96);
+            border-radius: 8px;
+            padding: 0.45rem 0.7rem;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            z-index: 10;
         }
 
         .user-dropdown {
@@ -1309,6 +1323,13 @@
                 box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
             }
 
+            .login-error-message {
+                position: static;
+                width: 100%;
+                white-space: normal;
+                text-align: center;
+            }
+
             /* Avatar grande como encabezado de la tarjeta */
             .login-inline-form .login-avatar {
                 width: 64px;
@@ -1592,6 +1613,9 @@
                     <input type="password" name="password" placeholder="Contraseña" autocomplete="current-password" required>
                 </div>
                 <button type="submit" class="login-submit">Ingresar</button>
+                {% if login_error %}
+                <div class="login-error-message" role="alert">{{ login_error }}</div>
+                {% endif %}
             </form>
             {% endif %}
         </div>
@@ -2191,57 +2215,11 @@
 
             if (loginForm) {
                 const loginInputs = loginForm.querySelectorAll('input');
-                const submitButton = loginForm.querySelector('.login-submit');
 
                 loginInputs.forEach(input => {
                     input.addEventListener('input', function() {
                         loginForm.classList.remove('error');
                     });
-                });
-
-                loginForm.addEventListener('submit', async function(event) {
-                    event.preventDefault();
-                    loginForm.classList.remove('error');
-                    let redirecting = false;
-
-                    if (submitButton) {
-                        submitButton.disabled = true;
-                    }
-                    showSessionLoading('Iniciando sesion...');
-
-                    try {
-                        const response = await fetch(loginForm.action, {
-                            method: 'POST',
-                            body: new FormData(loginForm),
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
-
-                        if (!response.ok) {
-                            loginForm.classList.add('error');
-                            hideSessionLoading();
-                            return;
-                        }
-
-                        const data = await response.json();
-                        redirecting = true;
-                        if (data && data.redirect) {
-                            navigateWithSessionLoading(data.redirect, 'Iniciando sesion...');
-                        } else {
-                            window.location.reload();
-                        }
-                    } catch (error) {
-                        loginForm.classList.add('error');
-                        hideSessionLoading();
-                    } finally {
-                        if (!redirecting) {
-                            hideSessionLoading();
-                        }
-                        if (submitButton && !redirecting) {
-                            submitButton.disabled = false;
-                        }
-                    }
                 });
             }
 

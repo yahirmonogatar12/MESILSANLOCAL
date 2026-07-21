@@ -2,6 +2,8 @@
 
 
 def test_session_cookie_httponly_y_samesite(app):
+    assert app.config["SESSION_COOKIE_NAME"] == "mes_ilsan_session"
+    assert app.config["SESSION_COOKIE_PATH"] == "/"
     assert app.config["SESSION_COOKIE_HTTPONLY"] is True
     assert app.config["SESSION_COOKIE_SAMESITE"] == "Lax"
 

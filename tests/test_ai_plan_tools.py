@@ -1,3 +1,4 @@
+import hashlib
 from datetime import date
 
 import pytest
@@ -415,3 +416,93 @@ def test_plan_propuesta_aplicar_usa_solo_el_borrador_firmado(monkeypatch):
             file_lookup=lambda _ref: (None, None),
         )
     assert len(applied) == 1
+
+
+def _fake_import_parsers(monkeypatch, *, ref_nuevo, stored_max):
+    """Prepara plan_importar_preparar con hoja Part N presente y controla la
+    ref_date del archivo (ref_nuevo) y la mas nueva ya cargada (stored_max)."""
+    monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _u: True)
+    monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _u: True)
+    plan = {"parts_count": 5, "dates_count": 3,
+            "date_from": date(2026, 7, 20), "date_to": date(2026, 7, 25)}
+    monkeypatch.setattr(ai_plan_tools.pp, "_parse_lg_workbook",
+                        lambda *_a, **_k: (plan, None))
+    monkeypatch.setattr(ai_plan_tools.pp, "_parse_part10_workbook",
+                        lambda *_a, **_k: ({"sheet_name": "Part 20",
+                                            "inventory": {"EBR1": {}},
+                                            "schedules": {("EBR1", date(2026, 7, 21)): 40}},
+                                           None))
+    monkeypatch.setattr(ai_plan_tools.pp, "_pp_import_mas_reciente",
+                        lambda *_a, **_k: None)
+    monkeypatch.setattr(ai_plan_tools.pp, "_pp_fecha_archivo",
+                        lambda *_a, **_k: date(2026, 7, 20))
+    monkeypatch.setattr(ai_plan_tools.pp, "_pp_ref_lunes",
+                        lambda *_a, **_k: ref_nuevo)
+    monkeypatch.setattr(ai_plan_tools, "execute_query",
+                        lambda *_a, **_k: {"m": stored_max})
+
+
+def test_importar_avisa_si_el_inventario_es_mas_viejo_que_el_cargado(monkeypatch):
+    _fake_import_parsers(monkeypatch, ref_nuevo=date(2026, 7, 13),
+                         stored_max=date(2026, 7, 20))
+    res = ai_plan_tools.execute(
+        "plan_importar_preparar", {"file_ref": None}, username="ana",
+        file_lookup=lambda _ref: (b"xlsm", "plan.xlsm"))
+    aviso = res["resumen"].get("aviso_retroceso_inventario")
+    assert aviso and "2026-07-13" in aviso and "REVIERTE" in aviso
+
+
+def test_importar_no_avisa_si_el_inventario_es_igual_o_mas_nuevo(monkeypatch):
+    # igual (=), archivo mas nuevo (>), y tabla vacia: nunca avisa retroceso
+    for stored in (date(2026, 7, 13), date(2026, 7, 6), None):
+        _fake_import_parsers(monkeypatch, ref_nuevo=date(2026, 7, 13),
+                             stored_max=stored)
+        res = ai_plan_tools.execute(
+            "plan_importar_preparar", {"file_ref": None}, username="ana",
+            file_lookup=lambda _ref: (b"xlsm", "plan.xlsm"))
+        assert "aviso_retroceso_inventario" not in res["resumen"]
+        # tiene Part N: tampoco debe decir que no trae inventario
+        assert "nota_inventario" not in res["resumen"]
+
+
+def _import_token(file_bytes):
+    return ai_plan_tools._make_token(
+        "importar", {"sha": hashlib.sha256(file_bytes).hexdigest()})
+
+
+def test_importar_ejecutar_no_sincroniza_schedule_y_lo_reporta(monkeypatch):
+    # El import trae hoja Part N: sincroniza inventario+demanda, cuenta el
+    # Schedule disponible pero NO lo escribe (lo deja para preguntar).
+    monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _u: True)
+    file_bytes = b"weekly-xlsm"
+    captured = {}
+
+    def fake_import(data, filename, usuario):
+        captured["called"] = (filename, usuario)
+        return {"import_id": 42, "plan_partes": 487, "inventario_partes": 404,
+                "schedules_disponibles": 337, "inventario_encontrado": True}
+
+    monkeypatch.setattr(ai_plan_tools, "_importar_plan_e_inventario", fake_import)
+    res = ai_plan_tools.execute(
+        "plan_importar_ejecutar", {"confirm_token": _import_token(file_bytes)},
+        username="ana", file_lookup=lambda _ref: (file_bytes, "plan.xlsm"))
+    # el motor solo devuelve schedules DISPONIBLES, nunca "schedules" sincronizados
+    assert res["schedules_disponibles"] == 337
+    assert "schedules" not in res
+    assert res["inventario_partes"] == 404
+    assert captured["called"] == ("plan.xlsm", "ana")
+
+
+def test_importar_ejecutar_cal_sin_partn_no_reporta_schedule(monkeypatch):
+    monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _u: True)
+    file_bytes = b"cal-daily"
+    monkeypatch.setattr(
+        ai_plan_tools, "_importar_plan_e_inventario",
+        lambda *_a, **_k: {"import_id": 43, "plan_partes": 487,
+                           "inventario_partes": 0, "schedules_disponibles": 0,
+                           "inventario_encontrado": False})
+    res = ai_plan_tools.execute(
+        "plan_importar_ejecutar", {"confirm_token": _import_token(file_bytes)},
+        username="ana", file_lookup=lambda _ref: (file_bytes, "cal.xlsx"))
+    assert res["inventario_encontrado"] is False
+    assert res["schedules_disponibles"] == 0

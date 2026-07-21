@@ -8,7 +8,15 @@ si la pieza fue reparada pero el ICT estuvo OK en todos los intentos
 
 from app.api.control_resultados.historial_ict_pass_fail import (
     _ict_pass_fail_real_counts,
+    _parse_numeros_parte,
 )
+
+
+def test_parse_numeros_parte_separa_dedup_y_cap():
+    assert _parse_numeros_parte("EBR1, EBR2\nEBR3 EBR1") == ["EBR1", "EBR2", "EBR3"]
+    assert _parse_numeros_parte("") == []
+    assert _parse_numeros_parte("   ") == []
+    assert len(_parse_numeros_parte("\n".join(f"P{i}" for i in range(500)))) == 200
 
 
 def test_reparada_con_ng_es_defecto_detectado():
