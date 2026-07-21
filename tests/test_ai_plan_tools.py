@@ -216,11 +216,13 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
     monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
 
     def fake_crear(
-        fecha_inicio, fecha_fin, username, *, source, objective, excluded_parts
+        fecha_inicio, fecha_fin, username, *, source, objective, excluded_parts,
+        lotes_corriendo=None
     ):
         created.append(
             (fecha_inicio, fecha_fin, username, source, objective, excluded_parts)
         )
+        assert lotes_corriendo == {}  # rango futuro: nada corriendo
         return _proposal_result()
 
     monkeypatch.setattr(ai_plan_tools.pp, "_ppy_crear_propuesta", fake_crear)
@@ -357,7 +359,7 @@ def test_plan_propuesta_de_hoy_exige_proceso_actual(monkeypatch):
     monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
     hoy = date.today().isoformat()
 
-    with pytest.raises(ValueError, match="en que proceso o lote van"):
+    with pytest.raises(ValueError, match="en que lote va cada linea"):
         ai_plan_tools.execute(
             "plan_propuesta_preparar",
             {
@@ -365,6 +367,65 @@ def test_plan_propuesta_de_hoy_exige_proceso_actual(monkeypatch):
                 "fecha_fin": hoy,
                 "objetivo": None,
                 "proceso_actual": None,
+            },
+            username="ana",
+            file_lookup=lambda _ref: (None, None),
+        )
+
+
+def test_plan_propuesta_de_hoy_acepta_lotes_corriendo_como_avance(monkeypatch):
+    # Reportar los lotes corriendo satisface el requisito de "hoy" y se fijan.
+    monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
+    monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
+    recibido = {}
+
+    def fake_crear(fecha_inicio, fecha_fin, username, *, source, objective,
+                   excluded_parts, lotes_corriendo=None):
+        recibido["corriendo"] = lotes_corriendo
+        recibido["objective"] = objective
+        return _proposal_result()
+
+    monkeypatch.setattr(ai_plan_tools.pp, "_ppy_crear_propuesta", fake_crear)
+    monkeypatch.setattr(ai_plan_tools.pp, "_ppy_mark_proposal_pending",
+                        lambda *_a: None)
+    hoy = date.today().isoformat()
+    result = ai_plan_tools.execute(
+        "plan_propuesta_preparar",
+        {
+            "fecha_inicio": hoy, "fecha_fin": hoy, "objetivo": None,
+            "proceso_actual": None, "partes_excluidas": [], "ajustes": [],
+            "lotes_corriendo": [
+                {"linea": "M1", "numero_parte": "EBR42005101"},
+                {"linea": "D2", "numero_parte": "ajj30036901"},
+            ],
+        },
+        username="ana",
+        file_lookup=lambda _ref: (None, None),
+    )
+    assert recibido["corriendo"] == {"EBR42005101": "M1", "AJJ30036901": "D2"}
+    assert "M1 en EBR42005101" in recibido["objective"]
+    assert result["lotes_corriendo_fijados"] == [
+        {"linea": "M1", "numero_parte": "EBR42005101"},
+        {"linea": "D2", "numero_parte": "AJJ30036901"},
+    ]
+
+
+def test_plan_propuesta_rechaza_excluir_un_lote_corriendo_o_terminado(monkeypatch):
+    # Excluir un lote corriendo/terminado borraria produccion real del schedule.
+    monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
+    monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
+    hoy = date.today().isoformat()
+    with pytest.raises(ValueError, match="no se pueden excluir"):
+        ai_plan_tools.execute(
+            "plan_propuesta_preparar",
+            {
+                "fecha_inicio": hoy, "fecha_fin": hoy, "objetivo": None,
+                "proceso_actual": None,
+                "partes_excluidas": ["EBR43713702"],
+                "ajustes": [],
+                "lotes_corriendo": [
+                    {"linea": "M1", "numero_parte": "EBR43713702"},
+                ],
             },
             username="ana",
             file_lookup=lambda _ref: (None, None),

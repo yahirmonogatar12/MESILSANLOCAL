@@ -600,18 +600,29 @@ def _build_plan_proposal_excel(
     setup(ws, landscape=True)
     for column, width in {
         "A": 7, "B": 7, "C": 16, "D": 10, "E": 8,
-        "F": 9, "G": 12, "H": 12, "I": 12,
+        "F": 9, "G": 8, "H": 8, "I": 12, "J": 12, "K": 12,
     }.items():
         ws.column_dimensions[column].width = width
     ws.row_dimensions[1].height = 30
-    ws.merge_cells("A1:I1")
+    ws.merge_cells("A1:K1")
     style(ws["A1"], "title").value = (
         f"Plan propuesto — {date_from.strftime('%d/%m/%Y')} "
         f"({block_count} bloques de 9 h; propuesta {proposal_id[:8]})"
     )
-    headers = ("Bloque", "Línea", "Parte", "Cantidad", "UPH", "Horas", "Inv. antes", "Inv. después", "Falta el")
+    headers = ("Bloque", "Línea", "Parte", "Cantidad", "UPH", "Horas", "Inicio",
+               "Fin", "Inv. antes", "Inv. después", "Falta el")
     for column, value in enumerate(headers, 1):
         style(ws.cell(3, column), "header").value = value
+
+    # Horario como Control de produccion ASSY: el turno empieza 07:30 y los
+    # lotes del bloque corren encadenados; lo que termina despues de las 17:30
+    # es tiempo extra (amarillo).
+    shift_start_min = 7 * 60 + 30
+    shift_end_min = 17 * 60 + 30
+
+    def _hhmm(total_minutes: int) -> str:
+        return f"{total_minutes // 60:02d}:{total_minutes % 60:02d}"
+
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for item in rows:
         key = (str(item.get("fecha") or ""), blocks.get((str(item.get("fecha") or ""), str(item.get("linea") or "")), "B1"))
@@ -621,14 +632,27 @@ def _build_plan_proposal_excel(
     for (_sched_date, block), items in sorted(grouped.items()):
         start = current
         lines = sorted({str(item.get("linea") or "") for item in items})
+        reloj = shift_start_min
         for item in items:
+            minutos = int(round(float(item.get("horas") or 0) * 60))
+            inicio, fin = reloj, reloj + minutos
+            reloj = fin
+            extra = fin > shift_end_min
             values = (
                 block, item.get("linea"), item.get("numero_parte"), item.get("cantidad"),
-                item.get("uph"), item.get("horas"), item.get("inventario_antes"),
+                item.get("uph"), item.get("horas"), _hhmm(inicio), _hhmm(fin),
+                item.get("inventario_antes"),
                 item.get("inventario_despues"), item.get("fecha_faltante"),
             )
             for column, value in enumerate(values, 1):
-                key = "negative" if column == 7 and float(value or 0) < 0 else ("body_bold" if column == 1 else "body")
+                if column in (7, 8):
+                    key = "yellow_body" if extra else "body"
+                elif column == 9 and float(value or 0) < 0:
+                    key = "negative"
+                elif column == 1:
+                    key = "body_bold"
+                else:
+                    key = "body"
                 style(ws.cell(current, column), key).value = _safe_cell(value)
             ws.cell(current, 4).number_format = "#,##0"
             ws.cell(current, 5).number_format = "#,##0"
@@ -655,13 +679,15 @@ def _build_plan_proposal_excel(
     ws.cell(total_row, 4).number_format = "#,##0"
     ws.cell(total_row, 6).number_format = "0.00"
     foot_row = total_row + 2
-    ws.merge_cells(start_row=foot_row, start_column=1, end_row=foot_row, end_column=9)
+    ws.merge_cells(start_row=foot_row, start_column=1, end_row=foot_row, end_column=11)
     style(ws.cell(foot_row, 1), "footnote").value = (
-        "Inv. antes = inventario proyectado el día del faltante. Inv. después = "
-        "inventario más cantidad planeada. Cada línea queda completa en un solo bloque; "
-        "ningún bloque debe superar 9 h."
+        "Turno 07:30–17:30 (como Control de producción ASSY): los lotes del bloque "
+        "corren encadenados desde las 07:30; lo que termina después de las 17:30 es "
+        "tiempo extra (amarillo). Inv. antes = inventario proyectado el día del "
+        "faltante; Inv. después = inventario más cantidad planeada. Cada línea queda "
+        "completa en un solo bloque; ningún bloque debe superar 9 h."
     )
-    ws.print_area = f"A1:I{foot_row}"
+    ws.print_area = f"A1:K{foot_row}"
 
     # Horizonte / capacidad
     ws = wb.create_sheet("Horizonte")
@@ -822,68 +848,168 @@ def _build_plan_proposal_excel(
     )
     ws.print_area = f"A1:H{change_note_row + 1}"
 
-    # Part: matriz por parte y fecha
+    # Part: bloques P/S/I por parte, como el archivo original de Planning.
+    # P = demanda LG, S = produccion planeada, I = inventario proyectado
+    # (I = I anterior - P + S). Los dias posteriores al rango de la propuesta
+    # muestran como los planearia el motor (proyeccion al exportar, no
+    # incluida al confirmar): van en amarillo.
     ws = wb.create_sheet("Part")
     setup(ws, landscape=True)
     ws.column_dimensions["A"].width = 16
     ws.column_dimensions["B"].width = 7
+    ws.column_dimensions["C"].width = 4
     horizon_end = max(date_to, date_from + timedelta(days=9))
     horizon_dates = [date_from + timedelta(days=offset) for offset in range((horizon_end - date_from).days + 1)][:14]
+    horizon_end = horizon_dates[-1]
     for index in range(len(horizon_dates)):
-        ws.column_dimensions[get_column_letter(index + 3)].width = 10
-    last_column = len(horizon_dates) + 2
+        ws.column_dimensions[get_column_letter(index + 4)].width = 10
+    last_column = len(horizon_dates) + 3
     last_letter = get_column_letter(last_column)
-    ws.row_dimensions[1].height = 30
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=last_column)
-    style(ws["A1"], "title").value = "Cómo queda el Part — renglón S (lo que se planea, por fecha)"
-    style(ws["A3"], "header").value = "Parte"
-    style(ws["B3"], "header").value = "Línea"
-    for index, current_date in enumerate(horizon_dates, 3):
-        key = "weekend_header" if current_date.weekday() >= 5 else "header"
-        style(ws.cell(3, index), key).value = _plan_date_label(current_date)
-    parts = sorted({str(item.get("numero_parte") or "") for item in rows})
-    line_by_part = {str(item.get("numero_parte") or ""): item.get("linea") for item in rows}
+
     quantities = defaultdict(int)
     hours = defaultdict(float)
+    future_dates: set[str] = set()
     for item in rows:
         part = str(item.get("numero_parte") or "")
         sched_date = str(item.get("fecha") or "")
         quantities[(part, sched_date)] += int(item.get("cantidad") or 0)
         hours[(str(item.get("linea") or ""), sched_date)] += float(item.get("horas") or 0)
-    for row_no, part in enumerate(parts, 4):
-        style(ws.cell(row_no, 1), "body").value = _safe_cell(part)
-        style(ws.cell(row_no, 2), "body_bold").value = line_by_part.get(part)
-        for index, current_date in enumerate(horizon_dates, 3):
-            key = "weekend_body" if current_date.weekday() >= 5 else "green_body"
-            value = quantities.get((part, current_date.isoformat()))
-            style(ws.cell(row_no, index), key).value = value or None
-            ws.cell(row_no, index).number_format = "#,##0"
-    total_row = 4 + len(parts)
-    style(ws.cell(total_row, 1), "part_total_label").value = "TOTAL pzs"
-    for index in range(3, last_column + 1):
-        style(ws.cell(total_row, index), "part_total").value = f"=SUM({get_column_letter(index)}4:{get_column_letter(index)}{total_row - 1})"
+    line_by_part = {str(item.get("numero_parte") or ""): item.get("linea") for item in rows}
+
+    # Datos del motor: demanda LG (P), proyeccion base sin schedule (para I) y
+    # el plan que el motor haria en los dias posteriores al rango. Si no hay
+    # BD disponible, la hoja sale solo con el S de la propuesta.
+    demanda: dict[tuple[str, str], int] = {}
+    proj_base: dict[str, dict[str, int]] = {}
+    try:
+        from app.api.control_produccion import part_planning as pp
+
+        if horizon_end > date_to:
+            sim_props, _sim_om = pp._ppy_simular_schedule(
+                date_from, horizon_end,
+                excluded_parts=summary.get("excluded_parts") or None,
+            )
+            for item in sim_props:
+                if str(item["fecha"]) <= date_to.isoformat():
+                    continue  # el rango ya viene de la propuesta persistida
+                part = str(item["part_no"])
+                quantities[(part, str(item["fecha"]))] += int(item["qty"])
+                hours[(str(item["linea"]), str(item["fecha"]))] += float(item["horas_requeridas"])
+                future_dates.add(str(item["fecha"]))
+                line_by_part.setdefault(part, item.get("linea"))
+        parts_list = sorted({p for p, _f in quantities})
+        if parts_list:
+            marks = ", ".join(["%s"] * len(parts_list))
+            for row in pp.execute_query(
+                "SELECT part_no, plan_date, plan_qty FROM lg_plan_daily "
+                f"WHERE plan_date BETWEEN %s AND %s AND part_no IN ({marks})",
+                tuple([date_from, horizon_end] + parts_list),
+                fetch="all",
+            ) or []:
+                f = row["plan_date"]
+                f = f.date() if isinstance(f, datetime) else f
+                demanda[(str(row["part_no"]), f.isoformat())] = int(row["plan_qty"] or 0)
+            proy = pp._ppy_proyeccion_rango(
+                date_from, horizon_end, replanear_desde=date_from
+            )
+            for part in parts_list:
+                proj = (proy.get(part) or {}).get("proj") or {}
+                proj_base[part] = {
+                    f.isoformat(): int(v) for f, v in proj.items() if v is not None
+                }
+    except Exception:
+        logger.warning(
+            "Part P/S/I: sin datos del motor; la hoja sale solo con el S",
+            exc_info=True,
+        )
+
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=last_column)
+    style(ws["A1"], "title").value = (
+        "Cómo queda el Part — P demanda LG · S producción planeada · I inventario proyectado"
+    )
+    style(ws["A3"], "header").value = "Parte"
+    style(ws["B3"], "header").value = "Línea"
+    style(ws["C3"], "header").value = " "
+    for index, current_date in enumerate(horizon_dates, 4):
+        key = "weekend_header" if current_date.weekday() >= 5 else "header"
+        style(ws.cell(3, index), key).value = _plan_date_label(current_date)
+    parts = sorted({p for p, _f in quantities})
+    row_no = 4
+    for part in parts:
+        for concepto in ("P", "S", "I"):
+            if concepto == "P":
+                style(ws.cell(row_no, 1), "body").value = _safe_cell(part)
+                style(ws.cell(row_no, 2), "body_bold").value = line_by_part.get(part)
+            style(ws.cell(row_no, 3), "body_bold").value = concepto
+            acumulado = 0
+            for index, current_date in enumerate(horizon_dates, 4):
+                iso = current_date.isoformat()
+                weekend = current_date.weekday() >= 5
+                if concepto == "P":
+                    cell = style(ws.cell(row_no, index),
+                                 "weekend_body" if weekend else "body")
+                    cell.value = demanda.get((part, iso)) or None
+                elif concepto == "S":
+                    key = "weekend_body" if weekend else (
+                        "yellow_body" if iso in future_dates else "green_body"
+                    )
+                    cell = style(ws.cell(row_no, index), key)
+                    cell.value = quantities.get((part, iso)) or None
+                else:
+                    acumulado += quantities.get((part, iso)) or 0
+                    base = proj_base.get(part, {}).get(iso)
+                    cell = style(ws.cell(row_no, index),
+                                 "weekend_body" if weekend else "body")
+                    cell.value = (base + acumulado) if base is not None else None
+                cell.number_format = (
+                    "#,##0;[Red]-#,##0" if concepto == "I" else "#,##0"
+                )
+            row_no += 1
+    total_row = row_no
+    style(ws.cell(total_row, 1), "part_total_label").value = "TOTAL pzs (S)"
+    for index in range(4, last_column + 1):
+        letter = get_column_letter(index)
+        style(ws.cell(total_row, index), "part_total").value = (
+            f'=SUMIF($C$4:$C${total_row - 1},"S",{letter}4:{letter}{total_row - 1})'
+        )
         ws.cell(total_row, index).number_format = "#,##0"
     capacity_title = total_row + 2
     style(ws.cell(capacity_title, 1), "section").value = "Horas por línea (límite 9 h)"
     capacity_header = capacity_title + 1
     style(ws.cell(capacity_header, 1), "header").value = "Línea"
-    for index, current_date in enumerate(horizon_dates, 3):
+    for index, current_date in enumerate(horizon_dates, 4):
         key = "weekend_header" if current_date.weekday() >= 5 else "header"
         style(ws.cell(capacity_header, index), key).value = _plan_date_label(current_date)
-    lines = sorted({str(item.get("linea") or "") for item in rows})
+    lines = sorted({line for line, _f in hours})
     for row_no, line in enumerate(lines, capacity_header + 1):
         style(ws.cell(row_no, 1), "part_total_label").value = line
-        for index, current_date in enumerate(horizon_dates, 3):
-            key = "weekend_body" if current_date.weekday() >= 5 else "green_body"
-            value = round(hours.get((line, current_date.isoformat()), 0), 2)
+        for index, current_date in enumerate(horizon_dates, 4):
+            iso = current_date.isoformat()
+            key = "weekend_body" if current_date.weekday() >= 5 else (
+                "yellow_body" if iso in future_dates else "green_body"
+            )
+            value = round(hours.get((line, iso), 0), 2)
             style(ws.cell(row_no, index), key).value = value or None
             ws.cell(row_no, index).number_format = "0.00"
     note_row = capacity_header + len(lines) + 3
     ws.merge_cells(start_row=note_row, start_column=1, end_row=note_row, end_column=last_column)
-    style(ws.cell(note_row, 1), "note").value = "Gris = sábado y domingo. Las cantidades aparecen en la fecha propuesta de producción."
+    style(ws.cell(note_row, 1), "note").value = (
+        "P = demanda LG · S = producción planeada · I = inventario proyectado "
+        "(I = I anterior − P + S). Gris = sábado y domingo."
+    )
     ws.merge_cells(start_row=note_row + 1, start_column=1, end_row=note_row + 1, end_column=last_column)
-    style(ws.cell(note_row + 1, 1), "note").value = "Ninguna línea debe pasar de 9 h; las excepciones de capacidad se muestran en 'No planeadas'."
-    ws.print_area = f"A1:{last_letter}{note_row + 1}"
+    style(ws.cell(note_row + 1, 1), "note").value = (
+        f"Verde = propuesta ({_plan_date_label(date_from, weekday=False)} a "
+        f"{_plan_date_label(date_to, weekday=False)}). Amarillo = cómo lo "
+        "planearía el motor los días posteriores (proyección al exportar; "
+        "no se aplica al confirmar)."
+    )
+    ws.merge_cells(start_row=note_row + 2, start_column=1, end_row=note_row + 2, end_column=last_column)
+    style(ws.cell(note_row + 2, 1), "note").value = (
+        "Ninguna línea debe pasar de 9 h; las excepciones de capacidad se muestran en 'No planeadas'."
+    )
+    ws.print_area = f"A1:{last_letter}{note_row + 2}"
 
     wb.active = 0
     try:

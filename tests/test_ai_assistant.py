@@ -647,8 +647,33 @@ def test_reporte_propuesta_conserva_detalle_y_resumen_por_linea(monkeypatch):
     assert connection.cursor_instance.executions[0][1] == (proposal_id, "ana")
 
 
-def test_excel_propuesta_incluye_plan_y_resumen_por_linea(tmp_path):
+def test_excel_propuesta_incluye_plan_y_resumen_por_linea(tmp_path, monkeypatch):
     target = tmp_path / "plan_propuesto.xlsx"
+    # La hoja Part consulta el motor (demanda, proyeccion y dias posteriores);
+    # se stubbea para que el test no dependa de la BD real.
+    from app.api.control_produccion import part_planning as pp
+    from datetime import date as _date
+
+    monkeypatch.setattr(
+        pp, "_ppy_simular_schedule",
+        lambda *_a, **_k: ([{
+            "fecha": "2026-07-20", "part_no": "EBR80757432", "qty": 300,
+            "linea": "M4", "horas_requeridas": 1.0,
+        }], []),
+    )
+    monkeypatch.setattr(
+        pp, "execute_query",
+        lambda *_a, **_k: [
+            {"part_no": "EBR80757432", "plan_date": _date(2026, 7, 18), "plan_qty": 500}
+        ],
+    )
+    monkeypatch.setattr(
+        pp, "_ppy_proyeccion_rango",
+        lambda *_a, **_k: {"EBR80757432": {"proj": {
+            _date(2026, 7, 17): -626, _date(2026, 7, 18): -1126,
+            _date(2026, 7, 19): -1126, _date(2026, 7, 20): -1426,
+        }}},
+    )
     result = {
         "report": "plan_proposal",
         "title": "Propuesta del plan de producción",
@@ -710,19 +735,31 @@ def test_excel_propuesta_incluye_plan_y_resumen_por_linea(tmp_path):
     ]
     plan = workbook["Plan 17-jul"]
     assert [cell.value for cell in plan[3]] == [
-        "Bloque", "Línea", "Parte", "Cantidad", "UPH", "Horas",
-        "Inv. antes", "Inv. después", "Falta el",
+        "Bloque", "Línea", "Parte", "Cantidad", "UPH", "Horas", "Inicio",
+        "Fin", "Inv. antes", "Inv. después", "Falta el",
     ]
     assert plan["A4"].value == "B1"
     assert plan["C4"].value == "EBR80757432"
     assert plan["F4"].value == 6.47
-    assert plan["G4"].value == -626
+    # horario tipo ASSY: turno inicia 07:30; 6.47 h = 388 min -> fin 13:58
+    assert plan["G4"].value == "07:30"
+    assert plan["H4"].value == "13:58"
+    assert plan["I4"].value == -626
     assert plan["D5"].value == "=SUM(D4:D4)"
     assert plan["D7"].value == "=D5"
     assert workbook["Resumen"]["E11"].value == 1940
     assert workbook["Resumen"]["C12"].value == 6.47
-    assert workbook["Part"]["A4"].value == "EBR80757432"
-    assert workbook["Part"]["C4"].value == 1940
+    # Part: bloques P/S/I por parte; fechas desde la col D (17-jul)
+    part = workbook["Part"]
+    assert part["A4"].value == "EBR80757432"
+    assert part["B4"].value == "M4"
+    assert (part["C4"].value, part["C5"].value, part["C6"].value) == ("P", "S", "I")
+    assert part["E4"].value == 500      # P: demanda LG del 18-jul
+    assert part["D5"].value == 1940     # S: propuesta del rango (17-jul)
+    assert part["G5"].value == 300      # S: dia posterior planeado por el motor (20-jul)
+    assert part["D6"].value == 1314     # I: -626 + 1940
+    assert part["G6"].value == 814      # I: -1426 + 1940 + 300
+    assert part["A7"].value == "TOTAL pzs (S)"
     assert workbook["No planeadas"]["B5"].value == "Excluidas expresamente por Planning"
     assert workbook["No planeadas"]["C5"].value == 2
     assert workbook["No planeadas"]["D5"].value == "EBR30299365, EBR30299369"

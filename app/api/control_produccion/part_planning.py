@@ -1744,8 +1744,36 @@ def _ppy_partes_excluidas_propuesta(value):
     return _ppy_normalizar_partes_excluidas(parsed)
 
 
+def _ppy_normalizar_corriendo(lotes_corriendo):
+    """Normaliza los lotes reportados EN PROCESO o TERMINADOS hoy a
+    {parte_upper: linea_upper}.
+
+    Acepta lista de {'linea','numero_parte'} o dict parte->linea. Un lote en
+    proceso no se puede mover ni quitar, y uno terminado debe conservar su
+    renglon (esa produccion ya existe); ambos se fijan en la linea que reporta
+    quien conoce el piso (puede diferir de raw.assy_line)."""
+    corriendo = {}
+    if not lotes_corriendo:
+        return corriendo
+    items = lotes_corriendo.items() if isinstance(lotes_corriendo, dict) else lotes_corriendo
+    for it in items:
+        if isinstance(it, (list, tuple)) and len(it) == 2:
+            parte, linea = it
+        elif isinstance(it, dict):
+            parte = it.get("numero_parte") or it.get("part_no") or it.get("parte")
+            linea = it.get("linea") or it.get("line")
+        else:
+            continue
+        parte = str(parte or "").strip().upper()
+        linea = str(linea or "").strip().upper()
+        if parte and linea:
+            corriendo[parte] = linea
+    return corriendo
+
+
 def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
-                          replanear=True, excluded_parts=None):
+                          replanear=True, excluded_parts=None,
+                          lotes_corriendo=None):
     """Propone schedule con MRP y capacidad, sin escribir datos operativos.
 
     replanear=True (default): toma el Schedule capturado como linea base para
@@ -1827,6 +1855,17 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
         (fecha_ini, fecha_fin),
         fetch="all",
     ) or []
+    # Partes VIVAS en el horizonte (con demanda LG): lo capturado a mano solo
+    # se propone eliminar cuando la parte no tiene demanda ni faltante ahi.
+    demanda_rows = run_query(
+        "SELECT DISTINCT TRIM(part_no) AS part_no FROM lg_plan_daily "
+        "WHERE plan_date BETWEEN %s AND %s AND plan_qty > 0",
+        (fecha_ini, proy_fin),
+        fetch="all",
+    ) or []
+    partes_con_demanda = {
+        str(row.get("part_no") or "").strip() for row in demanda_rows
+    }
     for row in plan_rows:
         part_no = str(row.get("part_no") or "").strip()
         if part_no and part_no.upper() not in excluidas and part_no not in proy:
@@ -1907,8 +1946,74 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
     )
     capacidad_desconocida = set()
     asignacion_schedule = {}
+    # Lotes reportados EN PROCESO hoy: no se pueden mover ni quitar (ya estan en
+    # la maquina). Se fijan en la linea que reporta quien conoce el piso -que
+    # puede diferir de raw.assy_line-, con la qty del schedule sincronizado de
+    # hoy. Reservan capacidad, se excluyen del re-planeo y salen como filas fijas
+    # de la propuesta; el resto se reoptimiza libre. Esto va ANTES de limpiar el
+    # schedule por replanear, porque de ahi se toma su qty.
+    corriendo = _ppy_normalizar_corriendo(lotes_corriendo)
+    fijos = []
+    fijos_parts = set()
+    for row in schedule_rows:
+        part_no = str(row.get("part_no") or "").strip()
+        linea_pin = corriendo.get(part_no.upper())
+        if not linea_pin:
+            continue
+        fecha = row["sched_date"].date() if isinstance(row["sched_date"], datetime) else row["sched_date"]
+        if fecha != fecha_ini:
+            continue  # solo se fija el lote que corre HOY
+        qty = int(row.get("sched_qty") or 0)
+        rw = schedule_raw.get(part_no) or {}
+        uph = _ppy_parse_uph(rw.get("uph"))
+        pack = rw.get("estandar_pack")
+        if qty <= 0 or linea_pin not in lineas_activas or not uph:
+            agregar_excepcion(
+                part_no, "RUNNING_LOT_UNVERIFIABLE",
+                "Lote reportado en proceso sin qty, linea activa o UPH; no se pudo fijar",
+                fecha_ini,
+            )
+            continue
+        inv_antes = int((proy.get(part_no, {}).get("proj", {}) or {}).get(fecha_ini) or 0)
+        fijos.append({
+            "fecha": fecha_ini.isoformat(), "linea": linea_pin, "grupo": None,
+            "turno": "DIA", "numero_parte": part_no, "cantidad": qty,
+            "ct": float(_ppy_parse_ct(rw.get("c_t")) or 0.0), "uph": uph,
+            "horas_requeridas": round(qty / uph, 4),
+            "inventario_antes": inv_antes, "inventario_despues": inv_antes + qty,
+            "fecha_shortage": fecha_ini.isoformat(), "prioridad": 0,
+            "motivo": "Lote en proceso o terminado hoy (no se mueve ni se quita)",
+            "requiere_aprobacion": False, "excepciones": [],
+            "model": rw.get("model"), "main_sub": rw.get("sub_assy"),
+            "pack_size": int(pack) if pack else 0, "faltante": 0,
+            "part_no": part_no, "sched_date": fecha_ini.isoformat(), "qty": qty,
+        })
+        fijos_parts.add(part_no)
+        horas_conf[(fecha_ini, linea_pin)] = (
+            horas_conf.get((fecha_ini, linea_pin), 0.0) + qty / uph
+        )
+    # Anti-churn: lo que Planning ya programo un dia solo se elimina si la parte
+    # no hace falta en TODO el horizonte proyectado (proy_fin). Si falta mas
+    # adelante (fuera de la ventana normal de anticipacion), el renglon se
+    # CONSERVA tal cual (cantidad de Planning): es su adelanto y no se pelea
+    # con el. Inflarlo a la falta de toda la semana saturaba la linea y
+    # expulsaba partes que si faltan en la ventana.
+    sched_info = {}
+    for row in schedule_rows:
+        _part = str(row.get("part_no") or "").strip()
+        _fecha = (
+            row["sched_date"].date()
+            if isinstance(row["sched_date"], datetime)
+            else row["sched_date"]
+        )
+        _qty = int(row.get("sched_qty") or 0)
+        if _qty > 0:
+            _linea = str(row.get("linea") or "").strip().upper() or str(
+                (schedule_raw.get(_part) or {}).get("assy_line") or ""
+            ).strip().upper()
+            sched_info[(_part, _fecha)] = {"qty": _qty, "linea": _linea or None}
     # Al replanear, el schedule del rango se rehace: no reserva horas ni
-    # condiciona la linea. Solo los lotes CONFIRMADOS siguen mandando.
+    # condiciona la linea. Solo CONFIRMADOS y lotes en proceso siguen mandando.
     if replanear:
         schedule_rows = []
     for row in schedule_rows:
@@ -1947,8 +2052,10 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             continue
         horas_conf[(fecha, linea)] = horas_conf.get((fecha, linea), 0.0) + residual / uph
 
-    propuestas = []
+    propuestas = list(fijos)  # los lotes en proceso arrancan fijos
     acum = {p: 0 for p in partes}
+    for f in fijos:  # su produccion cuenta para la proyeccion de dias siguientes
+        acum[f["part_no"]] = acum.get(f["part_no"], 0) + int(f["qty"])
     d = fecha_ini
     while d <= fecha_fin:
         if not _ppy_es_dia_produccion(d):
@@ -1957,7 +2064,10 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             d += timedelta(days=1)
             continue
         candidatos = []
+        adelantos = []
         for p in partes:
+            if p in fijos_parts and d == fecha_ini:
+                continue  # ya esta fijo hoy: no se re-planea
             # Cuanto mira hacia adelante este dia para encontrar el faltante
             # que debe cubrir: 2 dias de produccion, 5 si es D1. NO se acota
             # con fecha_fin (son cosas distintas: fecha_fin dice hasta que dia
@@ -1979,6 +2089,25 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             # 44 son los 60 del plan anterior menos scrap, no un faltante).
             negativos = [(f, valor) for f, valor in ventana if valor < 0]
             if not negativos:
+                # Lo capturado a mano por Planning forma parte del plan: sin
+                # faltante en la ventana normal, el renglon se CONSERVA con su
+                # cantidad siempre que la parte este VIVA en el horizonte
+                # (falta mas adelante o tiene consumo). Eliminar solo se
+                # propone cuando la parte esta muerta (sin demanda ni consumo,
+                # inventario plano): producirla no sirve de nada.
+                pin = sched_info.get((p, d))
+                if pin and info[p].get("uph"):
+                    conservar = p in partes_con_demanda
+                    if not conservar:
+                        f = d
+                        while f <= proy_fin:
+                            base = proy[p]["proj"].get(f)
+                            if base is not None and base + acum[p] < 0:
+                                conservar = True  # arrastra faltante: viva
+                                break
+                            f += timedelta(days=1)
+                    if conservar:
+                        adelantos.append((p, pin))
                 continue
             primera_falta, inventario_primera_falta = negativos[0]
             # Al reponer, el lote deja el inventario en PPY_REMAIN_IDEAL, no en
@@ -2008,16 +2137,41 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                     continue
                 candidato["line"] = existente["linea"]
             candidatos.append(candidato)
+        for p, pin in adelantos:
+            # El adelanto de Planning se conserva tal cual: misma cantidad y
+            # linea, consume sus horas del dia como cualquier lote.
+            linea_adel = pin["linea"] or info[p].get("line")
+            uph = info[p]["uph"]
+            if not linea_adel or linea_adel not in lineas_activas:
+                continue
+            qty = int(pin["qty"])
+            inv_d = int((proy[p]["proj"].get(d) or 0) + acum[p])
+            propuestas.append({
+                "fecha": d.isoformat(), "linea": linea_adel, "grupo": None,
+                "turno": "DIA", "numero_parte": p, "cantidad": qty,
+                "ct": float(info[p].get("ct") or (3600.0 / uph)), "uph": uph,
+                "horas_requeridas": round(qty / uph, 4),
+                "inventario_antes": inv_d, "inventario_despues": inv_d + qty,
+                "fecha_shortage": d.isoformat(), "prioridad": 0,
+                "motivo": "Capturado por Planning conservado (la parte falta o se consume en el horizonte)",
+                "requiere_aprobacion": False, "excepciones": [],
+                "model": info[p].get("model"), "main_sub": info[p].get("main_sub"),
+                "pack_size": int(info[p].get("pack") or 0), "faltante": 0,
+                "part_no": p, "sched_date": d.isoformat(), "qty": qty,
+            })
+            acum[p] += qty
+            horas_conf[(d, linea_adel)] = (
+                horas_conf.get((d, linea_adel), 0.0) + qty / uph
+            )
         if candidatos:
             # Las horas son por GRUPO (M3+M4 comparten 9 h, no 9 h cada una).
-            horas_rest = _ppy_horas_iniciales(
-                lineas_activas,
-                {l: h for (f, l), h in horas_conf.items() if f == d},
-            )
+            ocupadas_dia = {l: h for (f, l), h in horas_conf.items() if f == d}
+            horas_rest = _ppy_horas_iniciales(lineas_activas, ocupadas_dia)
             if d in capacidad_desconocida:
                 horas_rest = {g: 0.0 for g in horas_rest}
             lotes, fuera = _ppy_armar_lotes(
-                candidatos, lineas_activas, horas_rest, estricto=True
+                candidatos, lineas_activas, horas_rest, estricto=True,
+                horas_ocupadas=ocupadas_dia,
             )
             for lote in lotes:
                 qty = int(lote["qty"])
@@ -2151,11 +2305,13 @@ def _ppy_crear_propuesta(
     source="UI",
     objective=None,
     excluded_parts=None,
+    lotes_corriendo=None,
 ):
     """Calcula y persiste un borrador; no modifica schedule ni lotes."""
     excluded_parts = _ppy_normalizar_partes_excluidas(excluded_parts)
     propuestas, omitidas, excepciones = _ppy_simular_schedule(
-        fecha_ini, fecha_fin, detailed=True, excluded_parts=excluded_parts
+        fecha_ini, fecha_fin, detailed=True, excluded_parts=excluded_parts,
+        lotes_corriendo=lotes_corriendo,
     )
     schedule_snapshot = _ppy_schedule_snapshot(fecha_ini, fecha_fin)
     _ppy_attach_schedule_actual(propuestas, fecha_ini, fecha_fin)
@@ -3614,7 +3770,8 @@ def _ppy_proyeccion_rango(fecha_ini, fecha_fin, query=None, replanear_desde=None
     return resultado
 
 
-def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest, estricto=True):
+def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest, estricto=True,
+                     horas_ocupadas=None):
     """Ajusta los candidatos a las horas disponibles por linea (9 h sin TE).
 
     candidatos: [{part_no, falt_total, falt_hoy, primera_falta(date), line,
@@ -3729,6 +3886,16 @@ def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest, estricto=True):
                 linea_familia = elegido
             plan.append((c, elegido, qty_obj, pack, adelanto))
             pedidas[elegido] = pedidas.get(elegido, 0.0) + qty_obj / c["uph"]
+
+    # Una linea con horas ya ocupadas (confirmados, lotes corriendo/terminados)
+    # solo puede pedir lo que le falta para sus 9 h del dia. Sin este tope, sus
+    # lotes nuevos caian en OTRO bloque y la linea sumaba mas de 9 h reales.
+    for linea, usadas in (horas_ocupadas or {}).items():
+        if linea in pedidas:
+            tope = max(PPY_HORAS_TURNO - usadas, 0.0)
+            pedidas[linea] = min(pedidas[linea], tope)
+            if pedidas[linea] <= 0:
+                del pedidas[linea]
 
     # Pase 2: repartir las lineas entre los bloques de 9 h del dia. Cada linea
     # queda completa en un bloque; el bloque le acota las horas.

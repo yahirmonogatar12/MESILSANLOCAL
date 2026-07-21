@@ -524,6 +524,145 @@ def test_ppy_simular_schedule_adelanta_shortage_dentro_del_horizonte(monkeypatch
     assert item["motivo"] == "Adelantar produccion para evitar shortage del plan LG"
 
 
+def _sched_query_con_fila(part_no, fecha, qty, linea=None):
+    """execute_query falso: una fila de schedule; lo demas vacio."""
+    def fake(sql, params=(), fetch=None):
+        if "FROM lg_schedule_daily" in str(sql):
+            return [{"part_no": part_no, "sched_date": fecha,
+                     "sched_qty": qty, "linea": linea, "turno": "DIA"}]
+        return []
+    return fake
+
+
+def test_ppy_replanear_no_borra_schedule_que_falta_en_el_horizonte(monkeypatch):
+    """Anti-churn: si Planning ya programo la parte hoy y falta el lunes (fuera
+    de la ventana de 2 dias pero dentro del horizonte proyectado), NO se
+    elimina: es su adelanto y se CONSERVA con su cantidad. No se infla a la
+    falta de toda la semana (eso saturaba la linea) ni se borra para volverla
+    a agregar en dos dias."""
+    fecha = date(2026, 7, 15)   # miercoles
+    parte = "CHURN000001"
+    # negativa solo el 22 (mie siguiente = fin del horizonte de 5 dias de
+    # produccion); la ventana normal de M1 (2 dias: 16-17) no la ve
+    proyeccion = {
+        fecha + timedelta(days=off): (500 if off < 7 else -100)
+        for off in range(0, 8)
+    }
+    pp = _mock_ppy_schedule_dependencies(
+        monkeypatch,
+        {parte: {"line": "M1", "proj": proyeccion}},
+        {parte: {"model": "M", "sub_assy": "MAIN", "c_t": 36,
+                 "uph": 100, "estandar_pack": 20}},
+    )
+    # control: SIN schedule previo, el dia 15 no propone nada (falta lejos)
+    props, _om, _ex = pp._ppy_simular_schedule(fecha, fecha, detailed=True)
+    assert props == []
+    # con la parte YA programada hoy por Planning: se conserva tal cual
+    monkeypatch.setattr(pp, "execute_query",
+                        _sched_query_con_fila(parte, fecha, 600))
+    props, _om, _ex = pp._ppy_simular_schedule(fecha, fecha, detailed=True)
+    assert len(props) == 1
+    assert props[0]["sched_date"] == fecha.isoformat()
+    assert (props[0]["linea"], props[0]["qty"]) == ("M1", 600)
+    assert props[0]["motivo"].startswith("Capturado por Planning conservado")
+
+
+def test_ppy_capturado_manual_se_conserva_si_la_parte_vive(monkeypatch):
+    """Lo capturado a mano forma parte del plan aunque el inventario ya cubra:
+    solo se propone eliminar cuando la parte esta muerta (sin consumo ni
+    faltante en todo el horizonte)."""
+    fecha = date(2026, 7, 15)
+    viva, muerta = "VIVA0000001", "MUERTA00001"
+    # viva: consume (baja 500->200) pero nunca falta; muerta: plana
+    proy_viva = {fecha + timedelta(days=off): (500 if off < 3 else 200)
+                 for off in range(0, 8)}
+    proy_muerta = {fecha + timedelta(days=off): 500 for off in range(0, 8)}
+    raw = {p: {"model": "M", "sub_assy": "MAIN", "c_t": 36,
+               "uph": 100, "estandar_pack": 20} for p in (viva, muerta)}
+    pp = _mock_ppy_schedule_dependencies(
+        monkeypatch,
+        {viva: {"line": "M1", "proj": proy_viva},
+         muerta: {"line": "M1", "proj": proy_muerta}},
+        raw,
+    )
+
+    def fake_query(sql, params=(), fetch=None):
+        if "FROM lg_schedule_daily" in str(sql):
+            return [
+                {"part_no": viva, "sched_date": fecha, "sched_qty": 100,
+                 "linea": "M1", "turno": "DIA"},
+                {"part_no": muerta, "sched_date": fecha, "sched_qty": 100,
+                 "linea": "M1", "turno": "DIA"},
+            ]
+        if "FROM lg_plan_daily" in str(sql):
+            return [{"part_no": viva}]  # solo la viva tiene demanda LG
+        return []
+
+    monkeypatch.setattr(pp, "execute_query", fake_query)
+    props, _om, _ex = pp._ppy_simular_schedule(fecha, fecha, detailed=True)
+    por_parte = {p["part_no"]: p for p in props}
+    assert viva in por_parte and por_parte[viva]["qty"] == 100
+    assert muerta not in por_parte  # muerta: se propone eliminar
+
+
+def test_ppy_lote_corriendo_o_terminado_queda_fijo(monkeypatch):
+    """Un lote reportado corriendo/terminado hoy conserva linea y cantidad
+    aunque el inventario diga que ya no hace falta."""
+    fecha = date(2026, 7, 15)
+    parte = "CORRIENDO01"
+    proyeccion = {fecha + timedelta(days=off): 500 for off in range(0, 8)}
+    pp = _mock_ppy_schedule_dependencies(
+        monkeypatch,
+        {parte: {"line": "M1", "proj": proyeccion}},
+        {parte: {"model": "M", "sub_assy": "MAIN", "c_t": 36,
+                 "uph": 100, "estandar_pack": 20}},
+    )
+    monkeypatch.setattr(pp, "execute_query",
+                        _sched_query_con_fila(parte, fecha, 300))
+    # sin reporte: inventario sobrado -> el motor la eliminaria
+    props, _om, _ex = pp._ppy_simular_schedule(fecha, fecha, detailed=True)
+    assert props == []
+    # reportada corriendo en M1: se fija con su cantidad y linea
+    props, _om, _ex = pp._ppy_simular_schedule(
+        fecha, fecha, detailed=True,
+        lotes_corriendo=[{"linea": "M1", "numero_parte": parte}],
+    )
+    assert len(props) == 1
+    assert (props[0]["linea"], props[0]["qty"]) == ("M1", 300)
+    assert props[0]["motivo"] == "Lote en proceso o terminado hoy (no se mueve ni se quita)"
+
+
+def test_ppy_linea_con_lote_fijo_no_pasa_de_9_horas(monkeypatch):
+    """Las horas de un lote fijado cuentan contra las 9 h de SU linea: los
+    lotes nuevos de esa linea solo reciben el resto, aunque otro bloque
+    tenga cupo libre."""
+    fecha = date(2026, 7, 15)
+    fijo, nueva = "FIJO0000001", "NUEVA000001"
+    proyeccion_ok = {fecha + timedelta(days=off): 500 for off in range(0, 8)}
+    proyeccion_falta = {fecha + timedelta(days=off): -2000 for off in range(0, 8)}
+    pp = _mock_ppy_schedule_dependencies(
+        monkeypatch,
+        {fijo: {"line": "M1", "proj": proyeccion_ok},
+         nueva: {"line": "M1", "proj": proyeccion_falta}},
+        {fijo: {"model": "M", "sub_assy": "MAIN", "c_t": 36,
+                "uph": 100, "estandar_pack": 20},
+         nueva: {"model": "M", "sub_assy": "MAIN", "c_t": 36,
+                 "uph": 100, "estandar_pack": 20}},
+    )
+    # el lote fijo ocupa 6 h (600 pzs a 100 uph); la nueva pide ~22 h
+    monkeypatch.setattr(pp, "execute_query",
+                        _sched_query_con_fila(fijo, fecha, 600))
+    props, _om, _ex = pp._ppy_simular_schedule(
+        fecha, fecha, detailed=True,
+        lotes_corriendo=[{"linea": "M1", "numero_parte": fijo}],
+    )
+    horas_m1 = sum(p["horas_requeridas"] for p in props if p["linea"] == "M1")
+    assert horas_m1 <= 9.0 + 1e-6, "M1 debe respetar sus 9 h aunque haya bloques libres"
+    por_parte = {p["part_no"]: p for p in props}
+    assert por_parte[fijo]["qty"] == 600          # el fijo no se toca
+    assert por_parte[nueva]["qty"] == 300         # 3 h restantes * 100 uph
+
+
 def test_ppy_simular_schedule_deriva_ct_desde_uph(monkeypatch):
     fecha = date(2026, 7, 15)
     parte = "SINCT000001"

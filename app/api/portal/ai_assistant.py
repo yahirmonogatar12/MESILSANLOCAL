@@ -139,35 +139,56 @@ def _plan_proposal_excel_text(language: str, row_count: int) -> str:
 def _plan_completion_text(action: str, result: dict[str, Any], language: str) -> str:
     """Respuesta determinista tras consumir una confirmación del usuario."""
     if action == "plan_importar_ejecutar":
+        # El Schedule (renglon S) no se sincroniza en el import; si el archivo
+        # trae hoja Part N con renglones S, se pregunta si sincronizarlos.
+        sched_disp = int(result.get("schedules_disponibles") or 0)
+        preguntar_sched = bool(result.get("inventario_encontrado")) and sched_disp > 0
         if language == "ko":
-            return (
+            base = (
                 "**가져오기가 완료되었습니다.**\n\n"
                 f"- 계획 부품: **{int(result.get('plan_partes') or 0):,}**\n"
                 f"- 계획 레코드: **{int(result.get('plan_registros') or 0):,}**\n"
                 f"- 날짜: **{int(result.get('plan_fechas') or 0):,}** ({result.get('rango') or 'N/D'})\n"
-                f"- 재고 부품: **{int(result.get('inventario_partes') or 0):,}**\n"
-                f"- 스케줄: **{int(result.get('schedules') or 0):,}**\n\n"
+                f"- 재고 부품: **{int(result.get('inventario_partes') or 0):,}**\n\n"
                 f"가져오기 ID: **{result.get('import_id') or 'N/D'}**."
             )
+            if preguntar_sched:
+                base += (
+                    f"\n\n재고와 수요를 동기화했습니다. 파일에 Planning의 스케줄"
+                    f"(S행) **{sched_disp:,}**건이 있습니다. **스케줄도 동기화할까요?** (예/아니오)"
+                )
+            return base
         if language == "en":
-            return (
+            base = (
                 "**Import completed successfully.**\n\n"
                 f"- Plan parts: **{int(result.get('plan_partes') or 0):,}**\n"
                 f"- Plan records: **{int(result.get('plan_registros') or 0):,}**\n"
                 f"- Dates: **{int(result.get('plan_fechas') or 0):,}** ({result.get('rango') or 'N/A'})\n"
-                f"- Inventory parts: **{int(result.get('inventario_partes') or 0):,}**\n"
-                f"- Schedules: **{int(result.get('schedules') or 0):,}**\n\n"
+                f"- Inventory parts: **{int(result.get('inventario_partes') or 0):,}**\n\n"
                 f"Import ID: **{result.get('import_id') or 'N/A'}**."
             )
-        return (
+            if preguntar_sched:
+                base += (
+                    f"\n\nInventory and demand are synced. The file has "
+                    f"**{sched_disp:,}** Planning schedule rows (row S). "
+                    f"**Do you want to sync the Schedule too?** (yes/no)"
+                )
+            return base
+        base = (
             "**Importación completada correctamente.**\n\n"
             f"- Partes del plan: **{int(result.get('plan_partes') or 0):,}**\n"
             f"- Registros del plan: **{int(result.get('plan_registros') or 0):,}**\n"
             f"- Fechas: **{int(result.get('plan_fechas') or 0):,}** ({result.get('rango') or 'N/D'})\n"
-            f"- Partes de inventario: **{int(result.get('inventario_partes') or 0):,}**\n"
-            f"- Schedules: **{int(result.get('schedules') or 0):,}**\n\n"
+            f"- Partes de inventario: **{int(result.get('inventario_partes') or 0):,}**\n\n"
             f"ID de importación: **{result.get('import_id') or 'N/D'}**."
         )
+        if preguntar_sched:
+            base += (
+                f"\n\nEl inventario y la demanda quedaron sincronizados. El archivo "
+                f"trae **{sched_disp:,}** renglones de Schedule (renglón S) de "
+                f"Planning. **¿Quieres sincronizar también el Schedule?** (sí/no)"
+            )
+        return base
 
     if action == "plan_part_sincronizar_ejecutar":
         parts = int(result.get("parts") or 0)

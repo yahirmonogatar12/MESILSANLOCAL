@@ -20,7 +20,7 @@ import json
 import logging
 import os
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from app.db_mysql import execute_query
@@ -226,15 +226,11 @@ def _importar_plan_e_inventario(file_bytes: bytes, filename: str, usuario: str) 
                 cursor.executemany(sql_inv, datos_inv[i : i + pp.PP_BATCH_SIZE])
             parts_inv = len(datos_inv)
 
-            datos_sched = [(p, f, int(q), usuario) for (p, f), q in inv["schedules"].items()]
-            for i in range(0, len(datos_sched), pp.PP_BATCH_SIZE):
-                cursor.executemany(
-                    "INSERT INTO lg_schedule_daily (part_no, sched_date, sched_qty, updated_by) "
-                    "VALUES (%s, %s, %s, %s) "
-                    "ON DUPLICATE KEY UPDATE sched_qty=VALUES(sched_qty), updated_by=VALUES(updated_by)",
-                    datos_sched[i : i + pp.PP_BATCH_SIZE],
-                )
-            sched_n = len(datos_sched)
+            # El Schedule (renglon S) NO se sincroniza en el import: cargar el
+            # inventario es un hecho (la foto del lunes), pero adoptar el
+            # schedule de Planning es una decision -el motor puede reoptimizarlo-.
+            # Se cuenta lo disponible y se pregunta despues (plan_part_sincronizar).
+            sched_n = len(inv["schedules"])
         conn.commit()
     except Exception:
         conn.rollback()
@@ -252,7 +248,7 @@ def _importar_plan_e_inventario(file_bytes: bytes, filename: str, usuario: str) 
         "rango": f"{plan['date_from'].isoformat()} a {plan['date_to'].isoformat()}",
         "inventario_hoja": inv.get("sheet_name") if inv_ok else None,
         "inventario_partes": parts_inv,
-        "schedules": sched_n,
+        "schedules_disponibles": sched_n,  # en el archivo; NO sincronizados aun
         "inventario_encontrado": inv_ok,
     }
 
@@ -480,10 +476,35 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                                 "additionalProperties": False,
                             },
                         },
+                        "lotes_corriendo": {
+                            "type": "array",
+                            "maxItems": 20,
+                            "description": (
+                                "Lotes de HOY que ya corren en una linea O que ya "
+                                "se terminaron (el avance que reporta Planning, "
+                                "ej. 'M1 va por EBR42005101; ya termino 43713702'). "
+                                "Se FIJAN: conservan linea y cantidad, no se mueven "
+                                "ni se quitan (lo producido debe quedar en el "
+                                "schedule); el resto se reoptimiza. NUNCA pongas un "
+                                "lote terminado o corriendo en partes_excluidas: "
+                                "eso lo BORRA y el sistema olvida esa produccion. "
+                                "Obligatorio cuando el rango incluye hoy. Usa [] "
+                                "para fechas futuras."
+                            ),
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "linea": {"type": "string"},
+                                    "numero_parte": {"type": "string"},
+                                },
+                                "required": ["linea", "numero_parte"],
+                                "additionalProperties": False,
+                            },
+                        },
                     },
                     "required": [
                         "fecha_inicio", "fecha_fin", "objetivo", "proceso_actual",
-                        "partes_excluidas", "ajustes",
+                        "partes_excluidas", "ajustes", "lotes_corriendo",
                     ],
                     "additionalProperties": False,
                 },
@@ -580,15 +601,33 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         if (fecha_fin - fecha_inicio).days > pp.PP_MAX_RANGO_DIAS:
             raise ValueError(f"Rango maximo {pp.PP_MAX_RANGO_DIAS} dias")
         proceso_actual = str(arguments.get("proceso_actual") or "").strip()
-        if fecha_inicio <= hoy <= fecha_fin and not proceso_actual:
+        # Lotes en proceso reportados: se fijan (no se mueven ni se quitan) y
+        # ademas satisfacen el requisito de saber en que va cada linea hoy.
+        lotes_corriendo = pp._ppy_normalizar_corriendo(
+            arguments.get("lotes_corriendo")
+        )
+        if fecha_inicio <= hoy <= fecha_fin and not proceso_actual and not lotes_corriendo:
             raise ValueError(
-                "Antes de planear hoy, pregunta en que proceso o lote van "
-                "las lineas y envia la respuesta en proceso_actual."
+                "Antes de planear hoy, pregunta en que lote va cada linea y "
+                "envialo en lotes_corriendo (o describe el estado en proceso_actual)."
             )
         objetivo = str(arguments.get("objetivo") or "").strip()
         partes_excluidas = pp._ppy_normalizar_partes_excluidas(
             arguments.get("partes_excluidas")
         )
+        # Un lote corriendo/terminado jamas puede ir excluido: excluirlo borra
+        # su renglon del schedule y el sistema olvida esa produccion.
+        conflicto = sorted(set(partes_excluidas) & set(lotes_corriendo))
+        if conflicto:
+            raise ValueError(
+                "Estas partes estan corriendo o terminadas hoy y no se pueden "
+                "excluir (se borraria produccion real): " + ", ".join(conflicto)
+                + ". Mandalas solo en lotes_corriendo."
+            )
+        if lotes_corriendo and not proceso_actual:
+            proceso_actual = ", ".join(
+                f"{l} en {p}" for p, l in lotes_corriendo.items()
+            )
         if proceso_actual:
             contexto = "Proceso actual reportado por Planning: " + proceso_actual
             objetivo = (objetivo + "\n" + contexto).strip()
@@ -599,6 +638,7 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             source="AI",
             objective=objetivo or None,
             excluded_parts=partes_excluidas,
+            lotes_corriendo=lotes_corriendo,
         )
         pp._ppy_mark_proposal_pending(propuesta["proposal_id"], username)
         # Ajustes manuales por parte (capar cantidad, cambiar turno/linea o
@@ -649,6 +689,9 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "exceptions": propuesta["exceptions"][:20],
             "sample": muestra,
             "proceso_actual": proceso_actual or None,
+            "lotes_corriendo_fijados": [
+                {"linea": l, "numero_parte": p} for p, l in lotes_corriendo.items()
+            ],
             "schedule_usado_como_referencia": True,
             "resultado_es_schedule_final": True,
             "schedule_change_summary": propuesta["schedule_change_summary"],
@@ -659,8 +702,9 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
                 "Explica que es una propuesta calculada por el motor, resume capacidad y "
                 "excepciones, aclara que tomo el Schedule vigente como punto de partida, "
                 "resume cuantos renglones conserva, modifica, agrega y elimina, confirma "
-                "expresamente las partes excluidas y pide confirmacion en un mensaje posterior "
-                "para reemplazar el Schedule del rango por este resultado final."
+                "expresamente las partes excluidas, menciona los lotes en proceso que se "
+                "fijaron (no se mueven ni se quitan) y pide confirmacion en un mensaje "
+                "posterior para reemplazar el Schedule del rango por este resultado final."
             ),
         }
 
@@ -721,6 +765,31 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             )
             instruccion += (" Avisa que el inventario NO se actualiza con este "
                             "archivo y que se usara el ya cargado.")
+        else:
+            # Tiene hoja Part N: el import sincroniza inventario + demanda. El
+            # Schedule (renglon S) NO se importa aqui; se pregunta despues.
+            resumen["schedule_disponible"] = len(inv["schedules"])
+            instruccion += (" Aclara que se sincronizara inventario y demanda; el "
+                            "Schedule (renglon S) NO se importa en este paso y se "
+                            "preguntara si sincronizarlo despues de importar.")
+            # Es una foto semanal y el motor siempre usa la ultima (una fila por
+            # parte, gana el ultimo import). Si esta foto es mas vieja que la ya
+            # cargada, confirmar revierte el inventario. Solo se avisa; no bloquea.
+            ref_nuevo = pp._pp_ref_lunes(filename or "plan.xlsm")
+            fila = execute_query(
+                "SELECT MAX(ref_date) AS m FROM lg_part_inventory", fetch="one")
+            m = (fila or {}).get("m")
+            ref_cargado = m.date() if isinstance(m, datetime) else m
+            if ref_nuevo and ref_cargado and ref_nuevo < ref_cargado:
+                resumen["aviso_retroceso_inventario"] = (
+                    f"El inventario de este archivo es del {ref_nuevo.isoformat()} "
+                    f"pero ya hay uno mas nuevo cargado (del "
+                    f"{ref_cargado.isoformat()}). Confirmar REVIERTE el inventario "
+                    f"a la semana vieja."
+                )
+                instruccion += (" ADVIERTE que el inventario de este archivo es mas "
+                                "viejo que el ya cargado y confirmar lo revertiria. "
+                                "Pide confirmacion explicita.")
         return {"resumen": resumen, "confirm_token": token,
                 "instruccion": instruccion}
 
