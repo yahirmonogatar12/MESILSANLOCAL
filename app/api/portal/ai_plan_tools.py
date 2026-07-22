@@ -501,10 +501,50 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                                 "additionalProperties": False,
                             },
                         },
+                        "agregados": {
+                            "type": "array",
+                            "maxItems": 40,
+                            "description": (
+                                "Partes que Planning quiere METER al plan aunque "
+                                "no haya faltante: servicios o forzados. El motor "
+                                "las acomoda en la linea y cantidad que indiques, "
+                                "consumen capacidad y no compiten con el re-planeo. "
+                                "Planning manda todo lo que desea añadir. Usa [] si "
+                                "no hay."
+                            ),
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "linea": {"type": "string"},
+                                    "numero_parte": {"type": "string"},
+                                    "cantidad": {"type": "integer"},
+                                    "turno": {
+                                        "type": ["string", "null"],
+                                        "enum": ["DIA", "TIEMPO EXTRA", "NOCHE", None],
+                                    },
+                                },
+                                "required": [
+                                    "linea", "numero_parte", "cantidad", "turno",
+                                ],
+                                "additionalProperties": False,
+                            },
+                        },
+                        "expandir_dias": {
+                            "type": ["integer", "null"],
+                            "description": (
+                                "Dias EXTRA para expandir el plan mas alla de la "
+                                "ventana normal (2 dias). Solo adelanta partes de "
+                                "consumo recurrente para llenar capacidad libre; "
+                                "las de un solo consumo no se adelantan. Usa null o "
+                                "0 para el plan normal. Pregunta al usuario antes de "
+                                "expandir cuando sobre capacidad."
+                            ),
+                        },
                     },
                     "required": [
                         "fecha_inicio", "fecha_fin", "objetivo", "proceso_actual",
                         "partes_excluidas", "ajustes", "lotes_corriendo",
+                        "agregados", "expandir_dias",
                     ],
                     "additionalProperties": False,
                 },
@@ -631,6 +671,13 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         if proceso_actual:
             contexto = "Proceso actual reportado por Planning: " + proceso_actual
             objetivo = (objetivo + "\n" + contexto).strip()
+        # Agregados manuales (servicios/forzados) y expansion opcional del plan.
+        agregados = pp._ppy_normalizar_agregados(arguments.get("agregados"))
+        try:
+            expandir_dias = int(arguments.get("expandir_dias") or 0)
+        except (TypeError, ValueError):
+            expandir_dias = 0
+        expandir_dias = max(0, min(expandir_dias, pp.PP_MAX_RANGO_DIAS))
         propuesta = pp._ppy_crear_propuesta(
             fecha_inicio,
             fecha_fin,
@@ -639,6 +686,8 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             objective=objetivo or None,
             excluded_parts=partes_excluidas,
             lotes_corriendo=lotes_corriendo,
+            agregados=agregados,
+            expandir_dias=expandir_dias,
         )
         pp._ppy_mark_proposal_pending(propuesta["proposal_id"], username)
         # Ajustes manuales por parte (capar cantidad, cambiar turno/linea o
@@ -692,6 +741,9 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "lotes_corriendo_fijados": [
                 {"linea": l, "numero_parte": p} for p, l in lotes_corriendo.items()
             ],
+            "agregados_fijados": agregados,
+            "capacidad_libre": propuesta["capacidad_libre"],
+            "expandido_dias": propuesta["expandido_dias"],
             "schedule_usado_como_referencia": True,
             "resultado_es_schedule_final": True,
             "schedule_change_summary": propuesta["schedule_change_summary"],
@@ -702,9 +754,25 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
                 "Explica que es una propuesta calculada por el motor, resume capacidad y "
                 "excepciones, aclara que tomo el Schedule vigente como punto de partida, "
                 "resume cuantos renglones conserva, modifica, agrega y elimina, confirma "
-                "expresamente las partes excluidas, menciona los lotes en proceso que se "
-                "fijaron (no se mueven ni se quitan) y pide confirmacion en un mensaje "
-                "posterior para reemplazar el Schedule del rango por este resultado final."
+                "expresamente las partes excluidas, menciona los lotes en proceso y los "
+                "agregados manuales que se fijaron. "
+                + (
+                    "Ya viene expandido "
+                    f"{propuesta['expandido_dias']} dias extra; no vuelvas a preguntar. "
+                    if propuesta["expandido_dias"]
+                    else (
+                        "Como sobran "
+                        f"{propuesta['capacidad_libre']['total']:.1f} h libres en "
+                        f"{', '.join(propuesta['capacidad_libre']['lineas_con_espacio']) or 'algunas lineas'}, "
+                        "PREGUNTA si quiere expandir el plan a mas dias para adelantar "
+                        "consumo recurrente (parametro expandir_dias); no expandas sin "
+                        "que lo pida. "
+                        if propuesta["capacidad_libre"]["lineas_con_espacio"]
+                        else ""
+                    )
+                )
+                + "Pide confirmacion en un mensaje posterior para reemplazar el "
+                "Schedule del rango por este resultado final."
             ),
         }
 

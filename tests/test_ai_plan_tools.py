@@ -64,6 +64,9 @@ def _proposal_result():
         "schedule_change_summary": {
             "CONSERVAR": 0, "MODIFICAR": 0, "AGREGAR": 1, "ELIMINAR": 0,
         },
+        "capacidad_libre": {"por_linea": {"M1": 7.0}, "total": 7.0,
+                            "lineas_con_espacio": ["M1"]},
+        "expandido_dias": 0,
     }
 
 
@@ -217,12 +220,13 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
 
     def fake_crear(
         fecha_inicio, fecha_fin, username, *, source, objective, excluded_parts,
-        lotes_corriendo=None
+        lotes_corriendo=None, agregados=None, expandir_dias=0
     ):
         created.append(
             (fecha_inicio, fecha_fin, username, source, objective, excluded_parts)
         )
         assert lotes_corriendo == {}  # rango futuro: nada corriendo
+        assert agregados == [] and expandir_dias == 0
         return _proposal_result()
 
     monkeypatch.setattr(ai_plan_tools.pp, "_ppy_crear_propuesta", fake_crear)
@@ -380,7 +384,8 @@ def test_plan_propuesta_de_hoy_acepta_lotes_corriendo_como_avance(monkeypatch):
     recibido = {}
 
     def fake_crear(fecha_inicio, fecha_fin, username, *, source, objective,
-                   excluded_parts, lotes_corriendo=None):
+                   excluded_parts, lotes_corriendo=None, agregados=None,
+                   expandir_dias=0):
         recibido["corriendo"] = lotes_corriendo
         recibido["objective"] = objective
         return _proposal_result()

@@ -1771,9 +1771,45 @@ def _ppy_normalizar_corriendo(lotes_corriendo):
     return corriendo
 
 
+def _ppy_normalizar_agregados(agregados):
+    """Normaliza los agregados manuales de Planning (servicios o forzados) a
+    lista de {part_no, linea, qty, turno}.
+
+    Planning manda todo lo que desea meter aunque no haya faltante (ej. lotes de
+    servicio); el motor solo los acomoda: los coloca en su linea, consumen
+    capacidad y no compiten con el re-planeo."""
+    salida = []
+    if not agregados:
+        return salida
+    items = agregados.items() if isinstance(agregados, dict) else agregados
+    for it in items:
+        if isinstance(it, (list, tuple)) and len(it) >= 3:
+            linea, part, qty = it[0], it[1], it[2]
+            turno = it[3] if len(it) > 3 else "DIA"
+        elif isinstance(it, dict):
+            part = it.get("numero_parte") or it.get("part_no") or it.get("parte")
+            linea = it.get("linea") or it.get("line")
+            qty = it.get("cantidad") or it.get("qty")
+            turno = it.get("turno") or "DIA"
+        else:
+            continue
+        part = str(part or "").strip().upper()
+        linea = str(linea or "").strip().upper()
+        turno = str(turno or "DIA").strip().upper()
+        if turno not in PPY_TURNOS:
+            turno = "DIA"
+        try:
+            qty = int(qty or 0)
+        except (TypeError, ValueError):
+            qty = 0
+        if part and linea and qty > 0:
+            salida.append({"part_no": part, "linea": linea, "qty": qty, "turno": turno})
+    return salida
+
+
 def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                           replanear=True, excluded_parts=None,
-                          lotes_corriendo=None):
+                          lotes_corriendo=None, agregados=None, expandir_dias=0):
     """Propone schedule con MRP y capacidad, sin escribir datos operativos.
 
     replanear=True (default): toma el Schedule capturado como linea base para
@@ -1992,6 +2028,54 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
         horas_conf[(fecha_ini, linea_pin)] = (
             horas_conf.get((fecha_ini, linea_pin), 0.0) + qty / uph
         )
+
+    # Agregados manuales de Planning: lo que quiere meter aunque no haya
+    # faltante (servicios, forzados). El motor los acomoda -linea y cantidad que
+    # indica-, reservan capacidad y se excluyen del re-planeo. Planning manda
+    # todo lo que desea añadir; la IA solo lo coloca.
+    agregados_norm = _ppy_normalizar_agregados(agregados)
+    if agregados_norm:
+        ag_parts = sorted({a["part_no"] for a in agregados_norm})
+        ag_raw = (
+            _ppy_datos_raw(ag_parts) if query is None
+            else _ppy_datos_raw(ag_parts, query)
+        )
+        for a in agregados_norm:
+            part_no, linea, qty, turno = a["part_no"], a["linea"], a["qty"], a["turno"]
+            if part_no in fijos_parts:
+                continue  # ya fijado como corriendo
+            if linea not in lineas_activas:
+                agregar_excepcion(
+                    part_no, "MANUAL_ADD_INACTIVE_LINE",
+                    f"Agregado manual en linea '{linea}' no activa; se planea aparte",
+                    fecha_ini,
+                )
+                continue
+            rw = ag_raw.get(part_no) or schedule_raw.get(part_no) or {}
+            uph = _ppy_parse_uph(rw.get("uph"))
+            pack = rw.get("estandar_pack")
+            horas = round(qty / uph, 4) if uph else 0.0
+            inv_antes = int((proy.get(part_no, {}).get("proj", {}) or {}).get(fecha_ini) or 0)
+            fijos.append({
+                "fecha": fecha_ini.isoformat(), "linea": linea, "grupo": None,
+                "turno": turno, "numero_parte": part_no, "cantidad": qty,
+                "ct": float(_ppy_parse_ct(rw.get("c_t")) or (3600.0 / uph if uph else 0.0)),
+                "uph": uph or 0, "horas_requeridas": horas,
+                "inventario_antes": inv_antes, "inventario_despues": inv_antes + qty,
+                "fecha_shortage": fecha_ini.isoformat(), "prioridad": 0,
+                "motivo": "Agregado manual por Planning (servicio o forzado)",
+                "requiere_aprobacion": not uph,
+                "excepciones": ([] if uph else ["UPH_MISSING"]),
+                "model": rw.get("model"), "main_sub": rw.get("sub_assy"),
+                "pack_size": int(pack) if pack else 0, "faltante": 0,
+                "part_no": part_no, "sched_date": fecha_ini.isoformat(), "qty": qty,
+            })
+            fijos_parts.add(part_no)
+            if uph and turno == "DIA":
+                horas_conf[(fecha_ini, linea)] = (
+                    horas_conf.get((fecha_ini, linea), 0.0) + qty / uph
+                )
+
     # Anti-churn: lo que Planning ya programo un dia solo se elimina si la parte
     # no hace falta en TODO el horizonte proyectado (proy_fin). Si falta mas
     # adelante (fuera de la ventana normal de anticipacion), el renglon se
@@ -2052,7 +2136,24 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             continue
         horas_conf[(fecha, linea)] = horas_conf.get((fecha, linea), 0.0) + residual / uph
 
-    propuestas = list(fijos)  # los lotes en proceso arrancan fijos
+    # Consumo recurrente: una parte con consumo en 2 o mas dias del horizonte se
+    # puede adelantar si sobra capacidad (fluira). Una con un solo consumo NO se
+    # adelanta: se quedaria parada hasta esa unica fecha. Es la regla que separa
+    # "adelantar de lo que viene mucho consumo" de "no adelantar de un consumo".
+    consumo_recurrente = {}
+    for p in partes:
+        proj = proy[p]["proj"]
+        dias, prev = 0, None
+        for f in sorted(proj):
+            v = proj[f]
+            if v is None:
+                continue
+            if prev is not None and v < prev:
+                dias += 1
+            prev = v
+        consumo_recurrente[p] = dias >= 2
+
+    propuestas = list(fijos)  # los lotes en proceso y agregados arrancan fijos
     acum = {p: 0 for p in partes}
     for f in fijos:  # su produccion cuenta para la proyeccion de dias siguientes
         acum[f["part_no"]] = acum.get(f["part_no"], 0) + int(f["qty"])
@@ -2073,9 +2174,16 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             # con fecha_fin (son cosas distintas: fecha_fin dice hasta que dia
             # se planea, no hasta donde se mira); por eso la proyeccion se pidio
             # hasta proy_fin.
-            horizonte_fin = _ppy_sumar_dias_produccion(
+            horizonte_normal = _ppy_sumar_dias_produccion(
                 d, _ppy_anticipacion(info[p].get("line"))
             )
+            horizonte_fin = horizonte_normal
+            if expandir_dias and consumo_recurrente.get(p):
+                # Expansion pedida: la parte de consumo recurrente mira mas dias
+                # para adelantar su siguiente faltante y llenar capacidad libre.
+                horizonte_fin = _ppy_sumar_dias_produccion(
+                    horizonte_fin, int(expandir_dias)
+                )
             ventana = []
             f = d
             while f <= horizonte_fin:
@@ -2096,6 +2204,20 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                 # propone cuando la parte esta muerta (sin demanda ni consumo,
                 # inventario plano): producirla no sirve de nada.
                 pin = sched_info.get((p, d))
+                linea_cap = str(
+                    (pin or {}).get("linea") or info[p].get("line") or ""
+                ).strip().upper()
+                if pin and not info[p].get("uph") and linea_cap in lineas_activas:
+                    # Un renglon capturado de linea ACTIVA jamas desaparece en
+                    # silencio: sin UPH no se puede presupuestar y se reporta
+                    # para que Planning capture el dato (caso 41039122/80757438).
+                    # Lineas no activas (H1/Harness) se planean aparte: sin ruido.
+                    agregar_excepcion(
+                        p, "UPH_MISSING",
+                        "Capturado por Planning no conservado: sin UPH en raw",
+                        d,
+                    )
+                    omitidas.add(f"{p} (capturado sin UPH en raw)")
                 if pin and info[p].get("uph"):
                     conservar = p in partes_con_demanda
                     if not conservar:
@@ -2120,6 +2242,10 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                 "falt_hoy": max(0, -inventario_hoy),
                 "primera_falta": primera_falta,
                 "inventario_antes": inventario_primera_falta,
+                # Adelanto por expansion: su faltante cae mas alla de la ventana
+                # normal y solo entra porque se pidio expandir y hay consumo
+                # recurrente. Rellena capacidad libre; no es un faltante urgente.
+                "expansion": primera_falta > horizonte_normal,
                 **info[p],
             }
             existente = asignacion_schedule.get((p, d))
@@ -2143,6 +2269,8 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             linea_adel = pin["linea"] or info[p].get("line")
             uph = info[p]["uph"]
             if not linea_adel or linea_adel not in lineas_activas:
+                # Lineas no activas (H1/Harness, etc.) se planean aparte: el
+                # renglon capturado se deja tal cual, sin ruido.
                 continue
             qty = int(pin["qty"])
             inv_d = int((proy[p]["proj"].get(d) or 0) + acum[p])
@@ -2184,11 +2312,15 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                     item_excepciones.append("PARTIAL_CAPACITY")
                 if inventario_despues < 0:
                     item_excepciones.append("SHORTAGE_REMAINS")
-                motivo = (
-                    "Evitar shortage del plan LG"
-                    if d == lote["primera_falta"]
-                    else "Adelantar produccion para evitar shortage del plan LG"
-                )
+                if lote.get("expansion"):
+                    motivo = (
+                        "Adelanto por capacidad libre (consumo recurrente, "
+                        f"falta el {lote['primera_falta'].strftime('%d/%m')})"
+                    )
+                elif d == lote["primera_falta"]:
+                    motivo = "Evitar shortage del plan LG"
+                else:
+                    motivo = "Adelantar produccion para evitar shortage del plan LG"
                 propuesta = {
                     # Contrato explicito recomendado para el planificador.
                     "fecha": d.isoformat(),
@@ -2297,6 +2429,285 @@ def _ppy_resumen_lineas(propuestas):
     return salida
 
 
+def _ppy_capacidad_libre(propuestas, fecha_ini, query=None):
+    """Horas libres del turno DIA por linea activa el dia de inicio.
+
+    Sirve para preguntar si conviene expandir el plan: si sobran horas, hay
+    espacio para adelantar consumo recurrente de dias posteriores."""
+    activas = _ppy_config_lineas(query) if query else _ppy_config_lineas()
+    usadas = {l: 0.0 for l in activas}
+    iso = fecha_ini.isoformat()
+    for item in propuestas:
+        if str(item.get("fecha")) == iso and str(item.get("turno") or "DIA") == "DIA":
+            linea = str(item.get("linea") or "").upper()
+            if linea in usadas:
+                usadas[linea] += float(item.get("horas_requeridas") or 0)
+    libres = {
+        l: round(max(PPY_HORAS_TURNO - h, 0.0), 2) for l, h in usadas.items()
+    }
+    return {
+        "por_linea": libres,
+        "total": round(sum(libres.values()), 2),
+        "lineas_con_espacio": sorted(
+            l for l, h in libres.items() if h >= 1.0
+        ),
+    }
+
+
+# Horario de piso, igual que Control de produccion ASSY: el turno abre 07:30 y
+# lo que termina despues de 17:30 es tiempo extra.
+PPY_TURNO_INICIO_MIN = 7 * 60 + 30
+PPY_TURNO_FIN_MIN = 17 * 60 + 30
+
+
+def _ppy_hhmm(total_minutos):
+    total_minutos = int(total_minutos)
+    return f"{total_minutos // 60:02d}:{total_minutos % 60:02d}"
+
+
+def _ppy_bloques_visuales(items):
+    """Agrupa (fecha,linea) en bloques de 9 h compatibles (D3 no con M1-M4).
+
+    Mismo criterio que el Excel: las lineas mas pesadas primero, best-fit."""
+    asign = {}
+    por_fecha = {}
+    for it in items:
+        fe = str(it["fecha"])
+        ln = str(it["linea"]).upper()
+        por_fecha.setdefault(fe, {})
+        por_fecha[fe][ln] = por_fecha[fe].get(ln, 0.0) + float(it.get("horas") or 0)
+
+    def compat(line, existing):
+        o = [e.upper() for e in existing]
+        return not (
+            (line == "D3" and any(e.startswith("M") for e in o))
+            or (line.startswith("M") and "D3" in o)
+        )
+
+    for fecha, lh in sorted(por_fecha.items()):
+        bloques = []
+        for line, h in sorted(lh.items(), key=lambda kv: (-kv[1], kv[0])):
+            cands = [b for b in bloques
+                     if b["h"] + h <= PPY_HORAS_TURNO + 0.01 and compat(line, b["lines"])]
+            b = min(cands, key=lambda x: (x["h"], x["name"])) if cands else None
+            if b is None:
+                b = {"name": f"B{len(bloques) + 1}", "h": 0.0, "lines": []}
+                bloques.append(b)
+            b["h"] += h
+            b["lines"].append(line)
+            asign[(fecha, line)] = b["name"]
+    return asign
+
+
+def _ppy_propuesta_grid(public_id, usuario, query=None):
+    """La propuesta como grid agrupado por bloque de 9 h, con Inicio/Fin
+    encadenados desde las 07:30 (mismo horario que Control de produccion ASSY).
+
+    Es lo que abre el modal 'Abrir propuesta' del chat: se puede revisar,
+    editar y confirmar sin salir de ahi."""
+    run_query = query or execute_query
+    header = run_query(
+        "SELECT id, public_id, version, date_from, date_to, status, engine_version, "
+        "total_qty, omitted_count, objective FROM lg_plan_proposals "
+        "WHERE public_id=%s AND created_by=%s",
+        (public_id, usuario), fetch="one",
+    )
+    if not header:
+        raise ValueError("Propuesta no encontrada o pertenece a otro usuario")
+    rows = run_query(
+        "SELECT public_id AS item_id, part_no, sched_date, linea, turno, "
+        "qty_proposed AS qty, uph, ct, hours_required AS horas, pack_size, "
+        "inventory_before, inventory_after, shortage_date, reason "
+        "FROM lg_plan_proposal_items WHERE proposal_id=%s "
+        "ORDER BY sequence_no, sched_date, linea",
+        (header["id"],), fetch="all",
+    ) or []
+    items = []
+    for r in rows:
+        fe = r["sched_date"]
+        fe = fe.date() if isinstance(fe, datetime) else fe
+        sf = r["shortage_date"]
+        sf = sf.date() if isinstance(sf, datetime) else sf
+        items.append({
+            "item_id": r["item_id"], "part_no": r["part_no"],
+            "fecha": fe.isoformat() if fe else None,
+            "linea": str(r["linea"] or "").upper(), "turno": r["turno"] or "DIA",
+            "qty": int(r["qty"] or 0), "uph": int(r["uph"] or 0),
+            "ct": float(r["ct"] or 0), "horas": float(r["horas"] or 0),
+            "pack_size": int(r["pack_size"] or 0),
+            "inv_antes": int(r["inventory_before"] or 0),
+            "inv_despues": int(r["inventory_after"] or 0),
+            "falta_el": sf.isoformat() if sf else None, "motivo": r["reason"],
+        })
+    asign = _ppy_bloques_visuales(items)
+    grupos_map = {}
+    for it in items:
+        bloque = asign.get((it["fecha"], it["linea"]), "B1")
+        grupos_map.setdefault(bloque, []).append(it)
+    grupos = []
+    for bloque in sorted(grupos_map):
+        reloj = PPY_TURNO_INICIO_MIN
+        filas, total_h = [], 0.0
+        # Se respeta el orden guardado (sequence_no): el drag & drop del modal lo
+        # reordena y con eso cambian Inicio/Fin encadenados.
+        for i, it in enumerate(grupos_map[bloque], 1):
+            mins = int(round(it["horas"] * 60))
+            ini, fin = reloj, reloj + mins
+            reloj = fin
+            total_h += it["horas"]
+            filas.append({
+                **it, "sec": i, "inicio": _ppy_hhmm(ini), "fin": _ppy_hhmm(fin),
+                "tiempo_extra": fin > PPY_TURNO_FIN_MIN,
+            })
+        grupos.append({
+            "bloque": bloque,
+            "lineas": sorted({f["linea"] for f in filas}),
+            "total_horas": round(total_h, 2),
+            "excede": total_h > PPY_HORAS_TURNO + 0.01,
+            "lotes": filas,
+        })
+    df = header["date_from"]
+    dt_ = header["date_to"]
+    return {
+        "proposal_id": public_id, "version": int(header["version"] or 1),
+        "status": header["status"], "engine_version": header["engine_version"],
+        "objetivo": header.get("objective"),
+        "date_from": (df.date() if isinstance(df, datetime) else df).isoformat() if df else None,
+        "date_to": (dt_.date() if isinstance(dt_, datetime) else dt_).isoformat() if dt_ else None,
+        "total_qty": sum(it["qty"] for it in items),
+        "total_lotes": len(items),
+        "omitidas_count": int(header["omitted_count"] or 0),
+        "lineas_activas": _ppy_config_lineas(query) if query else _ppy_config_lineas(),
+        "grupos": grupos,
+    }
+
+
+def _ppy_editar_propuesta(public_id, usuario, ediciones=None, orden=None,
+                          agregar=None):
+    """Aplica las ediciones del modal al borrador: cambiar cantidad, eliminar
+    renglones, REORDENAR (drag & drop -> cambia Inicio/Fin) y AÑADIR modelos.
+    Sube la version (invalida tokens viejos) y recalcula totales; la IA y el
+    Excel leen el mismo borrador, asi que ven los cambios. No cambia el
+    input_hash: los datos base (plan, inventario, RAW) no se tocan."""
+    header = execute_query(
+        "SELECT id, version, status, date_from FROM lg_plan_proposals "
+        "WHERE public_id=%s AND created_by=%s",
+        (public_id, usuario), fetch="one",
+    )
+    if not header:
+        raise ValueError("Propuesta no encontrada o pertenece a otro usuario")
+    if header["status"] not in ("DRAFT", "PENDING_CONFIRMATION"):
+        raise ValueError(f"La propuesta no se puede editar en estado {header['status']}")
+    pid = header["id"]
+    fecha_plan = header["date_from"]
+    fecha_plan = fecha_plan.date() if isinstance(fecha_plan, datetime) else fecha_plan
+    cambios = 0
+
+    # Añadir modelos: Planning mete partes al plan desde el modal (servicios o
+    # forzados). Se toma UPH/CT/empaque de RAW; se colocan en la linea indicada.
+    nuevos = _ppy_normalizar_agregados(agregar)
+    if nuevos:
+        activas = set(_ppy_config_lineas())
+        raws = _ppy_datos_raw(sorted({a["part_no"] for a in nuevos}))
+        seq_row = execute_query(
+            "SELECT COALESCE(MAX(sequence_no), 0) AS m FROM lg_plan_proposal_items "
+            "WHERE proposal_id=%s", (pid,), fetch="one")
+        seq = int((seq_row or {}).get("m") or 0)
+        for a in nuevos:
+            if a["linea"] not in activas:
+                raise ValueError(
+                    f"{a['part_no']}: la linea '{a['linea']}' no esta activa.")
+            rw = raws.get(a["part_no"]) or {}
+            uph = _ppy_parse_uph(rw.get("uph")) or 0
+            pack = int(rw.get("estandar_pack") or 0)
+            if pack and a["qty"] % pack != 0:
+                raise ValueError(
+                    f"{a['part_no']}: la cantidad {a['qty']} debe ser multiplo "
+                    f"del empaque {pack} (caja cerrada).")
+            ct = _ppy_parse_ct(rw.get("c_t")) or (3600.0 / uph if uph else 0.0)
+            horas = round(a["qty"] / uph, 4) if uph else 0.0
+            seq += 1
+            execute_query(
+                "INSERT INTO lg_plan_proposal_items (public_id, proposal_id, "
+                "sequence_no, part_no, sched_date, linea, turno, qty_proposed, ct, "
+                "uph, hours_required, pack_size, inventory_before, inventory_after, "
+                "shortage_date, priority_no, reason, requires_approval, exceptions_json) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s, %s, %s, %s)",
+                (str(uuid.uuid4()), pid, seq, a["part_no"], fecha_plan, a["linea"],
+                 a["turno"], a["qty"], float(ct), uph, horas, pack, a["qty"],
+                 fecha_plan, seq, "Añadido desde el modal por Planning",
+                 0 if uph else 1, json.dumps([] if uph else ["UPH_MISSING"])))
+            cambios += 1
+
+    for ed in ediciones or []:
+        if not isinstance(ed, dict):
+            continue
+        item_id = str(ed.get("item_id") or "").strip()
+        if not item_id:
+            continue
+        row = execute_query(
+            "SELECT pack_size, uph, part_no FROM lg_plan_proposal_items "
+            "WHERE proposal_id=%s AND public_id=%s",
+            (pid, item_id), fetch="one",
+        )
+        if not row:
+            continue  # no le pertenece: se ignora
+        if ed.get("eliminar"):
+            execute_query(
+                "DELETE FROM lg_plan_proposal_items WHERE proposal_id=%s AND public_id=%s",
+                (pid, item_id))
+            cambios += 1
+            continue
+        if ed.get("cantidad") is None:
+            continue
+        qty = int(ed.get("cantidad"))
+        if qty <= 0:
+            execute_query(
+                "DELETE FROM lg_plan_proposal_items WHERE proposal_id=%s AND public_id=%s",
+                (pid, item_id))
+            cambios += 1
+            continue
+        pack = int(row.get("pack_size") or 0)
+        if pack and qty % pack != 0:
+            raise ValueError(
+                f"{row['part_no']}: la cantidad {qty} debe ser multiplo del "
+                f"empaque {pack} (caja cerrada)."
+            )
+        uph = int(row.get("uph") or 0)
+        horas = round(qty / uph, 4) if uph else 0.0
+        execute_query(
+            "UPDATE lg_plan_proposal_items SET qty_proposed=%s, hours_required=%s "
+            "WHERE proposal_id=%s AND public_id=%s",
+            (qty, horas, pid, item_id))
+        cambios += 1
+
+    # Reordenar (drag & drop): la lista trae los item_id en el orden nuevo; se
+    # persiste como sequence_no y con eso cambian los Inicio/Fin encadenados.
+    # Hay UNIQUE(proposal_id, sequence_no): primero se sacan todos del rango y
+    # luego se asigna 1..N, si no las actualizaciones una a una colisionan.
+    if orden:
+        execute_query(
+            "UPDATE lg_plan_proposal_items SET sequence_no = sequence_no + 100000 "
+            "WHERE proposal_id=%s", (pid,))
+        for i, item_id in enumerate(orden, 1):
+            item_id = str(item_id or "").strip()
+            if not item_id:
+                continue
+            execute_query(
+                "UPDATE lg_plan_proposal_items SET sequence_no=%s "
+                "WHERE proposal_id=%s AND public_id=%s", (i, pid, item_id))
+        cambios += 1
+
+    if cambios:
+        execute_query(
+            "UPDATE lg_plan_proposals SET version=version+1, "
+            "total_qty=(SELECT COALESCE(SUM(qty_proposed),0) FROM lg_plan_proposal_items WHERE proposal_id=%s), "
+            "total_items=(SELECT COUNT(*) FROM lg_plan_proposal_items WHERE proposal_id=%s) "
+            "WHERE id=%s",
+            (pid, pid, pid))
+    return _ppy_propuesta_grid(public_id, usuario)
+
+
 def _ppy_crear_propuesta(
     fecha_ini,
     fecha_fin,
@@ -2306,12 +2717,15 @@ def _ppy_crear_propuesta(
     objective=None,
     excluded_parts=None,
     lotes_corriendo=None,
+    agregados=None,
+    expandir_dias=0,
 ):
     """Calcula y persiste un borrador; no modifica schedule ni lotes."""
     excluded_parts = _ppy_normalizar_partes_excluidas(excluded_parts)
     propuestas, omitidas, excepciones = _ppy_simular_schedule(
         fecha_ini, fecha_fin, detailed=True, excluded_parts=excluded_parts,
-        lotes_corriendo=lotes_corriendo,
+        lotes_corriendo=lotes_corriendo, agregados=agregados,
+        expandir_dias=expandir_dias,
     )
     schedule_snapshot = _ppy_schedule_snapshot(fecha_ini, fecha_fin)
     _ppy_attach_schedule_actual(propuestas, fecha_ini, fecha_fin)
@@ -2428,6 +2842,8 @@ def _ppy_crear_propuesta(
             1 for item in propuestas if item.get("requiere_aprobacion")
         ),
         "line_summary": _ppy_resumen_lineas(propuestas),
+        "capacidad_libre": _ppy_capacidad_libre(propuestas, fecha_ini),
+        "expandido_dias": int(expandir_dias or 0),
         "schedule_changes": schedule_changes,
         "schedule_change_summary": {
             action: sum(1 for item in schedule_changes if item["accion"] == action)
@@ -4011,6 +4427,80 @@ def api_ppy_listado():
         )
     except Exception as e:
         logger.error("Error en api_ppy_listado: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+_PPY_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-"
+    r"[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+)
+
+
+@bp.route("/api/plan-proyectado/propuesta/<public_id>/grid", methods=["GET"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PROY_PERMISO_BOTON)
+def api_ppy_propuesta_grid(public_id):
+    """Devuelve el borrador acomodado por bloques (con Inicio/Fin) para el modal."""
+    try:
+        if not _PPY_UUID_RE.match(str(public_id or "")):
+            return jsonify({"success": False, "error": "propuesta invalida"}), 400
+        usuario = session.get("usuario") or "SISTEMA"
+        return jsonify({"success": True, **_ppy_propuesta_grid(public_id, usuario)})
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
+    except Exception as e:
+        logger.error("Error en api_ppy_propuesta_grid: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/plan-proyectado/propuesta/<public_id>/editar", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PROY_PERMISO_BOTON)
+def api_ppy_propuesta_editar(public_id):
+    """Aplica ediciones del modal (cambiar cantidad / eliminar) al borrador.
+
+    La IA y el Excel leen el mismo borrador: ven los cambios enseguida."""
+    try:
+        if not _PPY_UUID_RE.match(str(public_id or "")):
+            return jsonify({"success": False, "error": "propuesta invalida"}), 400
+        usuario = session.get("usuario") or "SISTEMA"
+        data = request.get_json(silent=True) or {}
+        ediciones = data.get("ediciones") or []
+        orden = data.get("orden") or []
+        agregar = data.get("agregar") or []
+        if not isinstance(ediciones, list) or len(ediciones) > 200:
+            return jsonify({"success": False, "error": "ediciones invalidas"}), 400
+        if not isinstance(orden, list) or len(orden) > 400:
+            return jsonify({"success": False, "error": "orden invalido"}), 400
+        if not isinstance(agregar, list) or len(agregar) > 40:
+            return jsonify({"success": False, "error": "agregados invalidos"}), 400
+        return jsonify({"success": True, **_ppy_editar_propuesta(
+            public_id, usuario, ediciones=ediciones, orden=orden, agregar=agregar)})
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        logger.error("Error en api_ppy_propuesta_editar: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/plan-proyectado/propuesta/<public_id>/aplicar", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PROY_PERMISO_BOTON)
+def api_ppy_propuesta_aplicar(public_id):
+    """Confirma la propuesta (con las ediciones ya hechas) desde el modal."""
+    try:
+        if not _PPY_UUID_RE.match(str(public_id or "")):
+            return jsonify({"success": False, "error": "propuesta invalida"}), 400
+        usuario = session.get("usuario") or "SISTEMA"
+        data = request.get_json(silent=True) or {}
+        version = int(data.get("version") or 1)
+        return jsonify({"success": True, **_ppy_aplicar_propuesta(public_id, usuario, version=version)})
+    except PPYProposalStaleError as e:
+        return jsonify({"success": False, "error": str(e), "stale": True}), 409
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        logger.error("Error en api_ppy_propuesta_aplicar: %s", e, exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

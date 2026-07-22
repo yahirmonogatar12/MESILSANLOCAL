@@ -532,3 +532,91 @@
 @media (max-width:600px) {
     .ai-message-attachment { min-width:0; }
 }
+
+/* ===== Modal de propuesta de plan (Abrir propuesta) ===== */
+.ai-proposal-open {
+    display:inline-block; margin-top:8px; padding:6px 14px; border:0; border-radius:6px;
+    background:#2563eb; color:#fff; font-weight:600; cursor:pointer; font-size:13px;
+}
+.ai-proposal-open:hover { background:#1d4ed8; }
+.ai-proposal-overlay {
+    position:fixed; inset:0; background:rgba(9,14,24,.72); z-index:16000;
+    display:none; align-items:center; justify-content:center; padding:24px;
+}
+.ai-proposal-overlay.open { display:flex; }
+.ai-proposal-modal {
+    background:#0f1a2b; color:#e6edf6; border:1px solid #22304a; border-radius:12px;
+    width:min(1180px,96vw); max-height:92vh; display:flex; flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.5); overflow:hidden;
+}
+.ai-proposal-head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px; border-bottom:1px solid #22304a; background:#132239;
+}
+.ai-proposal-title { font-weight:700; font-size:15px; }
+.ai-proposal-close {
+    background:transparent; border:0; color:#9fb2cc; font-size:18px; cursor:pointer; line-height:1;
+}
+.ai-proposal-close:hover { color:#fff; }
+.ai-proposal-body { padding:14px 18px; overflow:auto; }
+.ai-proposal-group { margin-bottom:16px; }
+.ai-proposal-group-head {
+    background:#1b2b45; color:#cfe0f7; font-weight:700; font-size:13px;
+    padding:7px 12px; border-radius:6px 6px 0 0;
+}
+.ai-proposal-group-head.excede { background:#5a1f27; color:#ffd7dc; }
+.ai-proposal-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.ai-proposal-table th, .ai-proposal-table td {
+    padding:5px 8px; border-bottom:1px solid #1c2942; text-align:left; white-space:nowrap;
+}
+.ai-proposal-table th { color:#8fa6c6; font-weight:600; background:#101d31; }
+.ai-proposal-table td.ln { font-weight:700; color:#7dd3fc; }
+.ai-proposal-table td.te { color:#fbbf24; font-weight:700; }
+.ai-proposal-table tr.deleted td { opacity:.4; text-decoration:line-through; }
+.ai-proposal-qty {
+    width:82px; background:#0b1526; border:1px solid #2b3c5a; color:#e6edf6;
+    border-radius:4px; padding:3px 6px; font-size:12.5px;
+}
+.ai-proposal-qty:disabled { opacity:.55; }
+.ai-proposal-del {
+    background:transparent; border:0; color:#f87171; cursor:pointer; font-size:13px;
+}
+.ai-proposal-del:hover { color:#fca5a5; }
+.ai-proposal-empty { color:#9fb2cc; padding:20px; text-align:center; }
+.ai-proposal-foot {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:12px 18px; border-top:1px solid #22304a; background:#132239;
+}
+.ai-proposal-status { color:#9fb2cc; font-size:12.5px; }
+.ai-proposal-actions { display:flex; gap:8px; }
+.ai-proposal-btn {
+    padding:7px 14px; border:1px solid #2b3c5a; border-radius:6px; background:#1b2b45;
+    color:#e6edf6; font-weight:600; cursor:pointer; font-size:13px;
+}
+.ai-proposal-btn:hover { background:#22344f; }
+.ai-proposal-btn.primary { background:#16a34a; border-color:#16a34a; }
+.ai-proposal-btn.primary:hover { background:#15803d; }
+.ai-proposal-btn.ghost { background:transparent; }
+.ai-proposal-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+/* ===== Drag & drop + añadir modelo en el modal de propuesta ===== */
+.ai-proposal-table tbody tr { cursor:grab; }
+.ai-proposal-table tbody tr.dragging { opacity:.45; background:#1b2b45; cursor:grabbing; }
+.ai-proposal-table tbody tr:hover { background:#122036; }
+.ai-proposal-add {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    margin-top:6px; padding:10px 12px; background:#101d31; border:1px dashed #2b3c5a;
+    border-radius:8px; color:#9fb2cc; font-size:12.5px;
+}
+.ai-proposal-add-part {
+    width:150px; background:#0b1526; border:1px solid #2b3c5a; color:#e6edf6;
+    border-radius:4px; padding:5px 8px; font-size:12.5px; text-transform:uppercase;
+}
+.ai-proposal-add-line {
+    background:#0b1526; border:1px solid #2b3c5a; color:#e6edf6;
+    border-radius:4px; padding:5px 8px; font-size:12.5px;
+}
+.ai-proposal-add-qty {
+    width:96px; background:#0b1526; border:1px solid #2b3c5a; color:#e6edf6;
+    border-radius:4px; padding:5px 8px; font-size:12.5px;
+}

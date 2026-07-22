@@ -777,7 +777,230 @@
                     card.appendChild(regenerate);
                 }
             }
+            // Propuesta de plan: ademas de descargar, se puede ABRIR un modal
+            // acomodado (como Control de produccion ASSY), editar, y confirmar.
+            const proposalId = artifact.filters && artifact.filters.proposal_id;
+            if (proposalId && this.bootstrap && this.bootstrap.can_use_plan) {
+                const open = document.createElement('button');
+                open.type = 'button'; open.className = 'ai-proposal-open';
+                open.textContent = 'Abrir propuesta';
+                open.addEventListener('click', () => this.openProposalModal(artifact));
+                card.appendChild(open);
+            }
             (parent || this.messages).appendChild(card); this.scrollBottom();
+        }
+
+        openProposalModal(artifact) {
+            const proposalId = artifact.filters && artifact.filters.proposal_id;
+            if (!proposalId) return;
+            this._proposal = { id: proposalId, artifactId: artifact.id,
+                               downloadUrl: artifact.download_url, version: 1 };
+            if (!this._proposalEl) this.buildProposalModal();
+            this._proposalEl.classList.add('open');
+            this.loadProposalGrid();
+        }
+
+        buildProposalModal() {
+            const overlay = document.createElement('div');
+            overlay.className = 'ai-proposal-overlay';
+            overlay.innerHTML =
+                '<div class="ai-proposal-modal" role="dialog" aria-modal="true">' +
+                '  <div class="ai-proposal-head">' +
+                '    <span class="ai-proposal-title">Propuesta de producción</span>' +
+                '    <button type="button" class="ai-proposal-close" aria-label="Cerrar">✕</button>' +
+                '  </div>' +
+                '  <div class="ai-proposal-body"></div>' +
+                '  <div class="ai-proposal-foot">' +
+                '    <span class="ai-proposal-status"></span>' +
+                '    <div class="ai-proposal-actions">' +
+                '      <button type="button" class="ai-proposal-btn ghost" data-act="download">Descargar</button>' +
+                '      <button type="button" class="ai-proposal-btn" data-act="save">Guardar cambios</button>' +
+                '      <button type="button" class="ai-proposal-btn primary" data-act="confirm">Confirmar</button>' +
+                '    </div>' +
+                '  </div>' +
+                '</div>';
+            document.body.appendChild(overlay);
+            this._proposalEl = overlay;
+            this._proposalBody = overlay.querySelector('.ai-proposal-body');
+            this._proposalStatus = overlay.querySelector('.ai-proposal-status');
+            const close = () => overlay.classList.remove('open');
+            overlay.querySelector('.ai-proposal-close').addEventListener('click', close);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+            overlay.querySelector('[data-act="download"]').addEventListener('click', () => this.downloadProposal());
+            overlay.querySelector('[data-act="save"]').addEventListener('click', () => this.saveProposalEdits());
+            overlay.querySelector('[data-act="confirm"]').addEventListener('click', () => this.confirmProposal());
+        }
+
+        async loadProposalGrid() {
+            this._proposalBody.textContent = 'Cargando…';
+            try {
+                const g = await this.api(`/api/plan-proyectado/propuesta/${this._proposal.id}/grid`);
+                this.renderProposalGrid(g);
+            } catch (e) { this._proposalBody.textContent = e.message; }
+        }
+
+        renderProposalGrid(g) {
+            this._proposal.version = g.version;
+            this._proposal.reordered = false;
+            this._proposal.lineas = g.lineas_activas || [];
+            const applied = g.status === 'APPLIED';
+            const rango = g.date_to && g.date_to !== g.date_from ? `${g.date_from} a ${g.date_to}` : g.date_from;
+            this._proposalStatus.textContent =
+                `v${g.version} · ${g.total_lotes} lotes · ${(g.total_qty || 0).toLocaleString()} pzs · ${rango}` +
+                (applied ? ' · APLICADA' : '');
+            const frag = document.createDocumentFragment();
+            (g.grupos || []).forEach(gr => {
+                const box = document.createElement('div'); box.className = 'ai-proposal-group';
+                const head = document.createElement('div');
+                head.className = 'ai-proposal-group-head' + (gr.excede ? ' excede' : '');
+                head.textContent = `${gr.bloque} · ${gr.lineas.join('+')} · ${gr.total_horas.toFixed(2)}/9 h` +
+                    (gr.excede ? ' · EXCEDE' : '');
+                box.appendChild(head);
+                const table = document.createElement('table'); table.className = 'ai-proposal-table';
+                table.innerHTML = '<thead><tr><th>#</th><th>Línea</th><th>Parte</th>' +
+                    '<th>Cantidad</th><th>UPH</th><th>Horas</th><th>Inicio</th><th>Fin</th>' +
+                    '<th>Falta</th><th></th></tr></thead>';
+                const tb = document.createElement('tbody');
+                (gr.lotes || []).forEach(l => {
+                    const tr = document.createElement('tr'); tr.dataset.itemId = l.item_id;
+                    const cell = (v, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = v; return c; };
+                    tr.appendChild(cell(l.sec));
+                    tr.appendChild(cell(l.linea, 'ln'));
+                    tr.appendChild(cell(l.part_no));
+                    const qtd = document.createElement('td');
+                    const inp = document.createElement('input');
+                    inp.type = 'number'; inp.min = '0'; inp.step = String(l.pack_size || 1);
+                    inp.value = l.qty; inp.dataset.orig = l.qty; inp.className = 'ai-proposal-qty';
+                    inp.disabled = applied;
+                    qtd.appendChild(inp); tr.appendChild(qtd);
+                    tr.appendChild(cell(l.uph));
+                    tr.appendChild(cell(l.horas.toFixed(2)));
+                    tr.appendChild(cell(l.inicio, l.tiempo_extra ? 'te' : ''));
+                    tr.appendChild(cell(l.fin, l.tiempo_extra ? 'te' : ''));
+                    tr.appendChild(cell(l.falta_el || ''));
+                    const dtd = document.createElement('td');
+                    if (!applied) {
+                        const del = document.createElement('button');
+                        del.type = 'button'; del.className = 'ai-proposal-del'; del.textContent = '✕'; del.title = 'Quitar del plan';
+                        del.addEventListener('click', () => tr.classList.toggle('deleted'));
+                        dtd.appendChild(del);
+                    }
+                    tr.appendChild(dtd);
+                    tb.appendChild(tr);
+                });
+                table.appendChild(tb); box.appendChild(table); frag.appendChild(box);
+                if (!applied) this.enableRowDrag(tb);
+            });
+            if (!(g.grupos || []).length) {
+                const p = document.createElement('div'); p.className = 'ai-proposal-empty';
+                p.textContent = 'La propuesta quedó sin lotes.'; frag.appendChild(p);
+            }
+            if (!applied) frag.appendChild(this.buildAddModelForm());
+            this._proposalBody.innerHTML = ''; this._proposalBody.appendChild(frag);
+            this._proposalEl.querySelector('[data-act="save"]').disabled = applied;
+            this._proposalEl.querySelector('[data-act="confirm"]').disabled = applied;
+        }
+
+        buildAddModelForm() {
+            const box = document.createElement('div'); box.className = 'ai-proposal-add';
+            const label = document.createElement('span'); label.textContent = 'Añadir modelo:';
+            const part = document.createElement('input');
+            part.type = 'text'; part.placeholder = 'N° de parte'; part.className = 'ai-proposal-add-part';
+            const line = document.createElement('select'); line.className = 'ai-proposal-add-line';
+            (this._proposal.lineas || []).forEach(l => {
+                const opt = document.createElement('option'); opt.value = l; opt.textContent = l; line.appendChild(opt);
+            });
+            const qty = document.createElement('input');
+            qty.type = 'number'; qty.min = '0'; qty.placeholder = 'Cantidad'; qty.className = 'ai-proposal-add-qty';
+            const btn = document.createElement('button');
+            btn.type = 'button'; btn.className = 'ai-proposal-btn'; btn.textContent = 'Añadir';
+            btn.addEventListener('click', () => this.addModelo(part.value, line.value, qty.value));
+            part.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addModelo(part.value, line.value, qty.value); });
+            box.append(label, part, line, qty, btn);
+            return box;
+        }
+
+        enableRowDrag(tbody) {
+            let dragged = null;
+            tbody.querySelectorAll('tr').forEach(tr => {
+                tr.draggable = true;
+                tr.addEventListener('dragstart', () => { dragged = tr; tr.classList.add('dragging'); });
+                tr.addEventListener('dragend', () => { tr.classList.remove('dragging'); dragged = null; });
+            });
+            tbody.addEventListener('dragover', (e) => {
+                if (!dragged || dragged.parentElement !== tbody) return;  // solo dentro del bloque
+                e.preventDefault();
+                const rows = [...tbody.querySelectorAll('tr:not(.dragging)')];
+                const after = rows.find(row => {
+                    const box = row.getBoundingClientRect();
+                    return e.clientY < box.top + box.height / 2;
+                });
+                if (after) tbody.insertBefore(dragged, after);
+                else tbody.appendChild(dragged);
+                this._proposal.reordered = true;
+            });
+        }
+
+        async addModelo(part, linea, cantidad) {
+            part = String(part || '').trim().toUpperCase();
+            cantidad = parseInt(cantidad, 10) || 0;
+            if (!part || !linea || cantidad <= 0) { this.notice('Captura parte, línea y cantidad.'); return; }
+            try {
+                const g = await this.api(`/api/plan-proyectado/propuesta/${this._proposal.id}/editar`,
+                    { method: 'POST', body: { agregar: [{ numero_parte: part, linea, cantidad }] } });
+                this.renderProposalGrid(g);
+                this.notice('Modelo añadido. La IA ya lo ve.');
+            } catch (e) { this.notice(e.message); }
+        }
+
+        async saveProposalEdits() {
+            const ediciones = [];
+            this._proposalBody.querySelectorAll('tr[data-item-id]').forEach(tr => {
+                const id = tr.dataset.itemId;
+                if (tr.classList.contains('deleted')) { ediciones.push({ item_id: id, eliminar: true }); return; }
+                const inp = tr.querySelector('.ai-proposal-qty');
+                if (inp && String(inp.value) !== String(inp.dataset.orig)) {
+                    ediciones.push({ item_id: id, cantidad: parseInt(inp.value, 10) || 0 });
+                }
+            });
+            const body = { ediciones };
+            if (this._proposal.reordered) {
+                body.orden = [...this._proposalBody.querySelectorAll('tr[data-item-id]')]
+                    .map(tr => tr.dataset.itemId);
+            }
+            if (!ediciones.length && !body.orden) { this.notice('No hay cambios que guardar.'); return; }
+            try {
+                const g = await this.api(`/api/plan-proyectado/propuesta/${this._proposal.id}/editar`,
+                    { method: 'POST', body });
+                this.renderProposalGrid(g);
+                this.notice('Cambios guardados. La IA ya los ve; puedes confirmar o descargar.');
+            } catch (e) { this.notice(e.message); }
+        }
+
+        async confirmProposal() {
+            if (!window.confirm('¿Confirmar y reemplazar el Schedule con esta propuesta (con tus cambios)?')) return;
+            try {
+                await this.api(`/api/plan-proyectado/propuesta/${this._proposal.id}/aplicar`,
+                    { method: 'POST', body: { version: this._proposal.version } });
+                this.notice('Propuesta aplicada al Schedule.');
+                this.loadProposalGrid();
+            } catch (e) {
+                if (e.status === 409) { this.notice('La propuesta cambió; se recargó. Revisa y confirma otra vez.'); this.loadProposalGrid(); }
+                else this.notice(e.message);
+            }
+        }
+
+        async downloadProposal() {
+            // Regenera el Excel para que traiga los cambios ya hechos, luego baja.
+            try {
+                if (this._proposal.artifactId) {
+                    const data = await this.api(`/api/ai/artifacts/${this._proposal.artifactId}/regenerate`, { method: 'POST' });
+                    const url = data.artifact && data.artifact.download_url;
+                    if (url) { window.location.href = url; return; }
+                }
+                if (this._proposal.downloadUrl) window.location.href = this._proposal.downloadUrl;
+                else this.notice('El archivo no está disponible.');
+            } catch (e) { this.notice(e.message); }
         }
 
         appendVisualization(visualization, parent = null) {

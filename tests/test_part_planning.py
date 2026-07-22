@@ -605,6 +605,43 @@ def test_ppy_capturado_manual_se_conserva_si_la_parte_vive(monkeypatch):
     assert muerta not in por_parte  # muerta: se propone eliminar
 
 
+def test_ppy_capturado_sin_uph_avisa_solo_en_linea_activa(monkeypatch):
+    """Un capturado de linea ACTIVA sin UPH se reporta (no desaparece en
+    silencio). Uno de linea NO activa (H1/Harness) se deja tal cual sin
+    ruido: esas lineas se planean aparte."""
+    fecha = date(2026, 7, 15)
+    activa, harness = "SINUPH0M401", "SINUPH0H101"
+    proy = {fecha + timedelta(days=off): 500 for off in range(0, 8)}
+    pp = _mock_ppy_schedule_dependencies(
+        monkeypatch,
+        {activa: {"line": "M1", "proj": dict(proy)},
+         harness: {"line": "H1", "proj": dict(proy)}},
+        {activa: {"model": "M", "sub_assy": "MAIN", "c_t": None,
+                  "uph": None, "estandar_pack": 20},
+         harness: {"model": "M", "sub_assy": "MAIN", "c_t": None,
+                   "uph": None, "estandar_pack": 20}},
+    )
+
+    def fake_query(sql, params=(), fetch=None):
+        if "FROM lg_schedule_daily" in str(sql):
+            return [
+                {"part_no": activa, "sched_date": fecha, "sched_qty": 100,
+                 "linea": "M1", "turno": "DIA"},
+                {"part_no": harness, "sched_date": fecha, "sched_qty": 100,
+                 "linea": "H1", "turno": "DIA"},
+            ]
+        if "FROM lg_plan_daily" in str(sql):
+            return [{"part_no": activa}, {"part_no": harness}]
+        return []
+
+    monkeypatch.setattr(pp, "execute_query", fake_query)
+    props, om, ex = pp._ppy_simular_schedule(fecha, fecha, detailed=True)
+    codes = {(e["part_no"], e["code"]) for e in ex}
+    assert (activa, "UPH_MISSING") in codes          # linea activa: avisa
+    assert not any(p == harness for p, _c in codes)  # H1: silencio
+    assert any("capturado sin UPH" in o for o in om)
+
+
 def test_ppy_lote_corriendo_o_terminado_queda_fijo(monkeypatch):
     """Un lote reportado corriendo/terminado hoy conserva linea y cantidad
     aunque el inventario diga que ya no hace falta."""
@@ -661,6 +698,134 @@ def test_ppy_linea_con_lote_fijo_no_pasa_de_9_horas(monkeypatch):
     por_parte = {p["part_no"]: p for p in props}
     assert por_parte[fijo]["qty"] == 600          # el fijo no se toca
     assert por_parte[nueva]["qty"] == 300         # 3 h restantes * 100 uph
+
+
+def test_ppy_agregado_manual_se_coloca_aunque_no_falte(monkeypatch):
+    """Planning mete un servicio (sin faltante): el motor lo acomoda en su
+    linea con su cantidad y reserva su capacidad."""
+    fecha = date(2026, 7, 15)
+    serv = "SERV000001"
+    proy = {fecha + timedelta(days=off): 500 for off in range(0, 8)}  # sin falta
+    pp = _mock_ppy_schedule_dependencies(
+        monkeypatch,
+        {serv: {"line": "M1", "proj": proy}},
+        {serv: {"model": "SVC", "sub_assy": "MAIN", "c_t": 36,
+                "uph": 100, "estandar_pack": 20}},
+        lineas=("M1", "M2"),
+    )
+    # sin agregado: no entra (no falta)
+    props, _om, _ex = pp._ppy_simular_schedule(fecha, fecha, detailed=True)
+    assert props == []
+    # Planning lo mete como agregado en M2 con 40 pzs
+    props, _om, _ex = pp._ppy_simular_schedule(
+        fecha, fecha, detailed=True,
+        agregados=[{"linea": "M2", "numero_parte": serv, "cantidad": 40}],
+    )
+    assert len(props) == 1
+    it = props[0]
+    assert (it["linea"], it["qty"]) == ("M2", 40)
+    assert it["motivo"].startswith("Agregado manual")
+
+
+def test_ppy_expandir_adelanta_solo_consumo_recurrente(monkeypatch):
+    """Con expandir_dias, una parte de consumo RECURRENTE adelanta su faltante
+    lejano para llenar capacidad libre; una de un SOLO consumo no."""
+    fecha = date(2026, 7, 15)
+    recur, oneoff = "RECUR00001", "ONEOFF0001"
+    # recurrente: baja poco cada dia, cae negativa el dia 6 (fuera de la ventana
+    # normal de 2 dias). one-off: plano y un unico salto negativo el dia 6.
+    proy_recur = {fecha + timedelta(days=o): 300 - o * 60 for o in range(0, 8)}
+    proy_oneoff = {fecha + timedelta(days=o): (300 if o < 6 else -100)
+                   for o in range(0, 8)}
+    raw = {p: {"model": "M", "sub_assy": "MAIN", "c_t": 36, "uph": 100,
+               "estandar_pack": 20} for p in (recur, oneoff)}
+    pp = _mock_ppy_schedule_dependencies(
+        monkeypatch,
+        {recur: {"line": "M1", "proj": dict(proy_recur)},
+         oneoff: {"line": "M2", "proj": dict(proy_oneoff)}},
+        raw, lineas=("M1", "M2"),
+    )
+    # sin expansion: ninguna entra hoy (sus faltas caen fuera de la ventana)
+    props, _om, _ex = pp._ppy_simular_schedule(fecha, fecha, detailed=True)
+    assert props == []
+    # expandiendo 5 dias: solo la recurrente adelanta
+    props, _om, _ex = pp._ppy_simular_schedule(
+        fecha, fecha, detailed=True, expandir_dias=5,
+    )
+    partes = {p["part_no"] for p in props}
+    assert recur in partes and oneoff not in partes
+    adel = next(p for p in props if p["part_no"] == recur)
+    assert "capacidad libre" in adel["motivo"]
+
+
+def test_ppy_bloques_visuales_y_horario_tipo_assy():
+    """Bloques de 9 h (D3 no con M1-M4) e Inicio/Fin encadenados desde 07:30,
+    igual que Control de produccion ASSY."""
+    import app.api.control_produccion.part_planning as pp
+    assert pp._ppy_hhmm(pp.PPY_TURNO_INICIO_MIN) == "07:30"
+    assert pp._ppy_hhmm(pp.PPY_TURNO_FIN_MIN) == "17:30"
+    items = [
+        {"fecha": "2026-07-23", "linea": "M3", "horas": 8.0},
+        {"fecha": "2026-07-23", "linea": "M4", "horas": 0.5},
+        {"fecha": "2026-07-23", "linea": "D3", "horas": 3.0},
+    ]
+    asign = pp._ppy_bloques_visuales(items)
+    # M3+M4 caben juntos (8.5 h); D3 no puede ir con las M -> bloque aparte
+    assert asign[("2026-07-23", "M3")] == asign[("2026-07-23", "M4")]
+    assert asign[("2026-07-23", "D3")] != asign[("2026-07-23", "M3")]
+
+
+def test_ppy_grid_y_editar_con_cursor_mock(monkeypatch):
+    """El grid arma bloques con Inicio/Fin; editar capa cantidad, valida caja
+    cerrada y sube la version."""
+    import app.api.control_produccion.part_planning as pp
+
+    estado = {
+        "header": {"id": 7, "public_id": "p1", "version": 1,
+                   "date_from": date(2026, 7, 23), "date_to": date(2026, 7, 23),
+                   "status": "PENDING_CONFIRMATION", "engine_version": "x",
+                   "total_qty": 300, "omitted_count": 0, "objective": None},
+        "items": {
+            "i1": {"public_id": "i1", "part_no": "EBR1", "sched_date": date(2026, 7, 23),
+                   "linea": "M1", "turno": "DIA", "qty_proposed": 200, "uph": 100,
+                   "ct": 36.0, "hours_required": 2.0, "pack_size": 20,
+                   "inventory_before": -50, "inventory_after": 150,
+                   "shortage_date": date(2026, 7, 23), "reason": "x"},
+        },
+    }
+
+    def fake_query(sql, params=(), fetch=None):
+        s = " ".join(str(sql).split())
+        if "FROM lg_plan_proposals WHERE public_id" in s:
+            return estado["header"]
+        if "SELECT public_id AS item_id" in s:
+            return [dict(v, item_id=v["public_id"], qty=v["qty_proposed"],
+                        horas=v["hours_required"]) for v in estado["items"].values()]
+        if s.startswith("SELECT pack_size, uph, part_no"):
+            it = estado["items"].get(params[1])
+            return it and {"pack_size": it["pack_size"], "uph": it["uph"],
+                           "part_no": it["part_no"]}
+        if s.startswith("UPDATE lg_plan_proposal_items SET qty_proposed"):
+            estado["items"][params[3]]["qty_proposed"] = params[0]
+            estado["items"][params[3]]["hours_required"] = params[1]
+            return None
+        if s.startswith("UPDATE lg_plan_proposals SET version"):
+            estado["header"]["version"] += 1
+            return None
+        return None
+
+    monkeypatch.setattr(pp, "execute_query", fake_query)
+    g = pp._ppy_propuesta_grid("p1", "ana")
+    assert g["version"] == 1 and g["total_lotes"] == 1
+    lote = g["grupos"][0]["lotes"][0]
+    assert lote["inicio"] == "07:30" and lote["fin"] == "09:30"  # 2 h desde 07:30
+    # editar: capar a 120 (multiplo de 20) sube version
+    g2 = pp._ppy_editar_propuesta("p1", "ana", [{"item_id": "i1", "cantidad": 120}])
+    assert g2["version"] == 2
+    assert g2["grupos"][0]["lotes"][0]["qty"] == 120
+    # caja cerrada: 119 no es multiplo de 20
+    with pytest.raises(ValueError, match="multiplo del empaque"):
+        pp._ppy_editar_propuesta("p1", "ana", [{"item_id": "i1", "cantidad": 119}])
 
 
 def test_ppy_simular_schedule_deriva_ct_desde_uph(monkeypatch):
