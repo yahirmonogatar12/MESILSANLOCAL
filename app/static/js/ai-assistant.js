@@ -906,6 +906,10 @@
             const label = document.createElement('span'); label.textContent = 'Añadir modelo:';
             const part = document.createElement('input');
             part.type = 'text'; part.placeholder = 'N° de parte'; part.className = 'ai-proposal-add-part';
+            // Autocomplete nativo: escribe "7421" y sugiere las partes de RAW.
+            const dl = document.createElement('datalist'); dl.id = 'ai-proposal-models';
+            part.setAttribute('list', 'ai-proposal-models'); part.autocomplete = 'off';
+            this.ensureModelOptions(dl);
             const line = document.createElement('select'); line.className = 'ai-proposal-add-line';
             (this._proposal.lineas || []).forEach(l => {
                 const opt = document.createElement('option'); opt.value = l; opt.textContent = l; line.appendChild(opt);
@@ -916,8 +920,23 @@
             btn.type = 'button'; btn.className = 'ai-proposal-btn'; btn.textContent = 'Añadir';
             btn.addEventListener('click', () => this.addModelo(part.value, line.value, qty.value));
             part.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addModelo(part.value, line.value, qty.value); });
-            box.append(label, part, line, qty, btn);
+            box.append(label, part, dl, line, qty, btn);
             return box;
+        }
+
+        async ensureModelOptions(datalist) {
+            // Reusa /api/raw/modelos (shared): part_no distintos de RAW. Se cachea.
+            if (!this._modelOptions) {
+                try {
+                    const r = await this.api('/api/raw/modelos');
+                    this._modelOptions = (r && r.data) || [];
+                } catch (_) { this._modelOptions = []; }
+            }
+            const frag = document.createDocumentFragment();
+            this._modelOptions.forEach(m => {
+                const o = document.createElement('option'); o.value = m; frag.appendChild(o);
+            });
+            datalist.innerHTML = ''; datalist.appendChild(frag);
         }
 
         enableRowDrag(tbody) {
