@@ -464,14 +464,20 @@
   }
 
   async function confirmUpload() {
-    if (!state.pendingUpload) return;
+    const btn = el("mat-compras-preview-confirm");
+    // El propio boton es el candado: deshabilitado = ya hay una carga en vuelo.
+    if (!state.pendingUpload || btn?.disabled) return;
     const { file, tipo, modo } = state.pendingUpload;
     const form = new FormData();
     form.append("file", file);
     form.append("tipo", tipo);
     form.append("modo", modo);
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Confirmando...";
+    }
     setLoading(true);
-    setMessage("mat-compras-preview-message", "");
+    setMessage("mat-compras-preview-message", "Confirmando carga, no cierres esta ventana...");
     try {
       const data = await fetchJson("/api/material_admin/compras/upload", { method: "POST", body: form });
       hideModal("mat-compras-preview");
@@ -492,6 +498,10 @@
       else if (p.duplicado) msg = "Este archivo ya fue cargado.";
       setMessage("mat-compras-preview-message", msg);
     } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Confirmar carga";
+      }
       setLoading(false);
     }
   }
