@@ -35,6 +35,11 @@
                             title="Agrega solo los renglones nuevos. Entran ABIERTOS y aparecen en almacén.">
                         Actualizar
                     </button>
+                    <button id="mat-compras-btn-sincronizar" class="mat-invoice-btn warning" type="button"
+                            data-modo="SINCRONIZACION"
+                            title="Espeja el Excel: agrega los nuevos, actualiza los cambiados y borra los que ya no están. Solo dentro de las transacciones del archivo y sólo si no tienen lote aplicado.">
+                        Sincronizar
+                    </button>
                 </div>
             </form>
             <div id="mat-compras-upload-message" class="mat-invoice-message" hidden></div>
@@ -117,6 +122,10 @@
 
         <div id="mat-compras-tab-links" class="mat-invoice-tab-panel" hidden>
             <div class="mat-invoice-table-toolbar">
+                <button class="mat-invoice-btn warning small" type="button" data-link-action="unapply"
+                        title="Libera los lotes de esta transaccion: dejan de costearse desde esta compra.">Desaplicar lotes</button>
+                <button class="mat-invoice-btn small" type="button" data-link-action="reapply"
+                        title="Vuelve a aplicar los lotes desaplicados de esta transaccion.">Reaplicar lotes</button>
                 <button class="mat-invoice-btn success small" type="button" data-export="links">Exportar Excel</button>
             </div>
             <div class="mat-invoice-table-wrap">
@@ -166,4 +175,4 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/material_column_filters.js', v='20260707a') }}"></script>
-<script src="{{ url_for('static', filename='js/material_compras.js', v='20260727a') }}"></script>
+<script src="{{ url_for('static', filename='js/material_compras.js', v='20260727b') }}"></script>

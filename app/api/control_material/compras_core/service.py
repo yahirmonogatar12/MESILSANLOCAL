@@ -22,6 +22,7 @@ from werkzeug.utils import secure_filename
 from app.api.control_material.compras_core.parser import parse_compras_workbook
 from app.api.control_material.invoice_core.matcher import validate_system_parts
 from app.api.control_material.invoice_core.normalizers import json_value, row_to_json
+from app.api.control_material.costing_core.resolver import recalculate_lot_cost
 from app.api.control_material.invoice_core.storage import (
     build_relative_path,
     delete_file,
@@ -82,8 +83,9 @@ def _normalizar_tipo(value):
 def _normalizar_modo(value):
     # INICIAL = histórico (entra CERRADO, no aparece en almacén). ACTUALIZACION =
     # solo agrega transacciones nuevas, ABIERTAS (aparecen en almacén).
+    # SINCRONIZACION = espeja el Excel: agrega, actualiza y borra renglones.
     modo = sanitizar_texto(value, 20).upper()
-    return "INICIAL" if modo == "INICIAL" else "ACTUALIZACION"
+    return modo if modo in ("INICIAL", "SINCRONIZACION") else "ACTUALIZACION"
 
 
 def _tiene_carga_inicial(cursor, tipo):
@@ -154,7 +156,7 @@ def _existing_lines(cursor, tipo, lineas):
     numeros = sorted({l.get("numero_transaccion") or "" for l in lineas})
     nonblank = [numero for numero in numeros if numero]
     rows_by_id = {}
-    select_columns = ", ".join(("id", *_LINE_IDENTITY_COLUMNS))
+    select_columns = ", ".join(("id", "estado", *_LINE_IDENTITY_COLUMNS))
 
     for chunk in _chunks(nonblank):
         placeholders = ", ".join(["%s"] * len(chunk))
@@ -205,6 +207,103 @@ def _filter_new_lines(cursor, tipo, lineas):
             new_lines.append(line)
 
     return new_lines, matched_lines, existing_transaction_keys
+
+
+def _line_key(row):
+    """Clave de negocio de un renglón: transacción + parte del Excel."""
+    return (
+        _transaction_key(row.get("numero_transaccion")),
+        _text_key(row.get("raw_part_num") or row.get("numero_parte")),
+    )
+
+
+def _lineas_con_lote(cursor, line_ids):
+    """Ids de línea que tienen algún lote APLICADO (no se tocan ni se borran)."""
+    con_lote = set()
+    for chunk in _chunks(sorted(line_ids)):
+        placeholders = ", ".join(["%s"] * len(chunk))
+        cursor.execute(
+            f"""
+            SELECT DISTINCT transaccion_linea_id
+            FROM lista_compras_lot_links
+            WHERE estado = 'APLICADO' AND transaccion_linea_id IN ({placeholders})
+            """,
+            chunk,
+        )
+        con_lote.update(row["transaccion_linea_id"] for row in (cursor.fetchall() or []))
+    return con_lote
+
+
+def _sync_plan(cursor, tipo, lineas):
+    """Compara el Excel contra la BD y arma el plan de sincronización.
+
+    Sólo se comparan las transacciones que trae el archivo: un Excel semanal no
+    puede borrar transacciones que ni siquiera menciona. Bloquea los renglones
+    con lote aplicado y protege el histórico CERRADO de la carga inicial.
+    """
+    existing_rows = _existing_lines(cursor, tipo, lineas)
+    db_por_clave = {}
+    for row in existing_rows:
+        db_por_clave.setdefault(_line_key(row), []).append(row)
+    excel_por_clave = {}
+    for line in lineas:
+        excel_por_clave.setdefault(_line_key(line), []).append(line)
+
+    plan = {
+        "nuevas": [],
+        "modificadas": [],  # (row_id, linea)
+        "faltantes": [],
+        "sin_cambio": 0,
+        "bloqueadas": [],  # tienen lote aplicado
+        "protegidas": [],  # histórico CERRADO
+        "ambiguas": [],  # la misma parte repetida: no se puede parear 1 a 1
+    }
+    candidatos = {}  # row_id -> row, para consultar lotes de una sola vez
+
+    for clave, filas_excel in excel_por_clave.items():
+        filas_db = db_por_clave.get(clave) or []
+        if not filas_db:
+            plan["nuevas"].extend(filas_excel)
+            continue
+        if len(filas_excel) > 1 or len(filas_db) > 1:
+            plan["ambiguas"].append({"transaccion": filas_db[0]["numero_transaccion"],
+                                     "parte": filas_db[0].get("raw_part_num")})
+            continue
+        fila_db, linea = filas_db[0], filas_excel[0]
+        if _line_signature(fila_db) == _line_signature(linea):
+            plan["sin_cambio"] += 1
+            continue
+        candidatos[fila_db["id"]] = ("modificadas", fila_db, linea)
+
+    for clave, filas_db in db_por_clave.items():
+        if clave in excel_por_clave:
+            continue
+        for fila_db in filas_db:
+            candidatos[fila_db["id"]] = ("faltantes", fila_db, None)
+
+    con_lote = _lineas_con_lote(cursor, candidatos) if candidatos else set()
+    for row_id, (destino, fila_db, linea) in candidatos.items():
+        if row_id in con_lote:
+            plan["bloqueadas"].append({**_resumen_fila(fila_db), "motivo": "lote aplicado"})
+            continue
+        if fila_db.get("estado") == "CERRADA":
+            plan["protegidas"].append({**_resumen_fila(fila_db), "motivo": "histórico (carga inicial)"})
+            continue
+        if destino == "modificadas":
+            plan["modificadas"].append((row_id, linea))
+        else:
+            plan["faltantes"].append(fila_db)
+    return plan
+
+
+def _resumen_fila(row):
+    return {
+        "id": row.get("id"),
+        "numero_transaccion": row.get("numero_transaccion"),
+        "numero_parte": row.get("raw_part_num"),
+        "cantidad": row.get("cantidad"),
+        "costo_total": row.get("costo_total"),
+    }
 
 
 def _parse_cached(file_bytes, filename):
@@ -271,8 +370,27 @@ def preview_compras(files, form):
     lineas_nuevas = len(lineas)
     lineas_existentes = 0
     bloqueado_inicial = False
+    sync = None
     if not db_error:
         try:
+            if modo == "SINCRONIZACION":
+                plan = _sync_plan(cursor, tipo, lineas)
+                sample_lines = plan["nuevas"]
+                lineas_nuevas = len(plan["nuevas"])
+                lineas_existentes = plan["sin_cambio"]
+                nuevas = len({_transaction_key(l["numero_transaccion"]) for l in plan["nuevas"]})
+                existentes = len(transaction_keys) - nuevas
+                sync = {
+                    "modificadas": len(plan["modificadas"]),
+                    "faltantes": len(plan["faltantes"]),
+                    "sin_cambio": plan["sin_cambio"],
+                    "bloqueadas": plan["bloqueadas"][:20],
+                    "protegidas": plan["protegidas"][:20],
+                    "ambiguas": plan["ambiguas"][:20],
+                    "faltantes_muestra": [
+                        row_to_json(_resumen_fila(row)) for row in plan["faltantes"][:20]
+                    ],
+                }
             if modo == "ACTUALIZACION":
                 nuevas_lineas, lineas_existentes, _ = _filter_new_lines(
                     cursor, tipo, lineas
@@ -303,6 +421,7 @@ def preview_compras(files, form):
             "lineas_nuevas": lineas_nuevas,
             "lineas_existentes": lineas_existentes,
             "bloqueado_inicial": bloqueado_inicial,
+            "sync": sync,
             "total_monto": json_value(total_monto),
             "warnings": parsed.get("warnings") or [],
             # En ACTUALIZACION la tabla de preview sólo enseña lo que se insertará.
@@ -371,9 +490,32 @@ def upload_compras(files, form):
         # Excel puede traer Part Sys; si no, usa Part No. Marca DIRECTO/SIN_ALIAS.
         validate_system_parts(cursor, lineas, "numero_parte_sistema", "DIRECTO")
 
+        plan = None
         if modo == "INICIAL":
             lineas_a_insertar = lineas
             estado_lineas = "CERRADA"
+        elif modo == "SINCRONIZACION":
+            # Espeja el Excel dentro de las transacciones que trae el archivo.
+            plan = _sync_plan(cursor, tipo, lineas)
+            lineas_a_insertar = plan["nuevas"]
+            estado_lineas = "ABIERTA"
+            if not (plan["nuevas"] or plan["modificadas"] or plan["faltantes"]):
+                return (
+                    {
+                        "success": True,
+                        "carga_id": None,
+                        "tipo": tipo,
+                        "modo": modo,
+                        "total_lineas": 0,
+                        "agregadas": 0,
+                        "modificadas": 0,
+                        "borradas": 0,
+                        "bloqueadas": len(plan["bloqueadas"]),
+                        "protegidas": len(plan["protegidas"]),
+                        "message": "El Excel ya coincide con lo registrado.",
+                    },
+                    200,
+                )
         else:
             # ACTUALIZACION: de-dup por firma de línea, no por transacción. Así
             # una transacción vieja puede recibir una parte/renglón nuevo.
@@ -404,10 +546,16 @@ def upload_compras(files, form):
         _, archivo_size = save_file(file_bytes, archivo_ruta)
 
         cursor.execute("START TRANSACTION")
+        # En SINCRONIZACION la carga documenta todo lo tocado, no sólo lo insertado.
+        lineas_afectadas = (
+            lineas_a_insertar + [linea for _, linea in plan["modificadas"]]
+            if plan
+            else lineas_a_insertar
+        )
         transacciones = {
-            _transaction_key(l["numero_transaccion"]) for l in lineas_a_insertar
+            _transaction_key(l["numero_transaccion"]) for l in lineas_afectadas
         }
-        total_monto = sum((l.get("costo_total") or Decimal("0")) for l in lineas_a_insertar)
+        total_monto = sum((l.get("costo_total") or Decimal("0")) for l in lineas_afectadas)
 
         cursor.execute(
             """
@@ -429,7 +577,7 @@ def upload_compras(files, form):
                 # el UNIQUE. En INICIAL se guarda el hash real (de-dup por archivo).
                 file_hash if modo == "INICIAL" else f"{file_hash[:31]}-{uuid4().hex}",
                 len(transacciones),
-                len(lineas_a_insertar),
+                len(lineas_afectadas),
                 str(total_monto),
                 usuario,
                 fecha,
@@ -437,20 +585,33 @@ def upload_compras(files, form):
         )
         carga_id = cursor.lastrowid
 
-        _insert_lineas(cursor, carga_id, tipo, lineas_a_insertar, estado_lineas)
+        if lineas_a_insertar:
+            _insert_lineas(cursor, carga_id, tipo, lineas_a_insertar, estado_lineas)
+        if plan:
+            _update_lineas(cursor, carga_id, plan["modificadas"])
+            _delete_lineas(cursor, [row["id"] for row in plan["faltantes"]])
         conn.commit()
-        return (
-            {
-                "success": True,
-                "carga_id": carga_id,
-                "tipo": tipo,
-                "modo": modo,
-                "total_lineas": len(lineas_a_insertar),
-                "total_transacciones": len(transacciones),
-                "estado_lineas": estado_lineas,
-            },
-            201,
-        )
+        respuesta = {
+            "success": True,
+            "carga_id": carga_id,
+            "tipo": tipo,
+            "modo": modo,
+            "total_lineas": len(lineas_a_insertar),
+            "total_transacciones": len(transacciones),
+            "estado_lineas": estado_lineas,
+        }
+        if plan:
+            respuesta.update(
+                {
+                    "agregadas": len(plan["nuevas"]),
+                    "modificadas": len(plan["modificadas"]),
+                    "borradas": len(plan["faltantes"]),
+                    "bloqueadas": len(plan["bloqueadas"]),
+                    "protegidas": len(plan["protegidas"]),
+                    "ambiguas": len(plan["ambiguas"]),
+                }
+            )
+        return respuesta, 201
     except Exception as exc:
         conn.rollback()
         if archivo_ruta:
@@ -504,6 +665,56 @@ def _insert_lineas(cursor, carga_id, tipo, lineas, estado="ABIERTA"):
         """,
         params,
     )
+
+
+_SYNC_UPDATE_COLUMNS = (
+    "anio", "mes", "fecha_compra", "wk", "raw_part_num", "numero_parte",
+    "numero_parte_sistema", "descripcion", "spec", "cantidad", "moneda",
+    "costo_unitario", "costo_total", "fecha_factura", "proveedor", "factura",
+    "modelo", "categoria", "comentario", "estado_match", "mensaje_match",
+)
+
+
+def _sync_valor(linea, columna):
+    valor = linea.get(columna)
+    if columna in ("cantidad", "costo_unitario", "costo_total"):
+        return None if valor is None else str(valor)
+    if columna == "moneda":
+        return valor or "USD"
+    if columna == "estado_match":
+        return valor or "SIN_ALIAS"
+    return valor
+
+
+def _update_lineas(cursor, carga_id, modificadas):
+    """Reescribe los datos del renglón y lo reapunta a la carga que lo cambió."""
+    if not modificadas:
+        return
+    sets = ", ".join(f"{columna} = %s" for columna in _SYNC_UPDATE_COLUMNS)
+    cursor.executemany(
+        f"UPDATE lista_compras_lineas SET carga_id = %s, {sets} WHERE id = %s",
+        [
+            (
+                carga_id,
+                *[_sync_valor(linea, columna) for columna in _SYNC_UPDATE_COLUMNS],
+                row_id,
+            )
+            for row_id, linea in modificadas
+        ],
+    )
+
+
+def _delete_lineas(cursor, ids):
+    """Borra renglones y sus links DESAPLICADOS (los APLICADOS ya se filtraron)."""
+    for chunk in _chunks(sorted(ids)):
+        placeholders = ", ".join(["%s"] * len(chunk))
+        cursor.execute(
+            f"DELETE FROM lista_compras_lot_links WHERE transaccion_linea_id IN ({placeholders})",
+            chunk,
+        )
+        cursor.execute(
+            f"DELETE FROM lista_compras_lineas WHERE id IN ({placeholders})", chunk
+        )
 
 
 def list_transacciones(args):
@@ -724,6 +935,221 @@ def set_transaccion_closed(numero_transaccion, tipo, cerrado):
     except Exception as exc:
         conn.rollback()
         logger.exception("Error cerrando transaccion %s/%s: %s", tipo, numero_transaccion, exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def _recalcular_estado_lineas(cursor, numero, tipo):
+    """Deja cada linea en APLICADA (llena) o ABIERTA (con pendiente).
+
+    Las CERRADAS son historico de la carga inicial y no vuelven al almacen por
+    desaplicar un lote, asi que quedan intactas.
+    """
+    cursor.execute(
+        """
+        UPDATE lista_compras_lineas l
+        LEFT JOIN (
+            SELECT transaccion_linea_id, SUM(cantidad_aplicada) AS aplicado
+            FROM lista_compras_lot_links
+            WHERE estado = 'APLICADO'
+            GROUP BY transaccion_linea_id
+        ) links ON links.transaccion_linea_id = l.id
+        SET l.estado = CASE
+            WHEN COALESCE(links.aplicado, 0) >= l.cantidad THEN 'APLICADA'
+            ELSE 'ABIERTA'
+        END
+        WHERE l.numero_transaccion = %s AND l.tipo = %s AND l.estado <> 'CERRADA'
+        """,
+        (numero, tipo),
+    )
+
+
+def _transaccion_valida(cursor, numero_transaccion, tipo):
+    """(numero, tipo, error) normalizados; error ya viene como (payload, status)."""
+    numero = sanitizar_texto(numero_transaccion, 255)
+    tipo_normalizado = _normalizar_tipo(tipo)
+    if not numero or not tipo_normalizado:
+        return None, None, (
+            {"success": False, "error": "numero_transaccion y tipo (LG u OVEN) son requeridos."},
+            400,
+        )
+    cursor.execute(
+        "SELECT id FROM lista_compras_lineas WHERE numero_transaccion = %s AND tipo = %s LIMIT 1",
+        (numero, tipo_normalizado),
+    )
+    if not cursor.fetchone():
+        return None, None, ({"success": False, "error": "Transaccion no encontrada."}, 404)
+    return numero, tipo_normalizado, None
+
+
+def unapply_transaccion(numero_transaccion, tipo, data=None):
+    """Desaplica lotes de una transaccion (espejo de unapply_invoice).
+
+    Los vinculos los crea otro proyecto en la entrada de almacen; aqui solo se
+    revierten: el lote deja de costearse desde esta compra y la linea vuelve a
+    quedar abierta por la cantidad liberada.
+    """
+    data = data or {}
+    conn, cursor, error = _db()
+    if error:
+        return error
+    try:
+        cursor.execute("START TRANSACTION")
+        numero, tipo_normalizado, error = _transaccion_valida(cursor, numero_transaccion, tipo)
+        if error:
+            conn.rollback()
+            return error
+
+        motivo = sanitizar_texto(data.get("motivo_desaplicado") or data.get("motivo"), 255)
+        link_ids = [
+            int(value)
+            for value in (data.get("link_ids") if isinstance(data.get("link_ids"), list) else [])
+            if str(value).isdigit()
+        ]
+        codigo = sanitizar_texto(data.get("codigo_material_recibido"), 255)
+        where = ["numero_transaccion = %s", "tipo = %s", "estado = 'APLICADO'"]
+        params = [numero, tipo_normalizado]
+        if link_ids:
+            where.append(f"id IN ({', '.join(['%s'] * len(link_ids))})")
+            params.extend(link_ids)
+        if codigo:
+            where.append("codigo_material_recibido = %s")
+            params.append(codigo)
+
+        cursor.execute(
+            f"""
+            SELECT id, codigo_material_recibido
+            FROM lista_compras_lot_links
+            WHERE {' AND '.join(where)}
+            ORDER BY fecha_aplicacion ASC, id ASC
+            FOR UPDATE
+            """,
+            params,
+        )
+        links = cursor.fetchall() or []
+        if not links:
+            conn.rollback()
+            return {"success": True, "links_desaplicados": 0, "message": "No hay lotes aplicados que desaplicar."}, 200
+
+        usuario = _usuario_actual()
+        fecha = obtener_fecha_hora_mexico()
+        cursor.execute(
+            f"""
+            UPDATE lista_compras_lot_links
+            SET estado = 'DESAPLICADO',
+                fecha_desaplicado = %s,
+                usuario_desaplicado = %s,
+                motivo_desaplicado = %s
+            WHERE id IN ({', '.join(['%s'] * len(links))})
+            """,
+            [fecha, usuario, motivo or None, *[link["id"] for link in links]],
+        )
+        _recalcular_estado_lineas(cursor, numero, tipo_normalizado)
+        recalculados = sum(
+            1
+            for codigo_lote in {link["codigo_material_recibido"] for link in links}
+            if recalculate_lot_cost(cursor, codigo_lote, usuario)
+        )
+        conn.commit()
+        return {
+            "success": True,
+            "numero_transaccion": numero,
+            "tipo": tipo_normalizado,
+            "links_desaplicados": len(links),
+            "lotes_recalculados": recalculados,
+        }, 200
+    except Exception as exc:
+        conn.rollback()
+        logger.exception("Error desaplicando compras %s/%s: %s", tipo, numero_transaccion, exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def reapply_transaccion(numero_transaccion, tipo, data=None):
+    """Reaplica los lotes desaplicados de una transaccion.
+
+    Un lote solo puede tener una compra activa (uk_lcll_activo), asi que los
+    lotes que ya fueron aplicados a otra transaccion se omiten y se reportan.
+    """
+    data = data or {}
+    conn, cursor, error = _db()
+    if error:
+        return error
+    try:
+        cursor.execute("START TRANSACTION")
+        numero, tipo_normalizado, error = _transaccion_valida(cursor, numero_transaccion, tipo)
+        if error:
+            conn.rollback()
+            return error
+
+        link_ids = [
+            int(value)
+            for value in (data.get("link_ids") if isinstance(data.get("link_ids"), list) else [])
+            if str(value).isdigit()
+        ]
+        where = ["numero_transaccion = %s", "tipo = %s", "estado = 'DESAPLICADO'"]
+        params = [numero, tipo_normalizado]
+        if link_ids:
+            where.append(f"id IN ({', '.join(['%s'] * len(link_ids))})")
+            params.extend(link_ids)
+
+        cursor.execute(
+            f"""
+            SELECT id, codigo_material_recibido
+            FROM lista_compras_lot_links
+            WHERE {' AND '.join(where)}
+            ORDER BY fecha_aplicacion ASC, id ASC
+            FOR UPDATE
+            """,
+            params,
+        )
+        links = cursor.fetchall() or []
+        reaplicados, omitidos = [], []
+        usuario = _usuario_actual()
+        for link in links:
+            cursor.execute(
+                """
+                SELECT id FROM lista_compras_lot_links
+                WHERE codigo_material_recibido = %s AND estado = 'APLICADO'
+                LIMIT 1
+                """,
+                (link["codigo_material_recibido"],),
+            )
+            if cursor.fetchone():
+                omitidos.append(link["codigo_material_recibido"])
+                continue
+            cursor.execute(
+                """
+                UPDATE lista_compras_lot_links
+                SET estado = 'APLICADO',
+                    fecha_desaplicado = NULL,
+                    usuario_desaplicado = NULL,
+                    motivo_desaplicado = NULL
+                WHERE id = %s AND estado = 'DESAPLICADO'
+                """,
+                (link["id"],),
+            )
+            reaplicados.append(link["codigo_material_recibido"])
+
+        if reaplicados:
+            _recalcular_estado_lineas(cursor, numero, tipo_normalizado)
+            for codigo_lote in set(reaplicados):
+                recalculate_lot_cost(cursor, codigo_lote, usuario)
+        conn.commit()
+        return {
+            "success": True,
+            "numero_transaccion": numero,
+            "tipo": tipo_normalizado,
+            "links_reaplicados": len(reaplicados),
+            "omitidos": omitidos[:50],
+        }, 200
+    except Exception as exc:
+        conn.rollback()
+        logger.exception("Error reaplicando compras %s/%s: %s", tipo, numero_transaccion, exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:
         cursor.close()

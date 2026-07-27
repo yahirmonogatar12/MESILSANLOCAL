@@ -68,7 +68,7 @@ def init_lista_compras_tables():
         CREATE TABLE IF NOT EXISTS lista_compras_cargas (
             id BIGINT NOT NULL AUTO_INCREMENT,
             tipo VARCHAR(20) NOT NULL DEFAULT '',
-            modo ENUM('INICIAL','ACTUALIZACION') NOT NULL DEFAULT 'ACTUALIZACION',
+            modo ENUM('INICIAL','ACTUALIZACION','SINCRONIZACION') NOT NULL DEFAULT 'ACTUALIZACION',
             archivo_nombre VARCHAR(255) NULL,
             archivo_ruta VARCHAR(512) NULL,
             archivo_size BIGINT NULL,
@@ -89,8 +89,21 @@ def init_lista_compras_tables():
     _ensure_column(
         "lista_compras_cargas",
         "modo",
-        "modo ENUM('INICIAL','ACTUALIZACION') NOT NULL DEFAULT 'ACTUALIZACION'",
+        "modo ENUM('INICIAL','ACTUALIZACION','SINCRONIZACION') NOT NULL DEFAULT 'ACTUALIZACION'",
     )
+    # Si la columna ya existía sin SINCRONIZACION, amplía el ENUM.
+    modo_row = _ddl_fetch_one(
+        """
+        SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lista_compras_cargas'
+          AND COLUMN_NAME = 'modo'
+        """
+    )
+    if "SINCRONIZACION" not in ((modo_row or {}).get("COLUMN_TYPE") or ""):
+        execute_query(
+            "ALTER TABLE lista_compras_cargas MODIFY COLUMN modo "
+            "ENUM('INICIAL','ACTUALIZACION','SINCRONIZACION') NOT NULL DEFAULT 'ACTUALIZACION'"
+        )
 
     execute_query(
         """
@@ -187,4 +200,10 @@ def init_lista_compras_tables():
             KEY idx_lcll_codigo (codigo_material_recibido)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
+    )
+    # Paridad con material_invoice_lot_links: al desaplicar se guarda el motivo.
+    _ensure_column(
+        "lista_compras_lot_links",
+        "motivo_desaplicado",
+        "motivo_desaplicado VARCHAR(255) NULL",
     )

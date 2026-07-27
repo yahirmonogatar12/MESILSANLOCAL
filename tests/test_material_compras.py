@@ -168,6 +168,78 @@ def test_preview_actualizacion_muestra_solamente_renglones_nuevos(monkeypatch):
     assert [row["raw_part_num"] for row in payload["sample"]] == ["PARTE-B"]
 
 
+class _SyncCursor(_ExistingLinesCursor):
+    """_ExistingLinesCursor + la consulta de lotes aplicados por linea."""
+
+    def __init__(self, rows, ids_con_lote=()):
+        super().__init__(rows)
+        self.ids_con_lote = set(ids_con_lote)
+
+    def execute(self, query, params=None):
+        if "lista_compras_lot_links" in query:
+            self.calls.append((" ".join(query.split()), list(params or [])))
+            self.result = [
+                {"transaccion_linea_id": value}
+                for value in (params or [])
+                if value in self.ids_con_lote
+            ]
+            return
+        super().execute(query, params)
+
+
+def test_sync_plan_detecta_nuevas_modificadas_y_faltantes():
+    guardada = _db_row(_line("TX-1", "PARTE-A"), 1)
+    borrada = _db_row(_line("TX-1", "PARTE-B"), 2)
+    cursor = _SyncCursor([guardada, borrada])
+    excel = [
+        _line("TX-1", "PARTE-A", quantity="20.0000"),  # cambio de cantidad
+        _line("TX-1", "PARTE-C"),  # nueva
+    ]
+
+    plan = compras_service._sync_plan(cursor, "LG", excel)
+
+    assert [l["raw_part_num"] for l in plan["nuevas"]] == ["PARTE-C"]
+    assert [row_id for row_id, _ in plan["modificadas"]] == [1]
+    assert [row["id"] for row in plan["faltantes"]] == [2]
+    assert plan["sin_cambio"] == 0
+
+
+def test_sync_plan_no_toca_lineas_con_lote_aplicado():
+    guardada = _db_row(_line("TX-1", "PARTE-A"), 1)
+    borrada = _db_row(_line("TX-1", "PARTE-B"), 2)
+    cursor = _SyncCursor([guardada, borrada], ids_con_lote={1, 2})
+    excel = [_line("TX-1", "PARTE-A", quantity="20.0000")]
+
+    plan = compras_service._sync_plan(cursor, "LG", excel)
+
+    assert plan["modificadas"] == [] and plan["faltantes"] == []
+    assert {b["id"] for b in plan["bloqueadas"]} == {1, 2}
+    assert all(b["motivo"] == "lote aplicado" for b in plan["bloqueadas"])
+
+
+def test_sync_plan_protege_el_historico_cerrado():
+    historica = {**_db_row(_line("TX-1", "PARTE-A"), 1), "estado": "CERRADA"}
+    viva = {**_db_row(_line("TX-1", "PARTE-B"), 2), "estado": "ABIERTA"}
+    cursor = _SyncCursor([historica, viva])
+
+    # El Excel ya no trae PARTE-A: la viva se borraria, la del historico no.
+    plan = compras_service._sync_plan(cursor, "LG", [_line("TX-1", "PARTE-C")])
+
+    assert [row["id"] for row in plan["faltantes"]] == [2]
+    assert [row["id"] for row in plan["protegidas"]] == [1]
+    assert plan["protegidas"][0]["motivo"].startswith("histórico")
+
+
+def test_sync_plan_solo_compara_transacciones_del_archivo():
+    otra = _db_row(_line("TX-9", "PARTE-X"), 5)
+    cursor = _SyncCursor([otra])
+
+    plan = compras_service._sync_plan(cursor, "LG", [_line("TX-1", "PARTE-A")])
+
+    assert plan["faltantes"] == []
+    assert [l["raw_part_num"] for l in plan["nuevas"]] == ["PARTE-A"]
+
+
 class _TransactionConnection:
     def __init__(self):
         self.commits = 0
@@ -335,6 +407,101 @@ def test_delete_carga_limpia_links_desaplicados(monkeypatch):
     deletes = [query for query, _ in cursor.queries if query.startswith("DELETE")]
     assert deletes[0].startswith("DELETE ll FROM lista_compras_lot_links")
     assert len(deletes) == 3
+
+
+class _LinksCursor:
+    """Cursor falso para desaplicar/reaplicar: guarda queries y sirve filas fijas."""
+
+    def __init__(self, links, lote_ya_aplicado=False):
+        self.links = links
+        self.lote_ya_aplicado = lote_ya_aplicado
+        self.queries = []
+        self._rows = []
+        self._row = None
+
+    def execute(self, query, params=None):
+        normalized = " ".join(query.split())
+        self.queries.append((normalized, tuple(params or ())))
+        self._rows, self._row = [], None
+        if normalized.startswith("SELECT id FROM lista_compras_lineas"):
+            self._row = {"id": 1}
+        elif normalized.startswith("SELECT id, codigo_material_recibido"):
+            self._rows = list(self.links)
+        elif normalized.startswith("SELECT id FROM lista_compras_lot_links"):
+            self._row = {"id": 99} if self.lote_ya_aplicado else None
+
+    def fetchall(self):
+        return self._rows
+
+    def fetchone(self):
+        return self._row
+
+    def close(self):
+        pass
+
+
+def test_unapply_transaccion_marca_links_y_recalcula(monkeypatch):
+    conn = _TransactionConnection()
+    cursor = _LinksCursor([{"id": 10, "codigo_material_recibido": "LOTE-1"}])
+    recalculados = []
+    monkeypatch.setattr(compras_service, "_db", lambda: (conn, cursor, None))
+    monkeypatch.setattr(compras_service, "_usuario_actual", lambda: "TESTER")
+    monkeypatch.setattr(
+        compras_service, "recalculate_lot_cost",
+        lambda _cursor, codigo, _usuario: recalculados.append(codigo) or True,
+    )
+
+    payload, status = compras_service.unapply_transaccion("TX-1", "LG", {"motivo": "error de captura"})
+
+    assert status == 200
+    assert payload["links_desaplicados"] == 1
+    assert conn.commits == 1
+    assert recalculados == ["LOTE-1"]
+    update = next(q for q, _ in cursor.queries if q.startswith("UPDATE lista_compras_lot_links"))
+    assert "SET estado = 'DESAPLICADO'" in update
+    # El historico de la carga inicial no debe reabrirse al desaplicar un lote.
+    estados = next(q for q, _ in cursor.queries if q.startswith("UPDATE lista_compras_lineas"))
+    assert "l.estado <> 'CERRADA'" in estados
+
+
+def test_reapply_transaccion_omite_lotes_con_otra_compra_activa(monkeypatch):
+    conn = _TransactionConnection()
+    cursor = _LinksCursor(
+        [{"id": 10, "codigo_material_recibido": "LOTE-1"}], lote_ya_aplicado=True
+    )
+    monkeypatch.setattr(compras_service, "_db", lambda: (conn, cursor, None))
+    monkeypatch.setattr(compras_service, "_usuario_actual", lambda: "TESTER")
+    monkeypatch.setattr(compras_service, "recalculate_lot_cost", lambda *_: True)
+
+    payload, status = compras_service.reapply_transaccion("TX-1", "LG")
+
+    assert status == 200
+    assert payload["links_reaplicados"] == 0
+    assert payload["omitidos"] == ["LOTE-1"]
+    assert not any(q.startswith("UPDATE lista_compras_lot_links") for q, _ in cursor.queries)
+
+
+def test_reapply_transaccion_restaura_link_libre(monkeypatch):
+    conn = _TransactionConnection()
+    cursor = _LinksCursor([{"id": 10, "codigo_material_recibido": "LOTE-1"}])
+    monkeypatch.setattr(compras_service, "_db", lambda: (conn, cursor, None))
+    monkeypatch.setattr(compras_service, "_usuario_actual", lambda: "TESTER")
+    monkeypatch.setattr(compras_service, "recalculate_lot_cost", lambda *_: True)
+
+    payload, status = compras_service.reapply_transaccion("TX-1", "LG")
+
+    assert (status, payload["links_reaplicados"], payload["omitidos"]) == (200, 1, [])
+    update = next(q for q, _ in cursor.queries if q.startswith("UPDATE lista_compras_lot_links"))
+    assert "SET estado = 'APLICADO'" in update
+    assert "fecha_desaplicado = NULL" in update
+
+
+def test_material_compras_registra_rutas_de_aplicacion(app):
+    rules = {str(rule): set(rule.methods or []) for rule in app.url_map.iter_rules()}
+
+    for accion in ("unapply", "reapply"):
+        path = f"/api/material_admin/compras/transacciones/<path:numero>/{accion}"
+        assert path in rules and "POST" in rules[path]
 
 
 def test_material_compras_registra_ruta_de_cierre(app):

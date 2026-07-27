@@ -177,6 +177,35 @@ def recalculate_lot_cost(cursor, codigo, usuario):
         )
         return True
 
+    # Sin invoice activa, el costo real puede venir de una transaccion de Lista
+    # de compras. Los refs de invoice se dejan nulos: son ids de otras tablas.
+    cursor.execute(
+        """
+        SELECT ll.costo_unitario, ll.moneda
+        FROM lista_compras_lot_links ll
+        WHERE ll.codigo_material_recibido = %s
+          AND ll.estado = 'APLICADO'
+          AND ll.costo_unitario IS NOT NULL
+        ORDER BY ll.fecha_aplicacion DESC, ll.id DESC
+        LIMIT 1
+        """,
+        (codigo,),
+    )
+    compra = cursor.fetchone()
+    if compra:
+        upsert_inventory_cost(
+            cursor,
+            lot,
+            {
+                "costo_unitario": Decimal(str(compra["costo_unitario"])),
+                "moneda": compra.get("moneda") or MONEDA_DEFAULT,
+                "fuente_costo": "LISTA_COMPRAS",
+                "es_estimado": 0,
+            },
+            usuario,
+        )
+        return True
+
     fallback = resolve_control_material_cost(
         cursor, lot["numero_parte_sistema"], lot.get("vendedor")
     )

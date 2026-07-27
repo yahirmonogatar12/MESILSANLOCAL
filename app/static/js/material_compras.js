@@ -370,6 +370,49 @@
     });
   }
 
+  // Desaplicar/reaplicar los lotes de la transaccion. Los vinculos los crea otro
+  // proyecto en la entrada de almacen; aqui solo se revierten o se restauran.
+  async function toggleLinks(accion) {
+    if (!state.selectedTransaccion || !state.selectedTipo) return;
+    const links = state.data.links || [];
+    const esperados = links.filter((l) => l.estado === (accion === "unapply" ? "APLICADO" : "DESAPLICADO")).length;
+    if (!esperados) {
+      setMessage("mat-compras-detail-message", accion === "unapply"
+        ? "No hay lotes aplicados que desaplicar."
+        : "No hay lotes desaplicados que reaplicar.");
+      return;
+    }
+    const pregunta = accion === "unapply"
+      ? `¿Desaplicar ${esperados} lote(s) de esta transaccion? Dejaran de costearse desde esta compra.`
+      : `¿Reaplicar ${esperados} lote(s) desaplicados de esta transaccion?`;
+    if (!window.confirm(pregunta)) return;
+    setLoading(true);
+    setMessage("mat-compras-detail-message", "");
+    try {
+      const url = `/api/material_admin/compras/transacciones/${encodeURIComponent(state.selectedTransaccion)}/${accion}`;
+      const data = await fetchJson(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: state.selectedTipo }),
+      });
+      await loadDetail(state.selectedTransaccion, state.selectedTipo);
+      const omitidos = (data.omitidos || []).length
+        ? ` Omitidos por tener otra compra activa: ${data.omitidos.join(", ")}.`
+        : "";
+      setMessage(
+        "mat-compras-detail-message",
+        accion === "unapply"
+          ? `${data.links_desaplicados} lote(s) desaplicados.`
+          : `${data.links_reaplicados} lote(s) reaplicados.${omitidos}`,
+        "success",
+      );
+    } catch (err) {
+      setMessage("mat-compras-detail-message", `No se pudo completar: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function toggleTransactionClosed(button) {
     if (!state.selectedTransaccion || !state.selectedTipo) return;
     const cerrar = button.dataset.cerrada !== "1";
@@ -427,7 +470,9 @@
   function renderPreview(data, modo) {
     const sub = el("mat-compras-preview-subtitle");
     if (sub) {
-      const modoTxt = modo === "INICIAL" ? "Carga inicial (CERRADA)" : "Actualizar (ABIERTA)";
+      const modoTxt = modo === "INICIAL"
+        ? "Carga inicial (CERRADA)"
+        : (modo === "SINCRONIZACION" ? "Sincronizar (espeja el Excel)" : "Actualizar (ABIERTA)");
       const nuevasTxt = data.transacciones_nuevas != null
         ? ` · ${numberText(data.transacciones_nuevas)} nuevas / ${numberText(data.transacciones_existentes)} ya existen`
         : "";
@@ -444,6 +489,21 @@
       aviso = `Ya existe carga inicial para ${data.tipo}. Usa Actualizar. ${aviso}`;
     } else if (modo === "ACTUALIZACION" && data.lineas_nuevas === 0) {
       aviso = `No hay renglones nuevos que agregar. ${aviso}`;
+    } else if (modo === "SINCRONIZACION" && data.sync) {
+      const s = data.sync;
+      const partes = [
+        `Se agregaran ${numberText(data.lineas_nuevas)}`,
+        `se actualizaran ${numberText(s.modificadas)}`,
+        `se borraran ${numberText(s.faltantes)}`,
+        `${numberText(s.sin_cambio)} sin cambio`,
+      ];
+      if (s.bloqueadas.length) partes.push(`${s.bloqueadas.length} con lote aplicado no se tocan`);
+      if (s.protegidas.length) partes.push(`${s.protegidas.length} del historico se conservan`);
+      if (s.ambiguas.length) partes.push(`${s.ambiguas.length} ambiguas (parte repetida) se omiten`);
+      const borrar = (s.faltantes_muestra || []).map((r) => `${r.numero_transaccion} / ${r.numero_parte}`);
+      aviso = `${partes.join(", ")}.` +
+        (borrar.length ? ` A borrar: ${borrar.join("; ")}${s.faltantes > borrar.length ? "…" : ""}.` : "") +
+        ` Solo se comparan las transacciones que trae el archivo. ${aviso}`;
     }
     setMessage("mat-compras-preview-message", aviso.trim());
     const body = el("mat-compras-preview-body");
@@ -486,9 +546,15 @@
       if (fileInput) fileInput.value = "";
       const estadoTxt = data.estado_lineas === "CERRADA" ? " (cerradas, histórico)" : " (abiertas, almacén)";
       const vacia = data.total_lineas === 0;
-      const msg = vacia
-        ? "Sin renglones nuevos que agregar."
-        : `✔ Carga completada: ${data.total_lineas} renglones, ${data.total_transacciones} transacciones (${data.tipo})${estadoTxt}.`;
+      const msg = modo === "SINCRONIZACION"
+        ? (vacia
+          ? (data.message || "El Excel ya coincide con lo registrado.")
+          : `✔ Sincronizado: ${data.agregadas} agregados, ${data.modificadas} actualizados, ${data.borradas} borrados` +
+            `${data.bloqueadas ? `, ${data.bloqueadas} sin tocar por tener lote aplicado` : ""}` +
+            `${data.protegidas ? `, ${data.protegidas} del histórico conservados` : ""} (${data.tipo}).`)
+        : (vacia
+          ? "Sin renglones nuevos que agregar."
+          : `✔ Carga completada: ${data.total_lineas} renglones, ${data.total_transacciones} transacciones (${data.tipo})${estadoTxt}.`);
       refreshInicialState();
       // El mensaje va DESPUES del refresh: loadTransacciones limpia esta caja al entrar.
       await loadTransacciones();
@@ -588,6 +654,8 @@
         openPreview("INICIAL");
       } else if (t.id === "mat-compras-btn-actualizar") {
         openPreview("ACTUALIZACION");
+      } else if (t.id === "mat-compras-btn-sincronizar") {
+        openPreview("SINCRONIZACION");
       } else if (t.id === "mat-compras-refresh" || t.id === "mat-compras-search-btn") {
         loadTransacciones();
       } else if (t.id === "mat-compras-clear-filters") {
@@ -608,6 +676,8 @@
       } else if (t.dataset && t.dataset.comprasTab) {
         state.activeTab = t.dataset.comprasTab;
         syncTabs();
+      } else if (t.dataset && t.dataset.linkAction) {
+        toggleLinks(t.dataset.linkAction);
       } else if (t.dataset && t.dataset.export) {
         exportTable(t.dataset.export);
       } else if (t.dataset && t.dataset.transaccion) {
