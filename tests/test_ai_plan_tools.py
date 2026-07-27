@@ -67,6 +67,11 @@ def _proposal_result():
         "capacidad_libre": {"por_linea": {"M1": 7.0}, "total": 7.0,
                             "lineas_con_espacio": ["M1"]},
         "expandido_dias": 0,
+        "max_bloques": None,
+        "tiempo_extra": False,
+        "sabados": [],
+        "adelanto_max_dias": None,
+        "adelantar_d1": True,
     }
 
 
@@ -220,13 +225,16 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
 
     def fake_crear(
         fecha_inicio, fecha_fin, username, *, source, objective, excluded_parts,
-        lotes_corriendo=None, agregados=None, expandir_dias=0
+        lotes_corriendo=None, agregados=None, expandir_dias=0, max_bloques=None,
+        sabados=None, tiempo_extra=False, adelanto_max_dias=None, adelantar_d1=True
     ):
         created.append(
             (fecha_inicio, fecha_fin, username, source, objective, excluded_parts)
         )
         assert lotes_corriendo == {}  # rango futuro: nada corriendo
-        assert agregados == [] and expandir_dias == 0
+        assert agregados == [] and expandir_dias == 0 and max_bloques is None
+        assert (sabados or []) == [] and tiempo_extra is False
+        assert adelanto_max_dias is None and adelantar_d1 is True
         return _proposal_result()
 
     monkeypatch.setattr(ai_plan_tools.pp, "_ppy_crear_propuesta", fake_crear)
@@ -358,6 +366,43 @@ def test_plan_propuesta_ajuste_valida_caja_cerrada_y_parte_inexistente(monkeypat
         }])
 
 
+def test_plan_propuesta_ajuste_caja_abierta_permite_cantidad_libre(monkeypatch):
+    """Con caja_abierta, Planning puede pedir una cantidad que NO es multiplo del
+    empaque; sin ese permiso sigue exigiendo caja cerrada."""
+    _mock_preparar_con_item(monkeypatch, pack_size=80)
+    result = _preparar(monkeypatch, [{
+        "numero_parte": "EBR80757421", "cantidad": 173,
+        "turno": None, "linea": None, "excluir": False,
+        "caja_abierta": True,
+    }])
+    items = ai_plan_tools._read_token(
+        result["confirm_token"], "aplicar_propuesta")["items"]
+    assert items == [{"item_id": "item-abc", "included": True,
+                      "caja_abierta": True, "qty": 173}]
+
+
+def test_plan_propuesta_ajuste_forzar_linea(monkeypatch):
+    """forzar_linea marca el item para saltar lineas_permitidas, pero exige
+    indicar la linea destino."""
+    _mock_preparar_con_item(monkeypatch)
+    result = _preparar(monkeypatch, [{
+        "numero_parte": "EBR80757421", "cantidad": None,
+        "turno": None, "linea": "M3", "excluir": False,
+        "forzar_linea": True,
+    }])
+    items = ai_plan_tools._read_token(
+        result["confirm_token"], "aplicar_propuesta")["items"]
+    assert items == [{"item_id": "item-abc", "included": True,
+                      "linea": "M3", "forzar_linea": True}]
+    # forzar sin linea destino -> error claro
+    with pytest.raises(ValueError, match="requiere indicar la linea"):
+        _preparar(monkeypatch, [{
+            "numero_parte": "EBR80757421", "cantidad": None,
+            "turno": None, "linea": None, "excluir": False,
+            "forzar_linea": True,
+        }])
+
+
 def test_plan_propuesta_de_hoy_exige_proceso_actual(monkeypatch):
     monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
     monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
@@ -385,7 +430,8 @@ def test_plan_propuesta_de_hoy_acepta_lotes_corriendo_como_avance(monkeypatch):
 
     def fake_crear(fecha_inicio, fecha_fin, username, *, source, objective,
                    excluded_parts, lotes_corriendo=None, agregados=None,
-                   expandir_dias=0):
+                   expandir_dias=0, max_bloques=None, sabados=None,
+                   tiempo_extra=False, adelanto_max_dias=None, adelantar_d1=True):
         recibido["corriendo"] = lotes_corriendo
         recibido["objective"] = objective
         return _proposal_result()

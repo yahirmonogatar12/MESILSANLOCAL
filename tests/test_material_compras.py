@@ -288,6 +288,55 @@ def test_get_transaccion_detail_incluye_lotes_vinculados(monkeypatch):
     assert cursor.calls[0][1] == ("TX-1", "LG")
 
 
+class _DeleteCargaCursor:
+    def __init__(self, links_activos):
+        self.links_activos = links_activos
+        self.queries = []
+        self._row = None
+
+    def execute(self, query, params=None):
+        normalized = " ".join(query.split())
+        self.queries.append((normalized, tuple(params or ())))
+        if normalized.startswith("SELECT archivo_ruta"):
+            self._row = {"archivo_ruta": "2026/07/compras__abc.xlsx"}
+        elif normalized.startswith("SELECT COUNT(*)"):
+            self._row = {"total": self.links_activos}
+
+    def fetchone(self):
+        return self._row
+
+    def close(self):
+        pass
+
+
+def test_delete_carga_bloquea_si_hay_lotes_aplicados(monkeypatch):
+    conn = _TransactionConnection()
+    cursor = _DeleteCargaCursor(links_activos=2)
+    monkeypatch.setattr(compras_service, "_db", lambda: (conn, cursor, None))
+
+    payload, status = compras_service.delete_carga(7)
+
+    assert status == 409
+    assert payload["links"] == 2
+    assert conn.commits == 0 and conn.rollbacks == 1
+    assert not any(query.startswith("DELETE") for query, _ in cursor.queries)
+
+
+def test_delete_carga_limpia_links_desaplicados(monkeypatch):
+    conn = _TransactionConnection()
+    cursor = _DeleteCargaCursor(links_activos=0)
+    monkeypatch.setattr(compras_service, "_db", lambda: (conn, cursor, None))
+    monkeypatch.setattr(compras_service, "delete_file", lambda ruta: None)
+
+    payload, status = compras_service.delete_carga(7)
+
+    assert (payload, status) == ({"success": True}, 200)
+    assert conn.commits == 1
+    deletes = [query for query, _ in cursor.queries if query.startswith("DELETE")]
+    assert deletes[0].startswith("DELETE ll FROM lista_compras_lot_links")
+    assert len(deletes) == 3
+
+
 def test_material_compras_registra_ruta_de_cierre(app):
     rules = {str(rule): set(rule.methods or []) for rule in app.url_map.iter_rules()}
 

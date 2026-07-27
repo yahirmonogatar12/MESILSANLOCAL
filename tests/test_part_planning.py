@@ -1163,6 +1163,136 @@ def test_ppy_bloques_capacidad_flexible():
     assert asignacion["D2"][0] == asignacion["D3"][0]
 
 
+def test_ppy_max_bloques_topa_los_grupos_del_dia():
+    """'limitalo a 4 grupos' -> el pool del dia tiene solo 4 bloques de 9 h; lo
+    que no cabe se difiere (fuera). El default sigue en PPY_BLOQUES=5."""
+    from app.api.control_produccion.part_planning import (
+        _ppy_horas_iniciales, PPY_HORAS_TURNO, PPY_BLOQUES,
+    )
+
+    assert len(_ppy_horas_iniciales()) == PPY_BLOQUES  # sin tope: maximo
+    cuatro = _ppy_horas_iniciales(max_bloques=4)
+    assert len(cuatro) == 4
+    assert sum(cuatro.values()) == 4 * PPY_HORAS_TURNO == 36.0
+    # clamp: nunca por debajo de 1 ni por encima del maximo fisico
+    assert len(_ppy_horas_iniciales(max_bloques=0)) == PPY_BLOQUES  # 0 -> default
+    assert len(_ppy_horas_iniciales(max_bloques=99)) == PPY_BLOQUES
+    assert len(_ppy_horas_iniciales(max_bloques=1)) == 1
+
+
+def test_ppy_tiempo_extra_y_sabado_extienden_el_techo_del_bloque():
+    """Tiempo extra sube el techo del bloque +3 h; el sabado lo baja a 8 h.
+    Ambos gated: sin flags el bloque es de 9 h como siempre."""
+    from app.api.control_produccion.part_planning import (
+        _ppy_horas_iniciales, PPY_HORAS_TURNO, PPY_HORAS_EXTRA, PPY_HORAS_SABADO,
+    )
+
+    normal = _ppy_horas_iniciales(max_bloques=4)
+    assert set(normal.values()) == {PPY_HORAS_TURNO}  # 9 h
+
+    te = _ppy_horas_iniciales(max_bloques=4, tiempo_extra=True)
+    assert set(te.values()) == {PPY_HORAS_TURNO + PPY_HORAS_EXTRA}  # 12 h
+    assert sum(te.values()) == 4 * 12.0
+
+    sab = _ppy_horas_iniciales(max_bloques=4, horas_turno=PPY_HORAS_SABADO)
+    assert set(sab.values()) == {PPY_HORAS_SABADO}  # 8 h
+
+    # combinables: sabado con tiempo extra = 8 + 3
+    sab_te = _ppy_horas_iniciales(max_bloques=2, horas_turno=PPY_HORAS_SABADO,
+                                  tiempo_extra=True)
+    assert set(sab_te.values()) == {PPY_HORAS_SABADO + PPY_HORAS_EXTRA}
+
+
+def test_ppy_sabado_solo_produce_si_planning_lo_autoriza():
+    """El sabado no es dia productivo salvo que este en el set autorizado; un
+    domingo nunca; y normalizar descarta lo que no cae en sabado."""
+    from app.api.control_produccion.part_planning import (
+        _ppy_es_dia_produccion, _ppy_normalizar_sabados,
+    )
+
+    sabado = date(2026, 7, 25)
+    domingo = date(2026, 7, 26)
+    lunes = date(2026, 7, 20)
+    assert sabado.weekday() == 5 and domingo.weekday() == 6
+
+    assert _ppy_es_dia_produccion(lunes) is True          # L-V siempre
+    assert _ppy_es_dia_produccion(sabado) is False         # sin autorizar
+    assert _ppy_es_dia_produccion(sabado, {sabado}) is True
+    assert _ppy_es_dia_produccion(domingo, {domingo}) is False  # domingo jamas
+
+    # normalizar: solo sabados, dedup, ISO ordenado; el viernes se descarta
+    assert _ppy_normalizar_sabados(
+        ["2026-07-25", "2026-07-24", date(2026, 7, 25)]
+    ) == ["2026-07-25"]
+    assert _ppy_normalizar_sabados(None) == []
+
+
+def test_ppy_anticipacion_d1_opcional():
+    """D1 mira 5 dias por default (build-ahead), pero con adelantar_d1=False usa
+    la estandar de 2 como las demas: 'D1 no siempre tiene que correr o adelantar'."""
+    from app.api.control_produccion.part_planning import (
+        _ppy_anticipacion, PPY_ANTICIPACION_DIAS,
+    )
+    assert _ppy_anticipacion("D1") == 5                       # default: build-ahead
+    assert _ppy_anticipacion("M3") == PPY_ANTICIPACION_DIAS   # main = 2
+    # apagado: D1 baja a la estandar, no adelanta de a fuerza
+    assert _ppy_anticipacion("D1", adelantar_d1=False) == PPY_ANTICIPACION_DIAS
+    assert _ppy_anticipacion("M3", adelantar_d1=False) == PPY_ANTICIPACION_DIAS
+
+
+def test_ppy_topar_adelanto_reparte_el_hueco_de_la_ventana():
+    """El tope evita que una parte con hueco de varios dias (D1) meta el faltante
+    completo de la semana en un lote; cubre solo la primera falta + N dias de
+    consumo. Caso real AJJ30036901 del 24/07."""
+    from app.api.control_produccion.part_planning import (
+        _ppy_topar_adelanto, PPY_REMAIN_IDEAL,
+    )
+    from datetime import date, timedelta
+
+    # ventana de AJJ el 24/07: plano hasta el martes, se hunde miercoles+
+    base = date(2026, 7, 24)
+    vals = [62, 62, 62, 62, 62, -371, -1496, -1963]
+    ventana = [(base + timedelta(days=i), v) for i, v in enumerate(vals)]
+    inv_primera = -371  # primera falta (miercoles)
+    sin_tope = PPY_REMAIN_IDEAL - min(vals)          # cubre todo el hueco (2023)
+    assert sin_tope == 2023
+
+    # K=0: solo lleva la primera falta a remain 60 -> mucho menor que el hueco
+    k0 = _ppy_topar_adelanto(sin_tope, ventana, inv_primera, 0)
+    assert k0 == PPY_REMAIN_IDEAL - inv_primera == 431
+    # K creciente cubre mas, pero nunca mas que sin tope
+    k1 = _ppy_topar_adelanto(sin_tope, ventana, inv_primera, 1)
+    k2 = _ppy_topar_adelanto(sin_tope, ventana, inv_primera, 2)
+    assert 431 <= k1 <= k2 <= sin_tope
+    # nunca baja del faltante de la primera falta
+    assert k0 >= PPY_REMAIN_IDEAL - inv_primera
+
+
+def test_ppy_parse_plan_params_replay_y_legacy():
+    """Los params persistidos se releen para el replay del apply; una propuesta
+    legacy (sin la columna) equivale al plan normal sin params."""
+    from app.api.control_produccion.part_planning import _ppy_parse_plan_params
+
+    assert _ppy_parse_plan_params(None) == {
+        "lotes_corriendo": {}, "agregados": [],
+        "expandir_dias": 0, "max_bloques": None,
+        "sabados": [], "tiempo_extra": False, "adelanto_max_dias": None,
+        "adelantar_d1": True,
+    }
+    guardado = '{"lotes_corriendo": {"EBR1": "M1"}, "agregados": [], ' \
+               '"expandir_dias": 5, "max_bloques": 4, ' \
+               '"sabados": ["2026-07-25"], "tiempo_extra": true, ' \
+               '"adelanto_max_dias": 1, "adelantar_d1": false}'
+    assert _ppy_parse_plan_params(guardado) == {
+        "lotes_corriendo": {"EBR1": "M1"}, "agregados": [],
+        "expandir_dias": 5, "max_bloques": 4,
+        "sabados": ["2026-07-25"], "tiempo_extra": True, "adelanto_max_dias": 1,
+        "adelantar_d1": False,
+    }
+    # JSON corrupto no revienta el apply: cae al plan normal
+    assert _ppy_parse_plan_params("no-json")["max_bloques"] is None
+
+
 def test_ppy_remain_es_objetivo_no_disparador(monkeypatch):
     """El remain de 60 es el OBJETIVO del lote, no un umbral que dispare plan.
 

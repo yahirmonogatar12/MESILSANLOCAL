@@ -366,8 +366,13 @@ def _plan_template_path() -> Path:
     return Path(__file__).resolve().parents[3] / "Plan_260716_FINAL.xlsx"
 
 
-def _plan_block_assignments(rows: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
-    """Reconstruye bloques visuales de 9 h cuando el borrador no los persistió."""
+def _plan_block_assignments(
+    rows: list[dict[str, Any]], max_block_hours: float = 9.0
+) -> dict[tuple[str, str], str]:
+    """Reconstruye bloques visuales de 9 h cuando el borrador no los persistió.
+
+    max_block_hours: techo del bloque (con tiempo extra sube a 12 h para no partir
+    una linea con horas extra en dos bloques, igual que el grid del modal)."""
     assignments: dict[tuple[str, str], str] = {}
     by_date: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
     for row in rows:
@@ -388,7 +393,7 @@ def _plan_block_assignments(rows: list[dict[str, Any]]) -> dict[tuple[str, str],
         for line, hours in sorted(line_hours.items(), key=lambda item: (-item[1], item[0])):
             candidates = [
                 block for block in blocks
-                if block["hours"] + hours <= 9.01 and compatible(line, block["lines"])
+                if block["hours"] + hours <= max_block_hours + 0.01 and compatible(line, block["lines"])
             ]
             if candidates:
                 block = min(candidates, key=lambda item: (item["hours"], item["name"]))
@@ -532,7 +537,9 @@ def _build_plan_proposal_excel(
     date_from = _plan_date(summary.get("date_from")) or date.today()
     date_to = _plan_date(summary.get("date_to")) or date_from
     generated_on = _plan_date(summary.get("created_at")) or date.today()
-    blocks = _plan_block_assignments(rows)
+    # Con tiempo extra el bloque admite +3 h (mismo criterio que el grid del modal).
+    max_block_hours = 12.0 if summary.get("tiempo_extra") else 9.0
+    blocks = _plan_block_assignments(rows, max_block_hours)
     block_count = len(set(blocks.values())) or 1
 
     # Resumen

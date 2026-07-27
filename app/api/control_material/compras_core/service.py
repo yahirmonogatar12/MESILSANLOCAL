@@ -763,18 +763,60 @@ def list_cargas(args):
 
 
 def delete_carga(carga_id):
+    """Borra una carga solo si sus lineas NO tienen lotes APLICADOS.
+
+    Un link APLICADO es un lote ya costeado desde esta compra; borrarla rompería
+    la trazabilidad del costo. Para corregir una transacción primero hay que
+    desaplicar el lote, borrar/re-subir, y luego reaplicarlo. Los DESAPLICADO son
+    histórico inerte y se limpian junto con la carga (espejo de delete_invoice).
+    """
     conn, cursor, error = _db()
     if error:
         return error
     try:
+        cursor.execute("START TRANSACTION")
         cursor.execute(
-            "SELECT archivo_ruta FROM lista_compras_cargas WHERE id = %s LIMIT 1",
+            "SELECT archivo_ruta FROM lista_compras_cargas WHERE id = %s LIMIT 1 FOR UPDATE",
             (carga_id,),
         )
         carga = cursor.fetchone()
         if not carga:
+            conn.rollback()
             return {"success": False, "error": "Carga no encontrada."}, 404
-        cursor.execute("START TRANSACTION")
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM lista_compras_lot_links ll
+            INNER JOIN lista_compras_lineas l ON l.id = ll.transaccion_linea_id
+            WHERE l.carga_id = %s AND ll.estado = 'APLICADO'
+            """,
+            (carga_id,),
+        )
+        links_activos = int((cursor.fetchone() or {}).get("total") or 0)
+        if links_activos:
+            conn.rollback()
+            return (
+                {
+                    "success": False,
+                    "error": (
+                        "No se puede eliminar: la carga tiene "
+                        f"{links_activos} lote(s) APLICADOS a sus transacciones. "
+                        "Desaplica primero y reaplica despues."
+                    ),
+                    "links": links_activos,
+                },
+                409,
+            )
+
+        cursor.execute(
+            """
+            DELETE ll FROM lista_compras_lot_links ll
+            INNER JOIN lista_compras_lineas l ON l.id = ll.transaccion_linea_id
+            WHERE l.carga_id = %s
+            """,
+            (carga_id,),
+        )
         cursor.execute("DELETE FROM lista_compras_lineas WHERE carga_id = %s", (carga_id,))
         cursor.execute("DELETE FROM lista_compras_cargas WHERE id = %s", (carga_id,))
         conn.commit()

@@ -58,6 +58,15 @@ PROY_PERMISO_BOTON = "Proyeccion"
 # Modulo hermano "Plan Proyectado" (generador de lotes tipo hoja LOTE N)
 PPY_PERMISO_BOTON = "Plan Proyectado"
 PPY_HORAS_TURNO = 9.0  # horas productivas sin tiempo extra (plan-assy-helpers.js)
+# Tiempo extra: cuando Planning lo autoriza explicitamente, un bloque (equipo)
+# puede trabajar mas alla de las 9 h del turno. Se extiende el techo del bloque;
+# lo que corre despues de las 17:30 el grid ya lo pinta como tiempo extra por
+# reloj. ponytail: +3 h fijo (turno ~hasta 20:30); si el piso autoriza mas, sube
+# esta constante.
+PPY_HORAS_EXTRA = 3.0
+# Sabado extraordinario (8:00-16:00): 8 h productivas, no 9. Solo aplica cuando
+# Planning nombra ese sabado como dia productivo.
+PPY_HORAS_SABADO = 8.0
 # Capacidad maxima: 5 turnos/equipos de 9 h.
 # NO estan atados a una linea fija: planning arma los bloques cada dia con las
 # lineas que convenga. En la hoja PLAN se ve que cada bloque corre varias
@@ -132,6 +141,13 @@ PPY_ANTICIPACION_POR_LINEA = {"D1": 5}
 PPY_ANTICIPACION_MAX = max(
     [PPY_ANTICIPACION_DIAS] + list(PPY_ANTICIPACION_POR_LINEA.values())
 )
+# Tope de ADELANTO por parte/dia: un lote de un solo dia no cubre TODA la ventana
+# (que en D1 puede ser el hueco de 5 dias) sino, a lo mas, el faltante hasta
+# llevar la primera falta a remain 60 MAS N dias de consumo diario. Asi una parte
+# con hueco de varios dias no acapara su linea en un solo dia y la capacidad se
+# reparte entre varias partes, como hace Planning. None = sin tope (cubre toda la
+# ventana; comportamiento historico).
+PPY_ADELANTO_MAX_DIAS = None
 PPY_LINEAS_DEFAULT = "M1,M2,M3"
 # Partes que LG pide pero que NO se producen aqui. Se configuran en
 # lg_pp_config.partes_excluidas (CSV) porque no hay nada en los datos que las
@@ -436,6 +452,7 @@ def init_part_planning_tables():
     )
     proposal_columns = (
         ("excluded_parts_json", "LONGTEXT NULL AFTER objective"),
+        ("plan_params_json", "LONGTEXT NULL AFTER excluded_parts_json"),
     )
     for column_name, column_ddl in proposal_columns:
         existe = execute_query(
@@ -1731,6 +1748,27 @@ def _ppy_normalizar_partes_excluidas(values):
     return salida
 
 
+def _ppy_parse_plan_params(value):
+    """Lee los params de planeacion persistidos (lotes_corriendo, agregados,
+    expandir_dias, max_bloques). Propuestas legacy sin la columna equivalen al
+    plan normal. Se usan para que el apply re-simule con los MISMOS params y la
+    frescura no marque STALE por diferencias de parametros."""
+    base = {"lotes_corriendo": {}, "agregados": [],
+            "expandir_dias": 0, "max_bloques": None,
+            "sabados": [], "tiempo_extra": False, "adelanto_max_dias": None,
+            "adelantar_d1": True}
+    if not value:
+        return base
+    try:
+        parsed = value if isinstance(value, dict) else json.loads(str(value))
+    except (TypeError, ValueError):
+        return base
+    if not isinstance(parsed, dict):
+        return base
+    base.update({k: parsed[k] for k in base if k in parsed})
+    return base
+
+
 def _ppy_partes_excluidas_propuesta(value):
     """Lee la lista persistida; propuestas legacy equivalen a lista vacía."""
     if not value:
@@ -1771,6 +1809,22 @@ def _ppy_normalizar_corriendo(lotes_corriendo):
     return corriendo
 
 
+def _ppy_normalizar_sabados(sabados):
+    """Normaliza las fechas de sabado autorizadas a lista ordenada de ISO strings.
+
+    Solo acepta fechas que caen en sabado; lo demas se descarta (planear un
+    "sabado" que es martes no tiene sentido). JSON-serializable para persistir.
+    """
+    salida = []
+    vistas = set()
+    for s in (sabados or []):
+        ds = s if isinstance(s, date) and not isinstance(s, datetime) else _ppy_parse_fecha(s)
+        if ds and ds.weekday() == 5 and ds.isoformat() not in vistas:
+            vistas.add(ds.isoformat())
+            salida.append(ds.isoformat())
+    return sorted(salida)
+
+
 def _ppy_normalizar_agregados(agregados):
     """Normaliza los agregados manuales de Planning (servicios o forzados) a
     lista de {part_no, linea, qty, turno}.
@@ -1807,9 +1861,30 @@ def _ppy_normalizar_agregados(agregados):
     return salida
 
 
+def _ppy_topar_adelanto(falt_total, ventana, inventario_primera_falta, max_dias):
+    """Topa cuanto cubre un lote de un solo dia: el faltante hasta llevar la
+    primera falta a remain 60, MAS ``max_dias`` de consumo diario promedio.
+
+    Sin tope, una parte con un hueco de varios dias (tipico de D1, ventana de 5)
+    mete el faltante completo de la semana en el primer dia disponible y acapara
+    su linea. Con el tope, cubre solo su parte cercana y el resto lo toman los
+    dias siguientes: la capacidad de la linea se reparte entre varias partes,
+    como hace Planning. Nunca baja del faltante de la primera falta.
+    """
+    vals = [v for _f, v in ventana]
+    caidas = [max(0.0, vals[i - 1] - vals[i]) for i in range(1, len(vals))]
+    dias = sum(1 for c in caidas if c > 0) or 1
+    consumo_diario = sum(caidas) / dias
+    faltante_primer = PPY_REMAIN_IDEAL - inventario_primera_falta
+    tope = faltante_primer + consumo_diario * max_dias
+    return min(falt_total, max(faltante_primer, tope))
+
+
 def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                           replanear=True, excluded_parts=None,
-                          lotes_corriendo=None, agregados=None, expandir_dias=0):
+                          lotes_corriendo=None, agregados=None, expandir_dias=0,
+                          max_bloques=None, sabados=None, tiempo_extra=False,
+                          adelanto_max_dias=None, adelantar_d1=True):
     """Propone schedule con MRP y capacidad, sin escribir datos operativos.
 
     replanear=True (default): toma el Schedule capturado como linea base para
@@ -1830,6 +1905,13 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
     Si ``detailed`` es True retorna tambien excepciones estructuradas.
     """
     run_query = query or execute_query
+    # Sabados que Planning autorizo como dia productivo (8 h). Se ignora lo que
+    # no sea sabado para no colar un dia normal por error.
+    sabados_ok = set()
+    for s in (sabados or []):
+        ds = s if isinstance(s, date) and not isinstance(s, datetime) else _ppy_parse_fecha(s)
+        if ds and ds.weekday() == 5:
+            sabados_ok.add(ds)
     # La proyeccion va MAS ALLA del rango que se planea: cada dia mira hacia
     # adelante su anticipacion (2 dias de produccion, D1 5) para encontrar el
     # faltante que debe cubrir. Cortarla en fecha_fin dejaba la ventana en cero
@@ -2159,9 +2241,10 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
         acum[f["part_no"]] = acum.get(f["part_no"], 0) + int(f["qty"])
     d = fecha_ini
     while d <= fecha_fin:
-        if not _ppy_es_dia_produccion(d):
-            # ISEMM no produce sabado ni domingo. El faltante de esos dias lo
-            # cubre el viernes: su horizonte si cuenta el consumo del sabado.
+        if not _ppy_es_dia_produccion(d, sabados_ok):
+            # ISEMM no produce domingo (ni sabado salvo que Planning lo autorice).
+            # El faltante de esos dias lo cubre el viernes: su horizonte si cuenta
+            # el consumo del sabado.
             d += timedelta(days=1)
             continue
         candidatos = []
@@ -2175,7 +2258,7 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             # se planea, no hasta donde se mira); por eso la proyeccion se pidio
             # hasta proy_fin.
             horizonte_normal = _ppy_sumar_dias_produccion(
-                d, _ppy_anticipacion(info[p].get("line"))
+                d, _ppy_anticipacion(info[p].get("line"), adelantar_d1)
             )
             horizonte_fin = horizonte_normal
             if expandir_dias and consumo_recurrente.get(p):
@@ -2235,6 +2318,14 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             # Al reponer, el lote deja el inventario en PPY_REMAIN_IDEAL, no en
             # cero: ese colchon es el que absorbe el scrap.
             falt_total = PPY_REMAIN_IDEAL - min(valor for _f, valor in ventana)
+            cap_adelanto = (
+                adelanto_max_dias if adelanto_max_dias is not None
+                else PPY_ADELANTO_MAX_DIAS
+            )
+            if cap_adelanto is not None:
+                falt_total = _ppy_topar_adelanto(
+                    falt_total, ventana, inventario_primera_falta, cap_adelanto,
+                )
             inventario_hoy = next((valor for f, valor in ventana if f == d), 0)
             candidato = {
                 "part_no": p,
@@ -2294,7 +2385,11 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
         if candidatos:
             # Las horas son por GRUPO (M3+M4 comparten 9 h, no 9 h cada una).
             ocupadas_dia = {l: h for (f, l), h in horas_conf.items() if f == d}
-            horas_rest = _ppy_horas_iniciales(lineas_activas, ocupadas_dia)
+            horas_turno_dia = PPY_HORAS_SABADO if d.weekday() == 5 else None
+            horas_rest = _ppy_horas_iniciales(
+                lineas_activas, ocupadas_dia, max_bloques,
+                horas_turno=horas_turno_dia, tiempo_extra=tiempo_extra,
+            )
             if d in capacidad_desconocida:
                 horas_rest = {g: 0.0 for g in horas_rest}
             lotes, fuera = _ppy_armar_lotes(
@@ -2465,10 +2560,13 @@ def _ppy_hhmm(total_minutos):
     return f"{total_minutos // 60:02d}:{total_minutos % 60:02d}"
 
 
-def _ppy_bloques_visuales(items):
+def _ppy_bloques_visuales(items, max_horas=None):
     """Agrupa (fecha,linea) en bloques de 9 h compatibles (D3 no con M1-M4).
 
+    max_horas: techo del bloque (default 9 h; con tiempo extra sube a 12 h para
+    no partir una linea que trabaja horas extra en dos bloques visuales).
     Mismo criterio que el Excel: las lineas mas pesadas primero, best-fit."""
+    tope = max_horas or PPY_HORAS_TURNO
     asign = {}
     por_fecha = {}
     for it in items:
@@ -2488,7 +2586,7 @@ def _ppy_bloques_visuales(items):
         bloques = []
         for line, h in sorted(lh.items(), key=lambda kv: (-kv[1], kv[0])):
             cands = [b for b in bloques
-                     if b["h"] + h <= PPY_HORAS_TURNO + 0.01 and compat(line, b["lines"])]
+                     if b["h"] + h <= tope + 0.01 and compat(line, b["lines"])]
             b = min(cands, key=lambda x: (x["h"], x["name"])) if cands else None
             if b is None:
                 b = {"name": f"B{len(bloques) + 1}", "h": 0.0, "lines": []}
@@ -2508,12 +2606,18 @@ def _ppy_propuesta_grid(public_id, usuario, query=None):
     run_query = query or execute_query
     header = run_query(
         "SELECT id, public_id, version, date_from, date_to, status, engine_version, "
-        "total_qty, omitted_count, objective FROM lg_plan_proposals "
+        "total_qty, omitted_count, objective, plan_params_json FROM lg_plan_proposals "
         "WHERE public_id=%s AND created_by=%s",
         (public_id, usuario), fetch="one",
     )
     if not header:
         raise ValueError("Propuesta no encontrada o pertenece a otro usuario")
+    # Si la propuesta autorizo tiempo extra, el bloque visual admite +3 h para no
+    # partir una linea con horas extra en dos grupos.
+    grid_params = _ppy_parse_plan_params(header.get("plan_params_json"))
+    max_horas_bloque = PPY_HORAS_TURNO + (
+        PPY_HORAS_EXTRA if grid_params["tiempo_extra"] else 0.0
+    )
     rows = run_query(
         "SELECT public_id AS item_id, part_no, sched_date, linea, turno, "
         "qty_proposed AS qty, uph, ct, hours_required AS horas, pack_size, "
@@ -2539,7 +2643,7 @@ def _ppy_propuesta_grid(public_id, usuario, query=None):
             "inv_despues": int(r["inventory_after"] or 0),
             "falta_el": sf.isoformat() if sf else None, "motivo": r["reason"],
         })
-    asign = _ppy_bloques_visuales(items)
+    asign = _ppy_bloques_visuales(items, max_horas_bloque)
     grupos_map = {}
     for it in items:
         bloque = asign.get((it["fecha"], it["linea"]), "B1")
@@ -2563,7 +2667,7 @@ def _ppy_propuesta_grid(public_id, usuario, query=None):
             "bloque": bloque,
             "lineas": sorted({f["linea"] for f in filas}),
             "total_horas": round(total_h, 2),
-            "excede": total_h > PPY_HORAS_TURNO + 0.01,
+            "excede": total_h > max_horas_bloque + 0.01,
             "lotes": filas,
         })
     df = header["date_from"]
@@ -2719,14 +2823,44 @@ def _ppy_crear_propuesta(
     lotes_corriendo=None,
     agregados=None,
     expandir_dias=0,
+    max_bloques=None,
+    sabados=None,
+    tiempo_extra=False,
+    adelanto_max_dias=None,
+    adelantar_d1=True,
 ):
     """Calcula y persiste un borrador; no modifica schedule ni lotes."""
     excluded_parts = _ppy_normalizar_partes_excluidas(excluded_parts)
+    max_bloques = (
+        None if not max_bloques else max(1, min(int(max_bloques), PPY_BLOQUES))
+    )
+    sabados = _ppy_normalizar_sabados(sabados)
+    tiempo_extra = bool(tiempo_extra)
+    adelanto_max_dias = (
+        None if adelanto_max_dias is None
+        else max(0, min(int(adelanto_max_dias), PPY_ANTICIPACION_MAX))
+    )
+    adelantar_d1 = bool(adelantar_d1)
     propuestas, omitidas, excepciones = _ppy_simular_schedule(
         fecha_ini, fecha_fin, detailed=True, excluded_parts=excluded_parts,
         lotes_corriendo=lotes_corriendo, agregados=agregados,
-        expandir_dias=expandir_dias,
+        expandir_dias=expandir_dias, max_bloques=max_bloques,
+        sabados=sabados, tiempo_extra=tiempo_extra,
+        adelanto_max_dias=adelanto_max_dias, adelantar_d1=adelantar_d1,
     )
+    # Los parametros que forman el resultado se guardan para replicarlos en el
+    # apply: sin esto la re-simulacion de frescura corre con otros params y la
+    # propuesta se marca STALE por error (afectaba tambien a expandir/agregados).
+    plan_params = {
+        "lotes_corriendo": lotes_corriendo or {},
+        "agregados": agregados or [],
+        "expandir_dias": int(expandir_dias or 0),
+        "max_bloques": max_bloques,
+        "sabados": sabados,
+        "tiempo_extra": tiempo_extra,
+        "adelanto_max_dias": adelanto_max_dias,
+        "adelantar_d1": adelantar_d1,
+    }
     schedule_snapshot = _ppy_schedule_snapshot(fecha_ini, fecha_fin)
     _ppy_attach_schedule_actual(propuestas, fecha_ini, fecha_fin)
     schedule_changes = _ppy_schedule_changes(propuestas, schedule_snapshot)
@@ -2754,16 +2888,18 @@ def _ppy_crear_propuesta(
         )
         cursor.execute(
             "INSERT INTO lg_plan_proposals "
-            "(public_id, version, date_from, date_to, objective, excluded_parts_json, source, "
+            "(public_id, version, date_from, date_to, objective, excluded_parts_json, "
+            "plan_params_json, source, "
             "engine_version, input_hash, status, total_items, total_qty, "
             "omitted_count, created_by) "
-            "VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, 'DRAFT', %s, %s, %s, %s)",
+            "VALUES (%s, 1, %s, %s, %s, %s, %s, %s, %s, %s, 'DRAFT', %s, %s, %s, %s)",
             (
                 public_id,
                 fecha_ini,
                 fecha_fin,
                 objective,
                 json.dumps(excluded_parts, ensure_ascii=False),
+                json.dumps(plan_params, ensure_ascii=False),
                 source,
                 PPY_PROPOSAL_ENGINE_VERSION,
                 input_hash,
@@ -2844,6 +2980,11 @@ def _ppy_crear_propuesta(
         "line_summary": _ppy_resumen_lineas(propuestas),
         "capacidad_libre": _ppy_capacidad_libre(propuestas, fecha_ini),
         "expandido_dias": int(expandir_dias or 0),
+        "max_bloques": max_bloques,
+        "sabados": sabados,
+        "tiempo_extra": tiempo_extra,
+        "adelanto_max_dias": adelanto_max_dias,
+        "adelantar_d1": adelantar_d1,
         "schedule_changes": schedule_changes,
         "schedule_change_summary": {
             action: sum(1 for item in schedule_changes if item["accion"] == action)
@@ -3033,6 +3174,7 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
             if isinstance(locked["date_to"], datetime)
             else locked["date_to"]
         )
+        params = _ppy_parse_plan_params(locked.get("plan_params_json"))
         actuales, _omitidas, excepciones = _ppy_simular_schedule(
             fecha_ini,
             fecha_fin,
@@ -3041,6 +3183,14 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
             excluded_parts=_ppy_partes_excluidas_propuesta(
                 locked.get("excluded_parts_json")
             ),
+            lotes_corriendo=params["lotes_corriendo"],
+            agregados=params["agregados"],
+            expandir_dias=params["expandir_dias"],
+            max_bloques=params["max_bloques"],
+            sabados=params["sabados"],
+            tiempo_extra=params["tiempo_extra"],
+            adelanto_max_dias=params["adelanto_max_dias"],
+            adelantar_d1=params["adelantar_d1"],
         )
         _ppy_attach_schedule_actual(
             actuales, fecha_ini, fecha_fin, query=tx_query
@@ -3130,18 +3280,23 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
                     raise ValueError(f"Fecha fuera del rango de la propuesta para {row['part_no']}")
                 if qty <= 0:
                     raise ValueError(f"Cantidad invalida para {row['part_no']}")
+                # Caja abierta: Planning puede pedir cantidad libre (no multiplo
+                # del empaque) por parte; sin ese permiso se exige caja cerrada.
                 pack = int(row.get("pack_size") or 0)
-                if pack <= 0 or qty % pack != 0:
+                if not change.get("caja_abierta") and (pack <= 0 or qty % pack != 0):
                     raise ValueError(
                         f"{row['part_no']}: la cantidad debe ser multiplo del empaque {pack or 'N/D'}"
                     )
                 if linea not in lineas_activas:
                     raise ValueError(f"{row['part_no']}: linea {linea or 'N/D'} no activa")
+                # Forzar linea: Planning puede correr la parte fuera de su
+                # lineas_permitidas (whitelist fisica) si lo pide explicito; la
+                # linea destino igual debe estar activa (validado arriba).
                 permitidas = (
                     permitidas_parte.get(row["part_no"])
                     or permitidas_familia.get(_ppy_familia(row["part_no"]))
                 )
-                if permitidas and linea not in permitidas:
+                if permitidas and linea not in permitidas and not change.get("forzar_linea"):
                     raise ValueError(
                         f"{row['part_no']}: linea {linea} no permitida ({','.join(permitidas)})"
                     )
@@ -3203,17 +3358,20 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
         # El Schedule vigente es la linea base que esta propuesta REEMPLAZA;
         # sumarlo aqui duplicaria sus horas. Los lotes CONFIRMADOS de arriba
         # si son inamovibles y consumen capacidad adicional al plan nuevo.
+        # Con tiempo extra autorizado el techo por linea/turno sube (el equipo
+        # trabaja mas alla de las 9 h); sin el, se mantiene el turno de 9 h.
+        techo = PPY_HORAS_TURNO + (PPY_HORAS_EXTRA if params["tiempo_extra"] else 0.0)
         excedidas = [
             (clave, total)
             for clave, total in horas.items()
-            if total > PPY_HORAS_TURNO + 1e-6
+            if total > techo + 1e-6
         ]
         if excedidas:
             detalle = ", ".join(
                 f"{f.isoformat()} {linea}/{turno}: {total:.2f} h"
                 for (f, linea, turno), total in excedidas
             )
-            raise ValueError(f"La propuesta excede {PPY_HORAS_TURNO:g} h: {detalle}")
+            raise ValueError(f"La propuesta excede {techo:g} h: {detalle}")
 
         cursor.execute(
             "SELECT part_no, sched_date, sched_qty, linea, turno "
@@ -3815,8 +3973,16 @@ def api_pp_imports():
 # =============================
 
 
-def _ppy_anticipacion(linea):
-    """Dias de produccion que se adelanta una linea (D1 mira mas lejos)."""
+def _ppy_anticipacion(linea, adelantar_d1=True):
+    """Dias de produccion que se adelanta una linea (D1 mira mas lejos).
+
+    adelantar_d1=False: D1 NO construye adelantado por default; usa la
+    anticipacion estandar (2 dias) como el resto. D1 solo corre lo cercano y su
+    build-ahead queda a criterio de Planning (expandir_dias). Es lo que pidieron:
+    "D1 no siempre tiene que correr o adelantar".
+    """
+    if not adelantar_d1:
+        return PPY_ANTICIPACION_DIAS
     return PPY_ANTICIPACION_POR_LINEA.get(
         str(linea or "").strip().upper(), PPY_ANTICIPACION_DIAS
     )
@@ -3898,14 +4064,22 @@ def _ppy_repartir_bloques(horas_pedidas, horas_rest):
     return asignacion
 
 
-def _ppy_horas_iniciales(lineas_activas=None, horas_ocupadas=None):
-    """Horas disponibles: hasta PPY_BLOQUES turnos de 9 h.
+def _ppy_horas_iniciales(lineas_activas=None, horas_ocupadas=None, max_bloques=None,
+                         horas_turno=None, tiempo_extra=False):
+    """Horas disponibles: hasta PPY_BLOQUES turnos de 9 h (o max_bloques si Planning
+    pide un tope menor, ej. "limitalo a 4 grupos": lo que no cabe se difiere).
+
+    horas_turno: capacidad base del bloque (default 9 h; sabado 8 h).
+    tiempo_extra: si Planning lo autoriza, cada bloque puede pasar de su turno y
+    trabajar +PPY_HORAS_EXTRA (lo de despues de 17:30 se pinta como TE por reloj).
 
     horas_ocupadas: {linea: horas} ya usadas (lotes confirmados, schedule). Se
     descuentan del bloque mas libre, porque el Excel no dice en que bloque
     quedo cada lote confirmado.
     """
-    horas = {"B%d" % i: PPY_HORAS_TURNO for i in range(1, PPY_BLOQUES + 1)}
+    n = PPY_BLOQUES if not max_bloques else max(1, min(int(max_bloques), PPY_BLOQUES))
+    tope = (horas_turno or PPY_HORAS_TURNO) + (PPY_HORAS_EXTRA if tiempo_extra else 0.0)
+    horas = {"B%d" % i: tope for i in range(1, n + 1)}
     for _linea, h in sorted((horas_ocupadas or {}).items(),
                             key=lambda kv: -kv[1]):
         b = _ppy_bloque_con_horas(horas)
@@ -3914,15 +4088,20 @@ def _ppy_horas_iniciales(lineas_activas=None, horas_ocupadas=None):
     return horas
 
 
-def _ppy_es_dia_produccion(dia):
+def _ppy_es_dia_produccion(dia, sabados=None):
     """ISEMM produce de lunes a viernes.
 
     El sabado solo se trabaja en caso extraordinario (8am-4pm) y se decide a
     mano, asi que el generador no propone lotes en sabado ni domingo: el
     faltante del sabado lo cubre el viernes, porque el horizonte si cuenta el
     consumo de LG de ese dia (ver _ppy_sumar_dias_consumo).
+
+    sabados: fechas de sabado que Planning autorizo como dia productivo (8 h).
+    Solo el loop principal las pasa; el calendario de anticipacion sigue L-V.
     """
-    return dia.weekday() < 5
+    if dia.weekday() < 5:
+        return True
+    return bool(sabados) and dia.weekday() == 5 and dia in sabados
 
 
 def _ppy_sumar_dias_produccion(dia, dias):
