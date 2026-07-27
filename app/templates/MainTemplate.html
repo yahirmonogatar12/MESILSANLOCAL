@@ -2124,32 +2124,6 @@
                 }
             }
 
-            // Función mejorada para cerrar dropdowns
-            function cerrarTodosLosDropdownsMejorada(container = null) {
-
-                try {
-                    // Usar el sistema unificado si está disponible
-                    if (window.unifiedDropdowns) {
-                        window.unifiedDropdowns.closeAll();
-                        return;
-                    }
-
-                    console.warn(' Sistema unificado no disponible, usando método manual');
-                    // Fallback manual
-                    document.querySelectorAll('.collapse.show').forEach(elemento => {
-                        elemento.classList.remove('show');
-                        elemento.style.display = 'none';
-                    });
-
-                    document.querySelectorAll('[aria-expanded="true"]').forEach(boton => {
-                        boton.setAttribute('aria-expanded', 'false');
-                    });
-
-                } catch (error) {
-                    console.error(' Error cerrando dropdowns:', error);
-                }
-            }
-
             window.__dynamicModuleScriptUrls = window.__dynamicModuleScriptUrls || new Set();
             window.__dynamicModuleLoadController = window.__dynamicModuleLoadController || null;
 
@@ -2278,8 +2252,10 @@
                 }
                 // Agregar más funciones de limpieza aquí para otros módulos si es necesario
 
-                // 1. CERRAR TODOS LOS DROPDOWNS ANTES DE LIMPIAR
-                cerrarTodosLosDropdownsMejorada();
+                // 1. CERRAR LOS DROPDOWNS DEL MODULO QUE SE VA A REEMPLAZAR.
+                // Solo los de este contenedor: cerrar todos apagaba tambien los
+                // del menu lateral, asi que abrir un modulo plegaba el menu.
+                cerrarTodosLosDropdowns(container);
 
                 // 1.1. LIMPIAR TODAS LAS SELECCIONES ACTIVAS
                 if (window.unifiedDropdowns && window.unifiedDropdowns.clearAllSelections) {
