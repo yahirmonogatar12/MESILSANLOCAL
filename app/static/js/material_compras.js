@@ -497,6 +497,11 @@
         `se borraran ${numberText(s.faltantes)}`,
         `${numberText(s.sin_cambio)} sin cambio`,
       ];
+      if (s.renombradas) {
+        const muestra = (s.renombradas_muestra || [])
+          .map((r) => `${r.numero_parte}: ${r.anterior} → ${r.nueva}`);
+        partes.push(`${numberText(s.renombradas)} cambian de transaccion y se llevan sus lotes vinculados (${muestra.join("; ")}${s.renombradas > muestra.length ? "…" : ""})`);
+      }
       if (s.bloqueadas.length) partes.push(`${s.bloqueadas.length} con lote aplicado no se tocan`);
       if (s.protegidas.length) partes.push(`${s.protegidas.length} del historico se conservan`);
       if (s.ambiguas.length) partes.push(`${s.ambiguas.length} ambiguas (parte repetida) se omiten`);
@@ -550,6 +555,7 @@
         ? (vacia
           ? (data.message || "El Excel ya coincide con lo registrado.")
           : `✔ Sincronizado: ${data.agregadas} agregados, ${data.modificadas} actualizados, ${data.borradas} borrados` +
+            `${data.renombradas ? `, ${data.renombradas} movidos de transaccion con sus lotes` : ""}` +
             `${data.bloqueadas ? `, ${data.bloqueadas} sin tocar por tener lote aplicado` : ""}` +
             `${data.protegidas ? `, ${data.protegidas} del histórico conservados` : ""} (${data.tipo}).`)
         : (vacia

@@ -209,6 +209,37 @@ def _filter_new_lines(cursor, tipo, lineas):
     return new_lines, matched_lines, existing_transaction_keys
 
 
+def _lineas_por_parte(cursor, tipo, lineas, claves_archivo):
+    """Renglones del mismo tipo y parte en OTRAS transacciones.
+
+    Son los candidatos a "cambio de numero de transaccion": el archivo ya no
+    menciona la transaccion vieja, asi que _existing_lines nunca la traeria.
+    ponytail: raw_part_num no esta indexado, es un scan; con decenas de miles de
+    renglones habria que agregar KEY (tipo, raw_part_num).
+    """
+    partes = sorted({(l.get("raw_part_num") or l.get("numero_parte") or "") for l in lineas})
+    partes = [parte for parte in partes if parte]
+    if not partes:
+        return []
+    rows_by_id = {}
+    select_columns = ", ".join(("id", "estado", *_LINE_IDENTITY_COLUMNS))
+    for chunk in _chunks(partes):
+        placeholders = ", ".join(["%s"] * len(chunk))
+        cursor.execute(
+            f"""
+            SELECT {select_columns}
+            FROM lista_compras_lineas
+            WHERE tipo = %s AND raw_part_num IN ({placeholders})
+            """,
+            [tipo, *chunk],
+        )
+        for row in cursor.fetchall() or []:
+            if _transaction_key(row["numero_transaccion"]) in claves_archivo:
+                continue  # esa transaccion si viene en el archivo: ya se compara aparte
+            rows_by_id[row["id"]] = row
+    return list(rows_by_id.values())
+
+
 def _line_key(row):
     """Clave de negocio de un renglón: transacción + parte del Excel."""
     return (
@@ -252,6 +283,7 @@ def _sync_plan(cursor, tipo, lineas):
     plan = {
         "nuevas": [],
         "modificadas": [],  # (row_id, linea)
+        "renombradas": [],  # (row_id, linea, transaccion_anterior)
         "faltantes": [],
         "sin_cambio": 0,
         "bloqueadas": [],  # tienen lote aplicado
@@ -275,11 +307,18 @@ def _sync_plan(cursor, tipo, lineas):
             continue
         candidatos[fila_db["id"]] = ("modificadas", fila_db, linea)
 
-    for clave, filas_db in db_por_clave.items():
-        if clave in excel_por_clave:
-            continue
-        for fila_db in filas_db:
-            candidatos[fila_db["id"]] = ("faltantes", fila_db, None)
+    faltantes_db = [
+        fila_db
+        for clave, filas_db in db_por_clave.items()
+        if clave not in excel_por_clave
+        for fila_db in filas_db
+    ]
+    claves_archivo = {clave[0] for clave in excel_por_clave}
+    _detectar_renombres(
+        plan, faltantes_db, _lineas_por_parte(cursor, tipo, plan["nuevas"], claves_archivo)
+    )
+    for fila_db in faltantes_db:
+        candidatos[fila_db["id"]] = ("faltantes", fila_db, None)
 
     con_lote = _lineas_con_lote(cursor, candidatos) if candidatos else set()
     for row_id, (destino, fila_db, linea) in candidatos.items():
@@ -294,6 +333,49 @@ def _sync_plan(cursor, tipo, lineas):
         else:
             plan["faltantes"].append(fila_db)
     return plan
+
+
+def _detectar_renombres(plan, faltantes_db, otros_candidatos=()):
+    """Cambio de numero de transaccion: mismo renglon, otro numero.
+
+    Un renglon que desaparece y otro identico que aparece con distinto numero de
+    transaccion es la misma compra recapturada. En vez de borrar e insertar, la
+    linea conserva su id y sus lotes vinculados viajan con ella (se actualiza el
+    numero en los links), asi que el material no se desaplica ni hay que volver
+    a asignarlo. Solo cuando el pareo es 1 a 1: con duplicados no se adivina.
+    """
+    def sin_transaccion(row):
+        return _line_signature(row)[1:]
+
+    pendientes = {}
+    for fila_db in (*faltantes_db, *otros_candidatos):
+        pendientes.setdefault(sin_transaccion(fila_db), []).append(fila_db)
+    entrantes = {}
+    for linea in plan["nuevas"]:
+        entrantes.setdefault(sin_transaccion(linea), []).append(linea)
+
+    for firma, filas_db in pendientes.items():
+        candidatas = entrantes.get(firma) or []
+        if len(filas_db) != 1 or len(candidatas) != 1:
+            continue
+        fila_db, linea = filas_db[0], candidatas[0]
+        plan["renombradas"].append((fila_db["id"], linea, fila_db["numero_transaccion"]))
+        if fila_db in faltantes_db:
+            faltantes_db.remove(fila_db)
+        plan["nuevas"].remove(linea)
+
+
+def _rename_lineas(cursor, carga_id, renombradas):
+    """Mueve el renglon (y sus lotes vinculados) al nuevo numero de transaccion."""
+    for row_id, linea, _anterior in renombradas:
+        cursor.execute(
+            "UPDATE lista_compras_lineas SET numero_transaccion = %s, carga_id = %s WHERE id = %s",
+            (linea["numero_transaccion"], carga_id, row_id),
+        )
+        cursor.execute(
+            "UPDATE lista_compras_lot_links SET numero_transaccion = %s WHERE transaccion_linea_id = %s",
+            (linea["numero_transaccion"], row_id),
+        )
 
 
 def _resumen_fila(row):
@@ -382,6 +464,15 @@ def preview_compras(files, form):
                 existentes = len(transaction_keys) - nuevas
                 sync = {
                     "modificadas": len(plan["modificadas"]),
+                    "renombradas": len(plan["renombradas"]),
+                    "renombradas_muestra": [
+                        {
+                            "anterior": anterior,
+                            "nueva": linea["numero_transaccion"],
+                            "numero_parte": linea.get("raw_part_num"),
+                        }
+                        for _id, linea, anterior in plan["renombradas"][:20]
+                    ],
                     "faltantes": len(plan["faltantes"]),
                     "sin_cambio": plan["sin_cambio"],
                     "bloqueadas": plan["bloqueadas"][:20],
@@ -499,7 +590,7 @@ def upload_compras(files, form):
             plan = _sync_plan(cursor, tipo, lineas)
             lineas_a_insertar = plan["nuevas"]
             estado_lineas = "ABIERTA"
-            if not (plan["nuevas"] or plan["modificadas"] or plan["faltantes"]):
+            if not (plan["nuevas"] or plan["modificadas"] or plan["faltantes"] or plan["renombradas"]):
                 return (
                     {
                         "success": True,
@@ -548,7 +639,9 @@ def upload_compras(files, form):
         cursor.execute("START TRANSACTION")
         # En SINCRONIZACION la carga documenta todo lo tocado, no sólo lo insertado.
         lineas_afectadas = (
-            lineas_a_insertar + [linea for _, linea in plan["modificadas"]]
+            lineas_a_insertar
+            + [linea for _, linea in plan["modificadas"]]
+            + [linea for _id, linea, _anterior in plan["renombradas"]]
             if plan
             else lineas_a_insertar
         )
@@ -589,6 +682,7 @@ def upload_compras(files, form):
             _insert_lineas(cursor, carga_id, tipo, lineas_a_insertar, estado_lineas)
         if plan:
             _update_lineas(cursor, carga_id, plan["modificadas"])
+            _rename_lineas(cursor, carga_id, plan["renombradas"])
             _delete_lineas(cursor, [row["id"] for row in plan["faltantes"]])
         conn.commit()
         respuesta = {
@@ -605,6 +699,7 @@ def upload_compras(files, form):
                 {
                     "agregadas": len(plan["nuevas"]),
                     "modificadas": len(plan["modificadas"]),
+                    "renombradas": len(plan["renombradas"]),
                     "borradas": len(plan["faltantes"]),
                     "bloqueadas": len(plan["bloqueadas"]),
                     "protegidas": len(plan["protegidas"]),

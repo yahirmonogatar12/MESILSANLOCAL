@@ -184,6 +184,17 @@ class _SyncCursor(_ExistingLinesCursor):
                 if value in self.ids_con_lote
             ]
             return
+        if "raw_part_num IN" in query:  # candidatos a cambio de transaccion
+            params = list(params or [])
+            self.calls.append((" ".join(query.split()), params))
+            partes = {compras_service._text_key(value) for value in params[1:]}
+            self.result = [
+                row
+                for row in self.rows
+                if row["tipo"] == params[0]
+                and compras_service._text_key(row["raw_part_num"]) in partes
+            ]
+            return
         super().execute(query, params)
 
 
@@ -202,6 +213,60 @@ def test_sync_plan_detecta_nuevas_modificadas_y_faltantes():
     assert [row_id for row_id, _ in plan["modificadas"]] == [1]
     assert [row["id"] for row in plan["faltantes"]] == [2]
     assert plan["sin_cambio"] == 0
+
+
+def test_sync_plan_detecta_cambio_de_numero_de_transaccion():
+    guardada = _db_row(_line("TX-VIEJA", "PARTE-A"), 1)
+    cursor = _SyncCursor([guardada])
+    # Mismo renglon, mismo todo, otro numero de transaccion.
+    excel = [_line("TX-NUEVA", "PARTE-A")]
+
+    plan = compras_service._sync_plan(cursor, "LG", excel)
+
+    assert plan["nuevas"] == [] and plan["faltantes"] == []
+    row_id, linea, anterior = plan["renombradas"][0]
+    assert (row_id, anterior, linea["numero_transaccion"]) == (1, "TX-VIEJA", "TX-NUEVA")
+
+
+def test_sync_plan_renombra_aunque_tenga_lote_aplicado():
+    guardada = _db_row(_line("TX-VIEJA", "PARTE-A"), 1)
+    cursor = _SyncCursor([guardada], ids_con_lote={1})
+
+    plan = compras_service._sync_plan(cursor, "LG", [_line("TX-NUEVA", "PARTE-A")])
+
+    # El lote no bloquea: viaja con el renglon en vez de desaplicarse.
+    assert len(plan["renombradas"]) == 1
+    assert plan["bloqueadas"] == []
+
+
+def test_rename_lineas_mueve_el_renglon_y_sus_links():
+    ejecutadas = []
+
+    class Cursor:
+        def execute(self, query, params=None):
+            ejecutadas.append((" ".join(query.split()), tuple(params or ())))
+
+    compras_service._rename_lineas(Cursor(), 7, [(1, _line("TX-NUEVA", "PARTE-A"), "TX-VIEJA")])
+
+    assert ejecutadas[0][0].startswith("UPDATE lista_compras_lineas SET numero_transaccion")
+    assert ejecutadas[0][1] == ("TX-NUEVA", 7, 1)
+    assert ejecutadas[1][0].startswith("UPDATE lista_compras_lot_links SET numero_transaccion")
+    assert ejecutadas[1][1] == ("TX-NUEVA", 1)
+
+
+def test_sync_plan_no_renombra_si_hay_varios_candidatos():
+    cursor = _SyncCursor([
+        _db_row(_line("TX-A", "PARTE-A"), 1),
+        _db_row(_line("TX-B", "PARTE-A"), 2),
+    ])
+    # Dos salen y dos entran con la misma firma: no se puede parear 1 a 1.
+    excel = [_line("TX-C", "PARTE-A"), _line("TX-D", "PARTE-A")]
+
+    plan = compras_service._sync_plan(cursor, "LG", excel)
+
+    # Entran como nuevas; TX-A y TX-B no se tocan porque el archivo ni las menciona.
+    assert plan["renombradas"] == []
+    assert len(plan["nuevas"]) == 2 and plan["faltantes"] == []
 
 
 def test_sync_plan_no_toca_lineas_con_lote_aplicado():
