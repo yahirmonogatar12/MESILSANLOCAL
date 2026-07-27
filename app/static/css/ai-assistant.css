@@ -49,6 +49,7 @@
     color:#203040; 
 }
 .ai-panel.open { transform:translateX(0); }
+.ai-panel.ai-dragover { outline:3px dashed var(--ai-cyan); outline-offset:-6px; }
 .ai-panel-header { flex:none; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 18px; color:#fff; background:linear-gradient(135deg,var(--ai-navy),var(--ai-blue)); }
 .ai-panel-header h2 { margin:1px 0 2px; font-size:20px; color:#fff; }
 .ai-eyebrow { font-size:10px; letter-spacing:.18em; opacity:.75; }

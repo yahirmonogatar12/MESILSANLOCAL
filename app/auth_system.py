@@ -991,8 +991,11 @@ class AuthSystem:
 
             return permisos_botones
         except Exception as e:
+            # None = "no se pudo consultar" (distinto de {} = "no tiene permisos").
+            # El caller no debe cachear esto: cachear {} apagaba los botones del
+            # usuario durante todo el TTL por un hipo de BD.
             logger.error(f"Error consultando permisos de botones: {e}")
-            return {}
+            return None
         finally:
             if conn is not None:
                 conn.close()
@@ -1044,6 +1047,9 @@ class AuthSystem:
         permisos_botones = self._get_cached_button_permissions(username)
         if permisos_botones is None:
             permisos_botones = self._consultar_permisos_botones_usuario(username)
+            if permisos_botones is None:
+                # Fallo de BD: no se cachea, la siguiente peticion reintenta.
+                return {}
             self._set_cached_button_permissions(username, permisos_botones)
 
         if pagina:

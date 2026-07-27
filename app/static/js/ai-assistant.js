@@ -95,6 +95,23 @@
                     if (file) this.uploadPlanFile(file);
                 });
                 this.root.querySelector('#ai-attach-clear').addEventListener('click', () => this.clearAttachment());
+                // Arrastrar y soltar sobre el panel: mismo camino que el boton 📎.
+                this.panel.addEventListener('dragover', event => {
+                    if (!this.bootstrap?.can_use_plan) return;
+                    event.preventDefault();
+                    this.panel.classList.add('ai-dragover');
+                });
+                this.panel.addEventListener('dragleave', event => {
+                    // Solo al salir del panel; entre hijos relatedTarget sigue dentro.
+                    if (!this.panel.contains(event.relatedTarget)) this.panel.classList.remove('ai-dragover');
+                });
+                this.panel.addEventListener('drop', event => {
+                    if (!this.bootstrap?.can_use_plan) return;
+                    event.preventDefault();
+                    this.panel.classList.remove('ai-dragover');
+                    const file = event.dataTransfer?.files?.[0];
+                    if (file) this.uploadPlanFile(file);
+                });
             }
             this.input.addEventListener('keydown', event => {
                 if (event.key === 'Enter' && !event.shiftKey) {
@@ -1233,12 +1250,16 @@
         }
 
         async send() {
-            const content = this.input.value.trim();
-            if (!content || this.streaming) return;
+            if (this.streaming) return;
             if (this.attachmentUploading) {
                 this.notice('Espera a que termine de subir el archivo.');
                 return;
             }
+            // Con adjunto se puede enviar sin escribir nada; el backend exige
+            // contenido, asi que el nombre del archivo hace de mensaje.
+            const content = this.input.value.trim()
+                || (this.pendingAttachment ? `Adjunto ${this.pendingAttachment.filename}` : '');
+            if (!content) return;
             if (!this.currentConversation) await this.newChat(false);
             if (!this.currentConversation) return;
             const fileRef = this.pendingFileRef;

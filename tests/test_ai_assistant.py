@@ -1851,7 +1851,7 @@ def test_main_template_incluye_panel_y_metadatos_de_permiso():
     assert 'class="ai-launcher-logo"' in partial
     assert "icons/1538298822.svg" in partial
     assert '>Asistente</span>' not in partial.split('</button>', 1)[0]
-    assert "20260716b" in main
+    assert "20260727a" in main
 
 
 def test_cliente_permite_eliminar_chat_con_confirmacion():
