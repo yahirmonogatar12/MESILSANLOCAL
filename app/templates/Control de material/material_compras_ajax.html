@@ -73,6 +73,7 @@
                 </label>
                 <button id="mat-compras-search-btn" class="mat-invoice-btn" type="button">Consultar</button>
                 <button id="mat-compras-clear-filters" class="mat-invoice-btn" type="button">Limpiar</button>
+                <button class="mat-invoice-btn success" type="button" data-export="transacciones">Exportar Excel</button>
             </div>
             <div class="mat-invoice-table-wrap compact">
                 <table class="mat-invoice-table">
@@ -115,6 +116,9 @@
         </div>
 
         <div id="mat-compras-tab-links" class="mat-invoice-tab-panel" hidden>
+            <div class="mat-invoice-table-toolbar">
+                <button class="mat-invoice-btn success small" type="button" data-export="links">Exportar Excel</button>
+            </div>
             <div class="mat-invoice-table-wrap">
                 <table class="mat-invoice-table">
                     <thead id="mat-compras-links-head"></thead>
@@ -162,4 +166,4 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/material_column_filters.js', v='20260707a') }}"></script>
-<script src="{{ url_for('static', filename='js/material_compras.js', v='20260710c') }}"></script>
+<script src="{{ url_for('static', filename='js/material_compras.js', v='20260727a') }}"></script>

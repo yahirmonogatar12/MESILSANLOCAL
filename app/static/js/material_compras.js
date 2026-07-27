@@ -536,44 +536,35 @@
     return Number.isFinite(n) ? n : value;
   }
 
-  async function exportLineas() {
-    const rows = state.data.lineas || [];
+  // Exporta la tabla tal como se ve (mismas columnas), pero con numeros crudos
+  // para que Excel los trate como numeros y no como texto formateado.
+  const EXPORT_TABLES = {
+    transacciones: { columns: COMPRAS_LIST_COLUMNS, sheet: "Transacciones", message: "mat-compras-upload-message" },
+    lineas: { columns: COMPRAS_LINEAS_COLUMNS, sheet: "Lineas", message: "mat-compras-detail-message" },
+    links: { columns: COMPRAS_LINKS_COLUMNS, sheet: "Lotes", message: "mat-compras-detail-message" },
+  };
+
+  async function exportTable(kind) {
+    const spec = EXPORT_TABLES[kind];
+    if (!spec) return;
+    const rows = state.data[kind] || [];
     if (!rows.length) {
-      setMessage("mat-compras-detail-message", "No hay datos para exportar.");
+      setMessage(spec.message, "No hay datos para exportar.");
       return;
     }
-    const columns = [
-      ["Transaccion", (r) => r.numero_transaccion],
-      ["Parte", (r) => r.numero_parte],
-      ["Parte sistema", (r) => r.numero_parte_sistema],
-      ["Descripcion", (r) => r.descripcion],
-      ["Spec", (r) => r.spec],
-      ["Cantidad", (r) => numericCell(r.cantidad)],
-      ["Moneda", (r) => r.moneda],
-      ["P. Unit.", (r) => numericCell(r.costo_unitario)],
-      ["Total", (r) => numericCell(r.costo_total)],
-      ["Proveedor", (r) => r.proveedor],
-      ["Factura", (r) => r.factura],
-      ["Modelo", (r) => r.modelo],
-      ["Categoria", (r) => r.categoria],
-      ["Fecha", (r) => r.fecha_compra],
-      ["Estado", (r) => r.estado_match],
-    ];
     setLoading(true);
     try {
       await ensureSheetJs();
-      const aoa = [columns.map(([title]) => title)];
-      rows.forEach((row) => aoa.push(columns.map(([, acc]) => {
-        const v = acc(row);
-        return v === null || v === undefined ? "" : v;
-      })));
+      const aoa = [spec.columns.map((column) => column.label)];
+      rows.forEach((row) => aoa.push(spec.columns.map((column) => numericCell(row[column.field]))));
       const wb = window.XLSX.utils.book_new();
-      window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(aoa), "Compras");
+      window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(aoa), spec.sheet);
+      const detalle = kind === "transacciones" ? "lista" : (state.selectedTransaccion || "detalle");
       const fecha = new Date().toISOString().slice(0, 10);
-      const name = `compras_${state.selectedTransaccion || "detalle"}_${fecha}.xlsx`.replace(/[^A-Za-z0-9._-]+/g, "_");
+      const name = `compras_${kind}_${detalle}_${fecha}.xlsx`.replace(/[^A-Za-z0-9._-]+/g, "_");
       window.XLSX.writeFile(wb, name);
     } catch (err) {
-      setMessage("mat-compras-detail-message", `No se pudo exportar: ${err.message}`);
+      setMessage(spec.message, `No se pudo exportar: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -617,8 +608,8 @@
       } else if (t.dataset && t.dataset.comprasTab) {
         state.activeTab = t.dataset.comprasTab;
         syncTabs();
-      } else if (t.dataset && t.dataset.export === "lineas") {
-        exportLineas();
+      } else if (t.dataset && t.dataset.export) {
+        exportTable(t.dataset.export);
       } else if (t.dataset && t.dataset.transaccion) {
         loadDetail(t.dataset.transaccion, t.dataset.tipo);
       }
