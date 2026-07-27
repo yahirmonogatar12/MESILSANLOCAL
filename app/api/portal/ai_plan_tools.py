@@ -132,14 +132,20 @@ def _ajustes_a_items(proposal_id: str, ajustes: list) -> list[dict[str, Any]]:
             items.append(item)
             continue
         item["included"] = True
+        # Caja abierta: Planning autoriza cantidad libre (no multiplo de pack).
+        caja_abierta = bool(aj.get("caja_abierta"))
+        if caja_abierta:
+            item["caja_abierta"] = True
         cap = aj.get("cantidad")
         if cap is not None:
             cap = int(cap)
             pack = int(row.get("pack_size") or 0)
-            if cap <= 0 or (pack and cap % pack != 0):
+            if cap <= 0:
+                raise ValueError(f"{parte}: la cantidad {cap} debe ser positiva.")
+            if not caja_abierta and pack and cap % pack != 0:
                 raise ValueError(
-                    f"{parte}: la cantidad {cap} debe ser positiva y multiplo del "
-                    f"empaque {pack or 'N/D'} (caja cerrada)."
+                    f"{parte}: la cantidad {cap} debe ser multiplo del empaque "
+                    f"{pack or 'N/D'} (caja cerrada). Usa caja_abierta si es a proposito."
                 )
             item["qty"] = cap
         turno = str(aj.get("turno") or "").strip().upper()
@@ -152,6 +158,13 @@ def _ajustes_a_items(proposal_id: str, ajustes: list) -> list[dict[str, Any]]:
         linea = str(aj.get("linea") or "").strip().upper()
         if linea:
             item["linea"] = linea
+        # Forzar linea: correr la parte fuera de su lineas_permitidas de RAW.
+        if aj.get("forzar_linea"):
+            if not linea:
+                raise ValueError(
+                    f"{parte}: forzar_linea requiere indicar la linea destino."
+                )
+            item["forzar_linea"] = True
         items.append(item)
     return items
 
@@ -445,7 +458,8 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                                 "Usa [] si no hay. Ejemplos: 'solo produce 200 de X "
                                 "porque falta material' -> cantidad=200; 'X llega "
                                 "material de noche' -> turno='NOCHE'. La cantidad debe "
-                                "ser multiplo del empaque (caja cerrada)."
+                                "ser multiplo del empaque (caja cerrada) salvo que se "
+                                "marque caja_abierta."
                             ),
                             "items": {
                                 "type": "object",
@@ -453,7 +467,7 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                                     "numero_parte": {"type": "string"},
                                     "cantidad": {
                                         "type": ["integer", "null"],
-                                        "description": "Cap de piezas (multiplo del empaque); null = no cambia",
+                                        "description": "Cap de piezas (multiplo del empaque salvo caja_abierta); null = no cambia",
                                     },
                                     "turno": {
                                         "type": ["string", "null"],
@@ -468,10 +482,25 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                                         "type": "boolean",
                                         "description": "true saca la parte del plan de mañana",
                                     },
+                                    "caja_abierta": {
+                                        "type": "boolean",
+                                        "description": (
+                                            "true SOLO si Planning autoriza cantidad "
+                                            "libre (no multiplo del empaque). Default false."
+                                        ),
+                                    },
+                                    "forzar_linea": {
+                                        "type": "boolean",
+                                        "description": (
+                                            "true SOLO si Planning autoriza correr la "
+                                            "parte fuera de sus lineas permitidas de RAW. "
+                                            "Requiere indicar 'linea'. Default false."
+                                        ),
+                                    },
                                 },
                                 "required": [
                                     "numero_parte", "cantidad", "turno", "linea",
-                                    "excluir",
+                                    "excluir", "caja_abierta", "forzar_linea",
                                 ],
                                 "additionalProperties": False,
                             },
@@ -540,11 +569,62 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                                 "expandir cuando sobre capacidad."
                             ),
                         },
+                        "max_bloques": {
+                            "type": ["integer", "null"],
+                            "description": (
+                                "Tope de BLOQUES/grupos de 9 h por dia de produccion "
+                                "(ej. 'limitalo a 4 grupos' -> 4). Cada bloque empaca "
+                                "varias lineas compatibles (D3 nunca con M1-M4); lo "
+                                "que no cabe en el tope se difiere al dia siguiente, "
+                                "priorizando lo mas urgente y el consumo recurrente. "
+                                "Rango 1-5. Usa null para el maximo normal (5)."
+                            ),
+                        },
+                        "tiempo_extra": {
+                            "type": ["boolean", "null"],
+                            "description": (
+                                "true SOLO si Planning autoriza tiempo extra: cada "
+                                "bloque puede pasar de las 9 h del turno (+3 h) para "
+                                "cubrir mas demanda antes de diferir. Default false."
+                            ),
+                        },
+                        "sabados": {
+                            "type": ["array", "null"],
+                            "items": {"type": "string"},
+                            "description": (
+                                "Fechas de SABADO (YYYY-MM-DD) que Planning autoriza "
+                                "como dia productivo (8 h, 8-16). Solo cuando lo pidan "
+                                "explicito. Deben caer dentro del rango y ser sabado. "
+                                "Usa [] o null si no se trabaja sabado."
+                            ),
+                        },
+                        "adelanto_max_dias": {
+                            "type": ["integer", "null"],
+                            "description": (
+                                "Reparte el adelanto: topa cuanto cubre un lote de un "
+                                "solo dia a 'faltante inmediato + N dias de consumo', en "
+                                "vez de meter el hueco de toda la ventana (D1 hasta 5 "
+                                "dias) en un dia. Evita que una parte acapare su linea y "
+                                "reparte como Planning. 0 = solo faltante inmediato; 1-2 "
+                                "= mas colchon. null = sin tope (cubre toda la ventana)."
+                            ),
+                        },
+                        "adelantar_d1": {
+                            "type": ["boolean", "null"],
+                            "description": (
+                                "D1 build-ahead. Por default true: D1 mira 5 dias y "
+                                "construye adelantado. Pon FALSE cuando Planning diga que "
+                                "'D1 no adelante / que corra solo lo necesario': D1 usa "
+                                "la anticipacion estandar (2 dias) como las demas y solo "
+                                "adelanta si ademas se pide expandir_dias. null = true."
+                            ),
+                        },
                     },
                     "required": [
                         "fecha_inicio", "fecha_fin", "objetivo", "proceso_actual",
                         "partes_excluidas", "ajustes", "lotes_corriendo",
-                        "agregados", "expandir_dias",
+                        "agregados", "expandir_dias", "max_bloques",
+                        "tiempo_extra", "sabados", "adelanto_max_dias", "adelantar_d1",
                     ],
                     "additionalProperties": False,
                 },
@@ -678,6 +758,30 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         except (TypeError, ValueError):
             expandir_dias = 0
         expandir_dias = max(0, min(expandir_dias, pp.PP_MAX_RANGO_DIAS))
+        # Tope de bloques de 9 h por dia ("limitalo a 4 grupos"). None = maximo.
+        try:
+            max_bloques = int(arguments.get("max_bloques") or 0) or None
+        except (TypeError, ValueError):
+            max_bloques = None
+        if max_bloques:
+            max_bloques = max(1, min(max_bloques, pp.PPY_BLOQUES))
+        tiempo_extra = bool(arguments.get("tiempo_extra"))
+        # Sabados autorizados: solo los que caen dentro del rango pedido; el
+        # motor descarta ademas los que no sean sabado.
+        sabados = [
+            s for s in (arguments.get("sabados") or [])
+            if (fs := pp._ppy_parse_fecha(s)) and fecha_inicio <= fs <= fecha_fin
+        ]
+        # Tope de adelanto por parte/dia (reparte D1, evita front-load). None = sin tope.
+        adelanto_max_dias = arguments.get("adelanto_max_dias")
+        if adelanto_max_dias is not None:
+            try:
+                adelanto_max_dias = max(0, min(int(adelanto_max_dias), pp.PPY_ANTICIPACION_MAX))
+            except (TypeError, ValueError):
+                adelanto_max_dias = None
+        # D1 build-ahead: default true; false = D1 no adelanta de a fuerza.
+        ad1 = arguments.get("adelantar_d1")
+        adelantar_d1 = True if ad1 is None else bool(ad1)
         propuesta = pp._ppy_crear_propuesta(
             fecha_inicio,
             fecha_fin,
@@ -688,6 +792,11 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             lotes_corriendo=lotes_corriendo,
             agregados=agregados,
             expandir_dias=expandir_dias,
+            max_bloques=max_bloques,
+            sabados=sabados,
+            tiempo_extra=tiempo_extra,
+            adelanto_max_dias=adelanto_max_dias,
+            adelantar_d1=adelantar_d1,
         )
         pp._ppy_mark_proposal_pending(propuesta["proposal_id"], username)
         # Ajustes manuales por parte (capar cantidad, cambiar turno/linea o
@@ -744,6 +853,11 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "agregados_fijados": agregados,
             "capacidad_libre": propuesta["capacidad_libre"],
             "expandido_dias": propuesta["expandido_dias"],
+            "max_bloques": propuesta["max_bloques"],
+            "tiempo_extra": propuesta["tiempo_extra"],
+            "sabados": propuesta["sabados"],
+            "adelanto_max_dias": propuesta["adelanto_max_dias"],
+            "adelantar_d1": propuesta["adelantar_d1"],
             "schedule_usado_como_referencia": True,
             "resultado_es_schedule_final": True,
             "schedule_change_summary": propuesta["schedule_change_summary"],
@@ -756,6 +870,23 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
                 "resume cuantos renglones conserva, modifica, agrega y elimina, confirma "
                 "expresamente las partes excluidas, menciona los lotes en proceso y los "
                 "agregados manuales que se fijaron. "
+                + (
+                    f"El plan quedo limitado a {propuesta['max_bloques']} bloques de 9 h "
+                    "por dia: lo que no cupo se difirio a dias siguientes. "
+                    if propuesta["max_bloques"]
+                    else ""
+                )
+                + (
+                    "Se autorizo TIEMPO EXTRA: los bloques pueden pasar de 9 h. "
+                    if propuesta["tiempo_extra"]
+                    else ""
+                )
+                + (
+                    "Se autorizo trabajar el/los sabado(s) "
+                    f"{', '.join(propuesta['sabados'])} (8 h). "
+                    if propuesta["sabados"]
+                    else ""
+                )
                 + (
                     "Ya viene expandido "
                     f"{propuesta['expandido_dias']} dias extra; no vuelvas a preguntar. "
