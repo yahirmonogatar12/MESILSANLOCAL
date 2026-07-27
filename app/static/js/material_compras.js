@@ -485,12 +485,14 @@
       const fileInput = el("mat-compras-upload-file");
       if (fileInput) fileInput.value = "";
       const estadoTxt = data.estado_lineas === "CERRADA" ? " (cerradas, histórico)" : " (abiertas, almacén)";
-      const msg = data.total_lineas === 0
+      const vacia = data.total_lineas === 0;
+      const msg = vacia
         ? "Sin renglones nuevos que agregar."
-        : `Cargado: ${data.total_lineas} renglones, ${data.total_transacciones} transacciones (${data.tipo})${estadoTxt}.`;
-      setMessage("mat-compras-upload-message", msg, "success");
+        : `✔ Carga completada: ${data.total_lineas} renglones, ${data.total_transacciones} transacciones (${data.tipo})${estadoTxt}.`;
       refreshInicialState();
-      loadTransacciones();
+      // El mensaje va DESPUES del refresh: loadTransacciones limpia esta caja al entrar.
+      await loadTransacciones();
+      setMessage("mat-compras-upload-message", msg, vacia ? "" : "success");
     } catch (err) {
       const p = err.payload || {};
       let msg = `No se pudo cargar: ${err.message}`;
