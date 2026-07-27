@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from xml.etree import ElementTree
@@ -93,6 +94,77 @@ def test_adjunto_se_informa_al_modelo_y_no_expone_file_ref(tmp_path, monkeypatch
     assert "Plan LG semana 29.xlsx" in instructions
     assert "plan_importar_preparar" in instructions
     assert "abc123" not in instructions
+
+
+def _libro_con_formula(path):
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    hoja = workbook.active
+    hoja.title = "Compras"
+    hoja["O235"] = 100
+    hoja["O236"] = 4
+    hoja["O237"] = "=O235/O236"
+    workbook.save(path)
+
+
+def test_adjunto_excel_llega_al_modelo_con_filas_y_formulas(tmp_path, monkeypatch):
+    monkeypatch.setattr(ai_assistant, "_upload_root", lambda: tmp_path)
+    folder = tmp_path / "44"
+    folder.mkdir()
+    _libro_con_formula(folder / "abc123.xlsx")
+    (folder / "abc123.name").write_text("DIO.xlsx", "utf-8")
+
+    info = ai_assistant._uploaded_file_info(44, "abc123")
+    partes = ai_assistant._attachment_input_parts(44, "abc123", info)
+
+    assert info["kind"] == "excel"
+    assert len(partes) == 1 and partes[0]["type"] == "input_text"
+    texto = partes[0]["text"]
+    assert "DIO.xlsx" in texto
+    assert "235 | " in texto  # el numero de fila viaja para poder pedir "escribe O235"
+    assert "Compras!O237: =O235/O236" in texto
+
+
+def test_adjunto_imagen_y_pdf_viajan_nativos(tmp_path, monkeypatch):
+    monkeypatch.setattr(ai_assistant, "_upload_root", lambda: tmp_path)
+    folder = tmp_path / "7"
+    folder.mkdir()
+    (folder / "img1.png").write_bytes(b"\x89PNG\r\n\x1a\n-falso")
+    (folder / "doc1.pdf").write_bytes(b"%PDF-1.4 falso")
+
+    imagen = ai_assistant._attachment_input_parts(7, "img1", ai_assistant._uploaded_file_info(7, "img1"))
+    pdf = ai_assistant._attachment_input_parts(7, "doc1", ai_assistant._uploaded_file_info(7, "doc1"))
+
+    assert imagen[0]["type"] == "input_image"
+    assert imagen[0]["image_url"].startswith("data:image/png;base64,")
+    assert pdf[0]["type"] == "input_file"
+    assert pdf[0]["file_data"].startswith("data:application/pdf;base64,")
+    assert pdf[0]["filename"] == "doc1.pdf"
+
+
+def test_editar_excel_adjunto_escribe_celdas_y_conserva_formulas(tmp_path):
+    origen = tmp_path / "plan.xlsx"
+    _libro_con_formula(origen)
+
+    data, escritas = ai_assistant._aplicar_cambios_excel(
+        origen, [{"hoja": "Compras", "celda": "O235", "valor": "96"}]
+    )
+
+    assert escritas == ["Compras!O235"]
+    editado = load_workbook(BytesIO(data))
+    assert editado["Compras"]["O235"].value == 96
+    assert editado["Compras"]["O237"].value == "=O235/O236"
+
+
+def test_editar_excel_adjunto_rechaza_celda_u_hoja_invalida(tmp_path):
+    origen = tmp_path / "plan.xlsx"
+    _libro_con_formula(origen)
+
+    with pytest.raises(ValueError):
+        ai_assistant._aplicar_cambios_excel(origen, [{"celda": "O235; DROP", "valor": 1}])
+    with pytest.raises(ValueError):
+        ai_assistant._aplicar_cambios_excel(origen, [{"hoja": "NoExiste", "celda": "A1", "valor": 1}])
 
 
 def test_adjunto_rechaza_referencia_ajena_o_manipulada(tmp_path, monkeypatch):
@@ -1851,7 +1923,7 @@ def test_main_template_incluye_panel_y_metadatos_de_permiso():
     assert 'class="ai-launcher-logo"' in partial
     assert "icons/1538298822.svg" in partial
     assert '>Asistente</span>' not in partial.split('</button>', 1)[0]
-    assert "20260727a" in main
+    assert "20260727b" in main
 
 
 def test_cliente_permite_eliminar_chat_con_confirmacion():

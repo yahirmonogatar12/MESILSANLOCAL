@@ -7,6 +7,16 @@
         ko: { assistant:'도우미',title:'AI 도우미',chat:'채팅',history:'기록',audit:'감사',limits:'사용량',newChat:'새 채팅',archive:'보관',delete:'삭제',deleteConfirm:'이 채팅과 모든 파일을 영구적으로 삭제할까요? 이 작업은 취소할 수 없습니다.',deleted:'대화가 삭제되었습니다',stopBeforeDelete:'채팅을 삭제하기 전에 응답을 중지하세요.',message:'메시지',placeholder:'MES 질문 또는 Excel/PowerPoint 생성을 요청하세요',stop:'중지',retry:'다시 시도',send:'전송',expand:'패널 확장',collapse:'패널 축소',conversations:'대화 기록',showArchived:'보관된 항목 표시',search:'검색',save:'저장',welcome:'MES 사용을 어떻게 도와드릴까요?',welcomeHint:'모듈 설명, 권한이 있는 데이터 조회, Excel 또는 PowerPoint 생성을 지원합니다.',thinking:'생각 중…',reasoning:'추론 중…',consulting:'권한이 있는 데이터를 조회 중…',generating:'파일 생성 중…',error:'오류가 발생했습니다',download:'다운로드',expired:'만료됨',regenerate:'다시 생성',source:'출처',rows:'행',notConfigured:'관리자가 서버에 OPENAI_API_KEY를 설정해야 합니다.',archived:'대화가 보관되었습니다',empty:'대화가 없습니다.',lineProgressTitle:'영역별 목표 및 진행률',goal:'목표',produced:'생산',output:'출력',activeLines:'가동 라인',noPlans:'등록된 계획 없음',omittedAreas:'권한으로 제외된 영역',qualityTitle:'품질 지표',qualityLqcResults:'LQC 결과',qualityIct:'ICT 이력',qualityLqcRelease:'LQC 출하 승인',qualityVision:'Vision 이력',inspected:'검사 수량',defects:'불량',ppm:'PPM',target:'목표',tests:'검사',uniqueUnits:'고유 제품',passed:'OK',failed:'NG',passRate:'수율',scans:'승인 수량',lots:'로트',duplicates:'중복',onTarget:'목표 이내',offTarget:'목표 초과',noActivity:'활동 없음',omittedSources:'권한으로 제외된 소스'}
     };
 
+    // Mismo catalogo que _ATTACH_KINDS en ai_assistant.py.
+    const ATTACH_EXTENSIONS = ['.xlsx','.xlsm','.pdf','.png','.jpg','.jpeg','.webp','.gif','.csv','.txt','.md','.json'];
+    const attachKind = ext => (
+        ['.xlsx','.xlsm'].includes(ext) ? 'excel'
+        : ext === '.pdf' ? 'pdf'
+        : ['.png','.jpg','.jpeg','.webp','.gif'].includes(ext) ? 'imagen'
+        : 'texto'
+    );
+    const attachLabel = filename => (String(filename).split('.').pop() || 'DOC').toUpperCase().slice(0, 4);
+
     class MESAI {
         constructor(root) {
             this.root = root;
@@ -47,8 +57,8 @@
             this.root.hidden = false;
             this.setLauncherSide(localStorage.getItem('mes-ai-launcher-side') === 'left' ? 'left' : 'right', false);
             this.root.querySelector('#ai-model-label').textContent = this.bootstrap.model || 'GPT';
-            const attachBtn = this.root.querySelector('#ai-attach');
-            if (attachBtn) attachBtn.hidden = !this.bootstrap.can_use_plan;
+            // El 📎 no depende del permiso de Plan: cualquiera puede adjuntar
+            // Excel, PDF, imagen o texto; las tools del plan siguen gateadas aparte.
             this.root.querySelector('#ai-audit-tab').hidden = !this.bootstrap.can_audit;
             this.root.querySelector('#ai-limits-tab').hidden = !this.bootstrap.can_manage_limits;
             this.root.querySelector('#ai-sidebar-audit-tab').hidden = !this.bootstrap.can_audit;
@@ -97,7 +107,6 @@
                 this.root.querySelector('#ai-attach-clear').addEventListener('click', () => this.clearAttachment());
                 // Arrastrar y soltar sobre el panel: mismo camino que el boton 📎.
                 this.panel.addEventListener('dragover', event => {
-                    if (!this.bootstrap?.can_use_plan) return;
                     event.preventDefault();
                     this.panel.classList.add('ai-dragover');
                 });
@@ -106,7 +115,6 @@
                     if (!this.panel.contains(event.relatedTarget)) this.panel.classList.remove('ai-dragover');
                 });
                 this.panel.addEventListener('drop', event => {
-                    if (!this.bootstrap?.can_use_plan) return;
                     event.preventDefault();
                     this.panel.classList.remove('ai-dragover');
                     const file = event.dataTransfer?.files?.[0];
@@ -622,12 +630,13 @@
 
         appendMessageAttachment(bubble, attachment) {
             const card = document.createElement('div'); card.className = 'ai-message-attachment';
-            const icon = document.createElement('span'); icon.className = 'ai-message-attachment-icon'; icon.textContent = 'XLS';
+            const icon = document.createElement('span'); icon.className = 'ai-message-attachment-icon'; icon.textContent = attachLabel(attachment.filename);
             const copy = document.createElement('span'); copy.className = 'ai-message-attachment-copy';
             const filename = document.createElement('strong'); filename.className = 'ai-message-attachment-name'; filename.textContent = attachment.filename;
             const details = document.createElement('span'); details.className = 'ai-message-attachment-details';
             const size = Number(attachment.size_bytes || 0);
-            details.textContent = size ? `Excel · ${this.formatFileSize(size)}` : 'Archivo Excel adjunto';
+            const tipo = attachment.kind ? attachment.kind[0].toUpperCase() + attachment.kind.slice(1) : 'Archivo';
+            details.textContent = size ? `${tipo} · ${this.formatFileSize(size)}` : `${tipo} adjunto`;
             copy.append(filename, details); card.append(icon, copy); bubble.appendChild(card);
         }
 
@@ -1189,8 +1198,10 @@
 
         async uploadPlanFile(file) {
             const name = (file.name || '').toLowerCase();
-            if (!name.endsWith('.xlsx') && !name.endsWith('.xlsm')) {
-                this.notice('Solo .xlsx o .xlsm'); return;
+            const ext = name.slice(name.lastIndexOf('.'));
+            if (!ATTACH_EXTENSIONS.includes(ext)) {
+                this.notice(`Formato no soportado. Permitidos: ${ATTACH_EXTENSIONS.join(', ')}`);
+                return;
             }
             if (!this.currentConversation) await this.newChat(false);
             if (!this.currentConversation) return;
@@ -1207,9 +1218,9 @@
                 this.pendingFileRef = data.file_ref;
                 this.pendingAttachment = {
                     filename: data.filename || file.name,
-                    extension: name.endsWith('.xlsm') ? '.xlsm' : '.xlsx',
+                    extension: ext,
                     size_bytes: file.size,
-                    kind: 'excel'
+                    kind: attachKind(ext)
                 };
                 this.attachmentUploading = false;
                 this.setAttachmentState(this.pendingAttachment.filename, 'ready');
@@ -1229,6 +1240,8 @@
             info.hidden = false;
             info.dataset.state = state;
             info.setAttribute('aria-busy', state === 'uploading' ? 'true' : 'false');
+            const icon = this.root.querySelector('#ai-attach-icon');
+            if (icon) icon.textContent = attachLabel(filename);
             nameEl.textContent = filename;
             statusEl.textContent = state === 'uploading'
                 ? 'Subiendo archivo…'

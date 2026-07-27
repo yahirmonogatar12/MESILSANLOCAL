@@ -1464,6 +1464,64 @@ def create_artifact(
     return public_artifact(_artifact_record(public_id) or {})
 
 
+def register_file_artifact(
+    *,
+    username: str,
+    conversation_id: int,
+    message_id: int | None,
+    filename: str,
+    data: bytes,
+    title: str,
+    language: str = "es",
+    source: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Publica un archivo ya construido (no viene de un reporte) como artefacto.
+
+    Lo usa la edicion de un Excel adjunto: el contenido no sale de run_report,
+    asi que se guarda tal cual y se reutiliza el mismo ciclo de vida/descarga.
+    """
+    artifact_type = (os.path.splitext(filename)[1] or "").lstrip(".").lower() or "xlsx"
+    max_bytes = max(1024, int(os.getenv("AI_ARTIFACT_MAX_BYTES", "20971520")))
+    if len(data) > max_bytes:
+        raise ValueError("El archivo generado supera el límite de 20 MB")
+
+    public_id = str(uuid.uuid4())
+    target = artifact_root() / f"{public_id}.{artifact_type}"
+    target.write_bytes(data)
+    mime = XLSX_MIME if artifact_type in {"xlsx", "xlsm"} else "application/octet-stream"
+    safe_name = secure_filename(filename) or f"archivo_{public_id}.{artifact_type}"
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO ai_artifacts (
+                public_id, conversation_id, message_id, username, artifact_type,
+                title, filename, storage_path, mime_type, size_bytes, sha256,
+                query_spec_json, filters_json, source_summary_json, row_count,
+                language, status, created_at, expires_at
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'ready',%s,%s)
+            """,
+            (
+                public_id, conversation_id, message_id, username, artifact_type,
+                _safe_title(title, "Archivo editado"), safe_name, str(target), mime,
+                len(data), hashlib.sha256(data).hexdigest(),
+                json_dumps({"report": None}), json_dumps({}),
+                json_dumps(source or {}), 0, language,
+                now_local(), retention_deadline(),
+            ),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        target.unlink(missing_ok=True)
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+    return public_artifact(_artifact_record(public_id) or {})
+
+
 def public_artifact(row: dict[str, Any]) -> dict[str, Any]:
     source_summary = json_loads(row.get("source_summary_json"), {}) or {}
     return {
