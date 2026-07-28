@@ -362,6 +362,16 @@ const allDropdowns = [
     {
         "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
         "seccion": "Historial de maquinas calidad",
+        "boton": "Historial de maquina FCT"
+    },
+    {
+        "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
+        "seccion": "Historial de maquinas calidad",
+        "boton": "Historial de maquina FCT % Pass/Fail"
+    },
+    {
+        "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
+        "seccion": "Historial de maquinas calidad",
         "boton": "Historial de maquina vision"
     },
     {

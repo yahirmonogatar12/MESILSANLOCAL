@@ -2386,6 +2386,14 @@
                     });
             };
 
+            const SIDEBAR_CONTENT_VERSION = '20260728fct';
+
+            function agregarVersionSidebar(templatePath) {
+                if (typeof templatePath !== 'string') return templatePath;
+                const separator = templatePath.includes('?') ? '&' : '?';
+                return `${templatePath}${separator}v=${SIDEBAR_CONTENT_VERSION}&_=${Date.now()}`;
+            }
+
             window.cargarSidebarDinamico = function(containerId, templatePath) {
                 const container = document.getElementById(containerId);
                 if (!container) {
@@ -2395,9 +2403,10 @@
                 container.style.display = 'block';
                 container.innerHTML = '<div class="loading-indicator">Cargando...</div>';
 
-                return fetch(templatePath, {
+                return fetch(agregarVersionSidebar(templatePath), {
                     method: 'GET',
                     credentials: 'same-origin',
+                    cache: 'no-store',
                     headers: {
                         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
                     }
@@ -2411,6 +2420,7 @@
                     .then(html => {
                         container.innerHTML = html;
                         container.style.display = 'block';
+                        container.dataset.sidebarVersion = SIDEBAR_CONTENT_VERSION;
 
                         // Reinicializar dropdowns del sidebar recién inyectado
                         // (sin esto, Bootstrap pierde las instancias Collapse y
@@ -3331,11 +3341,18 @@ function hideAllMaterialContainers() {
             // Usa un marcador dataset.sidebarCargado en el contenedor.
             function cargarSidebarSiNoExiste(containerId, ruta) {
                 const cont = document.getElementById(containerId);
-                if (cont && cont.dataset.sidebarCargado === '1') {
+                if (
+                    cont &&
+                    cont.dataset.sidebarCargado === '1' &&
+                    cont.dataset.sidebarVersion === SIDEBAR_CONTENT_VERSION
+                ) {
                     return Promise.resolve();
                 }
                 return cargarSidebarDinamico(containerId, ruta).then(() => {
-                    if (cont) cont.dataset.sidebarCargado = '1';
+                    if (cont) {
+                        cont.dataset.sidebarCargado = '1';
+                        cont.dataset.sidebarVersion = SIDEBAR_CONTENT_VERSION;
+                    }
                 });
             }
 
