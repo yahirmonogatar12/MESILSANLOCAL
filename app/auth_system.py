@@ -656,6 +656,37 @@ class AuthSystem:
         ], [
             'Información básica'
         ])
+
+        # Los modulos FCT son equivalentes funcionales a ICT dentro de
+        # Historial de maquinas calidad; heredan los mismos roles configurados
+        # para evitar mantener permisos duplicados usuario por usuario.
+        self._asignar_permisos_fct_desde_ict(cursor)
+
+    def _asignar_permisos_fct_desde_ict(self, cursor):
+        """Copiar asignaciones de roles ICT hacia los botones FCT equivalentes."""
+        pagina = 'LISTA_DE_CONTROL_DE_RESULTADOS'
+        seccion = 'Historial de maquinas calidad'
+        pares = [
+            ('Historial de maquina ICT', 'Historial de maquina FCT'),
+            ('Historial de maquina ICT % Pass/Fail', 'Historial de maquina FCT % Pass/Fail'),
+        ]
+
+        for boton_ict, boton_fct in pares:
+            cursor.execute('''
+                INSERT IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                SELECT DISTINCT rpb.rol_id, fct.id
+                FROM rol_permisos_botones rpb
+                JOIN permisos_botones ict ON ict.id = rpb.permiso_boton_id
+                JOIN permisos_botones fct
+                  ON fct.pagina = ict.pagina
+                 AND fct.seccion = ict.seccion
+                 AND fct.boton = %s
+                 AND fct.activo = 1
+                WHERE ict.pagina = %s
+                  AND ict.seccion = %s
+                  AND ict.boton = %s
+                  AND ict.activo = 1
+            ''', (boton_fct, pagina, seccion, boton_ict))
     
     def _asignar_permisos_botones_especificos(self, cursor, rol_nombre, paginas_permitidas, secciones_permitidas):
         """Asignar permisos específicos de botones a un rol"""
