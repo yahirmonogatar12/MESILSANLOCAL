@@ -549,6 +549,9 @@ class AuthSystem:
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina ICT', 'Acceso al historial de la maquina ICT'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina ICT % Pass/Fail', 'Acceso al historial ICT % Pass/Fail'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de cambios de parametros ICT', 'Acceso a historial de cambios de parametros ICT'),
+            # WF_001-WF_003 (2026-07-28): seed para los 2 modulos FCT en Historial de maquinas calidad.
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina FCT', 'Acceso al historial de la maquina FCT'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina FCT % Pass/Fail', 'Acceso al historial FCT % Pass/Fail'),
             # WF_001 (2026-05-27): seed para los 2 modulos Vision en Historial de maquinas calidad.
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina vision', 'Acceso al historial de la maquina vision'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina Vision % Pass/Fail', 'Acceso al historial Vision % Pass/Fail'),

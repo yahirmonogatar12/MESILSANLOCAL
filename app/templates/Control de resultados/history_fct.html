@@ -1,0 +1,157 @@
+<!-- Historial FCT - Fragmento AJAX. Reutiliza estilos ICT cargados en MainTemplate.html. -->
+<div id="fct-container" class="ict-container">
+  <div class="ict-page">
+    <div class="filters-card">
+      <div class="card-header">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+        </svg>
+        <h3>Filtros de Búsqueda</h3>
+      </div>
+      <div id="fct-filters">
+        <div class="filter-group">
+          <label for="fct-filter-fecha-desde">Fecha desde</label>
+          <input type="date" id="fct-filter-fecha-desde">
+        </div>
+        <div class="filter-group">
+          <label for="fct-filter-fecha-hasta">Fecha hasta</label>
+          <input type="date" id="fct-filter-fecha-hasta">
+        </div>
+        <div class="filter-group">
+          <label for="fct-filter-no-parte">No Parte</label>
+          <input type="text" id="fct-filter-no-parte" placeholder="EBR...">
+        </div>
+        <div class="filter-group">
+          <label for="fct-filter-linea">Línea</label>
+          <input type="text" id="fct-filter-linea" placeholder="SIN PLAN / línea">
+        </div>
+        <div class="filter-group">
+          <label for="fct-filter-estacion">Estación</label>
+          <input type="text" id="fct-filter-estacion" placeholder="FCT1...">
+        </div>
+        <div class="filter-group">
+          <label for="fct-filter-resultado">Resultado</label>
+          <select id="fct-filter-resultado">
+            <option value="">Todos</option>
+            <option value="PASS">PASS</option>
+            <option value="FAIL">FAIL</option>
+            <option value="UNKNOWN">UNKNOWN</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="fct-filter-serial">Serial</label>
+          <input type="text" id="fct-filter-serial" placeholder="Buscar serial...">
+        </div>
+        <button id="fct-btn-consultar" class="btn-primary" type="button">Consultar</button>
+      </div>
+    </div>
+
+    <div class="results-card">
+      <div class="card-header">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+        </svg>
+        <h3>Historial de maquina FCT</h3>
+        <span class="record-count" id="fct-record-count">0 registros</span>
+        <button id="fct-btn-export-excel" class="btn-export" type="button">Exportar Excel</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-loading" id="fct-table-loading">
+          <div class="spinner"></div>
+          <span>Cargando datos...</span>
+        </div>
+        <table id="fct-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Línea</th>
+              <th>Estación</th>
+              <th>Resultado</th>
+              <th>Operador</th>
+              <th>Tiempo ajuste</th>
+              <th>No Parte</th>
+              <th>Serial</th>
+              <th>Fuente</th>
+              <th>Paso fallo</th>
+              <th>Prueba fallo</th>
+              <th>Valor</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="fct-body"></tbody>
+        </table>
+      </div>
+      <div id="fct-pagination" class="ict-pagination" style="display:none;">
+        <div class="ict-pagination-info">
+          <span id="fct-pagination-summary">0 - 0 de 0</span>
+        </div>
+        <div class="ict-pagination-controls">
+          <label class="ict-pagination-perpage">
+            Por pagina
+            <select id="fct-per-page">
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+              <option value="1000" selected>1000</option>
+            </select>
+          </label>
+          <button id="fct-page-first" type="button" class="btn-page">«</button>
+          <button id="fct-page-prev" type="button" class="btn-page">‹</button>
+          <span class="ict-pagination-current">
+            <input type="number" id="fct-page-input" min="1" value="1" step="1">
+            <span> / <span id="fct-page-total">1</span></span>
+          </span>
+          <button id="fct-page-next" type="button" class="btn-page">›</button>
+          <button id="fct-page-last" type="button" class="btn-page">»</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="fct-steps-modal" class="modal" aria-hidden="true">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="fct-steps-modal-title">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <h3 id="fct-steps-modal-title">Pasos FCT</h3>
+            <span class="modal-subtitle">Serial: <span id="fct-modal-serial"></span></span>
+          </div>
+          <button type="button" class="close-modal" data-fct-steps-close aria-label="Cerrar">X</button>
+        </div>
+        <div class="modal-filters">
+          <label for="fct-modal-only-fail">Mostrar</label>
+          <select id="fct-modal-only-fail">
+            <option value="">Todos</option>
+            <option value="1">Solo FAIL</option>
+          </select>
+        </div>
+        <div class="modal-body">
+          <div class="table-wrap">
+            <div class="table-loading" id="fct-steps-loading">
+              <div class="spinner"></div>
+              <span>Cargando pasos...</span>
+            </div>
+            <table id="fct-steps-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Paso</th>
+                  <th>Fecha/Hora</th>
+                  <th>Prueba</th>
+                  <th>Valor</th>
+                  <th>Unidad</th>
+                  <th>Nominal</th>
+                  <th>LS</th>
+                  <th>LI</th>
+                  <th>Resultado</th>
+                </tr>
+              </thead>
+              <tbody id="fct-steps-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/fct.js', v='20260728a') }}"></script>

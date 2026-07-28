@@ -268,8 +268,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const controlResultadosAjaxContainers = [
       "historial-aoi-unique-container",
       "historial-ict-unique-container",
+      "historial-fct-unique-container",
       "historial-cambios-parametros-ict-unique-container",
       "historial-maquina-ict-pass-fail-unique-container",
+      "historial-maquina-fct-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "historial-operadores-maquina-unique-container",
@@ -3002,8 +3004,10 @@ window.mostrarHistorialAOI = function () {
       "control-resultados-info-container",
       "historial-aoi-unique-container",
       "historial-ict-unique-container",
+      "historial-fct-unique-container",
       "historial-cambios-parametros-ict-unique-container",
       "historial-maquina-ict-pass-fail-unique-container",
+      "historial-maquina-fct-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "historial-operadores-maquina-unique-container",
@@ -3093,7 +3097,9 @@ window.mostrarHistorialICT = function () {
     const controlResultadosContainers = [
       "control-resultados-info-container",
       "historial-aoi-unique-container",
+      "historial-fct-unique-container",
       "historial-maquina-ict-pass-fail-unique-container",
+      "historial-maquina-fct-pass-fail-unique-container",
       "historial-cambios-parametros-ict-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
@@ -3181,6 +3187,117 @@ window.mostrarHistorialICT = function () {
 };
 
 // ============================================================
+// Función AJAX para Historial FCT - GLOBAL
+// ============================================================
+window.mostrarHistorialFCT = function () {
+  try {
+    const controlResultadosButton = document.getElementById(
+      "Control de resultados",
+    );
+    if (controlResultadosButton) {
+      controlResultadosButton.classList.add("active");
+      document.querySelectorAll(".nav-button").forEach((btn) => {
+        if (btn.id !== "Control de resultados") {
+          btn.classList.remove("active");
+        }
+      });
+    }
+
+    if (typeof window.hideAllMaterialContainers === "function") {
+      window.hideAllMaterialContainers();
+    }
+
+    if (typeof window.limpiarHistorialFCT === "function") {
+      window.limpiarHistorialFCT();
+    }
+    if (typeof window.limpiarHistorialFCTPassFail === "function") {
+      window.limpiarHistorialFCTPassFail();
+    }
+
+    const controlResultadosContainers = [
+      "control-resultados-info-container",
+      "historial-aoi-unique-container",
+      "historial-ict-unique-container",
+      "historial-maquina-ict-pass-fail-unique-container",
+      "historial-maquina-fct-pass-fail-unique-container",
+      "historial-cambios-parametros-ict-unique-container",
+      "historial-vision-unique-container",
+      "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
+      "inventario-imd-terminado-unique-container",
+      "inventario-reparacion-smd-unique-container",
+      "inventario-reparacion-assy-unique-container",
+    ];
+
+    controlResultadosContainers.forEach((containerId) => {
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.style.display = "none";
+      }
+    });
+
+    const materialContainer = document.getElementById("material-container");
+    const controlResultadosContent = document.getElementById(
+      "control-resultados-content",
+    );
+    const controlResultadosContentArea = document.getElementById(
+      "control-resultados-content-area",
+    );
+
+    if (materialContainer) materialContainer.style.display = "block";
+    if (controlResultadosContent) {
+      controlResultadosContent.style.display = "block";
+      controlResultadosContent.style.width = "100%";
+      controlResultadosContent.style.maxWidth = "none";
+    }
+    if (controlResultadosContentArea) {
+      controlResultadosContentArea.style.display = "block";
+      controlResultadosContentArea.style.width = "100%";
+      controlResultadosContentArea.style.maxWidth = "none";
+      controlResultadosContentArea.style.margin = "0";
+      controlResultadosContentArea.style.paddingRight = "0";
+    }
+
+    const historialFCTContainer = document.getElementById(
+      "historial-fct-unique-container",
+    );
+    if (!historialFCTContainer) {
+      console.error("El contenedor Historial FCT no existe en el HTML");
+      return;
+    }
+
+    historialFCTContainer.style.display = "block";
+    historialFCTContainer.style.opacity = "1";
+    historialFCTContainer.style.width = "100%";
+    historialFCTContainer.style.maxWidth = "none";
+    historialFCTContainer.style.margin = "0";
+    historialFCTContainer.style.visibility = "visible";
+
+    if (typeof window.cargarContenidoDinamico === "function") {
+      window.cargarContenidoDinamico(
+        "historial-fct-unique-container",
+        "/historial_fct/ajax",
+        () => {
+          const intentarInicializarFCT = () => {
+            if (typeof window.initializeFctEventListeners === "function") {
+              window.initializeFctEventListeners();
+            }
+            if (typeof window.loadFctData === "function") {
+              window.loadFctData();
+            }
+          };
+
+          intentarInicializarFCT();
+          setTimeout(intentarInicializarFCT, 200);
+        },
+      );
+    }
+  } catch (error) {
+    console.error("Error crítico en mostrarHistorialFCT:", error);
+  }
+};
+
+// ============================================================
 // Funcion AJAX para Historial Vision - GLOBAL
 // ============================================================
 window.mostrarHistorialVision = function () {
@@ -3209,8 +3326,10 @@ window.mostrarHistorialVision = function () {
       "control-resultados-info-container",
       "historial-aoi-unique-container",
       "historial-ict-unique-container",
+      "historial-fct-unique-container",
       "historial-cambios-parametros-ict-unique-container",
       "historial-maquina-ict-pass-fail-unique-container",
+      "historial-maquina-fct-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "historial-operadores-maquina-unique-container",
@@ -3327,8 +3446,10 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
       "control-resultados-info-container",
       "historial-aoi-unique-container",
       "historial-ict-unique-container",
+      "historial-fct-unique-container",
       "historial-cambios-parametros-ict-unique-container",
       "historial-maquina-ict-pass-fail-unique-container",
+      "historial-maquina-fct-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "historial-operadores-maquina-unique-container",
@@ -3420,6 +3541,120 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
 };
 
 // ============================================================
+// Función AJAX para Historial de Maquinas FCT % Pass/Fail
+// ============================================================
+window.mostrarHistorialMaquinaFCTPassFail = function () {
+  try {
+    const controlResultadosButton = document.getElementById(
+      "Control de resultados",
+    );
+    if (controlResultadosButton) {
+      controlResultadosButton.classList.add("active");
+      document.querySelectorAll(".nav-button").forEach((btn) => {
+        if (btn.id !== "Control de resultados") {
+          btn.classList.remove("active");
+        }
+      });
+    }
+
+    if (typeof window.hideAllMaterialContainers === "function") {
+      window.hideAllMaterialContainers();
+    }
+
+    if (typeof window.limpiarHistorialFCT === "function") {
+      window.limpiarHistorialFCT();
+    }
+    if (typeof window.limpiarHistorialFCTPassFail === "function") {
+      window.limpiarHistorialFCTPassFail();
+    }
+
+    const controlResultadosContainers = [
+      "control-resultados-info-container",
+      "historial-aoi-unique-container",
+      "historial-ict-unique-container",
+      "historial-fct-unique-container",
+      "historial-cambios-parametros-ict-unique-container",
+      "historial-maquina-ict-pass-fail-unique-container",
+      "historial-vision-unique-container",
+      "historial-vision-pass-fail-unique-container",
+      "historial-operadores-maquina-unique-container",
+      "inventario-imd-terminado-unique-container",
+      "inventario-reparacion-smd-unique-container",
+      "inventario-reparacion-assy-unique-container",
+    ];
+
+    controlResultadosContainers.forEach((containerId) => {
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.style.display = "none";
+      }
+    });
+
+    const materialContainer = document.getElementById("material-container");
+    const controlResultadosContent = document.getElementById(
+      "control-resultados-content",
+    );
+    const controlResultadosContentArea = document.getElementById(
+      "control-resultados-content-area",
+    );
+
+    if (materialContainer) materialContainer.style.display = "block";
+    if (controlResultadosContent) {
+      controlResultadosContent.style.display = "block";
+      controlResultadosContent.style.width = "100%";
+      controlResultadosContent.style.maxWidth = "none";
+    }
+    if (controlResultadosContentArea) {
+      controlResultadosContentArea.style.display = "block";
+      controlResultadosContentArea.style.width = "100%";
+      controlResultadosContentArea.style.maxWidth = "none";
+      controlResultadosContentArea.style.margin = "0";
+      controlResultadosContentArea.style.paddingRight = "0";
+    }
+
+    const historialMaquinaFCTPassFailContainer = document.getElementById(
+      "historial-maquina-fct-pass-fail-unique-container",
+    );
+    if (!historialMaquinaFCTPassFailContainer) {
+      console.error("El contenedor Historial Maquina FCT % Pass/Fail no existe en el HTML");
+      return;
+    }
+
+    historialMaquinaFCTPassFailContainer.style.display = "block";
+    historialMaquinaFCTPassFailContainer.style.opacity = "1";
+    historialMaquinaFCTPassFailContainer.style.width = "100%";
+    historialMaquinaFCTPassFailContainer.style.maxWidth = "none";
+    historialMaquinaFCTPassFailContainer.style.margin = "0";
+    historialMaquinaFCTPassFailContainer.style.visibility = "visible";
+
+    if (typeof window.cargarContenidoDinamico === "function") {
+      window.cargarContenidoDinamico(
+        "historial-maquina-fct-pass-fail-unique-container",
+        "/historial_fct_pass_fail/ajax",
+        () => {
+          const intentarInicializarFctPassFail = () => {
+            if (
+              typeof window.initializeHistorialFctPassFailEventListeners ===
+              "function"
+            ) {
+              window.initializeHistorialFctPassFailEventListeners();
+            }
+            if (typeof window.loadHistorialFctPassFailData === "function") {
+              window.loadHistorialFctPassFailData();
+            }
+          };
+
+          intentarInicializarFctPassFail();
+          setTimeout(intentarInicializarFctPassFail, 200);
+        },
+      );
+    }
+  } catch (error) {
+    console.error("Error crítico en mostrarHistorialMaquinaFCTPassFail:", error);
+  }
+};
+
+// ============================================================
 // Funcion AJAX para Historial de Maquina Vision % Pass/Fail
 // ============================================================
 window.mostrarHistorialVisionPassFail = function () {
@@ -3448,8 +3683,10 @@ window.mostrarHistorialVisionPassFail = function () {
       "control-resultados-info-container",
       "historial-aoi-unique-container",
       "historial-ict-unique-container",
+      "historial-fct-unique-container",
       "historial-cambios-parametros-ict-unique-container",
       "historial-maquina-ict-pass-fail-unique-container",
+      "historial-maquina-fct-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "historial-operadores-maquina-unique-container",
@@ -3561,6 +3798,9 @@ window.mostrarHistorialCambiosParametrosICT = function () {
       "control-resultados-info-container",
       "historial-aoi-unique-container",
       "historial-ict-unique-container",
+      "historial-fct-unique-container",
+      "historial-maquina-ict-pass-fail-unique-container",
+      "historial-maquina-fct-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
       "historial-operadores-maquina-unique-container",

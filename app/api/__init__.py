@@ -122,6 +122,9 @@ _MODULOS_REGISTRADOS = [
     "control_resultados.historial_ict",
     "control_resultados.historial_ict_pass_fail",
     "control_resultados.historial_cambios_parametros_ict",
+    # WF_001-WF_003 (2026-07-28): 2 modulos FCT (Control de resultados)
+    "control_resultados.historial_fct",
+    "control_resultados.historial_fct_pass_fail",
     # Migracion 2026-05-27: 2 modulos Vision (Control de resultados)
     "control_resultados.historial_vision",
     "control_resultados.historial_vision_pass_fail",
