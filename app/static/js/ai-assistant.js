@@ -869,6 +869,9 @@
             this._proposal.version = g.version;
             this._proposal.reordered = false;
             this._proposal.lineas = g.lineas_activas || [];
+            this._proposal.iniMin = g.turno_inicio_min || 450;
+            this._proposal.finMin = g.turno_fin_min || 1050;
+            this._proposal.maxHoras = g.max_horas_bloque || 9;
             const applied = g.status === 'APPLIED';
             const rango = g.date_to && g.date_to !== g.date_from ? `${g.date_from} a ${g.date_to}` : g.date_from;
             this._proposalStatus.textContent =
@@ -877,9 +880,11 @@
             const frag = document.createDocumentFragment();
             (g.grupos || []).forEach(gr => {
                 const box = document.createElement('div'); box.className = 'ai-proposal-group';
+                box.dataset.bloque = gr.bloque;
                 const head = document.createElement('div');
                 head.className = 'ai-proposal-group-head' + (gr.excede ? ' excede' : '');
-                head.textContent = `${gr.bloque} · ${gr.lineas.join('+')} · ${gr.total_horas.toFixed(2)}/9 h` +
+                head.textContent = `${gr.bloque} · ${gr.lineas.join('+')} · ` +
+                    `${gr.total_horas.toFixed(2)}/${this._proposal.maxHoras} h` +
                     (gr.excede ? ' · EXCEDE' : '');
                 box.appendChild(head);
                 const table = document.createElement('table'); table.className = 'ai-proposal-table';
@@ -887,10 +892,13 @@
                     '<th>Cantidad</th><th>UPH</th><th>Horas</th><th>Inicio</th><th>Fin</th>' +
                     '<th>Falta</th><th></th></tr></thead>';
                 const tb = document.createElement('tbody');
+                tb.dataset.bloque = gr.bloque;
                 (gr.lotes || []).forEach(l => {
                     const tr = document.createElement('tr'); tr.dataset.itemId = l.item_id;
+                    tr.dataset.bloque = gr.bloque;
+                    tr.dataset.uph = l.uph || 0;
                     const cell = (v, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = v; return c; };
-                    tr.appendChild(cell(l.sec));
+                    tr.appendChild(cell(l.sec, 'sec'));
                     tr.appendChild(cell(l.linea, 'ln'));
                     tr.appendChild(cell(l.part_no));
                     const qtd = document.createElement('td');
@@ -898,17 +906,21 @@
                     inp.type = 'number'; inp.min = '0'; inp.step = String(l.pack_size || 1);
                     inp.value = l.qty; inp.dataset.orig = l.qty; inp.className = 'ai-proposal-qty';
                     inp.disabled = applied;
+                    inp.addEventListener('input', () => this.recalcProposalHours());
                     qtd.appendChild(inp); tr.appendChild(qtd);
                     tr.appendChild(cell(l.uph));
-                    tr.appendChild(cell(l.horas.toFixed(2)));
-                    tr.appendChild(cell(l.inicio, l.tiempo_extra ? 'te' : ''));
-                    tr.appendChild(cell(l.fin, l.tiempo_extra ? 'te' : ''));
+                    tr.appendChild(cell(l.horas.toFixed(2), 'hh'));
+                    tr.appendChild(cell(l.inicio, 'ini' + (l.tiempo_extra ? ' te' : '')));
+                    tr.appendChild(cell(l.fin, 'fin' + (l.tiempo_extra ? ' te' : '')));
                     tr.appendChild(cell(l.falta_el || ''));
                     const dtd = document.createElement('td');
                     if (!applied) {
                         const del = document.createElement('button');
                         del.type = 'button'; del.className = 'ai-proposal-del'; del.textContent = '✕'; del.title = 'Quitar del plan';
-                        del.addEventListener('click', () => tr.classList.toggle('deleted'));
+                        del.addEventListener('click', () => {
+                            tr.classList.toggle('deleted');
+                            this.recalcProposalHours();
+                        });
                         dtd.appendChild(del);
                     }
                     tr.appendChild(dtd);
@@ -966,14 +978,24 @@
         }
 
         enableRowDrag(tbody) {
-            let dragged = null;
             tbody.querySelectorAll('tr').forEach(tr => {
                 tr.draggable = true;
-                tr.addEventListener('dragstart', () => { dragged = tr; tr.classList.add('dragging'); });
-                tr.addEventListener('dragend', () => { tr.classList.remove('dragging'); dragged = null; });
+                tr.addEventListener('dragstart', () => {
+                    this._dragRow = tr; this._dragFrom = tbody; tr.classList.add('dragging');
+                });
+                tr.addEventListener('dragend', () => {
+                    tr.classList.remove('dragging');
+                    // Cayo en otro bloque: conserva su linea (el bloque puede
+                    // combinar lineas) y queda marcado hasta que se guarde.
+                    const destino = tr.parentElement && tr.parentElement.dataset.bloque;
+                    if (destino) tr.classList.toggle('moved', destino !== tr.dataset.bloque);
+                    this._dragRow = null; this._dragFrom = null;
+                    this.recalcProposalHours();
+                });
             });
             tbody.addEventListener('dragover', (e) => {
-                if (!dragged || dragged.parentElement !== tbody) return;  // solo dentro del bloque
+                const dragged = this._dragRow;
+                if (!dragged) return;
                 e.preventDefault();
                 const rows = [...tbody.querySelectorAll('tr:not(.dragging)')];
                 const after = rows.find(row => {
@@ -983,6 +1005,42 @@
                 if (after) tbody.insertBefore(dragged, after);
                 else tbody.appendChild(dragged);
                 this._proposal.reordered = true;
+            });
+        }
+
+        recalcProposalHours() {
+            // Mismo calculo que el grid del servidor (_ppy_propuesta_grid): reloj
+            // encadenado desde el inicio del turno, saltando los renglones
+            // marcados para quitar. Al guardar, el servidor lo recalcula igual.
+            const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+            const maxH = this._proposal.maxHoras;
+            this._proposalBody.querySelectorAll('.ai-proposal-group').forEach(box => {
+                let reloj = this._proposal.iniMin, total = 0, sec = 0;
+                const lineas = new Set();
+                box.querySelectorAll('tbody tr').forEach(tr => {
+                    if (tr.classList.contains('deleted')) return;
+                    const uph = parseInt(tr.dataset.uph, 10) || 0;
+                    const qty = parseInt(tr.querySelector('.ai-proposal-qty')?.value, 10) || 0;
+                    const horas = uph ? qty / uph : 0;
+                    const fin = reloj + Math.round(horas * 60);
+                    const te = fin > this._proposal.finMin;
+                    tr.querySelector('td.sec').textContent = ++sec;
+                    tr.querySelector('td.hh').textContent = horas.toFixed(2);
+                    ['ini', 'fin'].forEach((k, i) => {
+                        const c = tr.querySelector(`td.${k}`);
+                        c.textContent = hhmm(i ? fin : reloj);
+                        c.classList.toggle('te', te);
+                    });
+                    lineas.add(tr.querySelector('td.ln').textContent.trim());
+                    reloj = fin; total += horas;
+                });
+                const excede = total > maxH + 0.01;
+                const head = box.querySelector('.ai-proposal-group-head');
+                head.textContent = sec
+                    ? `${box.dataset.bloque} · ${[...lineas].sort().join('+')} · ` +
+                      `${total.toFixed(2)}/${maxH} h` + (excede ? ' · EXCEDE' : '')
+                    : `${box.dataset.bloque} · vacío`;
+                head.classList.toggle('excede', excede);
             });
         }
 
@@ -1003,10 +1061,14 @@
             this._proposalBody.querySelectorAll('tr[data-item-id]').forEach(tr => {
                 const id = tr.dataset.itemId;
                 if (tr.classList.contains('deleted')) { ediciones.push({ item_id: id, eliminar: true }); return; }
+                const ed = { item_id: id };
                 const inp = tr.querySelector('.ai-proposal-qty');
                 if (inp && String(inp.value) !== String(inp.dataset.orig)) {
-                    ediciones.push({ item_id: id, cantidad: parseInt(inp.value, 10) || 0 });
+                    ed.cantidad = parseInt(inp.value, 10) || 0;
                 }
+                const destino = tr.parentElement && tr.parentElement.dataset.bloque;
+                if (destino && destino !== tr.dataset.bloque) ed.bloque = destino;
+                if (ed.cantidad !== undefined || ed.bloque) ediciones.push(ed);
             });
             const body = { ediciones };
             if (this._proposal.reordered) {

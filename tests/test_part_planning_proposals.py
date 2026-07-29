@@ -420,3 +420,74 @@ def test_aplicar_propuesta_preserva_linea_turno_y_origen_en_schedule(monkeypatch
     assert connection.autocommit_values == [False, True]
     assert connection.closed is True
     assert cursor.closed is True
+
+
+def test_export_propuesta_trae_bloque_secuencia_y_horario(monkeypatch):
+    """El Excel de la propuesta sale con bloque/secuencia/Inicio/Fin del grid del
+    modal y ordenado por bloque, no por linea."""
+    from app.api.portal import ai_reports
+
+    items = [
+        {"public_id": "i1", "part_no": "A", "sched_date": date(2026, 7, 20),
+         "linea": "M1", "turno": "DIA", "qty_proposed": 500, "uph": 100,
+         "ct": 36.0, "hours_required": 5.0, "pack_size": 20, "bloque": None,
+         "inventory_before": 0, "inventory_after": 0,
+         "shortage_date": date(2026, 7, 20), "reason": "x"},
+        {"public_id": "i2", "part_no": "B", "sched_date": date(2026, 7, 20),
+         "linea": "D3", "turno": "DIA", "qty_proposed": 600, "uph": 100,
+         "ct": 36.0, "hours_required": 6.0, "pack_size": 20, "bloque": None,
+         "inventory_before": 0, "inventory_after": 0,
+         "shortage_date": date(2026, 7, 20), "reason": "x"},
+    ]
+    header = _header(objective=None, excluded_parts_json=None, source="IA",
+                     total_qty=1100, omitted_count=0, created_at=None,
+                     plan_params_json=None)
+
+    class _Cursor:
+        def __init__(self): self._one, self._many = None, []
+        def execute(self, sql, params=()):
+            self._one, self._many = None, []
+            if "FROM lg_plan_proposals WHERE public_id" in sql:
+                self._one = header
+            elif "FROM lg_plan_proposal_items" in sql:
+                self._many = [
+                    {"item_id": it["public_id"], "fecha": it["sched_date"],
+                     "numero_parte": it["part_no"], "linea": it["linea"],
+                     "cantidad": it["qty_proposed"], "ct": it["ct"],
+                     "uph": it["uph"], "horas": it["hours_required"],
+                     "turno": it["turno"], "pack_size": it["pack_size"],
+                     "inventario_antes": 0, "inventario_despues": 0,
+                     "fecha_faltante": it["shortage_date"], "prioridad": 1,
+                     "motivo": "x", "requires_approval": 0,
+                     "excepciones_json": None}
+                    for it in items
+                ]
+        def fetchone(self): return self._one
+        def fetchall(self): return list(self._many)
+        def close(self): pass
+
+    class _Conn:
+        def cursor(self): return _Cursor()
+        def close(self): pass
+
+    def fake_query(sql, params=(), fetch=None):
+        s = " ".join(str(sql).split())
+        if "FROM lg_plan_proposals WHERE public_id" in s:
+            return header
+        if "SELECT public_id AS item_id" in s:
+            return [dict(it, item_id=it["public_id"], qty=it["qty_proposed"],
+                         horas=it["hours_required"]) for it in items]
+        return None
+
+    monkeypatch.setattr(ai_reports, "get_db_connection", lambda: _Conn())
+    monkeypatch.setattr(pp, "execute_query", fake_query)
+
+    out = ai_reports._plan_proposal_report(
+        "ana", {"proposal_id": PROPOSAL_PUBLIC_ID}, limit=100)
+
+    assert out["columns"][:2] == ["bloque", "secuencia"]
+    # D3 (6 h) y M1 (5 h) no caben juntos: B1=D3, B2=M1, y el Excel va en ese orden
+    assert [(r["bloque"], r["numero_parte"], r["inicio"], r["fin"])
+            for r in out["rows"]] == [
+        ("B1", "B", "07:30", "13:30"), ("B2", "A", "07:30", "12:30")]
+    assert all(r["secuencia"] == 1 and "item_id" not in r for r in out["rows"])

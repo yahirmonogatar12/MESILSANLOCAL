@@ -258,6 +258,27 @@ def init_material_invoice_tables():
         )
     _ensure_index("material_invoice_lot_links", "uk_lote_link_activo", "UNIQUE KEY uk_lote_link_activo (activo_key)")
 
+    # Confirmaciones de recepción para artículos de otras áreas que no tienen
+    # Part System. No crean inventario: únicamente registran el avance del
+    # invoice y conservan una bitácora append-only.
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS material_invoice_manual_receipts (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            invoice_id BIGINT NOT NULL,
+            packing_line_id BIGINT NOT NULL,
+            accion ENUM('RECIBIDO','REVERTIDO') NOT NULL,
+            cantidad_confirmada DECIMAL(18,4) NOT NULL DEFAULT 0,
+            usuario VARCHAR(255) NOT NULL DEFAULT 'SISTEMA',
+            comentario VARCHAR(500) NULL,
+            fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_mimr_invoice_fecha (invoice_id, fecha, id),
+            KEY idx_mimr_packing_ultimo (packing_line_id, id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+
     execute_query(
         """
         CREATE TABLE IF NOT EXISTS inventario_lote_costos (

@@ -828,6 +828,63 @@ def test_ppy_grid_y_editar_con_cursor_mock(monkeypatch):
         pp._ppy_editar_propuesta("p1", "ana", [{"item_id": "i1", "cantidad": 119}])
 
 
+def test_ppy_bloque_fijado_a_mano(monkeypatch):
+    """Arrastrar de un bloque a otro: el bloque fijado gana sobre el empaquetado
+    automatico y el destino queda con lineas combinadas (M1 + D3)."""
+    import app.api.control_produccion.part_planning as pp
+
+    base = {"turno": "DIA", "uph": 100, "ct": 36.0, "pack_size": 20,
+            "sched_date": date(2026, 7, 23), "inventory_before": 0,
+            "inventory_after": 0, "shortage_date": date(2026, 7, 23),
+            "reason": "x", "bloque": None}
+    estado = {
+        "header": {"id": 7, "public_id": "p1", "version": 1,
+                   "date_from": date(2026, 7, 23), "date_to": date(2026, 7, 23),
+                   "status": "PENDING_CONFIRMATION", "engine_version": "x",
+                   "total_qty": 1100, "omitted_count": 0, "objective": None},
+        "items": {
+            "i1": {**base, "public_id": "i1", "part_no": "A", "linea": "M1",
+                   "qty_proposed": 500, "hours_required": 5.0},
+            "i2": {**base, "public_id": "i2", "part_no": "B", "linea": "D3",
+                   "qty_proposed": 600, "hours_required": 6.0},
+        },
+    }
+
+    def fake_query(sql, params=(), fetch=None):
+        s = " ".join(str(sql).split())
+        if "FROM lg_plan_proposals WHERE public_id" in s:
+            return estado["header"]
+        if "SELECT public_id AS item_id" in s:
+            return [dict(v, item_id=v["public_id"], qty=v["qty_proposed"],
+                         horas=v["hours_required"]) for v in estado["items"].values()]
+        if s.startswith("SELECT pack_size, uph, part_no"):
+            it = estado["items"].get(params[1])
+            return it and {"pack_size": it["pack_size"], "uph": it["uph"],
+                           "part_no": it["part_no"]}
+        if s.startswith("UPDATE lg_plan_proposal_items SET bloque"):
+            estado["items"][params[2]]["bloque"] = params[0]
+            return None
+        if s.startswith("UPDATE lg_plan_proposals SET version"):
+            estado["header"]["version"] += 1
+            return None
+        return None
+
+    monkeypatch.setattr(pp, "execute_query", fake_query)
+    # Sin fijar: D3 (6 h) y M1 (5 h) no pueden compartir bloque -> dos grupos
+    g = pp._ppy_propuesta_grid("p1", "ana")
+    assert len(g["grupos"]) == 2
+    destino = next(gr["bloque"] for gr in g["grupos"] if gr["lineas"] == ["D3"])
+    # Se arrastra el lote de M1 al bloque de D3
+    g2 = pp._ppy_editar_propuesta("p1", "ana",
+                                  [{"item_id": "i1", "bloque": destino}])
+    grupo = next(gr for gr in g2["grupos"] if gr["bloque"] == destino)
+    assert len(g2["grupos"]) == 1 and grupo["lineas"] == ["D3", "M1"]
+    assert grupo["total_horas"] == 11.0 and grupo["excede"] is True
+    # Bloque invalido: no se toca nada
+    with pytest.raises(ValueError, match="Bloque invalido"):
+        pp._ppy_editar_propuesta("p1", "ana", [{"item_id": "i1", "bloque": "X9"}])
+
+
 def test_ppy_simular_schedule_deriva_ct_desde_uph(monkeypatch):
     fecha = date(2026, 7, 15)
     parte = "SINCT000001"

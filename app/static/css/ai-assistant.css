@@ -604,6 +604,8 @@
 .ai-proposal-table tbody tr { cursor:grab; }
 .ai-proposal-table tbody tr.dragging { opacity:.45; background:#1b2b45; cursor:grabbing; }
 .ai-proposal-table tbody tr:hover { background:#122036; }
+/* Movido a otro bloque, pendiente de Guardar cambios */
+.ai-proposal-table tbody tr.moved { box-shadow:inset 3px 0 0 #fbbf24; }
 .ai-proposal-add {
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     margin-top:6px; padding:10px 12px; background:#101d31; border:1px dashed #2b3c5a;

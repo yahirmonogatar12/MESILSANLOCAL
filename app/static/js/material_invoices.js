@@ -1,6 +1,6 @@
 (function () {
   const STYLE_ID = "material-invoices-css";
-  const STYLE_VERSION = "20260707a";
+  const STYLE_VERSION = "20260728manual1";
   const STYLE_HREF = `/static/css/material_invoices.css?v=${STYLE_VERSION}`;
 
   const state = {
@@ -17,7 +17,7 @@
     pendingPalletLink: null,
     pendingLineEdit: null,
     // Copia de los datos renderizados para exportar a Excel sin volver al backend.
-    data: { invoices: [], lines: [], packing: [], links: [] },
+    data: { invoices: [], lines: [], packing: [], links: [], manual: [] },
   };
 
   const INVOICE_LIST_COLUMNS = [
@@ -58,7 +58,7 @@
     { field: "kg", label: "KG", value: (row) => numberText(row.kg) },
     { field: "cbm", label: "CBM", value: (row) => numberText(row.cbm) },
     { field: "estado_match", label: "Estado" },
-    { field: "mensaje_match", label: "Mensaje" },
+    { field: "mensaje_match", label: "Confirmacion / Mensaje" },
   ];
 
   const INVOICE_LINKS_COLUMNS = [
@@ -72,6 +72,17 @@
     { field: "usuario_aplicacion", label: "Aplicado por" },
     { field: "fecha_aplicacion", label: "Fecha aplicacion" },
     { field: "usuario_desaplicado", label: "Desaplicado por" },
+  ];
+
+  const INVOICE_MANUAL_COLUMNS = [
+    { field: "accion", label: "Accion" },
+    { field: "numero_parte_sistema", label: "Parte" },
+    { field: "descripcion", label: "Descripcion" },
+    { field: "pallet_no", label: "Pallet" },
+    { field: "cantidad_confirmada", label: "Cantidad", value: (row) => numberText(row.cantidad_confirmada) },
+    { field: "usuario", label: "Usuario" },
+    { field: "fecha", label: "Fecha" },
+    { field: "comentario", label: "Comentario" },
   ];
 
   function ensureModuleStyles() {
@@ -211,6 +222,7 @@
     filters.renderHead("invoices:lines", "mat-invoice-lines-head", INVOICE_LINES_COLUMNS);
     filters.renderHead("invoices:packing", "mat-invoice-packing-head", INVOICE_PACKING_COLUMNS);
     filters.renderHead("invoices:links", "mat-invoice-links-head", INVOICE_LINKS_COLUMNS);
+    filters.renderHead("invoices:manual", "mat-invoice-manual-head", INVOICE_MANUAL_COLUMNS);
   }
 
   function filterRows(tableKey, columns, rows) {
@@ -226,6 +238,8 @@
       renderPacking(state.data.packing || []);
     } else if (tableKey === "invoices:links") {
       renderLinks(state.data.links || []);
+    } else if (tableKey === "invoices:manual") {
+      renderManualReceipts(state.data.manual || []);
     }
   }
 
@@ -235,6 +249,7 @@
     renderLines(state.data.lines || []);
     renderPacking(state.data.packing || []);
     renderLinks(state.data.links || []);
+    renderManualReceipts(state.data.manual || []);
   }
 
   function syncDateFilterAvailability() {
@@ -344,6 +359,7 @@
     renderLines(data.lines || []);
     renderPacking(data.packing || []);
     renderLinks(data.links || []);
+    renderManualReceipts(data.manual_receipts || []);
     syncTabs();
   }
 
@@ -398,12 +414,28 @@
       // Filas de material llegado en pallet inesperado: se resaltan y ofrecen
       // un boton para confirmar/linkear a un packing parcial de la misma parte.
       const diff = row.estado_match === "DIFERENCIA_PALLET";
-      const accion = diff
-        ? `<button type="button" class="mat-invoice-btn small warning mat-invoice-link-pallet"
+      const recibidoManual = row.confirmacion_manual_estado === "RECIBIDO";
+      const sinPartSystem = row.id && Number(row.tiene_part_system) === 0;
+      const confirmacionInfo = row.confirmacion_manual_fecha
+        ? `<span title="${escapeHtml(row.confirmacion_manual_comentario || "")}">
+             ${escapeHtml(row.confirmacion_manual_usuario || "")} ·
+             ${escapeHtml(row.confirmacion_manual_fecha || "")}
+           </span>`
+        : "";
+      let accion = escapeHtml(row.mensaje_match);
+      if (diff) {
+        accion = `<button type="button" class="mat-invoice-btn small warning mat-invoice-link-pallet"
              data-lote="${escapeHtml(row.ejemplo_codigo)}"
              data-pallet="${escapeHtml(row.pallet_no)}"
-             data-parte="${escapeHtml(row.numero_parte_sistema)}">Confirmar/linkear</button>`
-        : escapeHtml(row.mensaje_match);
+             data-parte="${escapeHtml(row.numero_parte_sistema)}">Confirmar/linkear</button>`;
+      } else if (sinPartSystem) {
+        accion = `<button type="button"
+             class="mat-invoice-btn small ${recibidoManual ? "warning" : "success"} mat-invoice-manual-receipt"
+             data-packing-id="${escapeHtml(row.id)}"
+             data-recibido="${recibidoManual ? "1" : "0"}">
+             ${recibidoManual ? "Revertir" : "Marcar recibido"}
+           </button> ${confirmacionInfo}`;
+      }
       // Flecha desplegable solo cuando el packing tiene lotes aplicados.
       const tieneLotes = Array.isArray(row.lotes) && row.lotes.length;
       const toggle = tieneLotes
@@ -416,9 +448,10 @@
       const aplicadoCell = exceso
         ? `<td class="mat-invoice-status DIFERENCIA" title="Aplicado ${numberText(row.cantidad_aplicada_activa)} sobre ${numberText(row.cantidad_packing)} facturado (+${numberText(exceso)})">${numberText(row.cantidad_aplicada_activa)}</td>`
         : `<td>${numberText(row.cantidad_aplicada_activa)}</td>`;
+      const estadoVisual = recibidoManual ? "RECIBIDO" : row.estado_match;
       const estadoCell = exceso
-        ? `${statusBadge(row.estado_match)} <span class="mat-invoice-status DIFERENCIA" title="Sobrante sobre lo facturado">EXCESO +${numberText(exceso)}</span>`
-        : statusBadge(row.estado_match);
+        ? `${statusBadge(estadoVisual)} <span class="mat-invoice-status DIFERENCIA" title="Sobrante sobre lo facturado">EXCESO +${numberText(exceso)}</span>`
+        : statusBadge(estadoVisual);
       const fila = `<tr class="${diff ? "mat-invoice-row-diff" : ""}">
       <td>${toggle}${numberText(row.line_no)}</td>
       <td>${escapeHtml(row.pallet_no_original)}</td>
@@ -500,6 +533,74 @@
       <td>${escapeHtml(row.usuario_desaplicado)}</td>
     </tr>`;
     }).join("");
+  }
+
+  function renderManualReceipts(rows) {
+    const body = el("mat-invoice-manual-body");
+    state.data.manual = rows;
+    if (!body) return;
+    const visibleRows = filterRows(
+      "invoices:manual",
+      INVOICE_MANUAL_COLUMNS,
+      rows
+    );
+    if (!visibleRows.length) {
+      const message = rows.length
+        ? "Sin resultados con filtros."
+        : "Sin confirmaciones manuales.";
+      body.innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
+      return;
+    }
+    body.innerHTML = visibleRows.map((row) => `<tr>
+      <td>${statusBadge(row.accion)}</td>
+      <td title="${escapeHtml(row.numero_parte_sistema)}">${escapeHtml(row.numero_parte_sistema)}</td>
+      <td title="${escapeHtml(row.descripcion)}">${escapeHtml(row.descripcion)}</td>
+      <td>${escapeHtml(row.pallet_no || row.pallet_no_original || "")}</td>
+      <td>${numberText(row.cantidad_confirmada)}</td>
+      <td>${escapeHtml(row.usuario)}</td>
+      <td>${escapeHtml(row.fecha)}</td>
+      <td title="${escapeHtml(row.comentario)}">${escapeHtml(row.comentario)}</td>
+    </tr>`).join("");
+  }
+
+  async function setManualReceipt(packingLineId, currentlyReceived) {
+    if (!state.selectedInvoiceId || !packingLineId) return;
+    const receive = !currentlyReceived;
+    const actionText = receive ? "marcar como RECIBIDO" : "revertir la recepción";
+    const warning = receive
+      ? "No se creará inventario, lote ni etiqueta."
+      : "El evento RECIBIDO anterior permanecerá en el historial.";
+    if (!window.confirm(`¿Deseas ${actionText} este material?\n\n${warning}`)) {
+      return;
+    }
+    const comentario = window.prompt("Comentario (opcional)") || "";
+    setLoading(true);
+    try {
+      await fetchJson(
+        `/api/material_admin/invoices/${encodeURIComponent(state.selectedInvoiceId)}` +
+        `/packing/${encodeURIComponent(packingLineId)}/manual-receipt`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recibido: receive, comentario }),
+        }
+      );
+      setMessage(
+        "mat-invoice-detail-message",
+        receive
+          ? "Material marcado como RECIBIDO sin generar inventario."
+          : "Recepción manual revertida; el historial fue conservado.",
+        "success"
+      );
+      await loadDetail(state.selectedInvoiceId);
+    } catch (err) {
+      setMessage(
+        "mat-invoice-detail-message",
+        `No se pudo actualizar la recepción: ${err.message}`
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   function closePreview() {
@@ -903,7 +1004,7 @@
     document.querySelectorAll("#mat-invoice-page .mat-invoice-tab").forEach((button) => {
       button.classList.toggle("active", button.dataset.tab === state.activeTab);
     });
-    ["lines", "packing", "links"].forEach((tab) => {
+    ["lines", "packing", "links", "manual"].forEach((tab) => {
       const panel = el(`mat-invoice-tab-${tab}`);
       if (panel) panel.hidden = tab !== state.activeTab;
     });
@@ -1037,6 +1138,21 @@
         ["Aplicado por", (r) => r.usuario_aplicacion],
         ["Fecha aplicacion", (r) => r.fecha_aplicacion],
         ["Desaplicado por", (r) => r.usuario_desaplicado],
+      ],
+    },
+    manual: {
+      sheet: "Recepciones manuales",
+      file: () => `recepciones_manuales_${state.selectedInvoice?.numero_invoice || state.selectedInvoiceId}`,
+      get rows() { return state.data.manual; },
+      columns: [
+        ["Accion", (r) => r.accion],
+        ["Parte", (r) => r.numero_parte_sistema],
+        ["Descripcion", (r) => r.descripcion],
+        ["Pallet", (r) => r.pallet_no || r.pallet_no_original],
+        ["Cantidad", (r) => numericCell(r.cantidad_confirmada)],
+        ["Usuario", (r) => r.usuario],
+        ["Fecha", (r) => r.fecha],
+        ["Comentario", (r) => r.comentario],
       ],
     },
   };
@@ -1212,6 +1328,15 @@
       if (target.closest("[data-preview-close]")) {
         event.preventDefault();
         closePreview();
+        return;
+      }
+      const manualReceiptBtn = target.closest(".mat-invoice-manual-receipt");
+      if (manualReceiptBtn) {
+        event.preventDefault();
+        setManualReceipt(
+          manualReceiptBtn.getAttribute("data-packing-id"),
+          manualReceiptBtn.getAttribute("data-recibido") === "1"
+        );
         return;
       }
       const linkPalletBtn = target.closest(".mat-invoice-link-pallet");

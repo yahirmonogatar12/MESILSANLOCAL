@@ -694,14 +694,18 @@ def test_reporte_propuesta_conserva_detalle_y_resumen_por_linea(monkeypatch):
     connection = Connection()
     monkeypatch.setattr(ai_reports, "report_allowed", lambda *_args: True)
     monkeypatch.setattr(ai_reports, "get_db_connection", lambda: connection)
+    # El bloque/horario los aporta el grid del modal; aqui solo interesa el
+    # detalle y el resumen por linea (el enriquecido va en test_part_planning_proposals).
+    from app.api.control_produccion import part_planning as pp
+    monkeypatch.setattr(pp, "_ppy_propuesta_grid", lambda *_a, **_k: {"grupos": []})
 
     result = ai_reports.run_report(
         "ana", "plan_proposal", {"proposal_id": proposal_id}, for_artifact=True
     )
 
     assert result["columns"] == [
-        "fecha", "numero_parte", "linea", "cantidad", "ct", "uph", "horas",
-        "accion_schedule",
+        "bloque", "secuencia", "fecha", "numero_parte", "linea", "cantidad",
+        "ct", "uph", "horas", "inicio", "fin", "accion_schedule",
     ]
     assert result["row_count"] == 2
     assert result["summary"]["total_qty"] == 2320

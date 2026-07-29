@@ -523,12 +523,28 @@ def get_invoice_detail(invoice_id):
             """
             SELECT
               mipl.*,
+              CASE WHEN catalogo.numero_parte IS NULL THEN 0 ELSE 1 END AS tiene_part_system,
+              manual.accion AS confirmacion_manual_estado,
+              manual.usuario AS confirmacion_manual_usuario,
+              manual.fecha AS confirmacion_manual_fecha,
+              manual.comentario AS confirmacion_manual_comentario,
               COALESCE(entradas.entradas_recibidas, 0) AS entradas_recibidas,
-              COALESCE(entradas.cantidad_recibida, 0) AS cantidad_recibida,
-              GREATEST(mipl.cantidad_packing - COALESCE(entradas.cantidad_recibida, 0), 0) AS cantidad_pendiente_entrada,
+              CASE
+                WHEN manual.accion = 'RECIBIDO' THEN mipl.cantidad_packing
+                ELSE COALESCE(entradas.cantidad_recibida, 0)
+              END AS cantidad_recibida,
+              CASE
+                WHEN manual.accion = 'RECIBIDO' THEN 0
+                ELSE GREATEST(
+                  mipl.cantidad_packing - COALESCE(entradas.cantidad_recibida, 0),
+                  0
+                )
+              END AS cantidad_pendiente_entrada,
               COALESCE(aplicado.links_activos, 0) AS links_activos,
               COALESCE(aplicado.cantidad_aplicada_activa, 0) AS cantidad_aplicada_activa
             FROM material_invoice_packing_lines mipl
+            LEFT JOIN materiales catalogo
+              ON catalogo.numero_parte = mipl.numero_parte_sistema
             LEFT JOIN (
                 SELECT
                   cma.numero_invoice,
@@ -557,6 +573,17 @@ def get_invoice_detail(invoice_id):
                 GROUP BY packing_line_id
             ) aplicado
               ON aplicado.packing_line_id = mipl.id
+            LEFT JOIN (
+                SELECT r.packing_line_id, r.accion, r.usuario, r.fecha, r.comentario
+                FROM material_invoice_manual_receipts r
+                JOIN (
+                    SELECT packing_line_id, MAX(id) AS ultimo_id
+                    FROM material_invoice_manual_receipts
+                    WHERE invoice_id = %s
+                    GROUP BY packing_line_id
+                ) ultimo ON ultimo.ultimo_id = r.id
+            ) manual
+              ON manual.packing_line_id = mipl.id
             WHERE mipl.invoice_id = %s
             ORDER BY
               CASE
@@ -567,7 +594,13 @@ def get_invoice_detail(invoice_id):
               mipl.line_no,
               mipl.id
             """,
-            (invoice["numero_invoice"], invoice["numero_invoice"], invoice_id, invoice_id),
+            (
+                invoice["numero_invoice"],
+                invoice["numero_invoice"],
+                invoice_id,
+                invoice_id,
+                invoice_id,
+            ),
         )
         packing = [row_to_json(r) for r in (cursor.fetchall() or [])]
 
@@ -673,7 +706,38 @@ def get_invoice_detail(invoice_id):
             (invoice_id,),
         )
         links = [row_to_json(r) for r in (cursor.fetchall() or [])]
-        return {"success": True, "invoice": row_to_json(invoice), "lines": lines, "packing": packing, "links": links}, 200
+        cursor.execute(
+            """
+            SELECT
+              r.id,
+              r.packing_line_id,
+              r.accion,
+              r.cantidad_confirmada,
+              r.usuario,
+              r.comentario,
+              r.fecha,
+              p.numero_parte_sistema,
+              p.numero_parte_packing,
+              p.descripcion,
+              p.pallet_no,
+              p.pallet_no_original
+            FROM material_invoice_manual_receipts r
+            JOIN material_invoice_packing_lines p ON p.id = r.packing_line_id
+            WHERE r.invoice_id = %s
+            ORDER BY r.fecha DESC, r.id DESC
+            LIMIT 1000
+            """,
+            (invoice_id,),
+        )
+        manual_receipts = [row_to_json(r) for r in (cursor.fetchall() or [])]
+        return {
+            "success": True,
+            "invoice": row_to_json(invoice),
+            "lines": lines,
+            "packing": packing,
+            "links": links,
+            "manual_receipts": manual_receipts,
+        }, 200
     except Exception as exc:
         logger.exception("Error detalle invoice %s: %s", invoice_id, exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
@@ -1590,6 +1654,10 @@ def delete_invoice(invoice_id):
             )
 
         archivo_ruta = invoice.get("archivo_ruta")
+        cursor.execute(
+            "DELETE FROM material_invoice_manual_receipts WHERE invoice_id = %s",
+            (invoice_id,),
+        )
         cursor.execute("DELETE FROM material_invoice_lot_links WHERE invoice_id = %s", (invoice_id,))
         cursor.execute("DELETE FROM material_invoice_packing_lines WHERE invoice_id = %s", (invoice_id,))
         cursor.execute("DELETE FROM material_invoice_lines WHERE invoice_id = %s", (invoice_id,))
@@ -1603,6 +1671,108 @@ def delete_invoice(invoice_id):
     except Exception as exc:
         conn.rollback()
         logger.exception("Error eliminando invoice %s: %s", invoice_id, exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def set_manual_receipt(invoice_id, packing_line_id, data):
+    """Confirma una línea sin Part System como recibida, sin inventariarla.
+
+    Cada cambio agrega un evento RECIBIDO/REVERTIDO; nunca se borra el evento
+    anterior, por lo que queda trazabilidad completa de usuario y fecha.
+    """
+    conn, cursor, error = _db()
+    if error:
+        return error
+    try:
+        recibido = data.get("recibido", True) is not False
+        comentario = sanitizar_texto(data.get("comentario"), 500) or None
+        usuario = _usuario_actual()
+        cursor.execute("START TRANSACTION")
+        cursor.execute(
+            """
+            SELECT p.id, p.invoice_id, p.numero_parte_sistema, p.cantidad_packing
+            FROM material_invoice_packing_lines p
+            JOIN material_invoices i ON i.id = p.invoice_id
+            WHERE p.id = %s AND p.invoice_id = %s
+            LIMIT 1
+            FOR UPDATE
+            """,
+            (packing_line_id, invoice_id),
+        )
+        packing = cursor.fetchone()
+        if not packing:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "La línea no pertenece al invoice seleccionado.",
+            }, 404
+
+        if recibido:
+            cursor.execute(
+                "SELECT 1 FROM materiales WHERE numero_parte = %s LIMIT 1",
+                (packing["numero_parte_sistema"],),
+            )
+            if cursor.fetchone():
+                conn.rollback()
+                return {
+                    "success": False,
+                    "error": (
+                        "Este material sí tiene Part System y debe recibirse "
+                        "por Entrada de material."
+                    ),
+                }, 409
+
+        cursor.execute(
+            """
+            SELECT accion
+            FROM material_invoice_manual_receipts
+            WHERE packing_line_id = %s
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (packing_line_id,),
+        )
+        ultimo = cursor.fetchone() or {}
+        ya_recibido = ultimo.get("accion") == "RECIBIDO"
+        if ya_recibido != recibido:
+            cursor.execute(
+                """
+                INSERT INTO material_invoice_manual_receipts (
+                    invoice_id, packing_line_id, accion, cantidad_confirmada,
+                    usuario, comentario
+                ) VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    invoice_id,
+                    packing_line_id,
+                    "RECIBIDO" if recibido else "REVERTIDO",
+                    packing["cantidad_packing"],
+                    usuario,
+                    comentario,
+                ),
+            )
+
+        estado = recalculate_invoice_state(cursor, invoice_id)
+        conn.commit()
+        return {
+            "success": True,
+            "invoice_id": invoice_id,
+            "packing_line_id": packing_line_id,
+            "recibido": recibido,
+            "sin_cambios": ya_recibido == recibido,
+            "invoice_estado": estado,
+        }, 200
+    except Exception as exc:
+        conn.rollback()
+        logger.exception(
+            "Error confirmando recepción manual invoice=%s packing=%s: %s",
+            invoice_id,
+            packing_line_id,
+            exc,
+        )
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:
         cursor.close()

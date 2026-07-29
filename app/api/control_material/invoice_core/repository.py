@@ -67,9 +67,37 @@ def recalculate_invoice_state(cursor, invoice_id):
     cursor.execute(
         """
         SELECT
-          COALESCE((SELECT SUM(cantidad_packing) FROM material_invoice_packing_lines WHERE invoice_id = %s), 0) AS total_packing,
-          COALESCE((SELECT SUM(cantidad_aplicada) FROM material_invoice_lot_links WHERE invoice_id = %s AND estado = 'APLICADO'), 0) AS total_aplicado,
-          (SELECT COUNT(*) FROM material_invoice_lot_links WHERE invoice_id = %s AND estado = 'APLICADO') AS links_activos
+          COALESCE(SUM(p.cantidad_packing), 0) AS total_packing,
+          COALESCE(SUM(
+            LEAST(
+              p.cantidad_packing,
+              CASE
+                WHEN manual.accion = 'RECIBIDO' THEN p.cantidad_packing
+                ELSE COALESCE(aplicado.cantidad_aplicada, 0)
+              END
+            )
+          ), 0) AS total_aplicado,
+          COALESCE(SUM(CASE WHEN aplicado.cantidad_aplicada > 0 THEN 1 ELSE 0 END), 0)
+            + COALESCE(SUM(CASE WHEN manual.accion = 'RECIBIDO' THEN 1 ELSE 0 END), 0)
+            AS links_activos
+        FROM material_invoice_packing_lines p
+        LEFT JOIN (
+          SELECT packing_line_id, SUM(cantidad_aplicada) AS cantidad_aplicada
+          FROM material_invoice_lot_links
+          WHERE invoice_id = %s AND estado = 'APLICADO'
+          GROUP BY packing_line_id
+        ) aplicado ON aplicado.packing_line_id = p.id
+        LEFT JOIN (
+          SELECT r.packing_line_id, r.accion
+          FROM material_invoice_manual_receipts r
+          JOIN (
+            SELECT packing_line_id, MAX(id) AS ultimo_id
+            FROM material_invoice_manual_receipts
+            WHERE invoice_id = %s
+            GROUP BY packing_line_id
+          ) ultimo ON ultimo.ultimo_id = r.id
+        ) manual ON manual.packing_line_id = p.id
+        WHERE p.invoice_id = %s
         """,
         (invoice_id, invoice_id, invoice_id),
     )

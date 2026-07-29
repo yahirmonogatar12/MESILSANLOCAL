@@ -1636,7 +1636,7 @@ def _plan_proposal_report(
                 f"La propuesta no se puede exportar en estado {header.get('status')}"
             )
         cursor.execute(
-            "SELECT sched_date AS fecha, part_no AS numero_parte, linea, "
+            "SELECT public_id AS item_id, sched_date AS fecha, part_no AS numero_parte, linea, "
             "qty_proposed AS cantidad, ct, uph, hours_required AS horas, turno, "
             "pack_size, inventory_before AS inventario_antes, "
             "inventory_after AS inventario_despues, shortage_date AS fecha_faltante, "
@@ -1660,6 +1660,21 @@ def _plan_proposal_report(
 
     truncated = len(fetched) > limit
     rows = [_normalize_row(dict(row)) for row in fetched[:limit]]
+    # Bloque de 9 h / secuencia / Inicio-Fin: se reusa el grid del modal para que
+    # el Excel salga igual a lo que Planning acomodo con el drag & drop.
+    from app.api.control_produccion.part_planning import _ppy_propuesta_grid
+
+    grid = {}
+    for grupo in _ppy_propuesta_grid(proposal_id, username).get("grupos") or []:
+        for lote in grupo.get("lotes") or []:
+            grid[lote["item_id"]] = {
+                "bloque": grupo["bloque"], "secuencia": lote["sec"],
+                "inicio": lote["inicio"], "fin": lote["fin"],
+            }
+    for row in rows:
+        row.update(grid.get(row.pop("item_id", None))
+                   or {"bloque": None, "secuencia": None, "inicio": None, "fin": None})
+    rows.sort(key=lambda r: (str(r.get("bloque") or "~"), int(r.get("secuencia") or 0)))
     main_lines = {"M1", "M2", "M3", "M4", "D1", "D2", "D3"}
     main_lines.update(
         str(row.get("linea") or "").strip().upper()
@@ -1739,7 +1754,8 @@ def _plan_proposal_report(
         "report": "plan_proposal",
         "title": "Propuesta del plan de producción",
         "source": "lg_plan_proposals + lg_plan_proposal_items + lg_schedule_daily",
-        "columns": ["fecha", "numero_parte", "linea", "cantidad", "ct", "uph", "horas", "accion_schedule"],
+        "columns": ["bloque", "secuencia", "fecha", "numero_parte", "linea", "cantidad",
+                    "ct", "uph", "horas", "inicio", "fin", "accion_schedule"],
         "rows": rows,
         "schedule_changes": schedule_changes,
         "row_count": len(rows),

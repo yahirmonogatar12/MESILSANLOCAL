@@ -418,6 +418,7 @@ def init_part_planning_tables():
             part_no VARCHAR(100) NOT NULL,
             sched_date DATE NOT NULL,
             linea VARCHAR(10) NOT NULL,
+            bloque VARCHAR(10) NULL,
             turno VARCHAR(15) NOT NULL DEFAULT 'DIA',
             qty_proposed INT NOT NULL,
             qty_final INT NULL,
@@ -471,6 +472,9 @@ def init_part_planning_tables():
         ("ct", "DECIMAL(12,4) NULL AFTER qty_final"),
         ("base_sched_linea", "VARCHAR(10) NULL AFTER base_sched_qty"),
         ("base_sched_turno", "VARCHAR(15) NULL AFTER base_sched_linea"),
+        # Bloque fijado a mano (drag & drop entre bloques). NULL = lo decide el
+        # empaquetado automatico de 9 h.
+        ("bloque", "VARCHAR(10) NULL AFTER linea"),
     )
     for column_name, column_ddl in proposal_item_columns:
         existe = execute_query(
@@ -2619,7 +2623,7 @@ def _ppy_propuesta_grid(public_id, usuario, query=None):
         PPY_HORAS_EXTRA if grid_params["tiempo_extra"] else 0.0
     )
     rows = run_query(
-        "SELECT public_id AS item_id, part_no, sched_date, linea, turno, "
+        "SELECT public_id AS item_id, part_no, sched_date, linea, bloque, turno, "
         "qty_proposed AS qty, uph, ct, hours_required AS horas, pack_size, "
         "inventory_before, inventory_after, shortage_date, reason "
         "FROM lg_plan_proposal_items WHERE proposal_id=%s "
@@ -2636,6 +2640,7 @@ def _ppy_propuesta_grid(public_id, usuario, query=None):
             "item_id": r["item_id"], "part_no": r["part_no"],
             "fecha": fe.isoformat() if fe else None,
             "linea": str(r["linea"] or "").upper(), "turno": r["turno"] or "DIA",
+            "bloque_manual": str(r.get("bloque") or "").strip().upper() or None,
             "qty": int(r["qty"] or 0), "uph": int(r["uph"] or 0),
             "ct": float(r["ct"] or 0), "horas": float(r["horas"] or 0),
             "pack_size": int(r["pack_size"] or 0),
@@ -2643,10 +2648,14 @@ def _ppy_propuesta_grid(public_id, usuario, query=None):
             "inv_despues": int(r["inventory_after"] or 0),
             "falta_el": sf.isoformat() if sf else None, "motivo": r["reason"],
         })
-    asign = _ppy_bloques_visuales(items, max_horas_bloque)
+    # Los lotes con bloque fijado a mano no entran al empaquetado: se respetan
+    # tal cual (un bloque puede combinar lineas) y las horas del bloque se
+    # suman abajo con los renglones que realmente quedaron dentro.
+    asign = _ppy_bloques_visuales(
+        [it for it in items if not it["bloque_manual"]], max_horas_bloque)
     grupos_map = {}
     for it in items:
-        bloque = asign.get((it["fecha"], it["linea"]), "B1")
+        bloque = it["bloque_manual"] or asign.get((it["fecha"], it["linea"]), "B1")
         grupos_map.setdefault(bloque, []).append(it)
     grupos = []
     for bloque in sorted(grupos_map):
@@ -2682,6 +2691,10 @@ def _ppy_propuesta_grid(public_id, usuario, query=None):
         "total_lotes": len(items),
         "omitidas_count": int(header["omitted_count"] or 0),
         "lineas_activas": _ppy_config_lineas(query) if query else _ppy_config_lineas(),
+        # El modal recalcula horas/Inicio/Fin al vuelo con estos mismos topes.
+        "turno_inicio_min": PPY_TURNO_INICIO_MIN,
+        "turno_fin_min": PPY_TURNO_FIN_MIN,
+        "max_horas_bloque": round(max_horas_bloque, 2),
         "grupos": grupos,
     }
 
@@ -2762,6 +2775,18 @@ def _ppy_editar_propuesta(public_id, usuario, ediciones=None, orden=None,
                 (pid, item_id))
             cambios += 1
             continue
+        # Mover de bloque (drag & drop entre bloques): se fija el bloque a mano y
+        # el lote deja de seguir al empaquetado automatico. Conserva su linea, o
+        # sea que el bloque destino puede quedar con lineas combinadas.
+        if "bloque" in ed:
+            nuevo = str(ed.get("bloque") or "").strip().upper() or None
+            if nuevo and not _PPY_BLOQUE_RE.match(nuevo):
+                raise ValueError(f"Bloque invalido: '{nuevo}'")
+            execute_query(
+                "UPDATE lg_plan_proposal_items SET bloque=%s "
+                "WHERE proposal_id=%s AND public_id=%s",
+                (nuevo, pid, item_id))
+            cambios += 1
         if ed.get("cantidad") is None:
             continue
         qty = int(ed.get("cantidad"))
@@ -4613,6 +4638,8 @@ _PPY_UUID_RE = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-"
     r"[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
 )
+# Nombre de bloque visual: B1..B99 (los genera _ppy_bloques_visuales).
+_PPY_BLOQUE_RE = re.compile(r"^B[1-9][0-9]?$")
 
 
 @bp.route("/api/plan-proyectado/propuesta/<public_id>/grid", methods=["GET"])

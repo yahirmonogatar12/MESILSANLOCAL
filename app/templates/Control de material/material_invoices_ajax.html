@@ -87,6 +87,7 @@
             <button class="mat-invoice-tab active" type="button" data-tab="lines">Lineas invoice</button>
             <button class="mat-invoice-tab" type="button" data-tab="packing">Packing</button>
             <button class="mat-invoice-tab" type="button" data-tab="links">Links</button>
+            <button class="mat-invoice-tab" type="button" data-tab="manual">Recepciones manuales</button>
         </div>
 
         <div id="mat-invoice-detail-message" class="mat-invoice-message" hidden></div>
@@ -123,6 +124,18 @@
                 <table class="mat-invoice-table">
                     <thead id="mat-invoice-links-head"></thead>
                     <tbody id="mat-invoice-links-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="mat-invoice-tab-manual" class="mat-invoice-tab-panel" hidden>
+            <div class="mat-invoice-table-toolbar">
+                <button class="mat-invoice-btn success small" type="button" data-export="manual">Exportar Excel</button>
+            </div>
+            <div class="mat-invoice-table-wrap">
+                <table class="mat-invoice-table">
+                    <thead id="mat-invoice-manual-head"></thead>
+                    <tbody id="mat-invoice-manual-body"></tbody>
                 </table>
             </div>
         </div>
@@ -289,4 +302,4 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/material_column_filters.js', v='20260707a') }}"></script>
-<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260707a') }}"></script>
+<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260728manual1') }}"></script>
