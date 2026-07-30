@@ -27,6 +27,7 @@ except ImportError:
 from flask import (
     Flask,
     jsonify,
+    make_response,
     redirect,
     render_template,
     request,
@@ -760,7 +761,10 @@ def lista_control_calidad():
 def lista_control_resultados():
     """Cargar dinámicamente la lista de Control de Resultados"""
     try:
-        return render_template("LISTAS/LISTA_DE_CONTROL_DE_RESULTADOS.html")
+        response = make_response(render_template("LISTAS/LISTA_DE_CONTROL_DE_RESULTADOS.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        return response
     except Exception as e:
         logger.error(f"Error al cargar LISTA_DE_CONTROL_DE_RESULTADOS: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500

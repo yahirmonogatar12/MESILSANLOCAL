@@ -48,6 +48,7 @@
     <link id="ilsan-theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/ilsan-theme.css', v='20260522a') }}">
     <link id="ai-assistant-css" rel="stylesheet" href="{{ url_for('static', filename='css/ai-assistant.css', v='20260727b') }}">
     <link id="ict-css" rel="stylesheet" href="{{ url_for('static', filename='css/ict.css', v='20260630a') }}">
+    <link id="fct-css" rel="stylesheet" href="{{ url_for('static', filename='css/fct.css', v='20260728a') }}">
     <link id="index-styles-css" rel="stylesheet" href="{{ url_for('static', filename='css/index-styles.css', v='20260522a') }}">
     <link id="styles-css" rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='20260522a') }}">
     <link id="historial-cambio-material-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_cambio_material_smt.css', v='20260522a') }}">
@@ -82,6 +83,7 @@
     <link id="gestion-roles-depto-css" rel="stylesheet" href="{{ url_for('static', filename='css/gestion_roles_depto.css', v='20260619d') }}">
     <!-- WF_004: CSS persistente modulos ICT (Control de resultados / Historial de maquinas calidad) -->
     <link id="ict-pass-fail-css" rel="stylesheet" href="{{ url_for('static', filename='css/ict-Pass-Fail.css', v='20260527a') }}">
+    <link id="fct-pass-fail-css" rel="stylesheet" href="{{ url_for('static', filename='css/fct-Pass-Fail.css', v='20260728a') }}">
     <link id="historial-cambios-parametros-ict-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_cambios_parametros_ict.css', v='20260527a') }}">
     <!-- WF_004: CSS persistente modulos Vision (Control de resultados / Historial de maquinas calidad) -->
     <link id="history-vision-css" rel="stylesheet" href="{{ url_for('static', filename='css/history_vision.css', v='20260629b') }}">
@@ -854,6 +856,16 @@
 
         <!-- Contenedor específico para Historial ICT -->
         <div id="historial-ict-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Contenedor específico para Historial FCT -->
+        <div id="historial-fct-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Contenedor específico para Historial de maquinas FCT % Pass/Fail -->
+        <div id="historial-maquina-fct-pass-fail-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
@@ -2374,6 +2386,14 @@
                     });
             };
 
+            const SIDEBAR_CONTENT_VERSION = '20260728fct';
+
+            function agregarVersionSidebar(templatePath) {
+                if (typeof templatePath !== 'string') return templatePath;
+                const separator = templatePath.includes('?') ? '&' : '?';
+                return `${templatePath}${separator}v=${SIDEBAR_CONTENT_VERSION}&_=${Date.now()}`;
+            }
+
             window.cargarSidebarDinamico = function(containerId, templatePath) {
                 const container = document.getElementById(containerId);
                 if (!container) {
@@ -2383,9 +2403,10 @@
                 container.style.display = 'block';
                 container.innerHTML = '<div class="loading-indicator">Cargando...</div>';
 
-                return fetch(templatePath, {
+                return fetch(agregarVersionSidebar(templatePath), {
                     method: 'GET',
                     credentials: 'same-origin',
+                    cache: 'no-store',
                     headers: {
                         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
                     }
@@ -2399,6 +2420,7 @@
                     .then(html => {
                         container.innerHTML = html;
                         container.style.display = 'block';
+                        container.dataset.sidebarVersion = SIDEBAR_CONTENT_VERSION;
 
                         // Reinicializar dropdowns del sidebar recién inyectado
                         // (sin esto, Bootstrap pierde las instancias Collapse y
@@ -3319,11 +3341,18 @@ function hideAllMaterialContainers() {
             // Usa un marcador dataset.sidebarCargado en el contenedor.
             function cargarSidebarSiNoExiste(containerId, ruta) {
                 const cont = document.getElementById(containerId);
-                if (cont && cont.dataset.sidebarCargado === '1') {
+                if (
+                    cont &&
+                    cont.dataset.sidebarCargado === '1' &&
+                    cont.dataset.sidebarVersion === SIDEBAR_CONTENT_VERSION
+                ) {
                     return Promise.resolve();
                 }
                 return cargarSidebarDinamico(containerId, ruta).then(() => {
-                    if (cont) cont.dataset.sidebarCargado = '1';
+                    if (cont) {
+                        cont.dataset.sidebarCargado = '1';
+                        cont.dataset.sidebarVersion = SIDEBAR_CONTENT_VERSION;
+                    }
                 });
             }
 

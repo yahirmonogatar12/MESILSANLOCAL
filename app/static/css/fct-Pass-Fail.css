@@ -1,0 +1,91 @@
+#historial-fct-pass-fail-root {
+    width: 100%;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: transparent;
+}
+
+#historial-fct-pass-fail-root,
+#historial-fct-pass-fail-root * {
+    box-sizing: border-box;
+}
+
+#fct-pass-fail-filters {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 10px;
+    row-gap: 10px;
+    padding: 12px 18px 16px;
+    align-items: flex-end;
+    width: 100%;
+}
+
+#fct-pass-fail-filters .filter-group input,
+#fct-pass-fail-filters .filter-group select {
+    width: 180px;
+}
+
+#fct-pass-fail-filters .btn-primary {
+    width: auto;
+    min-width: 110px;
+    align-self: flex-end;
+    margin-left: 0;
+    padding: 9px 16px;
+}
+
+#historial-fct-pass-fail-root .results-card .card-header {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#fct-pass-fail-table {
+    width: 100%;
+    min-width: 1180px;
+    border-collapse: collapse;
+    background-color: var(--ilsan-dark-secondary);
+}
+
+#fct-pass-fail-table th,
+#fct-pass-fail-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 7px 4px;
+    text-align: center;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+#fct-pass-fail-table thead th {
+    background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
+    color: var(--ilsan-text-light);
+    position: sticky;
+    top: 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.62rem;
+    letter-spacing: 0.3px;
+    z-index: 10;
+}
+
+#fct-pass-fail-table tbody td {
+    color: var(--ilsan-text-secondary);
+    background-color: var(--ilsan-dark-secondary);
+}
+
+#fct-pass-fail-table tbody tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+#fct-pass-fail-table tbody tr:hover td {
+    background-color: var(--ilsan-hover);
+}
+
+#fct-pass-fail-table .ict-pass-fail-table-empty {
+    color: var(--ilsan-text-gray);
+    font-style: italic;
+    padding: 24px 12px;
+}

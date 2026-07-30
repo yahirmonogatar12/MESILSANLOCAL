@@ -549,6 +549,9 @@ class AuthSystem:
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina ICT', 'Acceso al historial de la maquina ICT'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina ICT % Pass/Fail', 'Acceso al historial ICT % Pass/Fail'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de cambios de parametros ICT', 'Acceso a historial de cambios de parametros ICT'),
+            # WF_001-WF_003 (2026-07-28): seed para los 2 modulos FCT en Historial de maquinas calidad.
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina FCT', 'Acceso al historial de la maquina FCT'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina FCT % Pass/Fail', 'Acceso al historial FCT % Pass/Fail'),
             # WF_001 (2026-05-27): seed para los 2 modulos Vision en Historial de maquinas calidad.
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina vision', 'Acceso al historial de la maquina vision'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina Vision % Pass/Fail', 'Acceso al historial Vision % Pass/Fail'),
@@ -653,6 +656,37 @@ class AuthSystem:
         ], [
             'Información básica'
         ])
+
+        # Los modulos FCT son equivalentes funcionales a ICT dentro de
+        # Historial de maquinas calidad; heredan los mismos roles configurados
+        # para evitar mantener permisos duplicados usuario por usuario.
+        self._asignar_permisos_fct_desde_ict(cursor)
+
+    def _asignar_permisos_fct_desde_ict(self, cursor):
+        """Copiar asignaciones de roles ICT hacia los botones FCT equivalentes."""
+        pagina = 'LISTA_DE_CONTROL_DE_RESULTADOS'
+        seccion = 'Historial de maquinas calidad'
+        pares = [
+            ('Historial de maquina ICT', 'Historial de maquina FCT'),
+            ('Historial de maquina ICT % Pass/Fail', 'Historial de maquina FCT % Pass/Fail'),
+        ]
+
+        for boton_ict, boton_fct in pares:
+            cursor.execute('''
+                INSERT IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                SELECT DISTINCT rpb.rol_id, fct.id
+                FROM rol_permisos_botones rpb
+                JOIN permisos_botones ict ON ict.id = rpb.permiso_boton_id
+                JOIN permisos_botones fct
+                  ON fct.pagina = ict.pagina
+                 AND fct.seccion = ict.seccion
+                 AND fct.boton = %s
+                 AND fct.activo = 1
+                WHERE ict.pagina = %s
+                  AND ict.seccion = %s
+                  AND ict.boton = %s
+                  AND ict.activo = 1
+            ''', (boton_fct, pagina, seccion, boton_ict))
     
     def _asignar_permisos_botones_especificos(self, cursor, rol_nombre, paginas_permitidas, secciones_permitidas):
         """Asignar permisos específicos de botones a un rol"""

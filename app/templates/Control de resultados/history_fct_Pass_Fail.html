@@ -1,0 +1,123 @@
+<!-- Historial FCT Pass/Fail - Fragmento AJAX. Reutiliza estilos ICT Pass/Fail. -->
+<div id="fct-pass-fail-container" class="ict-pass-fail-container">
+  <div id="historial-fct-pass-fail-root" class="ict-page">
+    <div class="filters-card">
+      <div class="card-header">
+        <h3>Filtros de Busqueda</h3>
+      </div>
+      <div id="fct-pass-fail-filters">
+        <div class="filter-group">
+          <label for="fct-pass-fail-filter-fecha-desde">Fecha desde</label>
+          <input type="date" id="fct-pass-fail-filter-fecha-desde">
+        </div>
+        <div class="filter-group">
+          <label for="fct-pass-fail-filter-fecha-hasta">Fecha hasta</label>
+          <input type="date" id="fct-pass-fail-filter-fecha-hasta">
+        </div>
+        <div class="filter-group">
+          <label for="fct-pass-fail-filter-numero-parte">Numero de parte</label>
+          <input type="text" id="fct-pass-fail-filter-numero-parte" placeholder="Filtrar por numero de parte">
+        </div>
+        <div class="filter-group">
+          <label for="fct-pass-fail-filter-linea">Línea</label>
+          <input type="text" id="fct-pass-fail-filter-linea" placeholder="SIN PLAN / línea">
+        </div>
+        <div class="filter-group">
+          <label for="fct-pass-fail-filter-estacion">Estación</label>
+          <input type="text" id="fct-pass-fail-filter-estacion" placeholder="FCT1...">
+        </div>
+        <div class="filter-group">
+          <label for="fct-pass-fail-filter-turno">Turno</label>
+          <select id="fct-pass-fail-filter-turno">
+            <option value="">Todos</option>
+            <option value="DIA">DIA</option>
+            <option value="TE">TE</option>
+            <option value="NOCHE">NOCHE</option>
+            <option value="SIN TURNO">SIN TURNO</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="fct-pass-fail-filter-serial">Serial</label>
+          <input type="text" id="fct-pass-fail-filter-serial" placeholder="Buscar serial">
+        </div>
+        <button id="fct-pass-fail-btn-consultar" class="btn-primary" type="button">Consultar</button>
+      </div>
+    </div>
+
+    <div class="results-card">
+      <div class="card-header">
+        <h3>Historial de maquina FCT % Pass/Fail</h3>
+        <span id="fct-pass-fail-record-count" class="record-count">0 registros</span>
+        <button id="fct-pass-fail-btn-export-excel" class="btn-export" type="button">Exportar Excel</button>
+      </div>
+      <div class="ict-pass-fail-results-hint">
+        Turnos: DIA 07:30-17:30, TE 17:30-22:30, NOCHE 23:00-07:30. Operador y tiempo de ajuste quedan PENDIENTE.
+      </div>
+      <div class="table-wrap">
+        <div class="table-loading" id="fct-pass-fail-table-loading">
+          <div class="spinner"></div>
+          <span>Cargando datos...</span>
+        </div>
+        <table id="fct-pass-fail-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Línea</th>
+              <th>Estación</th>
+              <th>Turno</th>
+              <th>No Parte</th>
+              <th>Total</th>
+              <th>PASS</th>
+              <th>FAIL</th>
+              <th>% PASS</th>
+              <th>% FAIL</th>
+              <th>Fallas con paso</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="fct-pass-fail-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="fct-pass-fail-detail-modal" class="ict-pass-fail-detail-modal" aria-hidden="true">
+      <div class="ict-pass-fail-detail-backdrop" data-fct-pass-fail-detail-close></div>
+      <div class="ict-pass-fail-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="fct-pass-fail-detail-title">
+        <div class="ict-pass-fail-detail-header">
+          <div>
+            <h3 id="fct-pass-fail-detail-title">Detalle FCT Pass/Fail</h3>
+            <p id="fct-pass-fail-detail-subtitle">Selecciona una fila del resumen.</p>
+          </div>
+          <button type="button" class="ict-pass-fail-detail-close" data-fct-pass-fail-detail-close aria-label="Cerrar">X</button>
+        </div>
+        <div class="ict-pass-fail-detail-body">
+          <div class="ict-pass-fail-detail-summary" id="fct-pass-fail-detail-summary"></div>
+          <div class="ict-pass-fail-detail-table-wrap">
+            <div class="table-loading" id="fct-pass-fail-detail-loading">
+              <div class="spinner"></div>
+              <span>Cargando detalle...</span>
+            </div>
+            <table id="fct-pass-fail-detail-table">
+              <thead>
+                <tr>
+                  <th>Inicio</th>
+                  <th>Serial</th>
+                  <th>Resultado</th>
+                  <th>Paso fallo</th>
+                  <th>Prueba fallo</th>
+                  <th>Valor</th>
+                  <th>Fuente</th>
+                </tr>
+              </thead>
+              <tbody id="fct-pass-fail-detail-body">
+                <tr><td colspan="7" class="ict-pass-fail-table-empty">Sin detalle cargado.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/fct-Pass-Fail.js', v='20260728a') }}"></script>
