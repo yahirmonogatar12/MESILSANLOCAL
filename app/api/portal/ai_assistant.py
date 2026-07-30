@@ -235,6 +235,26 @@ def _plan_completion_text(action: str, result: dict[str, Any], language: str) ->
             + ". No se modificaron inventario ni plan LG."
         )
 
+    if action == "plan_ppn_aplicar":
+        registros = int(result.get("plan_registros") or 0)
+        partes = int(result.get("plan_partes") or 0)
+        rango = str(result.get("rango") or "")
+        if language == "ko":
+            return (
+                f"**PPN이 적용되었습니다.** {rango} 기간에 **{partes:,}**개 부품, "
+                f"**{registros:,}**개 계획 레코드를 반영했습니다."
+            )
+        if language == "en":
+            return (
+                f"**PPN applied.** {registros:,} plan records for {partes:,} parts "
+                f"({rango}), with the previous day corrected to LG's real output."
+            )
+        return (
+            f"**PPN aplicado.** Se actualizaron **{registros:,}** registros de plan "
+            f"en **{partes:,}** partes ({rango}), con el día anterior corregido a lo "
+            "que LG realmente construyó."
+        )
+
     if action == "plan_propuesta_aplicar":
         applied = int(result.get("aplicadas") or 0)
         modified = int(result.get("modificadas") or 0)
@@ -513,6 +533,20 @@ def _upload_lookup(conversation_id: int):
         ultimo = max(candidatos, key=lambda p: p.stat().st_mtime)
         return _read(ultimo)
 
+    def recientes(limite=4):
+        """[(bytes, filename)] de los Excel de la conversacion, del mas nuevo al
+        mas viejo. Comparar dos PPN necesita mas de un adjunto: el chat sube uno
+        por turno, asi que el segundo llega en un turno anterior."""
+        if not base.is_dir():
+            return []
+        candidatos = sorted(
+            (p for p in base.glob("*") if p.suffix.lower() in (".xlsx", ".xlsm")),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        return [_read(p) for p in candidatos[: max(1, int(limite))]]
+
+    lookup.recientes = recientes
     return lookup
 
 
@@ -949,7 +983,8 @@ def stream_message(public_id: str):
     pending_plan_excel = (
         pending_plan_action
         if pending_plan_action
-        and pending_plan_action.get("prepare_tool") == "plan_propuesta_preparar"
+        and pending_plan_action.get("prepare_tool") in (
+            "plan_propuesta_preparar", "plan_dia_preparar")
         and pending_plan_action.get("proposal_id")
         and _PLAN_EXCEL_REQUEST.search(content)
         else None
@@ -1290,9 +1325,14 @@ def stream_message(public_id: str):
                         "model_output": model_result,
                         "public_summary": {"tool": name},
                     }
-                    if name == "plan_propuesta_preparar" and result.get("proposal_id"):
+                    # plan_dia_preparar arma la misma propuesta por dentro, asi
+                    # que tambien tiene que ofrecer la rejilla y el Excel.
+                    if (name in ("plan_propuesta_preparar", "plan_dia_preparar")
+                            and result.get("proposal_id")):
                         proposal_id = str(result["proposal_id"])
-                        proposal_date = str(result.get("date_from") or "").strip()
+                        proposal_date = str(
+                            result.get("date_from") or result.get("fecha") or ""
+                        ).strip()
                         artifact_title = "Plan de producción propuesto"
                         if proposal_date:
                             artifact_title += f" - {proposal_date}"

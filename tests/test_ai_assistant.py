@@ -1484,12 +1484,14 @@ def test_instrucciones_priorizan_raw_para_uph_y_ct():
 
 
 def test_instrucciones_no_preguntan_el_proceso_actual_al_replanear_hoy():
-    """El MES deduce en que va cada linea de los lotes arrancados; preguntarlo
-    cada vez estorbaba. Solo se pregunta si la herramienta lo reclama."""
+    """El MES usa la hora calculada y nunca necesita preguntar el lote."""
     instructions = ai_openai.build_instructions(
         {"language": "es", "plan_tools_enabled": True}
     )
     assert "NO preguntes en que" in instructions
+    assert "hora local" in instructions
+    assert "inicio calculada" in instructions
+    assert "continua sin preguntar" in instructions
     assert "proceso_actual" in instructions
     assert "¿en qué proceso o lote van las líneas?" not in instructions
 

@@ -800,6 +800,8 @@ def get_pending_plan_confirmation(
         "plan_generar_preparar": "plan_generar_ejecutar",
         "plan_part_sincronizar_preparar": "plan_part_sincronizar_ejecutar",
         "plan_propuesta_preparar": "plan_propuesta_aplicar",
+        "plan_ppn_comparar": "plan_ppn_aplicar",
+        "plan_dia_preparar": "plan_propuesta_aplicar",
     }
     relevant = tuple(prepare_to_execute) + tuple(prepare_to_execute.values())
     placeholders = ",".join(["%s"] * len(relevant))

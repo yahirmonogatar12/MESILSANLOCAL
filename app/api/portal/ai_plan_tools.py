@@ -28,6 +28,7 @@ from app.config_mysql import get_pooled_connection
 from app.api.pda.shipping_material import get_dict_cursor
 
 from app.api.control_produccion import part_planning as pp
+from app.api.control_produccion import ppn
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,9 @@ PROJECTION_PERMISO = (
     pp.PROY_PERMISO_BOTON,
 )
 _TOKEN_TTL = 900  # 15 min: la confirmacion caduca
+# Dias de demanda que se comparan entre dos PPN: la ventana que el plan del dia
+# puede cubrir. ponytail: fijo; si el horizonte de planeacion crece, sube aqui.
+PPN_VENTANA_CAMBIOS = 7
 
 TOOL_NAMES = frozenset({
     "plan_estado_faltantes",
@@ -51,6 +55,9 @@ TOOL_NAMES = frozenset({
     "plan_part_sincronizar_ejecutar",
     "plan_propuesta_preparar",
     "plan_propuesta_aplicar",
+    "plan_ppn_comparar",
+    "plan_ppn_aplicar",
+    "plan_dia_preparar",
 })
 
 
@@ -196,8 +203,9 @@ def _importar_plan_e_inventario(file_bytes: bytes, filename: str, usuario: str) 
             "INSERT INTO lg_plan_imports (original_filename, sheet_name, plan_year, "
             "date_from, date_to, parts_count, dates_count, records_count, "
             "zero_records_count, warning_count, import_mode, file_sha256, imported_by, status) "
-            "VALUES (%s, 'LG', %s, %s, %s, %s, %s, %s, 0, 0, 'ai_upsert', %s, %s, 'COMPLETADO')",
-            (filename[:255], plan["plan_year"], plan["date_from"], plan["date_to"],
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, 0, 'ai_upsert', %s, %s, 'COMPLETADO')",
+            (filename[:255], plan["sheet_name"], plan["plan_year"],
+             plan["date_from"], plan["date_to"],
              plan["parts_count"], plan["dates_count"], plan["records_count"],
              file_hash, usuario),
         )
@@ -213,6 +221,10 @@ def _importar_plan_e_inventario(file_bytes: bytes, filename: str, usuario: str) 
                 "ON DUPLICATE KEY UPDATE plan_qty=VALUES(plan_qty), import_id=VALUES(import_id)",
                 filas_plan[i : i + pp.PP_BATCH_SIZE],
             )
+
+        # Si el archivo era un PPN, guarda el snapshot de W/O para que la
+        # proxima comparacion sepa cuanto construyo LG.
+        pp._pp_guardar_snapshot_ppn(cursor, plan)
 
         # --- Inventario + schedules (hoja Part N), si vino ---
         parts_inv = 0
@@ -263,6 +275,157 @@ def _importar_plan_e_inventario(file_bytes: bytes, filename: str, usuario: str) 
         "inventario_partes": parts_inv,
         "schedules_disponibles": sched_n,  # en el archivo; NO sincronizados aun
         "inventario_encontrado": inv_ok,
+    }
+
+
+def _ppn_par(file_lookup, limite: int = 4):
+    """Los dos PPN mas recientes de la conversacion, ordenados (anterior, actual).
+
+    El asistente sube un archivo por turno, asi que comparar dos PPN significa
+    buscarlos entre los adjuntos. El orden lo da la fecha DENTRO del archivo, no
+    el orden en que se subieron.
+    """
+    recientes = getattr(file_lookup, "recientes", None)
+    archivos = recientes(limite) if recientes else []
+    ppns = []
+    for file_bytes, filename in archivos:
+        if not file_bytes:
+            continue
+        try:
+            leido = ppn.leer_bytes(file_bytes)
+        except ValueError as e:
+            logger.warning("ai_plan_tools: PPN ilegible (%s): %s", filename, e)
+            continue
+        if leido:
+            ppns.append((leido[0], leido[1], file_bytes, filename or "PPN.xlsx"))
+        if len(ppns) == 2:
+            break
+    if len(ppns) < 2:
+        raise ValueError(
+            "Necesito los dos PPN. Sube primero el del dia anterior y luego el "
+            f"de hoy (encontre {len(ppns)} en esta conversacion)."
+        )
+    ppns.sort(key=lambda x: x[0])
+    if ppns[0][0] == ppns[1][0]:
+        raise ValueError("Los dos archivos son del mismo dia; sube el PPN del dia anterior.")
+    return ppns[0], ppns[1]
+
+
+def _cal_adjunto(file_lookup, limite: int = 4):
+    """El Cal/plan mas reciente entre los adjuntos (el que no es PPN)."""
+    recientes = getattr(file_lookup, "recientes", None)
+    for file_bytes, filename in (recientes(limite) if recientes else []):
+        if not file_bytes:
+            continue
+        try:
+            if ppn.leer_bytes(file_bytes):
+                continue  # es un PPN, no el Cal
+        except (ValueError, KeyError):
+            continue
+        return file_bytes, filename or "Cal.xlsx"
+    return None, None
+
+
+def _ppn_comparar(anterior, actual) -> dict[str, Any]:
+    """Que construyo LG de verdad y como se movio la demanda entre dos PPN."""
+    fecha_ant, wos_ant, _, nombre_ant = anterior
+    fecha_act, wos_act, _, nombre_act = actual
+    renglones, sin_consumir = ppn.sobrante(ppn.baseline(fecha_ant, wos_ant), wos_act)
+    plan_u = sum(r[1] for r in renglones)
+    real_u = sum(r[2] for r in renglones)
+
+    # Como se movio la demanda en la ventana accionable. Mas alla de eso el PPN
+    # se mueve solo por W/O que LG agrega o quita, ruido para el plan del dia.
+    dem_ant = ppn.demanda(wos_ant)
+    dem_act = ppn.demanda(wos_act)
+    corte = fecha_act + timedelta(days=PPN_VENTANA_CAMBIOS)
+    movs: dict[str, int] = {}
+    for clave in set(dem_ant) | set(dem_act):
+        parte, f = clave
+        if not (fecha_act <= f <= corte):
+            continue
+        delta = dem_act.get(clave, 0) - dem_ant.get(clave, 0)
+        if delta:
+            movs[parte] = movs.get(parte, 0) + delta
+
+    return {
+        "ppn_anterior": nombre_ant,
+        "ppn_actual": nombre_act,
+        "dia_evaluado": fecha_ant.isoformat(),
+        "wo_programados": len(renglones),
+        "unidades_planeadas": plan_u,
+        "unidades_construidas": real_u,
+        "unidades_atrasadas": plan_u - real_u,
+        "cumplimiento_pct": round(100 * real_u / plan_u, 1) if plan_u else None,
+        "wo_desviados": [
+            {"wo": wo, "modelo": wos_ant[wo]["modelo"], "planeado": p,
+             "construido": r, "atraso": p - r}
+            for wo, p, r in sorted(renglones, key=lambda x: -(x[1] - x[2]))[:10]
+            if p > r
+        ],
+        "pzas_sin_consumir": sum(sin_consumir.values()),
+        "partes_sin_consumir": [
+            {"part_no": p, "pzas": q}
+            for p, q in sorted(sin_consumir.items(), key=lambda x: -x[1])[:20]
+        ],
+        "cambios_demanda": [
+            {"part_no": p, "delta": d}
+            for p, d in sorted(movs.items(), key=lambda x: -abs(x[1]))[:20]
+        ],
+        "modelos_sin_bom": sorted({w["modelo"] for w in wos_act.values() if w["sin_bom"]}),
+    }
+
+
+def _importar_ppn(file_bytes: bytes, filename: str, usuario: str, base) -> dict[str, Any]:
+    """Escribe el plan del PPN nuevo corrigiendo el dia del PPN anterior."""
+    parsed, err = pp._parse_lg_workbook(file_bytes, filename, ppn_base=base)
+    if err is not None:
+        raise ValueError(err[0]["errors"][0])
+    if not parsed.get("ppn_wo"):
+        raise ValueError("El archivo no es un PPN.")
+
+    conn = get_pooled_connection()
+    if conn is None:
+        raise RuntimeError("No fue posible obtener conexion MySQL.")
+    cursor = get_dict_cursor(conn)
+    try:
+        conn.autocommit(False)
+        cursor.execute(
+            "INSERT INTO lg_plan_imports (original_filename, sheet_name, plan_year, "
+            "date_from, date_to, parts_count, dates_count, records_count, "
+            "zero_records_count, warning_count, import_mode, file_sha256, imported_by, status) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, %s, 'ai_ppn', %s, %s, 'COMPLETADO')",
+            (filename[:255], parsed["sheet_name"], parsed["plan_year"],
+             parsed["date_from"], parsed["date_to"], parsed["parts_count"],
+             parsed["dates_count"], parsed["records_count"], len(parsed["warnings"]),
+             hashlib.sha256(file_bytes).hexdigest(), usuario),
+        )
+        import_id = cursor.lastrowid
+        filas = [(p, f, q, import_id) for (p, f), q in parsed["records"].items()]
+        for i in range(0, len(filas), pp.PP_BATCH_SIZE):
+            cursor.executemany(
+                "INSERT INTO lg_plan_daily (part_no, plan_date, plan_qty, import_id) "
+                "VALUES (%s, %s, %s, %s) "
+                "ON DUPLICATE KEY UPDATE plan_qty=VALUES(plan_qty), import_id=VALUES(import_id)",
+                filas[i : i + pp.PP_BATCH_SIZE],
+            )
+        snapshot = pp._pp_guardar_snapshot_ppn(cursor, parsed)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cursor.close()
+        conn.autocommit(True)
+        conn.close()
+
+    return {
+        "import_id": import_id,
+        "plan_partes": parsed["parts_count"],
+        "plan_registros": parsed["records_count"],
+        "rango": f"{parsed['date_from'].isoformat()} a {parsed['date_to'].isoformat()}",
+        "snapshot_guardado": snapshot,
+        "avisos": parsed["warnings"],
     }
 
 
@@ -355,6 +518,26 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                 },
                 {
                     "type": "function",
+                    "name": "plan_ppn_comparar",
+                    "description": (
+                        "SOLO LECTURA. Compara los dos ultimos PPN adjuntos a la "
+                        "conversacion y reporta cuanto construyo LG de verdad el dia "
+                        "del PPN viejo, que material ya entregado quedo sin consumir "
+                        "en su piso, y como se movio la demanda por atrasos o "
+                        "adelantos. Usala cuando adjunten dos PPN o pidan 'compara "
+                        "estos PPN'. Devuelve confirm_token para aplicar el plan "
+                        "corregido con plan_ppn_aplicar."
+                    ),
+                    "strict": True,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                        "additionalProperties": False,
+                    },
+                },
+                {
+                    "type": "function",
                     "name": "plan_generar_preparar",
                     "description": (
                         "Prepara la creacion de lotes del dia desde faltantes o schedule. "
@@ -372,6 +555,35 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                     },
                 },
             ]
+        )
+    if _has_plan(username) and _has_projection(username):
+        tools.append(
+            {
+                "type": "function",
+                "name": "plan_dia_preparar",
+                "description": (
+                    "Arma el dia con los archivos adjuntos y devuelve SOLO los "
+                    "renglones del turno que hay que cambiar. Toma lo que haya: el Cal "
+                    "del dia carga el plan LG, y si ademas estan los dos PPN (el de "
+                    "ayer y el de hoy) lo corrige con lo que LG realmente construyo. "
+                    "Si no hace falta cambiar nada devuelve sin_cambios y no pide "
+                    "confirmacion. USALA SIEMPRE que pidan cambios del turno, del dia "
+                    "o 'que hay que cambiar hoy' habiendo adjuntado el Cal o los PPN, "
+                    "en vez de preguntar que ajuste quieren."
+                ),
+                "strict": True,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "fecha": {
+                            "type": ["string", "null"],
+                            "description": "Dia a revisar AAAA-MM-DD; null significa hoy",
+                        },
+                    },
+                    "required": ["fecha"],
+                    "additionalProperties": False,
+                },
+            }
         )
     if _has_projection(username):
         tools.append(
@@ -436,12 +648,11 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                         "proceso_actual": {
                             "type": ["string", "null"],
                             "description": (
-                                "En que proceso/lote van las lineas. NO lo preguntes: "
-                                "para hoy el MES lo deduce de los lotes con produccion "
-                                "capturada o EN PROGRESO. Mandalo solo si Planning ya te "
-                                "dijo algo que corrija o complete eso. Si no hay nada "
-                                "arrancado la herramienta te lo pedira; solo entonces "
-                                "pregunta. Para fechas futuras debe ser null."
+                                "Correccion manual opcional del estado del piso. NUNCA "
+                                "la preguntes: para hoy el MES consulta la hora local y "
+                                "planned_start para decidir que ya no se puede cambiar. "
+                                "Mandala solo si Planning ya dio esa correccion; de lo "
+                                "contrario usa null."
                             ),
                         },
                         "partes_excluidas": {
@@ -512,16 +723,16 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                             "type": "array",
                             "maxItems": 20,
                             "description": (
-                                "Lotes de HOY que ya corren en una linea O que ya "
-                                "se terminaron (el avance que reporta Planning, "
-                                "ej. 'M1 va por EBR42005101; ya termino 43713702'). "
+                                "Correcciones manuales de lotes que Planning ya haya "
+                                "mencionado como iniciados o terminados. NUNCA preguntes "
+                                "por ellos: para HOY el MES fija automaticamente lo que "
+                                "ya alcanzo su hora calculada. "
                                 "Se FIJAN: conservan linea y cantidad, no se mueven "
                                 "ni se quitan (lo producido debe quedar en el "
                                 "schedule); el resto se reoptimiza. NUNCA pongas un "
                                 "lote terminado o corriendo en partes_excluidas: "
                                 "eso lo BORRA y el sistema olvida esa produccion. "
-                                "Obligatorio cuando el rango incluye hoy. Usa [] "
-                                "para fechas futuras."
+                                "Usa [] cuando el usuario no haya dado correcciones."
                             ),
                             "items": {
                                 "type": "object",
@@ -711,7 +922,13 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         )
 
     if name == "plan_propuesta_preparar":
-        hoy = date.today()
+        from app.api.control_produccion.plan_assy import (
+            _assy_lotes_corriendo,
+            _obtener_fecha_hora_mexico,
+        )
+
+        ahora_plan = _obtener_fecha_hora_mexico()
+        hoy = ahora_plan.date()
         fecha_inicio = _parse_fecha(arguments.get("fecha_inicio"))
         fecha_fin = pp._ppy_parse_fecha(arguments.get("fecha_fin")) or (
             fecha_inicio + timedelta(days=6)
@@ -724,26 +941,21 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         if (fecha_fin - fecha_inicio).days > pp.PP_MAX_RANGO_DIAS:
             raise ValueError(f"Rango maximo {pp.PP_MAX_RANGO_DIAS} dias")
         proceso_actual = str(arguments.get("proceso_actual") or "").strip()
-        # Lotes en proceso reportados: se fijan (no se mueven ni se quitan) y
-        # ademas satisfacen el requisito de saber en que va cada linea hoy.
-        lotes_corriendo = pp._ppy_normalizar_corriendo(
+        # Las correcciones que Planning ya haya dado se aceptan, pero nunca se
+        # piden. El corte normal sale de la hora local contra planned_start:
+        # todo lo que ya debio iniciar se fija y lo posterior se puede cambiar.
+        lotes_reportados = pp._ppy_normalizar_corriendo(
             arguments.get("lotes_corriendo")
         )
-        auto_corriendo = False
-        if fecha_inicio <= hoy <= fecha_fin and not proceso_actual and not lotes_corriendo:
-            # El MES ya sabe en que va cada linea: los lotes de hoy con
-            # produccion capturada o EN PROGRESO. Solo se pregunta si no hay
-            # nada arrancado, donde no se puede distinguir "no ha empezado" de
-            # "no lo han capturado".
-            from app.api.control_produccion.plan_assy import _assy_lotes_corriendo
-
-            lotes_corriendo = pp._ppy_normalizar_corriendo(_assy_lotes_corriendo(hoy))
-            auto_corriendo = bool(lotes_corriendo)
-            if not lotes_corriendo:
-                raise ValueError(
-                    "Antes de planear hoy, pregunta en que lote va cada linea y "
-                    "envialo en lotes_corriendo (o describe el estado en proceso_actual)."
-                )
+        lotes_por_hora = {}
+        hora_corte = None
+        if fecha_inicio <= hoy <= fecha_fin:
+            hora_corte = ahora_plan
+            lotes_por_hora = pp._ppy_normalizar_corriendo(
+                _assy_lotes_corriendo(hoy, ahora=hora_corte)
+            )
+        lotes_corriendo = dict(lotes_por_hora)
+        lotes_corriendo.update(lotes_reportados)
         objetivo = str(arguments.get("objetivo") or "").strip()
         partes_excluidas = pp._ppy_normalizar_partes_excluidas(
             arguments.get("partes_excluidas")
@@ -753,21 +965,32 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         conflicto = sorted(set(partes_excluidas) & set(lotes_corriendo))
         if conflicto:
             raise ValueError(
-                "Estas partes estan corriendo o terminadas hoy y no se pueden "
+                "Estas partes ya alcanzaron su hora calculada, estan corriendo "
+                "o terminaron hoy y no se pueden "
                 "excluir (se borraria produccion real): " + ", ".join(conflicto)
                 + ". Mandalas solo en lotes_corriendo."
             )
-        if lotes_corriendo and not proceso_actual:
-            proceso_actual = ", ".join(
-                f"{l} en {p}" for p, l in lotes_corriendo.items()
+        contextos = []
+        if hora_corte:
+            fijados = ", ".join(f"{l} en {p}" for p, l in lotes_por_hora.items())
+            contextos.append(
+                f"Corte automatico del MES a las {hora_corte:%H:%M}: "
+                + (
+                    "se fijaron los lotes cuya hora calculada ya inicio: " + fijados
+                    if fijados
+                    else "ningun lote ha alcanzado su hora calculada; todo lo pendiente "
+                         "se puede reoptimizar"
+                )
+            )
+        if lotes_reportados:
+            contextos.append(
+                "Correcciones de lotes reportadas por Planning: "
+                + ", ".join(f"{l} en {p}" for p, l in lotes_reportados.items())
             )
         if proceso_actual:
-            contexto = (
-                "Proceso actual tomado de los lotes de hoy en el MES: "
-                if auto_corriendo
-                else "Proceso actual reportado por Planning: "
-            ) + proceso_actual
-            objetivo = (objetivo + "\n" + contexto).strip()
+            contextos.append("Nota de proceso dada por Planning: " + proceso_actual)
+        if contextos:
+            objetivo = (objetivo + "\n" + "\n".join(contextos)).strip()
         # Agregados manuales (servicios/forzados) y expansion opcional del plan.
         agregados = pp._ppy_normalizar_agregados(arguments.get("agregados"))
         try:
@@ -864,6 +1087,17 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "exceptions": propuesta["exceptions"][:20],
             "sample": muestra,
             "proceso_actual": proceso_actual or None,
+            "hora_corte_plan": (
+                hora_corte.strftime("%Y-%m-%d %H:%M:%S") if hora_corte else None
+            ),
+            "lotes_fijados_por_hora": [
+                {"linea": l, "numero_parte": p}
+                for p, l in lotes_por_hora.items()
+            ],
+            "lotes_reportados_fijados": [
+                {"linea": l, "numero_parte": p}
+                for p, l in lotes_reportados.items()
+            ],
             "lotes_corriendo_fijados": [
                 {"linea": l, "numero_parte": p} for p, l in lotes_corriendo.items()
             ],
@@ -885,8 +1119,10 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
                 "Explica que es una propuesta calculada por el motor, resume capacidad y "
                 "excepciones, aclara que tomo el Schedule vigente como punto de partida, "
                 "resume cuantos renglones conserva, modifica, agrega y elimina, confirma "
-                "expresamente las partes excluidas, menciona los lotes en proceso y los "
-                "agregados manuales que se fijaron. "
+                "expresamente las partes excluidas, menciona los lotes fijados por "
+                "estado/hora y los agregados manuales. Para hoy, menciona la hora de "
+                "corte consultada y que solo se cambiaron lotes con inicio calculado "
+                "posterior. "
                 + (
                     f"El plan quedo limitado a {propuesta['max_bloques']} bloques de 9 h "
                     "por dia: lo que no cupo se difirio a dias siguientes. "
@@ -1017,6 +1253,127 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         if payload.get("sha") != hashlib.sha256(file_bytes).hexdigest():
             raise ValueError("El archivo cambio desde la vista previa; vuelve a preparar la importacion.")
         return _importar_plan_e_inventario(file_bytes, filename or "plan.xlsm", username)
+
+    if name == "plan_ppn_comparar":
+        anterior, actual = _ppn_par(file_lookup)
+        resumen = _ppn_comparar(anterior, actual)
+        token = _make_token("ppn_aplicar", {
+            "sha_ant": hashlib.sha256(anterior[2]).hexdigest(),
+            "sha_act": hashlib.sha256(actual[2]).hexdigest(),
+        })
+        return {
+            "resumen": resumen,
+            "confirm_token": token,
+            "instruccion": (
+                "Explica cuanto planeaba LG ese dia y cuanto construyo, que W/O se "
+                "quedaron atras, cuantas piezas ya entregadas siguen en piso de LG "
+                "(esas NO se vuelven a producir) y como se movio la demanda. Aclara "
+                "que todavia no se modifico nada en el MES y pide confirmacion para "
+                "aplicar el plan corregido; despues de aplicarlo se puede pedir la "
+                "propuesta del dia."
+            ),
+        }
+
+    if name == "plan_dia_preparar":
+        if not (_has_plan(username) and _has_projection(username)):
+            raise PermissionError(
+                "Necesitas permiso de Plan de produccion y de Proyeccion para armar el dia"
+            )
+        # Trabaja con lo que haya adjunto: con los dos PPN corrige el consumo
+        # real de LG; con solo el Cal arma el dia sin esa correccion.
+        try:
+            anterior, actual = _ppn_par(file_lookup)
+        except ValueError as e:
+            anterior = actual = None
+            falta_ppn = str(e)
+        lg = _ppn_comparar(anterior, actual) if actual else None
+        # 1) PPN de hoy: demanda pendiente + correccion del dia que paso.
+        imp_ppn = _importar_ppn(
+            actual[2], actual[3], username,
+            (anterior[0], ppn.baseline(anterior[0], anterior[1])),
+        ) if actual else None
+        # 2) Cal del dia despues del PPN: es la demanda oficial y para las
+        #    partes compartidas trae mas que el PPN, asi que debe ganar de hoy
+        #    en adelante. El dia corregido ya paso y el Cal no lo toca.
+        cal_bytes, cal_nombre = _cal_adjunto(file_lookup)
+        imp_cal = (
+            _importar_plan_e_inventario(cal_bytes, cal_nombre, username)
+            if cal_bytes else None
+        )
+        if not actual and not imp_cal:
+            raise ValueError(
+                "No encontre ni el Cal del dia ni los dos PPN entre los adjuntos. "
+                "Sube el Cal (y, si quieres corregir el atraso de LG, tambien el "
+                "PPN de ayer y el de hoy)."
+            )
+        # 3) Que tendria que cambiar HOY con esos datos ya corregidos.
+        fecha = _parse_fecha(arguments.get("fecha"))
+        propuesta = execute(
+            "plan_propuesta_preparar",
+            {"fecha_inicio": fecha.isoformat(), "fecha_fin": fecha.isoformat()},
+            username=username, file_lookup=file_lookup,
+        )
+        cambios = [
+            c for c in propuesta.get("schedule_changes") or []
+            if c.get("accion") != "CONSERVAR"
+        ]
+        salida = {
+            "fecha": fecha.isoformat(),
+            "lg_ayer": {
+                k: lg[k] for k in
+                ("dia_evaluado", "unidades_planeadas", "unidades_construidas",
+                 "unidades_atrasadas", "pzas_sin_consumir")
+            } if lg else None,
+            "datos_cargados": {
+                "ppn": f"{imp_ppn['plan_registros']} registros ({actual[3]})" if imp_ppn
+                       else falta_ppn,
+                "cal": f"{imp_cal['plan_registros']} registros ({cal_nombre})" if imp_cal
+                       else "no se adjunto Cal; se uso solo el PPN",
+            },
+            "sin_cambios": not cambios,
+            "cambios": cambios,
+            "resumen_cambios": propuesta.get("schedule_change_summary"),
+            "capacidad_libre": propuesta.get("capacidad_libre"),
+            "excepciones": propuesta.get("exceptions"),
+        }
+        sin_ppn = (
+            "" if lg else
+            " No se compararon los dos PPN, asi que el plan NO trae la correccion "
+            "del consumo real de LG; dilo y ofrece que suban el PPN de ayer y el de "
+            "hoy para afinarlo. "
+        )
+        if not cambios:
+            salida["instruccion"] = (
+                ("Reporta lo que construyo LG ayer y d" if lg else "D")
+                + "i claramente que el turno de hoy NO necesita cambios: lo capturado "
+                "ya cubre el plan. No pidas confirmacion ni ofrezcas aplicar nada."
+                + sin_ppn
+            )
+            return salida
+        salida["confirm_token"] = propuesta["confirm_token"]
+        salida["proposal_id"] = propuesta.get("proposal_id")
+        salida["instruccion"] = (
+            ("Reporta primero lo que LG construyo de verdad ayer y cuantas piezas ya "
+             "entregadas siguen en su piso. Luego l" if lg else "L")
+            + "ista SOLO los renglones que hay que cambiar en el turno (agregar, "
+            "modificar o eliminar) con parte, linea y cantidad antes/despues; lo que "
+            "se conserva no se menciona. Aclara que el schedule aun no se toco y pide "
+            "confirmacion para aplicar esos cambios." + sin_ppn
+        )
+        return salida
+
+    if name == "plan_ppn_aplicar":
+        payload = _read_token(arguments.get("confirm_token"), "ppn_aplicar")
+        anterior, actual = _ppn_par(file_lookup)
+        if (payload.get("sha_ant") != hashlib.sha256(anterior[2]).hexdigest()
+                or payload.get("sha_act") != hashlib.sha256(actual[2]).hexdigest()):
+            raise ValueError(
+                "Los PPN cambiaron desde la comparacion; vuelve a compararlos."
+            )
+        return _importar_ppn(
+            actual[2], actual[3], username,
+            (anterior[0], ppn.baseline(anterior[0], anterior[1])),
+        )
 
     if name == "plan_generar_preparar":
         fecha = _parse_fecha(arguments.get("fecha"))

@@ -1,6 +1,6 @@
-"""La propuesta de hoy toma del MES en que va cada linea, sin preguntarlo."""
+"""La propuesta de hoy usa la hora calculada del MES, sin preguntar el lote."""
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
@@ -11,23 +11,27 @@ FILAS = [
 ]
 
 
-def test_lotes_corriendo_salen_del_plan_del_dia(monkeypatch):
+def test_lotes_fijos_salen_del_estado_o_de_la_hora_calculada(monkeypatch):
     from app.api.control_produccion import plan_assy
 
     visto = {}
 
     def fake_query(sql, params=(), fetch=None):
         visto["sql"] = " ".join(str(sql).split())
+        visto["params"] = params
         return list(FILAS)
 
     monkeypatch.setattr(plan_assy, "execute_query", fake_query)
-    out = plan_assy._assy_lotes_corriendo(date(2026, 7, 30))
+    corte = datetime(2026, 7, 30, 11, 45)
+    out = plan_assy._assy_lotes_corriendo(date(2026, 7, 30), ahora=corte)
 
     assert out == [{"numero_parte": "ACQ91482496", "linea": "D2"},
                    {"numero_parte": "EBR30299355", "linea": "M3"}]
-    # Solo lo que ya arranco: un lote nada mas planeado todavia se puede mover
+    # Ademas del estado real, planned_start fija solo lo que ya alcanzo el corte.
     assert "EN PROGRESO" in visto["sql"] and "produced_count" in visto["sql"]
+    assert "planned_start <= %s" in visto["sql"]
     assert "status <> 'CANCELADO'" in visto["sql"]
+    assert visto.get("params") == (date(2026, 7, 30), corte)
 
 
 class _Sentinela(Exception):
@@ -65,14 +69,19 @@ def test_no_pregunta_si_el_mes_ya_sabe_que_esta_corriendo(monkeypatch):
     # Los lotes arrancados quedan fijados y el objetivo dice de donde salieron
     assert capturado["lotes_corriendo"] == {"ACQ91482496": "D2",
                                             "EBR30299355": "M3"}
-    assert "tomado de los lotes de hoy en el MES" in (capturado["objective"] or "")
+    assert "Corte automatico del MES" in (capturado["objective"] or "")
+    assert "hora calculada ya inicio" in (capturado["objective"] or "")
 
 
-def test_sigue_preguntando_si_no_hay_nada_arrancado(monkeypatch):
-    """Sin lotes arrancados no se puede distinguir 'no empezo' de 'no lo
-    capturaron': ahi si conviene preguntar."""
-    tools, _capturado, args = _preparar(monkeypatch, [])
+def test_no_pregunta_si_aun_no_llega_la_hora_de_ningun_lote(monkeypatch):
+    """Sin inicios vencidos, todo lo pendiente se puede reoptimizar."""
+    tools, capturado, args = _preparar(monkeypatch, [])
 
-    with pytest.raises(ValueError, match="en que lote va cada linea"):
+    with pytest.raises(_Sentinela):
         tools.execute("plan_propuesta_preparar", args,
                       username="ana", file_lookup=None)
+
+    assert capturado["lotes_corriendo"] == {}
+    assert "todo lo pendiente se puede reoptimizar" in (
+        capturado["objective"] or ""
+    )

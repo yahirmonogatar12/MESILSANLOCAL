@@ -41,6 +41,7 @@ from datetime import date, datetime, timedelta
 import openpyxl
 from flask import Blueprint, jsonify, render_template, request, session
 
+from app.api.control_produccion import ppn
 from app.db_mysql import execute_query
 from app.config_mysql import get_pooled_connection
 from app.api.pda.shipping_material import get_dict_cursor
@@ -274,6 +275,23 @@ def init_part_planning_tables():
                 f"ALTER TABLE lg_part_inventory "
                 f"ADD COLUMN {col} INT NOT NULL DEFAULT 0 AFTER {col_prev}"
             )
+
+    # Snapshot del ultimo PPN importado: con el W/O Result de ayer se sabe
+    # cuanto construyo LG de verdad y se corrige el plan del dia que paso.
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS lg_ppn_wo (
+            wo VARCHAR(30) NOT NULL,
+            modelo VARCHAR(100) NULL,
+            partes TEXT NULL,
+            prog_qty INT NOT NULL DEFAULT 0,
+            plan_qty INT NOT NULL DEFAULT 0,
+            result_qty INT NOT NULL DEFAULT 0,
+            snapshot_date DATE NOT NULL,
+            PRIMARY KEY (wo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
 
     # Etapa 2: schedule diario (renglon S) capturado en MES o importado de Part 10
     execute_query(
@@ -556,7 +574,10 @@ def _pp_fecha_archivo(original_filename):
     ("... ILSAN 20260715 W29 ...") y el Cal diario en corto ("Cal_260715.xlsx").
     """
     base = os.path.basename(original_filename or "")
-    for patron, formato in ((r"(20\d{6})", "%Y%m%d"), (r"(\d{6})", "%y%m%d")):
+    # Los 6 digitos no pueden ir pegados a otro digito: "Cal_2607230.xlsx" (un
+    # digito de mas al teclear) daria 26-07-23, una semana vieja, en silencio.
+    for patron, formato in ((r"(?<!\d)(20\d{6})(?!\d)", "%Y%m%d"),
+                            (r"(?<!\d)(\d{6})(?!\d)", "%y%m%d")):
         m = re.search(patron, base)
         if m:
             try:
@@ -640,7 +661,7 @@ def _pp_hoja_plan(wb, original_filename=""):
     fechadas = [s for s in wb.sheetnames if re.fullmatch(r"\d{6}", s.strip())]
     if not fechadas:
         return None
-    m = re.search(r"(\d{6})", os.path.basename(original_filename or ""))
+    m = re.search(r"(?<!\d)(\d{6})(?!\d)", os.path.basename(original_filename or ""))
     if m and m.group(1) in (s.strip() for s in fechadas):
         return m.group(1)
     return max(fechadas, key=lambda s: s.strip())
@@ -671,8 +692,162 @@ def _pp_layout_plan(ws, anio_fallback):
     return fila_fechas, max(0, min(col_fechas) - 1), col_fechas
 
 
-def _parse_lg_workbook(file_bytes, original_filename="", override_year=None):
-    """Parsea el Excel del plan LG (hoja 'LG' del xlsm o el Cal diario).
+def _pp_ppn_baseline():
+    """Ultimo PPN importado: (fecha_snapshot, {wo: {partes, prog, plan, result}})."""
+    try:
+        rows = execute_query(
+            "SELECT wo, partes, prog_qty, plan_qty, result_qty, snapshot_date "
+            "FROM lg_ppn_wo",
+            fetch="all",
+        ) or []
+    except Exception as e:  # tabla nueva: instalaciones sin migrar aun
+        logger.warning("part_planning: no se pudo leer lg_ppn_wo: %s", e)
+        return None, {}
+    if not rows:
+        return None, {}
+    fecha = rows[0]["snapshot_date"]
+    if isinstance(fecha, datetime):
+        fecha = fecha.date()
+    base = {
+        r["wo"]: {
+            "partes": {p for p in (r["partes"] or "").split(",") if p},
+            "prog": int(r["prog_qty"] or 0),
+            "plan": int(r["plan_qty"] or 0),
+            "result": int(r["result_qty"] or 0),
+        }
+        for r in rows
+    }
+    return fecha, base
+
+
+def _pp_parse_ppn(wb, hoja, base_override=None):
+    """PPN de LG -> mismo 'parsed' que el Cal, mas la correccion del dia que paso.
+
+    La demanda futura sale de los buckets del PPN (ya netos de lo construido).
+    El renglon del dia del snapshot anterior se REBAJA con el material que LG no
+    consumio: ese sigue en su piso y descontarlo otra vez inventa un faltante.
+    Se rebaja en vez de sobrescribir porque el plan de ese dia pudo venir del Cal,
+    que para algunas partes compartidas suma demanda que el PPN no trae.
+
+    base_override: (fecha, {wo: ...}) para comparar contra un PPN dado en vez del
+    ultimo importado (el asistente recibe los dos archivos de una vez).
+    """
+    try:
+        fecha0, wos = ppn.leer_ppn(wb[hoja])
+    except ValueError as e:
+        return None, ({"success": False, "errors": [str(e)], "warnings": []}, 400)
+
+    records = dict(ppn.demanda(wos))
+    warnings = []
+    sin_bom = sorted({w["modelo"] for w in wos.values() if w["sin_bom"]})
+    if sin_bom:
+        listado = ", ".join(sin_bom[:10]) + ("..." if len(sin_bom) > 10 else "")
+        warnings.append(
+            f"{len(sin_bom)} modelos sin BOM en el PPN; su demanda no se explota "
+            f"a partes: {listado}"
+        )
+
+    base_fecha, base = base_override or _pp_ppn_baseline()
+    if base_override:
+        # El snapshot guardado dice hasta que PPN esta reflejado el plan. Si ya
+        # es de este dia o mas nuevo, la correccion ya se aplico: repetirla
+        # descontaria el mismo material dos veces.
+        aplicado, _ = _pp_ppn_baseline()
+        if aplicado and aplicado >= fecha0:
+            base_fecha, base = None, {}
+            warnings.append(
+                f"El plan ya refleja el PPN del {aplicado.isoformat()}; no se "
+                f"vuelve a rebajar el consumo de LG."
+            )
+    # Solo corrige hacia adelante: reimportar el mismo PPN (o uno viejo) no
+    # vuelve a restar lo mismo.
+    if base and base_fecha and base_fecha < fecha0:
+        renglones, faltan = ppn.sobrante(base, wos)
+        try:
+            rows = execute_query(
+                "SELECT part_no, plan_qty FROM lg_plan_daily WHERE plan_date = %s",
+                (base_fecha,),
+                fetch="all",
+            ) or []
+        except Exception as e:
+            logger.warning("part_planning: no se pudo leer el plan de %s: %s", base_fecha, e)
+            rows = []
+        plan_viejo = {r["part_no"]: int(r["plan_qty"] or 0) for r in rows}
+        corregidas = 0
+        for parte, sin_consumir in faltan.items():
+            viejo = plan_viejo.get(parte)
+            if viejo:  # sin plan previo no hay nada que corregir
+                records[(parte, base_fecha)] = max(0, viejo - sin_consumir)
+                corregidas += 1
+        prog = sum(r[1] for r in renglones)
+        real = sum(r[2] for r in renglones)
+        warnings.append(
+            f"Consumo real de LG el {base_fecha.isoformat()}: {real} de {prog} unidades "
+            f"({prog - real} atrasadas). Se rebajan {sum(faltan.values())} pzas en "
+            f"{corregidas} partes del plan de ese dia (material que sigue en piso de LG)."
+        )
+        if base_fecha < fecha0 - timedelta(days=1):
+            # ponytail: solo se corrige el dia del snapshot. Importa el PPN a
+            # diario y el hueco es de un dia.
+            warnings.append(
+                f"El PPN anterior era del {base_fecha.isoformat()}: los dias "
+                f"intermedios se quedan con el plan viejo."
+            )
+
+    fechas = sorted({f for _, f in records})
+    records_count = sum(1 for q in records.values() if q > 0)
+    parsed = {
+        "sheet_name": hoja[:50],
+        "plan_year": fecha0.year,
+        "date_from": fechas[0],
+        "date_to": fechas[-1],
+        "dates": fechas,
+        "records": records,
+        "parts": sorted({p for p, _ in records}),
+        "parts_count": len({p for p, _ in records}),
+        "dates_count": len(fechas),
+        "records_count": records_count,
+        "zero_records_count": len(records) - records_count,
+        "duplicated_parts": [],
+        "warnings": warnings,
+        "errors": [],
+        # Snapshot a guardar en el confirm (no se toca en el preview).
+        "ppn_date": fecha0,
+        "ppn_wo": [
+            (wo[:30], w["modelo"][:100], ",".join(sorted(w["partes"]))[:65535],
+             w["dias"].get(fecha0, 0), w["plan"], w["result"], fecha0)
+            for wo, w in wos.items()
+        ],
+    }
+    return parsed, None
+
+
+def _pp_guardar_snapshot_ppn(cursor, parsed):
+    """Reemplaza lg_ppn_wo con el PPN recien importado (dentro de la transaccion).
+
+    Solo avanza en el tiempo: reimportar un PPN viejo no pisa el snapshot bueno.
+    """
+    if not parsed.get("ppn_wo"):
+        return False
+    cursor.execute("SELECT MAX(snapshot_date) AS f FROM lg_ppn_wo")
+    previo = (cursor.fetchone() or {}).get("f")
+    if isinstance(previo, datetime):
+        previo = previo.date()
+    if previo is not None and previo > parsed["ppn_date"]:
+        return False
+    cursor.execute("DELETE FROM lg_ppn_wo")
+    sql = (
+        "INSERT INTO lg_ppn_wo (wo, modelo, partes, prog_qty, plan_qty, "
+        "result_qty, snapshot_date) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    )
+    for i in range(0, len(parsed["ppn_wo"]), PP_BATCH_SIZE):
+        cursor.executemany(sql, parsed["ppn_wo"][i : i + PP_BATCH_SIZE])
+    return True
+
+
+def _parse_lg_workbook(file_bytes, original_filename="", override_year=None,
+                       ppn_base=None):
+    """Parsea el Excel del plan LG (hoja 'LG' del xlsm, el Cal diario o el PPN).
 
     Retorna (parsed_dict, None) si el archivo es utilizable, o
     (None, (payload_error, http_status)) si hay error bloqueante.
@@ -697,6 +872,10 @@ def _parse_lg_workbook(file_bytes, original_filename="", override_year=None):
         return error("El archivo esta corrupto o no es un Excel valido.")
 
     try:
+        hoja_ppn = ppn.hoja_ppn(wb)
+        if hoja_ppn is not None:
+            return _pp_parse_ppn(wb, hoja_ppn, ppn_base)
+
         hoja = _pp_hoja_plan(wb, original_filename)
         if hoja is None:
             return error(
@@ -1191,7 +1370,7 @@ def api_pp_import_confirm():
             """,
             (
                 archivo.filename[:255],
-                PP_SHEET_NAME,
+                parsed.get("sheet_name") or PP_SHEET_NAME,
                 parsed["plan_year"],
                 parsed["date_from"],
                 parsed["date_to"],
@@ -1225,6 +1404,9 @@ def api_pp_import_confirm():
         datos_cambios = [(import_id, p, f, o, n, t) for p, f, o, n, t in cambios]
         for i in range(0, len(datos_cambios), PP_BATCH_SIZE):
             cursor.executemany(sql_cambio, datos_cambios[i : i + PP_BATCH_SIZE])
+
+        # PPN: el snapshot deja listo el import de mañana (cuanto construyo LG hoy).
+        _pp_guardar_snapshot_ppn(cursor, parsed)
 
         conn.commit()
 
@@ -1791,13 +1973,12 @@ def _ppy_partes_excluidas_propuesta(value):
 
 
 def _ppy_normalizar_corriendo(lotes_corriendo):
-    """Normaliza los lotes reportados EN PROCESO o TERMINADOS hoy a
+    """Normaliza los lotes que deben quedar fijos hoy a
     {parte_upper: linea_upper}.
 
-    Acepta lista de {'linea','numero_parte'} o dict parte->linea. Un lote en
-    proceso no se puede mover ni quitar, y uno terminado debe conservar su
-    renglon (esa produccion ya existe); ambos se fijan en la linea que reporta
-    quien conoce el piso (puede diferir de raw.assy_line)."""
+    Acepta lista de {'linea','numero_parte'} o dict parte->linea. Puede tratarse
+    de un lote iniciado/terminado o de uno cuya hora calculada ya vencio. Se
+    conserva en su linea actual (puede diferir de raw.assy_line)."""
     corriendo = {}
     if not lotes_corriendo:
         return corriendo
@@ -2072,11 +2253,10 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
     )
     capacidad_desconocida = set()
     asignacion_schedule = {}
-    # Lotes reportados EN PROCESO hoy: no se pueden mover ni quitar (ya estan en
-    # la maquina). Se fijan en la linea que reporta quien conoce el piso -que
-    # puede diferir de raw.assy_line-, con la qty del schedule sincronizado de
-    # hoy. Reservan capacidad, se excluyen del re-planeo y salen como filas fijas
-    # de la propuesta; el resto se reoptimiza libre. Esto va ANTES de limpiar el
+    # Lotes que ya iniciaron por estado/produccion o por la hora calculada: no se
+    # pueden mover ni quitar. Se fijan en la linea actual con la qty del schedule
+    # sincronizado de hoy. Reservan capacidad, se excluyen del re-planeo y salen
+    # como filas fijas; el resto se reoptimiza libre. Esto va ANTES de limpiar el
     # schedule por replanear, porque de ahi se toma su qty.
     corriendo = _ppy_normalizar_corriendo(lotes_corriendo)
     fijos = []
@@ -2474,6 +2654,25 @@ class PPYProposalStaleError(ValueError):
     """La propuesta ya no corresponde a los datos actuales del MES."""
 
 
+# Estados desde los que una propuesta todavia se puede tocar.
+PPY_ESTADOS_ABIERTOS = ("DRAFT", "PENDING_CONFIRMATION")
+
+
+def _ppy_estado_no_abierto(status, accion):
+    """Error para una propuesta que ya no admite `accion`.
+
+    STALE sale como PPYProposalStaleError (409 + code PROPOSAL_STALE) para que
+    la UI ofrezca generar una nueva: el primer intento la marca STALE y sin
+    esto el reintento devolvia un 400 generico sin salida.
+    """
+    if status == "STALE":
+        return PPYProposalStaleError(
+            "Esta propuesta quedo vieja: el plan, inventario, RAW, capacidad o "
+            "schedule cambio despues de generarla. Genera una propuesta nueva."
+        )
+    return ValueError(f"La propuesta no se puede {accion} en estado {status}")
+
+
 def _ppy_attach_schedule_actual(propuestas, fecha_ini, fecha_fin, query=None):
     """Agrega el schedule base que se usara para aplicar de forma idempotente."""
     if not propuestas:
@@ -2730,8 +2929,8 @@ def _ppy_editar_propuesta(public_id, usuario, ediciones=None, orden=None,
     )
     if not header:
         raise ValueError("Propuesta no encontrada o pertenece a otro usuario")
-    if header["status"] not in ("DRAFT", "PENDING_CONFIRMATION"):
-        raise ValueError(f"La propuesta no se puede editar en estado {header['status']}")
+    if header["status"] not in PPY_ESTADOS_ABIERTOS:
+        raise _ppy_estado_no_abierto(header["status"], "editar")
     pid = header["id"]
     fecha_plan = header["date_from"]
     fecha_plan = fecha_plan.date() if isinstance(fecha_plan, datetime) else fecha_plan
@@ -3073,8 +3272,8 @@ def _ppy_reject_proposal(
             return {"proposal_id": public_id, "status": "REJECTED", "already_rejected": True}
         if row["status"] == "APPLIED":
             raise ValueError("La propuesta ya fue aplicada y no puede rechazarse")
-        if row["status"] not in ("DRAFT", "PENDING_CONFIRMATION"):
-            raise ValueError(f"La propuesta no puede rechazarse en estado {row['status']}")
+        if row["status"] not in PPY_ESTADOS_ABIERTOS:
+            raise _ppy_estado_no_abierto(row["status"], "rechazar")
         if int(row.get("version") or 1) != int(version or 1):
             raise PPYProposalStaleError(
                 "La version de la propuesta cambio; genera una propuesta nueva"
@@ -3156,8 +3355,8 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
         raise ValueError("Propuesta no encontrada")
     if header.get("status") == "APPLIED":
         return _ppy_applied_result(public_id, header["id"])
-    if header.get("status") not in ("DRAFT", "PENDING_CONFIRMATION"):
-        raise ValueError(f"La propuesta no puede aplicarse en estado {header.get('status')}")
+    if header.get("status") not in PPY_ESTADOS_ABIERTOS:
+        raise _ppy_estado_no_abierto(header.get("status"), "aplicar")
     if int(header.get("version") or 1) != int(version or 1):
         raise PPYProposalStaleError("La version de la propuesta cambio; vuelve a revisarla")
 
@@ -3186,8 +3385,8 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
             )
             conn.rollback()
             return result
-        if locked["status"] not in ("DRAFT", "PENDING_CONFIRMATION"):
-            raise ValueError(f"La propuesta no puede aplicarse en estado {locked['status']}")
+        if locked["status"] not in PPY_ESTADOS_ABIERTOS:
+            raise _ppy_estado_no_abierto(locked["status"], "aplicar")
         if int(locked.get("version") or 1) != int(version or 1):
             raise PPYProposalStaleError(
                 "La version de la propuesta cambio; vuelve a revisarla"
@@ -4700,6 +4899,8 @@ def api_ppy_propuesta_editar(public_id):
             return jsonify({"success": False, "error": "agregados invalidos"}), 400
         return jsonify({"success": True, **_ppy_editar_propuesta(
             public_id, usuario, ediciones=ediciones, orden=orden, agregar=agregar)})
+    except PPYProposalStaleError as e:
+        return jsonify({"success": False, "error": str(e), "code": "PROPOSAL_STALE"}), 409
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:

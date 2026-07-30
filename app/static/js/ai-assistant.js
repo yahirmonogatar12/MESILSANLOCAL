@@ -9,6 +9,9 @@
 
     // Mismo catalogo que _ATTACH_KINDS en ai_assistant.py.
     const ATTACH_EXTENSIONS = ['.xlsx','.xlsm','.pdf','.png','.jpg','.jpeg','.webp','.gif','.csv','.txt','.md','.json'];
+    // Tope de archivos por mensaje: el mismo que mira el asistente al buscar
+    // los dos PPN a comparar (file_lookup.recientes).
+    const MAX_ATTACH_FILES = 4;
     const attachKind = ext => (
         ['.xlsx','.xlsm'].includes(ext) ? 'excel'
         : ext === '.pdf' ? 'pdf'
@@ -42,6 +45,10 @@
             this.visualizationIds = new Set();
             this.pendingFileRef = null;
             this.pendingAttachment = null;
+            // Todo lo adjuntado a este mensaje. pendingFileRef sigue siendo el
+            // ultimo: al modelo se le manda uno solo, pero las tools del plan
+            // leen los demas de la conversacion (comparar dos PPN + el Cal).
+            this.pendingFiles = [];
             this.attachmentUploading = false;
         }
 
@@ -101,8 +108,7 @@
             if (attachBtn && attachFile) {
                 attachBtn.addEventListener('click', () => { attachFile.value = ''; attachFile.click(); });
                 attachFile.addEventListener('change', () => {
-                    const file = attachFile.files && attachFile.files[0];
-                    if (file) this.uploadPlanFile(file);
+                    this.uploadPlanFiles(attachFile.files);
                 });
                 this.root.querySelector('#ai-attach-clear').addEventListener('click', () => this.clearAttachment());
                 // Arrastrar y soltar sobre el panel: mismo camino que el boton 📎.
@@ -117,8 +123,7 @@
                 this.panel.addEventListener('drop', event => {
                     event.preventDefault();
                     this.panel.classList.remove('ai-dragover');
-                    const file = event.dataTransfer?.files?.[0];
-                    if (file) this.uploadPlanFile(file);
+                    this.uploadPlanFiles(event.dataTransfer?.files);
                 });
             }
             this.input.addEventListener('keydown', event => {
@@ -1116,7 +1121,10 @@
                 this.notice('Propuesta aplicada al Schedule.');
                 this.loadProposalGrid();
             } catch (e) {
-                if (e.status === 409) { this.notice('La propuesta cambió; se recargó. Revisa y confirma otra vez.'); this.loadProposalGrid(); }
+                // STALE no se arregla recargando: los datos cambiaron y hay que
+                // recalcular. Recargar la rejilla dejaria al usuario en un ciclo.
+                if (e.data && e.data.code === 'PROPOSAL_STALE') this.notice(e.message);
+                else if (e.status === 409) { this.notice('La propuesta cambió; se recargó. Revisa y confirma otra vez.'); this.loadProposalGrid(); }
                 else this.notice(e.message);
             }
         }
@@ -1282,6 +1290,32 @@
             (parent || this.messages).appendChild(card); this.scrollBottom();
         }
 
+        async uploadPlanFiles(fileList) {
+            // Varios archivos en un mensaje: se suben uno por uno y se acumulan
+            // (tambien si se eligen en tandas distintas). El tope cuenta lo ya
+            // adjuntado, no solo lo de esta seleccion.
+            const libres = MAX_ATTACH_FILES - this.pendingFiles.length;
+            const files = Array.from(fileList || []).slice(0, Math.max(0, libres));
+            if (files.length < (fileList ? fileList.length : 0)) {
+                this.notice(`Máximo ${MAX_ATTACH_FILES} archivos por mensaje.`);
+            }
+            if (!files.length) return;
+            for (const file of files) {
+                await this.uploadPlanFile(file);
+                if (!this.pendingFileRef) return;  // un error corta la tanda
+            }
+        }
+
+        renderAttachmentChip(state) {
+            const nombres = this.pendingFiles.map(f => f.filename);
+            if (!nombres.length) return;
+            this.setAttachmentState(
+                nombres.length === 1 ? nombres[0] : `${nombres.length} archivos: ${nombres.join(', ')}`,
+                state,
+                nombres[nombres.length - 1],
+            );
+        }
+
         async uploadPlanFile(file) {
             const name = (file.name || '').toLowerCase();
             const ext = name.slice(name.lastIndexOf('.'));
@@ -1308,8 +1342,12 @@
                     size_bytes: file.size,
                     kind: attachKind(ext)
                 };
+                this.pendingFiles.push({
+                    file_ref: data.file_ref,
+                    filename: this.pendingAttachment.filename,
+                });
                 this.attachmentUploading = false;
-                this.setAttachmentState(this.pendingAttachment.filename, 'ready');
+                this.renderAttachmentChip('ready');
             } catch (error) {
                 this.pendingFileRef = null;
                 this.pendingAttachment = null;
@@ -1319,7 +1357,7 @@
             }
         }
 
-        setAttachmentState(filename, state) {
+        setAttachmentState(etiqueta, state, nombreIcono) {
             const info = this.root.querySelector('#ai-attach-info');
             const nameEl = this.root.querySelector('#ai-attach-name');
             const statusEl = this.root.querySelector('#ai-attach-status');
@@ -1327,8 +1365,8 @@
             info.dataset.state = state;
             info.setAttribute('aria-busy', state === 'uploading' ? 'true' : 'false');
             const icon = this.root.querySelector('#ai-attach-icon');
-            if (icon) icon.textContent = attachLabel(filename);
-            nameEl.textContent = filename;
+            if (icon) icon.textContent = attachLabel(nombreIcono || etiqueta);
+            nameEl.textContent = etiqueta;
             statusEl.textContent = state === 'uploading'
                 ? 'Subiendo archivo…'
                 : (state === 'ready' ? 'Listo para enviar' : 'No se pudo subir');
@@ -1337,6 +1375,7 @@
         clearAttachment() {
             this.pendingFileRef = null;
             this.pendingAttachment = null;
+            this.pendingFiles = [];
             this.attachmentUploading = false;
             const info = this.root.querySelector('#ai-attach-info');
             info.hidden = true;
@@ -1357,7 +1396,9 @@
             // Con adjunto se puede enviar sin escribir nada; el backend exige
             // contenido, asi que el nombre del archivo hace de mensaje.
             const content = this.input.value.trim()
-                || (this.pendingAttachment ? `Adjunto ${this.pendingAttachment.filename}` : '');
+                || (this.pendingFiles.length
+                    ? `Adjunto ${this.pendingFiles.map(f => f.filename).join(', ')}`
+                    : '');
             if (!content) return;
             if (!this.currentConversation) await this.newChat(false);
             if (!this.currentConversation) return;

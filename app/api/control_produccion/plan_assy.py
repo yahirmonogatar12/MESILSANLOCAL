@@ -2043,18 +2043,22 @@ def _assy_cambio_permitido(row, antes, despues):
     return ["cantidad"], None
 
 
-def _assy_lotes_corriendo(fecha):
-    """Lotes que ya arrancaron hoy segun el piso: [{'linea','numero_parte'}].
+def _assy_lotes_corriendo(fecha, ahora=None):
+    """Lotes de hoy que ya no se deben reprogramar.
 
-    Es la respuesta a "en que lote va cada linea", pero leida del MES en vez de
-    preguntarsela a Planning. Cuenta lo que ya arranco (EN PROGRESO/TERMINADO o
-    con produccion capturada); un lote solo planeado todavia se puede mover."""
+    El corte se obtiene sin preguntarle a Planning: cuenta la produccion/estatus
+    real y, cuando aun no hay captura, la hora de inicio calculada que se guardo
+    en ``planned_start``. Todo lote con inicio posterior al corte sigue siendo
+    editable por la propuesta.
+    """
+    ahora = ahora or _obtener_fecha_hora_mexico()
     rows = execute_query(
         "SELECT DISTINCT part_no, line FROM plan_main "
         "WHERE DATE(working_date)=%s AND status <> 'CANCELADO' "
         "AND (status IN ('EN PROGRESO','TERMINADO') "
-        "     OR COALESCE(produced_count,0) > 0 OR COALESCE(output,0) > 0)",
-        (fecha,), fetch="all") or []
+        "     OR COALESCE(produced_count,0) > 0 OR COALESCE(output,0) > 0 "
+        "     OR (planned_start IS NOT NULL AND planned_start <= %s))",
+        (fecha, ahora), fetch="all") or []
     return [
         {"numero_parte": str(r["part_no"] or "").strip().upper(),
          "linea": str(r["line"] or "").strip().upper()}

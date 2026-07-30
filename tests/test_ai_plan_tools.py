@@ -88,6 +88,7 @@ def test_tool_schemas_son_estrictos_y_separan_permisos(monkeypatch):
         "plan_estado_faltantes",
         "plan_importar_preparar",
         "plan_generar_preparar",
+        "plan_ppn_comparar",
     }
 
     monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
@@ -403,34 +404,48 @@ def test_plan_propuesta_ajuste_forzar_linea(monkeypatch):
         }])
 
 
-def test_plan_propuesta_de_hoy_exige_proceso_actual(monkeypatch):
-    """Solo se pregunta cuando el MES no tiene ningun lote arrancado hoy: ahi no
-    se distingue 'no ha empezado' de 'no lo han capturado'."""
+def test_plan_propuesta_de_hoy_no_exige_proceso_actual(monkeypatch):
+    """Si ninguna hora calculada ha vencido, todo sigue editable sin preguntar."""
     from app.api.control_produccion import plan_assy
 
     monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
     monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
-    monkeypatch.setattr(plan_assy, "_assy_lotes_corriendo", lambda _fecha: [])
+    monkeypatch.setattr(
+        plan_assy, "_assy_lotes_corriendo", lambda _fecha, ahora=None: []
+    )
+    monkeypatch.setattr(
+        ai_plan_tools.pp, "_ppy_crear_propuesta", lambda *a, **k: _proposal_result()
+    )
+    monkeypatch.setattr(
+        ai_plan_tools.pp, "_ppy_mark_proposal_pending", lambda *a, **k: None
+    )
     hoy = date.today().isoformat()
 
-    with pytest.raises(ValueError, match="en que lote va cada linea"):
-        ai_plan_tools.execute(
-            "plan_propuesta_preparar",
-            {
-                "fecha_inicio": hoy,
-                "fecha_fin": hoy,
-                "objetivo": None,
-                "proceso_actual": None,
-            },
-            username="ana",
-            file_lookup=lambda _ref: (None, None),
-        )
+    result = ai_plan_tools.execute(
+        "plan_propuesta_preparar",
+        {
+            "fecha_inicio": hoy,
+            "fecha_fin": hoy,
+            "objetivo": None,
+            "proceso_actual": None,
+        },
+        username="ana",
+        file_lookup=lambda _ref: (None, None),
+    )
+
+    assert result["lotes_fijados_por_hora"] == []
+    assert result["lotes_corriendo_fijados"] == []
+    assert result["hora_corte_plan"]
 
 
 def test_plan_propuesta_de_hoy_acepta_lotes_corriendo_como_avance(monkeypatch):
     # Reportar los lotes corriendo satisface el requisito de "hoy" y se fijan.
     monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
     monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
+    from app.api.control_produccion import plan_assy
+    monkeypatch.setattr(
+        plan_assy, "_assy_lotes_corriendo", lambda _fecha, ahora=None: []
+    )
     recibido = {}
 
     def fake_crear(fecha_inicio, fecha_fin, username, *, source, objective,
@@ -470,6 +485,10 @@ def test_plan_propuesta_rechaza_excluir_un_lote_corriendo_o_terminado(monkeypatc
     # Excluir un lote corriendo/terminado borraria produccion real del schedule.
     monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
     monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
+    from app.api.control_produccion import plan_assy
+    monkeypatch.setattr(
+        plan_assy, "_assy_lotes_corriendo", lambda _fecha, ahora=None: []
+    )
     hoy = date.today().isoformat()
     with pytest.raises(ValueError, match="no se pueden excluir"):
         ai_plan_tools.execute(
