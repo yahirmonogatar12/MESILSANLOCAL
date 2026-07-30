@@ -1862,3 +1862,135 @@ def importar_excel_plan_produccion():
                 os.remove(temp_path)
         except Exception as e:
             logger.error(f"Error en cleanup: {str(e)}")
+
+
+# =============================
+# PROPUESTA DE LA IA -> PLAN ASSY
+# =============================
+# El asistente genera propuestas en lg_plan_proposals (bloques de 9 h). Confirmar
+# ahi solo actualiza el Schedule; estos endpoints las bajan a plan_main, que es
+# lo que se ve en Control de produccion ASSY. Bloque B<n> -> GRUPO n.
+
+
+def _assy_modelo_de_raw(part_no):
+    """model_code / project de RAW (UPH y CT ya vienen en la propuesta)."""
+    row = execute_query(
+        "SELECT model, project FROM raw WHERE part_no = %s ORDER BY id DESC LIMIT 1",
+        (part_no,), fetch="one",
+    ) or {}
+    return (row.get("model") or part_no), (row.get("project") or "")
+
+
+@bp.route("/api/plan/propuestas-ia", methods=["GET"])
+@login_requerido
+@requiere_permiso_dropdown(ASSY_PERMISO_PAGINA, ASSY_PERMISO_SECCION, ASSY_PERMISO_BOTON)
+def api_plan_propuestas_ia():
+    """Propuestas del usuario que se pueden bajar al plan ASSY."""
+    try:
+        usuario = session.get("usuario") or "SISTEMA"
+        rows = execute_query(
+            "SELECT public_id, version, date_from, date_to, status, "
+            "total_items, total_qty, created_at FROM lg_plan_proposals "
+            "WHERE created_by=%s AND status IN ('DRAFT','PENDING_CONFIRMATION','APPLIED') "
+            "ORDER BY id DESC LIMIT 15",
+            (usuario,), fetch="all",
+        ) or []
+        return jsonify([
+            {
+                "proposal_id": r["public_id"],
+                "version": int(r["version"] or 1),
+                "date_from": str(r["date_from"] or "")[:10],
+                "date_to": str(r["date_to"] or "")[:10],
+                "status": r["status"],
+                "total_items": int(r["total_items"] or 0),
+                "total_qty": int(r["total_qty"] or 0),
+                "created_at": str(r["created_at"] or "")[:16],
+            }
+            for r in rows
+        ])
+    except Exception as e:
+        logger.error("Error en api_plan_propuestas_ia: %s", e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/plan/importar-propuesta-ia", methods=["POST"])
+@login_requerido
+@requiere_permiso_dropdown(ASSY_PERMISO_PAGINA, ASSY_PERMISO_SECCION, ASSY_PERMISO_BOTON)
+def api_plan_importar_propuesta_ia():
+    """Inserta la propuesta en plan_main respetando lo que ya hay.
+
+    Solo agrega lo que falta: un lote con la misma fecha, parte, linea y
+    cantidad se omite, asi que reimportar no duplica ni pisa lo capturado."""
+    try:
+        usuario = session.get("usuario") or "SISTEMA"
+        proposal_id = str((request.get_json(silent=True) or {}).get("proposal_id") or "").strip()
+        if not proposal_id:
+            return jsonify({"error": "Falta proposal_id"}), 400
+
+        # Import tardio: part_planning importa modulos que a su vez importan este
+        # blueprint (WF_003, evitar ciclo al arranque).
+        from app.api.control_produccion.part_planning import _ppy_propuesta_grid
+
+        grid = _ppy_propuesta_grid(proposal_id, usuario)
+        grupos = grid.get("grupos") or []
+        lotes = [(gr, lote) for gr in grupos for lote in (gr.get("lotes") or [])]
+        if not lotes:
+            return jsonify({"error": "La propuesta no tiene lotes"}), 400
+
+        fechas = sorted({l["fecha"] for _gr, l in lotes if l.get("fecha")})
+        existentes = {}
+        if fechas:
+            marcas = ",".join(["%s"] * len(fechas))
+            for row in execute_query(
+                f"SELECT DATE(working_date) AS f, part_no, line, plan_count "
+                f"FROM plan_main WHERE DATE(working_date) IN ({marcas})",
+                tuple(fechas), fetch="all",
+            ) or []:
+                clave = (str(row["f"])[:10], str(row["part_no"] or "").strip().upper(),
+                         str(row["line"] or "").strip().upper(), int(row["plan_count"] or 0))
+                existentes[clave] = existentes.get(clave, 0) + 1
+
+        secuencias = {}
+        insertados, omitidos = 0, 0
+        for gr, lote in lotes:
+            bloque = str(gr.get("bloque") or "B1")
+            group_no = int(bloque[1:]) if bloque[1:].isdigit() else 1
+            fecha = _fp_safe_date(lote["fecha"]) or datetime.utcnow().date()
+            part_no = str(lote["part_no"] or "").strip().upper()
+            linea = str(lote["linea"] or "").strip().upper()
+            qty = int(lote["qty"] or 0)
+            clave = (fecha.isoformat(), part_no, linea, qty)
+            if existentes.get(clave):
+                existentes[clave] -= 1
+                omitidos += 1
+                continue
+            if group_no not in secuencias:
+                fila = execute_query(
+                    "SELECT MAX(sequence) AS max_seq FROM plan_main WHERE group_no=%s",
+                    (group_no,), fetch="one")
+                secuencias[group_no] = int((fila or {}).get("max_seq") or 0)
+            secuencias[group_no] += 1
+            model_code, project = _assy_modelo_de_raw(part_no)
+            turno = str(lote.get("turno") or "DIA").strip().upper()
+            execute_query(
+                "INSERT INTO plan_main (lot_no, wo_code, po_code, working_date, line, "
+                "model_code, part_no, project, process, plan_count, ct, uph, routing, "
+                "status, group_no, sequence, created_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'MAIN',%s,%s,%s,%s,'PLAN',%s,%s,NOW())",
+                (_fp_generate_lot_no(datetime.combine(fecha, datetime.min.time())),
+                 "SIN-WO", "SIN-PO", fecha, linea, model_code, part_no, project,
+                 qty, float(lote.get("ct") or 0), int(lote.get("uph") or 0),
+                 {"DIA": 1, "TIEMPO EXTRA": 2, "NOCHE": 3}.get(turno, 1),
+                 group_no, secuencias[group_no]),
+            )
+            insertados += 1
+
+        return jsonify({
+            "success": True, "insertados": insertados, "omitidos": omitidos,
+            "fechas": fechas, "grupos": sorted(secuencias),
+        })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error("Error en api_plan_importar_propuesta_ia: %s", e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
