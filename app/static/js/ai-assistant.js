@@ -456,7 +456,7 @@
             this.transitioning = true;
             this.launcher.setAttribute('aria-expanded', 'true');
             document.body.style.overflow = 'hidden';
-            if (!this.currentConversation && this.bootstrap?.configured) this.newChat(false);
+            if (!this.currentConversation && this.bootstrap?.configured) this.resumeLastChat();
             try {
                 await this.runPanelOpenAnimation();
                 setTimeout(() => this.input.focus(), 120);
@@ -540,6 +540,24 @@
             this.root.querySelectorAll('[data-conversation-id]').forEach(button => {
                 button.classList.toggle('active', Boolean(currentId) && button.dataset.conversationId === currentId);
             });
+        }
+
+        async resumeLastChat() {
+            // Al abrir el panel se retoma la ultima conversacion activa; solo se
+            // crea una nueva si no hay ninguna (antes cada apertura creaba una).
+            if (!this.bootstrap?.configured) { this.notice(this.t('notConfigured')); return; }
+            try {
+                const data = await this.api('/api/ai/conversations?limit=1');
+                const ultima = (data.conversations || [])[0];
+                if (ultima) {
+                    await this.selectConversation(ultima);
+                    await this.loadConversations();
+                    return;
+                }
+            } catch (error) {
+                console.warn('No se pudo retomar la última conversación:', error);
+            }
+            await this.newChat(false);
         }
 
         async newChat(select = true) {
