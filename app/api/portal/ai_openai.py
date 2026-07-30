@@ -99,11 +99,13 @@ Tienes herramientas para ayudar a armar el plan de produccion LG. Reglas obligat
   shortages, cantidades, CT, UPH, empaque, linea y capacidad; nunca recalcules ni sustituyas
   esos valores con estimaciones del modelo.
 - Para "que falta" / "como vamos" usa plan_estado_faltantes (solo lectura).
-- Para "haz una propuesta del plan", "propón el schedule" o equivalentes usa
-  plan_propuesta_preparar. Si el rango incluye HOY, antes de llamar la herramienta
-  pregunta al usuario "¿en qué proceso o lote van las líneas?" y pasa su respuesta
-  en proceso_actual; para mañana o fechas futuras usa null. La propuesta NO modifica
-  el MES: muestra rango, piezas,
+- Para "haz una propuesta del plan", "propón el schedule", "qué cambios propones"
+  o equivalentes llama plan_propuesta_preparar DE INMEDIATO. NO preguntes en que
+  proceso o lote van las lineas: para HOY el MES lo deduce solo de los lotes con
+  produccion capturada o EN PROGRESO. Manda proceso_actual solo si el usuario ya
+  te dijo algo que corrija eso; para fechas futuras usa null. Si no hay ningun
+  lote arrancado, la herramienta te devolvera un error pidiendolo: hasta
+  entonces pregunta. La propuesta NO modifica el MES: muestra rango, piezas,
   horas por linea, omisiones y excepciones; pide confirmacion explicita en un mensaje
   posterior. El servidor aplicara la propuesta confirmada de forma idempotente.
 - Si el usuario pide omitir, quitar o excluir numeros de parte de una propuesta,

@@ -148,6 +148,10 @@ PPY_ANTICIPACION_MAX = max(
 # reparte entre varias partes, como hace Planning. None = sin tope (cubre toda la
 # ventana; comportamiento historico).
 PPY_ADELANTO_MAX_DIAS = None
+# Vigencia de una propuesta sin confirmar: pasados estos dias el plan LG, el
+# inventario y el piso ya se movieron, asi que se cierra en vez de quedar
+# colgada ofreciendose para aplicar.
+PPY_PROPUESTA_VIGENCIA_DIAS = 2
 PPY_LINEAS_DEFAULT = "M1,M2,M3"
 # Partes que LG pide pero que NO se producen aqui. Se configuran en
 # lg_pp_config.partes_excluidas (CSV) porque no hay nada en los datos que las
@@ -2601,6 +2605,19 @@ def _ppy_bloques_visuales(items, max_horas=None):
     return asign
 
 
+def _ppy_expirar_propuestas(dias=PPY_PROPUESTA_VIGENCIA_DIAS, query=None):
+    """Cierra los borradores que nadie confirmo dentro de la vigencia.
+
+    Se corre al listar y al crear propuestas (no hay worker): es un UPDATE
+    idempotente y barato. Las APLICADAS no se tocan, son historial."""
+    run_query = query or execute_query
+    run_query(
+        "UPDATE lg_plan_proposals SET status='EXPIRED', reviewed_by='SISTEMA', "
+        "reviewed_at=NOW() WHERE status IN ('DRAFT','PENDING_CONFIRMATION') "
+        "AND created_at < NOW() - INTERVAL %s DAY",
+        (int(dias),))
+
+
 def _ppy_propuesta_grid(public_id, usuario, query=None):
     """La propuesta como grid agrupado por bloque de 9 h, con Inicio/Fin
     encadenados desde las 07:30 (mismo horario que Control de produccion ASSY).
@@ -2897,6 +2914,7 @@ def _ppy_crear_propuesta(
         schedule_snapshot,
     )
     public_id = str(uuid.uuid4())
+    _ppy_expirar_propuestas()  # de paso se cierran las que ya vencieron
     source = str(source or "UI").strip().upper()[:20] or "UI"
     objective = str(objective or "").strip()[:500] or None
 

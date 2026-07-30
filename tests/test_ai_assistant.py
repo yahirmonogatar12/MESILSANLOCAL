@@ -1483,12 +1483,15 @@ def test_instrucciones_priorizan_raw_para_uph_y_ct():
     assert "7421 debe encontrar EBR80757421" in instructions
 
 
-def test_instrucciones_exigen_proceso_actual_al_replanear_hoy():
+def test_instrucciones_no_preguntan_el_proceso_actual_al_replanear_hoy():
+    """El MES deduce en que va cada linea de los lotes arrancados; preguntarlo
+    cada vez estorbaba. Solo se pregunta si la herramienta lo reclama."""
     instructions = ai_openai.build_instructions(
         {"language": "es", "plan_tools_enabled": True}
     )
-    assert "¿en qué proceso o lote van las líneas?" in instructions
+    assert "NO preguntes en que" in instructions
     assert "proceso_actual" in instructions
+    assert "¿en qué proceso o lote van las líneas?" not in instructions
 
 
 def test_instrucciones_lqc_explican_fecha_de_hoy():
@@ -1927,7 +1930,7 @@ def test_main_template_incluye_panel_y_metadatos_de_permiso():
     assert 'class="ai-launcher-logo"' in partial
     assert "icons/1538298822.svg" in partial
     assert '>Asistente</span>' not in partial.split('</button>', 1)[0]
-    assert "20260730b" in main  # cache-buster de ai-assistant.js/css
+    assert "20260730c" in main  # cache-buster de ai-assistant.js/css
 
 
 def test_cliente_permite_eliminar_chat_con_confirmacion():

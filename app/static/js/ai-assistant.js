@@ -858,6 +858,7 @@
                 '    <span class="ai-proposal-status"></span>' +
                 '    <div class="ai-proposal-actions">' +
                 '      <button type="button" class="ai-proposal-btn ghost" data-act="download">Descargar</button>' +
+                '      <button type="button" class="ai-proposal-btn" data-act="diff">Ver cambios al plan</button>' +
                 '      <button type="button" class="ai-proposal-btn" data-act="save">Guardar cambios</button>' +
                 '      <button type="button" class="ai-proposal-btn primary" data-act="confirm">Confirmar</button>' +
                 '    </div>' +
@@ -871,6 +872,11 @@
             overlay.querySelector('.ai-proposal-close').addEventListener('click', close);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
             overlay.querySelector('[data-act="download"]').addEventListener('click', () => this.downloadProposal());
+            overlay.querySelector('[data-act="diff"]').addEventListener('click', () => {
+                // El comparador vive en plan-assy-ia.js (persistente en MainTemplate).
+                if (window.abrirDiffPropuestaIA) window.abrirDiffPropuestaIA(this._proposal.id);
+                else this.notice('El comparador del plan no está disponible en esta pantalla.');
+            });
             overlay.querySelector('[data-act="save"]').addEventListener('click', () => this.saveProposalEdits());
             overlay.querySelector('[data-act="confirm"]').addEventListener('click', () => this.confirmProposal());
         }

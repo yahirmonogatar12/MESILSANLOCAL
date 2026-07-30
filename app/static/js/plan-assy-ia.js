@@ -11,6 +11,15 @@
   const MODAL_ID = 'assy-ia-plan-modal';
   const ETIQUETA = { cantidad: 'Cantidad', linea: 'Línea', grupo: 'Grupo', secuencia: 'Orden' };
   let diffActual = null;
+  let verMenores = false;
+
+  // Toda diferencia de cantidad viene de que LG movió su demanda: la cantidad
+  // del lote es el faltante + colchón + 10%, redondeado a caja. Aunque sean 20
+  // pzs, ignorarla deja el plan corto. Lo único que no cambia la cobertura es
+  // el reacomodo de bloques (grupo/orden), y eso es lo que se oculta.
+  function esRelevante(c) {
+    return c.campos.some(k => k === 'cantidad' || k === 'linea');
+  }
 
   const caja = () => document.querySelector(`#${MODAL_ID} [data-ia-list]`);
   const cerrar = () => { const m = document.getElementById(MODAL_ID); if (m) m.remove(); };
@@ -31,7 +40,8 @@
     const modal = document.createElement('div');
     modal.id = MODAL_ID;
     modal.style.cssText = 'display:flex;position:fixed;inset:0;background:rgba(0,0,0,.6);' +
-      'justify-content:center;align-items:center;z-index:10000;';
+      // 16050: por encima del modal de la propuesta del asistente (16000).
+      'justify-content:center;align-items:center;z-index:16050;';
     modal.innerHTML =
       '<div style="background:#0e2233;color:#dbe7f3;border:1px solid #20688C;border-radius:6px;' +
       'min-width:640px;max-width:92vw;max-height:85vh;overflow:auto;padding:16px;">' +
@@ -74,6 +84,7 @@
   async function verDiff(proposalId) {
     const cont = caja();
     cont.textContent = 'Comparando contra el plan del día…';
+    verMenores = false;
     try {
       diffActual = await api('/api/plan/propuesta-ia/diff', { proposal_id: proposalId });
       renderDiff();
@@ -82,25 +93,47 @@
 
   function renderDiff() {
     const d = diffActual;
-    const aplicables = d.cambios.filter(c => !c.bloqueado).length;
+    const relevantes = d.cambios.filter(esRelevante);
+    const menores = d.cambios.filter(c => !esRelevante(c));
+    const lista = verMenores ? d.cambios : relevantes;
+    const aplicables = relevantes.filter(c => !c.bloqueado).length;
     let html = `<div style="margin-bottom:10px;color:#8fa6c6;">${d.fechas.join(', ')} · ` +
-      `${d.cambios.length} lotes cambian · ${d.sin_cambio} sin cambio · ` +
-      `${d.nuevos.length} requieren lote nuevo · ${d.sobran.length} ya no están en la propuesta</div>`;
+      `${relevantes.length} lotes cambian · ${d.sin_cambio} sin cambio · ` +
+      `${d.nuevos.length} requieren lote nuevo · ${d.sobran.length} ya no están en la propuesta</div>` +
+      (menores.length
+        ? `<div style="margin-bottom:10px;">Se ocultan ${menores.length} lotes que ` +
+          `solo se reacomodan de grupo u orden, sin cambiar cantidad ni línea · ` +
+          `<a href="#" data-ia-act="toggle-menores" style="color:#7dd3fc;">` +
+          `${verMenores ? 'ocultar' : 'verlos'}</a></div>`
+        : '');
 
-    if (d.cambios.length) {
+    if (lista.length) {
       html += '<b>Cambios sobre los lotes que ya están</b>' + tabla(
         ['<input type="checkbox" data-ia-act="all" checked>', 'Lote', 'Parte', 'Cambios', ''],
-        d.cambios.map((c, i) => [
-          `<input type="checkbox" class="ia-chk" data-i="${i}" ${c.bloqueado ? 'disabled' : 'checked'}>`,
+        lista.map((c) => [
+          `<input type="checkbox" class="ia-chk" data-i="${d.cambios.indexOf(c)}" ` +
+          `${c.bloqueado ? 'disabled' : (esRelevante(c) ? 'checked' : '')}>`,
           c.lot_no, c.part_no,
-          c.campos.map(k => `<span style="background:#1b3a52;border-radius:3px;padding:1px 5px;margin-right:4px;">` +
-            `${ETIQUETA[k]}: ${c.antes[k]} → <b>${c.despues[k]}</b></span>`).join(''),
-          c.bloqueado ? `<span style="color:#fbbf24;">no aplicable: ${c.bloqueado}</span>` : '',
+          // Un lote arrancado solo admite bajar la cantidad: los demás campos
+          // se muestran en gris porque el servidor no los va a aplicar.
+          c.campos.map(k => {
+            const aplica = (c.aplicables || []).includes(k);
+            return `<span title="${aplica ? '' : 'no se aplica: el lote ya arrancó'}" ` +
+              `style="background:${aplica ? '#1b3a52' : '#16233300'};border:1px solid #1b3a52;` +
+              `color:${aplica ? '' : '#6b7f96'};border-radius:3px;padding:1px 5px;margin-right:4px;">` +
+              `${ETIQUETA[k]}: ${c.antes[k]} → <b>${c.despues[k]}</b></span>`;
+          }).join(''),
+          c.bloqueado
+            ? `<span style="color:#fbbf24;">no aplicable: ${c.bloqueado}</span>`
+            : [c.urgente ? `<span style="color:#7dd3fc;">${c.razon}</span>` : '',
+               c.producido ? `<span style="color:#8fa6c6;">lleva ${c.producido} pzs</span>` : '']
+              .filter(Boolean).join(' · '),
         ]));
       html += `<div style="margin:10px 0;"><button type="button" class="assy-btn assy-btn-add" ` +
         `data-ia-act="apply" ${aplicables ? '' : 'disabled'}>Aplicar cambios (${aplicables})</button></div>`;
     } else {
-      html += '<div style="margin:8px 0;">El plan del día ya coincide con la propuesta.</div>';
+      html += `<div style="margin:8px 0;">Ningún lote cambia de cantidad ni de línea` +
+        (menores.length ? `; solo hay ${menores.length} reacomodos de bloque.` : '.') + '</div>';
     }
 
     if (d.nuevos.length) {
@@ -126,9 +159,12 @@
     if (!marcados.length) { alert('No hay cambios marcados.'); return; }
     btn.disabled = true;
     try {
-      const r = await api('/api/plan/propuesta-ia/aplicar-cambios', { cambios: marcados });
+      const r = await api('/api/plan/propuesta-ia/aplicar-cambios',
+        { cambios: marcados, proposal_id: diffActual.proposal_id });
       cerrar();
+      const partes = Object.keys(r.schedule || {}).length;
       alert(`Se aplicaron ${r.aplicados} cambios` +
+        (partes ? `; el Schedule se actualizó en ${partes} partes` : '') +
         (r.omitidos.length ? `. Omitidos: ${r.omitidos.map(o => `${o.lot_no} (${o.motivo})`).join(', ')}` : '.'));
       if (window.assyLoadPlans) window.assyLoadPlans();
     } catch (e) { alert(e.message); btn.disabled = false; }
@@ -162,5 +198,10 @@
     else if (accion === 'diff') verDiff(act.dataset.id);
     else if (accion === 'apply') aplicar(act);
     else if (accion === 'insert') insertarNuevos(act);
+    else if (accion === 'toggle-menores') { verMenores = !verMenores; renderDiff(); }
   });
+
+  // Entrada directa desde el modal de la propuesta en el asistente IA: se salta
+  // la lista y compara esa propuesta contra el plan del dia.
+  window.abrirDiffPropuestaIA = (proposalId) => { abrirModal(); verDiff(proposalId); };
 })();

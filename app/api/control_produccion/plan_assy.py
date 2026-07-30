@@ -1888,12 +1888,21 @@ def api_plan_propuestas_ia():
     """Propuestas del usuario que se pueden bajar al plan ASSY."""
     try:
         usuario = session.get("usuario") or "SISTEMA"
+        # Las que nadie confirmo dentro de la vigencia se cierran; y la lista
+        # solo muestra las de esos dias (una aplicada de la semana pasada es
+        # historial, no algo que quieras bajar al plan de hoy).
+        from app.api.control_produccion.part_planning import (
+            PPY_PROPUESTA_VIGENCIA_DIAS, _ppy_expirar_propuestas,
+        )
+
+        _ppy_expirar_propuestas()
         rows = execute_query(
             "SELECT public_id, version, date_from, date_to, status, "
             "total_items, total_qty, created_at FROM lg_plan_proposals "
             "WHERE created_by=%s AND status IN ('DRAFT','PENDING_CONFIRMATION','APPLIED') "
+            "AND created_at >= NOW() - INTERVAL %s DAY "
             "ORDER BY id DESC LIMIT 15",
-            (usuario,), fetch="all",
+            (usuario, PPY_PROPUESTA_VIGENCIA_DIAS), fetch="all",
         ) or []
         return jsonify([
             {
@@ -2004,18 +2013,100 @@ def api_plan_importar_propuesta_ia():
 # contra la propuesta y se proponen CAMBIOS (cantidad, linea, grupo, orden)
 # sobre los lotes que ya estan. Planning revisa viabilidad y aplica.
 
-# Un lote solo admite cambios si no arranco produccion.
-_ASSY_ESTADOS_EDITABLES = ("PLAN", "PENDIENTE", "PAUSADO")
+# Columna de plan_main detras de cada campo del cambio.
+_ASSY_COLUMNA = {"cantidad": "plan_count", "linea": "line",
+                 "grupo": "group_no", "secuencia": "sequence"}
 
 
-def _assy_lote_bloqueado(row):
-    """Motivo por el que un lote no admite cambios, o None si si admite."""
+def _assy_producido(row):
+    return max(int(row.get("produced_count") or 0), int(row.get("output") or 0))
+
+
+def _assy_cambio_permitido(row, antes, despues):
+    """Que se le puede cambiar a un lote. Devuelve (campos_aplicables, motivo).
+
+    Un lote que ya arranco esta corriendo en su linea: no se mueve de
+    linea/grupo/orden, pero su cantidad si se ajusta en cualquier direccion
+    (subir o bajar), con el unico piso de lo que ya produjo. Un lote que no ha
+    arrancado admite todo."""
     status = str(row.get("status") or "").strip().upper()
-    if status not in _ASSY_ESTADOS_EDITABLES:
-        return f"status {status}"
-    if int(row.get("produced_count") or 0) or int(row.get("output") or 0):
-        return "ya tiene produccion capturada"
-    return None
+    if status in ("TERMINADO", "CANCELADO"):
+        return [], f"status {status}"
+    campos = [k for k in despues if antes.get(k) != despues.get(k)]
+    producido = _assy_producido(row)
+    if status != "EN PROGRESO" and not producido:
+        return campos, None
+    if "cantidad" not in campos:
+        return [], "ya arranco: solo se puede ajustar la cantidad"
+    if int(despues["cantidad"]) < producido:
+        return [], f"ya lleva {producido} pzs producidas"
+    return ["cantidad"], None
+
+
+def _assy_lotes_corriendo(fecha):
+    """Lotes que ya arrancaron hoy segun el piso: [{'linea','numero_parte'}].
+
+    Es la respuesta a "en que lote va cada linea", pero leida del MES en vez de
+    preguntarsela a Planning. Cuenta lo que ya arranco (EN PROGRESO/TERMINADO o
+    con produccion capturada); un lote solo planeado todavia se puede mover."""
+    rows = execute_query(
+        "SELECT DISTINCT part_no, line FROM plan_main "
+        "WHERE DATE(working_date)=%s AND status <> 'CANCELADO' "
+        "AND (status IN ('EN PROGRESO','TERMINADO') "
+        "     OR COALESCE(produced_count,0) > 0 OR COALESCE(output,0) > 0)",
+        (fecha,), fetch="all") or []
+    return [
+        {"numero_parte": str(r["part_no"] or "").strip().upper(),
+         "linea": str(r["line"] or "").strip().upper()}
+        for r in rows
+        if str(r["part_no"] or "").strip() and str(r["line"] or "").strip()
+    ]
+
+
+def _assy_urgencia(plan):
+    """Si el lote cubre un faltante real, tocarlo vale la pena aunque el ajuste
+    sea de pocas piezas. Si no, es relleno de la banda de inventario y el
+    umbral de piezas decide.
+
+    Sale del propio motor: inv_despues < 0 = sigue faltando material aun
+    produciendo este lote; falta_el <= fecha = el faltante es hoy, no futuro."""
+    if int(plan.get("inv_despues") or 0) < 0:
+        return True, "queda faltante aun con este lote"
+    falta = str(plan.get("falta_el") or "")
+    if falta and falta <= str(plan.get("fecha") or ""):
+        return True, "cubre el faltante del día"
+    return False, ""
+
+
+def _assy_sync_schedule(part_no, fecha, usuario, proposal_id=None):
+    """Refleja en el Schedule el total planeado de esa parte/fecha en ASSY.
+
+    lg_schedule_daily es una fila por (parte, fecha) y en plan_main puede haber
+    varios lotes de la misma parte, asi que se escribe la SUMA de sus lotes
+    vigentes. Sin esto el motor volveria a proponer contra el Schedule viejo."""
+    row = execute_query(
+        "SELECT COALESCE(SUM(plan_count),0) AS total FROM plan_main "
+        "WHERE part_no=%s AND DATE(working_date)=%s AND status <> 'CANCELADO'",
+        (part_no, fecha), fetch="one") or {}
+    total = int(row.get("total") or 0)
+    if total <= 0:
+        return 0  # no se borra la fila del Schedule desde aqui
+    # Linea/turno: los del lote mas grande de esa parte ese dia.
+    dom = execute_query(
+        "SELECT line, routing FROM plan_main WHERE part_no=%s AND DATE(working_date)=%s "
+        "AND status <> 'CANCELADO' ORDER BY plan_count DESC, id LIMIT 1",
+        (part_no, fecha), fetch="one") or {}
+    turno = {1: "DIA", 2: "TIEMPO EXTRA", 3: "NOCHE"}.get(int(dom.get("routing") or 1), "DIA")
+    execute_query(
+        "INSERT INTO lg_schedule_daily "
+        "(part_no, sched_date, sched_qty, linea, turno, proposal_public_id, updated_by) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE "
+        "sched_qty=VALUES(sched_qty), linea=VALUES(linea), turno=VALUES(turno), "
+        "proposal_public_id=VALUES(proposal_public_id), updated_by=VALUES(updated_by)",
+        (part_no, fecha, total, str(dom.get("line") or "").strip().upper() or None,
+         turno, proposal_id or None, usuario),
+    )
+    return total
 
 
 def _assy_diff_propuesta(proposal_id, usuario):
@@ -2040,6 +2131,9 @@ def _assy_diff_propuesta(proposal_id, usuario):
                 "secuencia": int(lote.get("sec") or 1),
                 "uph": int(lote.get("uph") or 0), "ct": float(lote.get("ct") or 0),
                 "turno": str(lote.get("turno") or "DIA").strip().upper(),
+                # Para decidir si el ajuste vale la pena (ver _assy_urgencia).
+                "inv_despues": lote.get("inv_despues"),
+                "falta_el": lote.get("falta_el"), "motivo": lote.get("motivo"),
             })
 
     fechas = sorted({f for f, _p in propuesta})
@@ -2075,10 +2169,15 @@ def _assy_diff_propuesta(proposal_id, usuario):
             if not campos:
                 sin_cambio += 1
                 continue
+            aplicables, motivo = _assy_cambio_permitido(row, antes, despues)
+            urgente, razon = _assy_urgencia(plan)
             cambios.append({
                 "lot_no": row["lot_no"], "part_no": clave[1], "fecha": clave[0],
-                "status": row.get("status"), "antes": antes, "despues": despues,
-                "campos": campos, "bloqueado": _assy_lote_bloqueado(row),
+                "status": row.get("status"), "producido": _assy_producido(row),
+                "antes": antes, "despues": despues, "campos": campos,
+                "aplicables": aplicables, "bloqueado": motivo,
+                "urgente": urgente, "razon": razon,
+                "inv_despues": plan.get("inv_despues"), "falta_el": plan.get("falta_el"),
             })
         # La propuesta pide mas lotes de esa parte de los que hay capturados.
         nuevos.extend(pendientes[len(existentes):])
@@ -2089,7 +2188,7 @@ def _assy_diff_propuesta(proposal_id, usuario):
                 "linea": str(row.get("line") or "").strip().upper(),
                 "cantidad": int(row.get("plan_count") or 0),
                 "status": row.get("status"),
-                "bloqueado": _assy_lote_bloqueado(row),
+                "producido": _assy_producido(row),
             })
 
     return {
@@ -2126,35 +2225,60 @@ def api_plan_propuesta_ia_aplicar_cambios():
     No crea ni borra lotes: el lot_no (y su material) se conserva. El estado de
     cada lote se revalida aqui, no en el navegador."""
     try:
-        cambios = (request.get_json(silent=True) or {}).get("cambios") or []
+        payload = request.get_json(silent=True) or {}
+        cambios = payload.get("cambios") or []
+        proposal_id = str(payload.get("proposal_id") or "").strip() or None
+        usuario = session.get("usuario") or "SISTEMA"
         if not isinstance(cambios, list) or not cambios:
             return jsonify({"error": "Sin cambios que aplicar"}), 400
-        aplicados, omitidos = 0, []
+        aplicados, omitidos, tocados = 0, [], set()
         for c in cambios:
             lot_no = str((c or {}).get("lot_no") or "").strip()
             if not lot_no:
                 continue
             row = execute_query(
-                "SELECT status, COALESCE(produced_count,0) AS produced_count, "
+                "SELECT status, part_no, DATE(working_date) AS f, plan_count, line, group_no, sequence, "
+                "COALESCE(produced_count,0) AS produced_count, "
                 "COALESCE(output,0) AS output FROM plan_main WHERE lot_no=%s",
                 (lot_no,), fetch="one")
             if not row:
                 omitidos.append({"lot_no": lot_no, "motivo": "no existe"})
                 continue
-            motivo = _assy_lote_bloqueado(row)
-            if motivo:
-                omitidos.append({"lot_no": lot_no, "motivo": motivo})
+            # Se compara contra el estado ACTUAL del lote, no contra lo que vio
+            # el navegador: si arranco entre la revision y el aplicar, se omite.
+            antes = {
+                "cantidad": int(row.get("plan_count") or 0),
+                "linea": str(row.get("line") or "").strip().upper(),
+                "grupo": int(row.get("group_no") or 0),
+                "secuencia": int(row.get("sequence") or 0),
+            }
+            despues = {
+                "cantidad": int(c.get("cantidad") or 0),
+                "linea": str(c.get("linea") or "").strip().upper(),
+                "grupo": int(c.get("grupo") or 0),
+                "secuencia": int(c.get("secuencia") or 0),
+            }
+            aplicables, motivo = _assy_cambio_permitido(row, antes, despues)
+            if motivo or not aplicables:
+                omitidos.append({"lot_no": lot_no,
+                                 "motivo": motivo or "sin cambios aplicables"})
                 continue
+            sets = ", ".join(f"{_ASSY_COLUMNA[k]}=%s" for k in aplicables)
             execute_query(
-                "UPDATE plan_main SET plan_count=%s, line=%s, group_no=%s, sequence=%s, "
-                "updated_at=NOW() WHERE lot_no=%s "
-                "AND COALESCE(produced_count,0)=0 AND COALESCE(output,0)=0",
-                (int(c.get("cantidad") or 0), str(c.get("linea") or "").strip().upper(),
-                 int(c.get("grupo") or 0) or None, int(c.get("secuencia") or 0) or None,
-                 lot_no),
+                f"UPDATE plan_main SET {sets}, updated_at=NOW() WHERE lot_no=%s",
+                tuple(despues[k] for k in aplicables) + (lot_no,),
             )
             aplicados += 1
-        return jsonify({"success": True, "aplicados": aplicados, "omitidos": omitidos})
+            tocados.add((str(row.get("part_no") or "").strip().upper(),
+                         str(row.get("f") or "")[:10]))
+        # El Schedule se recalcula por parte/fecha con la suma de sus lotes, para
+        # que la siguiente propuesta de la IA parta de lo que quedo en ASSY.
+        schedule = {}
+        for part_no, fecha in sorted(tocados):
+            if part_no and fecha:
+                schedule[part_no] = _assy_sync_schedule(part_no, fecha, usuario, proposal_id)
+        return jsonify({"success": True, "aplicados": aplicados,
+                        "omitidos": omitidos, "schedule": schedule})
     except Exception as e:
         logger.error("Error en api_plan_propuesta_ia_aplicar_cambios: %s", e, exc_info=True)
         return jsonify({"error": str(e)}), 500

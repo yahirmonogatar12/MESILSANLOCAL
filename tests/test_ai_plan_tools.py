@@ -404,8 +404,13 @@ def test_plan_propuesta_ajuste_forzar_linea(monkeypatch):
 
 
 def test_plan_propuesta_de_hoy_exige_proceso_actual(monkeypatch):
+    """Solo se pregunta cuando el MES no tiene ningun lote arrancado hoy: ahi no
+    se distingue 'no ha empezado' de 'no lo han capturado'."""
+    from app.api.control_produccion import plan_assy
+
     monkeypatch.setattr(ai_plan_tools, "_has_plan", lambda _username: False)
     monkeypatch.setattr(ai_plan_tools, "_has_projection", lambda _username: True)
+    monkeypatch.setattr(plan_assy, "_assy_lotes_corriendo", lambda _fecha: [])
     hoy = date.today().isoformat()
 
     with pytest.raises(ValueError, match="en que lote va cada linea"):

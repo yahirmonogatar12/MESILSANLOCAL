@@ -436,9 +436,12 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                         "proceso_actual": {
                             "type": ["string", "null"],
                             "description": (
-                                "Obligatorio cuando el rango incluye hoy: indica en que "
-                                "proceso/lote van las lineas antes de replanear. Para fechas "
-                                "futuras debe ser null."
+                                "En que proceso/lote van las lineas. NO lo preguntes: "
+                                "para hoy el MES lo deduce de los lotes con produccion "
+                                "capturada o EN PROGRESO. Mandalo solo si Planning ya te "
+                                "dijo algo que corrija o complete eso. Si no hay nada "
+                                "arrancado la herramienta te lo pedira; solo entonces "
+                                "pregunta. Para fechas futuras debe ser null."
                             ),
                         },
                         "partes_excluidas": {
@@ -726,11 +729,21 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         lotes_corriendo = pp._ppy_normalizar_corriendo(
             arguments.get("lotes_corriendo")
         )
+        auto_corriendo = False
         if fecha_inicio <= hoy <= fecha_fin and not proceso_actual and not lotes_corriendo:
-            raise ValueError(
-                "Antes de planear hoy, pregunta en que lote va cada linea y "
-                "envialo en lotes_corriendo (o describe el estado en proceso_actual)."
-            )
+            # El MES ya sabe en que va cada linea: los lotes de hoy con
+            # produccion capturada o EN PROGRESO. Solo se pregunta si no hay
+            # nada arrancado, donde no se puede distinguir "no ha empezado" de
+            # "no lo han capturado".
+            from app.api.control_produccion.plan_assy import _assy_lotes_corriendo
+
+            lotes_corriendo = pp._ppy_normalizar_corriendo(_assy_lotes_corriendo(hoy))
+            auto_corriendo = bool(lotes_corriendo)
+            if not lotes_corriendo:
+                raise ValueError(
+                    "Antes de planear hoy, pregunta en que lote va cada linea y "
+                    "envialo en lotes_corriendo (o describe el estado en proceso_actual)."
+                )
         objetivo = str(arguments.get("objetivo") or "").strip()
         partes_excluidas = pp._ppy_normalizar_partes_excluidas(
             arguments.get("partes_excluidas")
@@ -749,7 +762,11 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
                 f"{l} en {p}" for p, l in lotes_corriendo.items()
             )
         if proceso_actual:
-            contexto = "Proceso actual reportado por Planning: " + proceso_actual
+            contexto = (
+                "Proceso actual tomado de los lotes de hoy en el MES: "
+                if auto_corriendo
+                else "Proceso actual reportado por Planning: "
+            ) + proceso_actual
             objetivo = (objetivo + "\n" + contexto).strip()
         # Agregados manuales (servicios/forzados) y expansion opcional del plan.
         agregados = pp._ppy_normalizar_agregados(arguments.get("agregados"))
