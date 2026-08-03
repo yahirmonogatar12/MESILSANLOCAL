@@ -177,7 +177,7 @@
         <span>PASS: <strong>${escapeHtml(row.pass_count)}</strong></span>
         <span>FAIL: <strong>${escapeHtml(row.fail_count)}</strong></span>
         <span>% PASS: <strong>${escapeHtml(row.pass_pct)}%</strong></span>
-        <span>Operador: <strong>PENDIENTE</strong></span>
+        <span>Operador: <strong>${escapeHtml(row.operador)}</strong></span>
       `;
     }
     modal.classList.add("show");
