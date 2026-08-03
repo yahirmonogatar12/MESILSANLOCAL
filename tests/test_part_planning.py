@@ -2060,15 +2060,15 @@ def test_part_excel_trae_los_dias_planeados_a_futuro(monkeypatch):
 
     def fake_sim(ini, fin, **_kw):
         assert (ini, fin) == (d_ini, d_ini + timedelta(days=pp.PP_PART_HORIZONTE_DIAS))
+        # El motor devuelve la fecha como TEXTO isoformat, no como date. Con
+        # objetos date el test pasaba y el codigo real reventaba en silencio.
+        f = lambda n: (d_ini + timedelta(days=n)).isoformat()
         return ([
-            {"part_no": "EBR111", "fecha": d_ini, "qty": 111, "linea": "M1"},
-            {"part_no": "EBR111", "fecha": d_ini + timedelta(days=1), "qty": 400,
-             "linea": "M1"},
+            {"part_no": "EBR111", "fecha": f(0), "qty": 111, "linea": "M1"},
+            {"part_no": "EBR111", "fecha": f(1), "qty": 400, "linea": "M1"},
             # Dos lotes el mismo dia: al Part va la suma.
-            {"part_no": "EBR111", "fecha": d_ini + timedelta(days=3), "qty": 50,
-             "linea": "M1"},
-            {"part_no": "EBR111", "fecha": d_ini + timedelta(days=3), "qty": 70,
-             "linea": "M1"},
+            {"part_no": "EBR111", "fecha": f(3), "qty": 50, "linea": "M1"},
+            {"part_no": "EBR111", "fecha": f(3), "qty": 70, "linea": "M1"},
         ], [])
 
     def fake_escribir(_blob, _nombre, schedule, fechas):

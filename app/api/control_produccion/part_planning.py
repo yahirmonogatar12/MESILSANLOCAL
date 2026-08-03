@@ -1730,8 +1730,11 @@ def _pp_part_excel_propuesta(public_id, usuario, query=None):
                 futuros = {}
                 props, _om = _ppy_simular_schedule(d_ini, horizonte)
                 for it in props:
-                    f = dia(it["fecha"])
-                    if f <= d_fin:
+                    # OJO: el motor devuelve la fecha como texto isoformat, no
+                    # como date. Compararla cruda contra d_fin reventaba y el
+                    # except de abajo se lo tragaba: el Part salia sin futuro.
+                    f = _ppy_parse_fecha(it["fecha"])
+                    if f is None or f <= d_fin:
                         continue  # ese tramo ya viene de la propuesta guardada
                     clave = (str(it["part_no"]), f)
                     futuros[clave] = futuros.get(clave, 0) + int(it["qty"] or 0)
@@ -1748,8 +1751,13 @@ def _pp_part_excel_propuesta(public_id, usuario, query=None):
                 fechas_prop |= nuevas
         except Exception:
             # Sin motor el Part sale con la propuesta y el schedule vigente, que
-            # es lo de antes: preferible a vaciar el futuro de Planning.
-            logger.warning("Part: sin proyeccion futura del motor", exc_info=True)
+            # es lo de antes: preferible a vaciar el futuro de Planning. Va como
+            # ERROR porque degradar en silencio ya escondio un bug una vez.
+            logger.error(
+                "Part %s: no se pudo proyectar el futuro (%s a %s); el archivo "
+                "sale solo con la propuesta y el schedule vigente",
+                public_id, d_ini, horizonte, exc_info=True,
+            )
     nombre = archivo["original_filename"] or "Part.xlsx"
     contenido, _hoja, _n = _pp_escribir_schedule_part(
         archivo["file_blob"], nombre, schedule, fechas_prop)
