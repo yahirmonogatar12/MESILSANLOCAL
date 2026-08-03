@@ -2030,3 +2030,66 @@ def test_part_excel_no_deja_prefijos_sin_declarar():
     assert {"x14", "x15"} <= declarados
     # ...y mc:Ignorable con su x14ac sobrevive, aunque nadie lo use.
     assert 'mc:Ignorable="x14ac"' in texto and "xmlns:x14ac=" in texto
+
+
+def test_part_excel_trae_los_dias_planeados_a_futuro(monkeypatch):
+    """La propuesta del dia cubre UN dia; el Part debe traer tambien lo que el
+    motor planea para el resto de la semana, no dejar ahi lo viejo."""
+    from datetime import date as _date
+    import app.api.control_produccion.part_planning as pp
+
+    d_ini = _date(2026, 8, 4)
+    archivo = _part10_ps_bytes(
+        [d_ini + timedelta(days=n) for n in range(4)],
+        {"EBR111": {d_ini + timedelta(days=n): 11 for n in range(4)}},
+    )
+    escrito = {}
+
+    def fake_query(sql, params=None, fetch=None):
+        if "lg_plan_part_file" in sql:
+            return {"original_filename": "Part.xlsx", "file_blob": archivo}
+        if "lg_plan_proposals" in sql:
+            return {"id": 7, "date_from": d_ini, "date_to": d_ini}
+        if "lg_schedule_daily" in sql:
+            # Lo que Planning dejo capturado a futuro: el motor lo reemplaza.
+            return [{"part_no": "EBR111", "sched_date": d_ini + timedelta(days=2),
+                     "sched_qty": 999}]
+        if "lg_plan_proposal_items" in sql:
+            return [{"part_no": "EBR111", "sched_date": d_ini, "qty": 300}]
+        return []
+
+    def fake_sim(ini, fin, **_kw):
+        assert (ini, fin) == (d_ini, d_ini + timedelta(days=pp.PP_PART_HORIZONTE_DIAS))
+        return ([
+            {"part_no": "EBR111", "fecha": d_ini, "qty": 111, "linea": "M1"},
+            {"part_no": "EBR111", "fecha": d_ini + timedelta(days=1), "qty": 400,
+             "linea": "M1"},
+            # Dos lotes el mismo dia: al Part va la suma.
+            {"part_no": "EBR111", "fecha": d_ini + timedelta(days=3), "qty": 50,
+             "linea": "M1"},
+            {"part_no": "EBR111", "fecha": d_ini + timedelta(days=3), "qty": 70,
+             "linea": "M1"},
+        ], [])
+
+    def fake_escribir(_blob, _nombre, schedule, fechas):
+        escrito["schedule"] = dict(schedule)
+        escrito["fechas"] = set(fechas)
+        return b"xlsx", "Part 10", 1
+
+    monkeypatch.setattr(pp, "_ppy_simular_schedule", fake_sim)
+    monkeypatch.setattr(pp, "_pp_escribir_schedule_part", fake_escribir)
+    _bytes, nombre = pp._pp_part_excel_propuesta("id", "ana", query=fake_query)
+
+    s = escrito["schedule"]
+    # El dia de la propuesta manda: 300, no los 111 de la re-simulacion.
+    assert s[("EBR111", d_ini)] == 300
+    # Los dias siguientes salen del motor, incluida la suma de dos lotes.
+    assert s[("EBR111", d_ini + timedelta(days=1))] == 400
+    assert s[("EBR111", d_ini + timedelta(days=3))] == 120
+    # El dia sin lote NO conserva los 999 que Planning tenia capturados: en ese
+    # tramo manda el motor, asi que la celda se vacia.
+    assert ("EBR111", d_ini + timedelta(days=2)) not in s
+    # Todo el horizonte cuenta como "manda el plan": un dia sin lote se vacia.
+    assert escrito["fechas"] == {
+        d_ini + timedelta(days=n) for n in range(pp.PP_PART_HORIZONTE_DIAS + 1)}
+    assert nombre.startswith("Part - propuesta 2026-08-04")

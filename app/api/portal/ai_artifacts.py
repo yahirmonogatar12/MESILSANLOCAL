@@ -865,7 +865,11 @@ def _build_plan_proposal_excel(
     ws.column_dimensions["A"].width = 16
     ws.column_dimensions["B"].width = 7
     ws.column_dimensions["C"].width = 4
-    horizon_end = max(date_to, date_from + timedelta(days=9))
+    # Mismo horizonte que el Part descargable (pp.PP_PART_HORIZONTE_DIAS): si
+    # difieren, el mismo plan sale con dos numeros distintos.
+    from app.api.control_produccion.part_planning import PP_PART_HORIZONTE_DIAS
+
+    horizon_end = max(date_to, date_from + timedelta(days=PP_PART_HORIZONTE_DIAS))
     horizon_dates = [date_from + timedelta(days=offset) for offset in range((horizon_end - date_from).days + 1)][:14]
     horizon_end = horizon_dates[-1]
     for index in range(len(horizon_dates)):

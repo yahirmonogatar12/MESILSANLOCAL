@@ -179,6 +179,11 @@ PPY_ADELANTO_MAX_DIAS = None
 # Vigencia de una propuesta sin confirmar: pasados estos dias el plan LG, el
 # inventario y el piso ya se movieron, asi que se cierra en vez de quedar
 # colgada ofreciendose para aplicar.
+# Dias que el Part descargado muestra mas alla del rango de la propuesta: se
+# llenan con lo que el motor planearia, igual que la hoja "Como queda el Part"
+# del Excel (ai_artifacts). Si aqui y alla difieren, el mismo plan sale con dos
+# numeros distintos.
+PP_PART_HORIZONTE_DIAS = 9
 PPY_PROPUESTA_VIGENCIA_DIAS = 2
 PPY_LINEAS_DEFAULT = "M1,M2,M3"
 # Partes que LG pide pero que NO se producen aqui. Se configuran en
@@ -1713,6 +1718,38 @@ def _pp_part_excel_propuesta(public_id, usuario, query=None):
             "GROUP BY part_no, sched_date",
             (header["id"],), fetch="all") or []
     })
+    # Los dias POSTERIORES al rango de la propuesta se llenan con lo que el
+    # motor planearia. Sin esto el Part solo traia el dia de la propuesta (que
+    # cuando viene de plan_dia_preparar es UNO) y el resto de la semana se veia
+    # como lo dejo Planning. Es la misma proyeccion que ya muestra la hoja
+    # "Como queda el Part" del Excel de la propuesta, para que ambos coincidan.
+    if d_ini and d_fin:
+        horizonte = max(d_fin, d_ini + timedelta(days=PP_PART_HORIZONTE_DIAS))
+        try:
+            if horizonte > d_fin:
+                futuros = {}
+                props, _om = _ppy_simular_schedule(d_ini, horizonte)
+                for it in props:
+                    f = dia(it["fecha"])
+                    if f <= d_fin:
+                        continue  # ese tramo ya viene de la propuesta guardada
+                    clave = (str(it["part_no"]), f)
+                    futuros[clave] = futuros.get(clave, 0) + int(it["qty"] or 0)
+                nuevas = {
+                    d_fin + timedelta(days=n)
+                    for n in range(1, (horizonte - d_fin).days + 1)
+                }
+                # Esos dias pasan a mandarlos el motor, y su plan es completo:
+                # primero se tira lo que Planning tenia capturado ahi (si no, un
+                # dia sin lote se quedaria con el numero viejo) y luego entra lo
+                # simulado. Al ir en fechas_prop, lo que quede sin lote se vacia.
+                schedule = {k: v for k, v in schedule.items() if k[1] not in nuevas}
+                schedule.update(futuros)
+                fechas_prop |= nuevas
+        except Exception:
+            # Sin motor el Part sale con la propuesta y el schedule vigente, que
+            # es lo de antes: preferible a vaciar el futuro de Planning.
+            logger.warning("Part: sin proyeccion futura del motor", exc_info=True)
     nombre = archivo["original_filename"] or "Part.xlsx"
     contenido, _hoja, _n = _pp_escribir_schedule_part(
         archivo["file_blob"], nombre, schedule, fechas_prop)
