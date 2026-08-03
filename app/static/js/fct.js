@@ -95,7 +95,7 @@
     if (!tbody) return;
     tbody.innerHTML = "";
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="14" class="ict-empty-row">Sin registros FCT.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="ict-empty-row">Sin registros FCT.</td></tr>';
       return;
     }
     rows.forEach((row) => {
@@ -107,7 +107,6 @@
         <td>${escapeHtml(row.estacion)}</td>
         <td>${formatResultBadge(row.resultado)}</td>
         <td>${escapeHtml(row.operador)}</td>
-        <td>${escapeHtml(row.tiempo_ajuste)}</td>
         <td>${escapeHtml(row.no_parte)}</td>
         <td>${escapeHtml(row.serial_number)}</td>
         <td title="${escapeHtml(row.fuente_archivo)}">${escapeHtml(row.fuente_archivo)}</td>

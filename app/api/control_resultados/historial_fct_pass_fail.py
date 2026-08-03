@@ -13,8 +13,11 @@ from app.api.shared.fct_helpers import (
     PENDING_TEXT,
     SIN_ESTACION_TEXT,
     SIN_NUMERO_PARTE_TEXT,
+    fct_attach_operator,
+    fct_attach_summary_operators,
     fct_fecha_jornada_expr,
     fct_line_expr,
+    fct_operator_line_expr,
     fct_plan_line_join,
     fct_shift_bounds,
     fct_turno_expr,
@@ -130,8 +133,7 @@ def _format_summary(row: dict) -> dict:
         "piezas_repetidas": to_int(row.get("piezas_repetidas")),
         "fallas_con_paso": to_int(row.get("fallas_con_paso")),
         "fallas_sin_paso": to_int(row.get("fallas_sin_paso")),
-        "operador": PENDING_TEXT,
-        "tiempo_ajuste": PENDING_TEXT,
+        "operador": row.get("operador") or PENDING_TEXT,
     }
 
 
@@ -152,8 +154,7 @@ def _format_detail(row: dict) -> dict:
         "failed_test_name": row.get("failed_test_name") or "",
         "failed_measured_value": row.get("failed_measured_value") or "",
         "failed_unit": row.get("failed_unit") or "",
-        "operador": PENDING_TEXT,
-        "tiempo_ajuste": PENDING_TEXT,
+        "operador": row.get("operador") or PENDING_TEXT,
     }
 
 
@@ -162,6 +163,7 @@ def _summary_query() -> tuple[str, tuple]:
     fecha_expr = fct_fecha_jornada_expr(FCT_TS_EXPR)
     turno_expr = fct_turno_expr(FCT_TS_EXPR)
     line_expr = fct_line_expr()
+    operator_line_expr = fct_operator_line_expr()
     estacion_expr = f"COALESCE(NULLIF(TRIM(f.station), ''), '{SIN_ESTACION_TEXT}')"
     numero_parte_expr = f"COALESCE(NULLIF(TRIM(f.part_number), ''), '{SIN_NUMERO_PARTE_TEXT}')"
     where_sql = _append_common_filters(" WHERE 1=1", params)
@@ -169,6 +171,7 @@ def _summary_query() -> tuple[str, tuple]:
     sql = (
         "SELECT "
         f"{fecha_expr} AS fecha, {line_expr} AS linea, {estacion_expr} AS estacion, "
+        f"{operator_line_expr} AS operator_line, "
         f"{turno_expr} AS turno, {numero_parte_expr} AS numero_parte, "
         f"MIN({FCT_TS_EXPR}) AS primer_test, MAX({FCT_TS_EXPR}) AS ultimo_test, "
         "COUNT(*) AS total, "
@@ -185,7 +188,7 @@ def _summary_query() -> tuple[str, tuple]:
         "FROM fct_test_results f"
         f"{fct_plan_line_join(FCT_TS_EXPR)}"
         f"{where_sql} "
-        f"GROUP BY {fecha_expr}, {line_expr}, {estacion_expr}, {turno_expr}, {numero_parte_expr} "
+        f"GROUP BY {fecha_expr}, {line_expr}, {operator_line_expr}, {estacion_expr}, {turno_expr}, {numero_parte_expr} "
         "ORDER BY fecha DESC, linea ASC, estacion ASC, turno ASC, numero_parte ASC "
         "LIMIT 5000"
     )
@@ -214,6 +217,7 @@ def fct_pass_fail_api():
     try:
         sql, params = _summary_query()
         rows = execute_query(sql, params, fetch="all") or []
+        fct_attach_summary_operators(rows)
         return jsonify([_format_summary(row) for row in rows])
     except Exception as exc:
         logger.exception("Error en endpoint FCT Pass/Fail")
@@ -230,10 +234,12 @@ def fct_pass_fail_detail_api():
             "SELECT "
             f"{fct_fecha_jornada_expr(FCT_TS_EXPR)} AS fecha, "
             f"{fct_line_expr()} AS linea, "
+            f"{fct_operator_line_expr()} AS operator_line, "
             f"COALESCE(NULLIF(TRIM(f.station), ''), '{SIN_ESTACION_TEXT}') AS estacion, "
             f"{fct_turno_expr(FCT_TS_EXPR)} AS turno, "
             f"COALESCE(NULLIF(TRIM(f.part_number), ''), '{SIN_NUMERO_PARTE_TEXT}') AS numero_parte, "
             "f.serial_number, f.final_result AS resultado, f.start_at, f.end_at, "
+            f"{FCT_TS_EXPR} AS ts, "
             "f.source_path_hash, f.source_file AS fuente_archivo, f.failed_step, f.failed_test_name, "
             "f.failed_measured_value, f.failed_unit "
             "FROM fct_test_results f"
@@ -243,6 +249,7 @@ def fct_pass_fail_detail_api():
             tuple(params),
             fetch="all",
         ) or []
+        fct_attach_operator(rows)
         return jsonify([_format_detail(row) for row in rows])
     except Exception as exc:
         logger.exception("Error en detalle FCT Pass/Fail")
@@ -255,6 +262,7 @@ def export_fct_pass_fail_excel():
     try:
         sql, params = _summary_query()
         rows = execute_query(sql, params, fetch="all") or []
+        fct_attach_summary_operators(rows)
         data = [_format_summary(row) for row in rows]
         return excel_response_ict(
             data,
@@ -262,15 +270,15 @@ def export_fct_pass_fail_excel():
                 "Fecha", "Linea", "Estacion", "Turno", "No Parte", "Primer test", "Ultimo test",
                 "Total", "PASS", "FAIL", "UNKNOWN", "% PASS", "% FAIL", "% UNKNOWN",
                 "Piezas unicas", "Piezas repetidas", "Fallas con paso", "Fallas sin paso",
-                "Operador", "Tiempo ajuste",
+                "Operador",
             ],
             [
                 "fecha", "linea", "estacion", "turno", "numero_parte", "primer_test", "ultimo_test",
                 "total", "pass_count", "fail_count", "unknown_count", "pass_pct", "fail_pct", "unknown_pct",
                 "piezas_unicas", "piezas_repetidas", "fallas_con_paso", "fallas_sin_paso",
-                "operador", "tiempo_ajuste",
+                "operador",
             ],
-            [12, 14, 18, 12, 18, 20, 20, 10, 10, 10, 10, 10, 10, 12, 14, 16, 14, 14, 14, 16],
+            [12, 14, 18, 12, 18, 20, 20, 10, 10, 10, 10, 10, 10, 12, 14, 16, 14, 14, 18],
             "FCT PassFail",
             "historial_fct_pass_fail",
             freeze="A2",

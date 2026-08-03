@@ -17,7 +17,9 @@ from app.api.shared.fct_helpers import (
     PENDING_TEXT,
     SIN_ESTACION_TEXT,
     SIN_NUMERO_PARTE_TEXT,
+    fct_attach_operator,
     fct_line_expr,
+    fct_operator_line_expr,
     fct_plan_line_join,
     fmt_date,
     fmt_datetime,
@@ -61,10 +63,12 @@ def _fct_base_from() -> str:
 
 def _fct_select_cols() -> str:
     line_expr = fct_line_expr()
+    operator_line_expr = fct_operator_line_expr()
     return (
         "SELECT f.source_path_hash, f.folder_date AS fecha, "
         f"TIME({FCT_TS_EXPR}) AS hora, "
         f"{line_expr} AS linea, "
+        f"{operator_line_expr} AS operator_line, "
         f"COALESCE(NULLIF(TRIM(f.station), ''), '{SIN_ESTACION_TEXT}') AS estacion, "
         "f.final_result AS resultado, "
         f"COALESCE(NULLIF(TRIM(f.part_number), ''), '{SIN_NUMERO_PARTE_TEXT}') AS no_parte, "
@@ -74,7 +78,7 @@ def _fct_select_cols() -> str:
         "f.failed_step, f.failed_test_name, f.failed_measured_value, f.failed_unit, "
         "f.failed_nominal, f.failed_upper_limit, f.failed_lower_limit, f.failed_row_result, "
         "f.row_count, f.malformed_row_count, "
-        f"'{PENDING_TEXT}' AS operador, '{PENDING_TEXT}' AS tiempo_ajuste"
+        f"'{PENDING_TEXT}' AS operador"
     )
 
 
@@ -130,7 +134,6 @@ def _format_fct_row(row: dict) -> dict:
         "estacion": row.get("estacion") or SIN_ESTACION_TEXT,
         "resultado": normalize_result(row.get("resultado")),
         "operador": row.get("operador") or PENDING_TEXT,
-        "tiempo_ajuste": row.get("tiempo_ajuste") or PENDING_TEXT,
         "no_parte": row.get("no_parte") or SIN_NUMERO_PARTE_TEXT,
         "serial_number": row.get("serial_number") or "",
         "ts": fmt_datetime(row.get("ts")),
@@ -225,6 +228,7 @@ def fct_data_api():
                 tuple(params) + (per_page, offset),
                 fetch="all",
             ) or []
+            fct_attach_operator(rows)
             total_pages = (total + per_page - 1) // per_page if per_page else 0
             return jsonify({
                 "rows": [_format_fct_row(row) for row in rows],
@@ -239,6 +243,7 @@ def fct_data_api():
             tuple(params),
             fetch="all",
         ) or []
+        fct_attach_operator(rows)
         return jsonify([_format_fct_row(row) for row in rows])
     except Exception as exc:
         logger.exception("Error en endpoint FCT")
@@ -278,22 +283,23 @@ def export_fct_excel():
             tuple(params),
             fetch="all",
         ) or []
+        fct_attach_operator(rows)
         data = [_format_fct_row(row) for row in rows]
         return excel_response_ict(
             data,
             [
-                "Fecha", "Hora", "Linea", "Estacion", "Resultado", "Operador", "Tiempo ajuste",
+                "Fecha", "Hora", "Linea", "Estacion", "Resultado", "Operador",
                 "No Parte", "Serial", "Inicio", "Fin", "Duracion seg", "Fuente",
                 "Paso fallo", "Prueba fallo", "Valor", "Unidad", "Nominal", "Limite sup", "Limite inf",
                 "Filas", "Filas malformadas",
             ],
             [
-                "fecha", "hora", "linea", "estacion", "resultado", "operador", "tiempo_ajuste",
+                "fecha", "hora", "linea", "estacion", "resultado", "operador",
                 "no_parte", "serial_number", "start_at", "end_at", "duration_seconds", "fuente_archivo",
                 "failed_step", "failed_test_name", "failed_measured_value", "failed_unit", "failed_nominal",
                 "failed_upper_limit", "failed_lower_limit", "row_count", "malformed_row_count",
             ],
-            [12, 10, 14, 18, 12, 14, 16, 18, 26, 20, 20, 12, 32, 12, 28, 16, 10, 14, 14, 14, 10, 14],
+            [12, 10, 14, 18, 12, 18, 18, 26, 20, 20, 12, 32, 12, 28, 16, 10, 14, 14, 14, 10, 14],
             "Historial FCT",
             "historial_fct",
             freeze="A2",
