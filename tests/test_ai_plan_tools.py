@@ -227,7 +227,8 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
     def fake_crear(
         fecha_inicio, fecha_fin, username, *, source, objective, excluded_parts,
         lotes_corriendo=None, agregados=None, expandir_dias=0, max_bloques=None,
-        sabados=None, tiempo_extra=False, adelanto_max_dias=None, adelantar_d1=True
+        sabados=None, tiempo_extra=False, adelanto_max_dias=None, adelantar_d1=True,
+        horas_restantes_hoy=None, turno_completo=False
     ):
         created.append(
             (fecha_inicio, fecha_fin, username, source, objective, excluded_parts)
@@ -236,6 +237,8 @@ def test_plan_propuesta_preparar_persiste_borrador_y_emite_token(monkeypatch):
         assert agregados == [] and expandir_dias == 0 and max_bloques is None
         assert (sabados or []) == [] and tiempo_extra is False
         assert adelanto_max_dias is None and adelantar_d1 is True
+        # Sin techo pedido: el motor lo calcula solo, como siempre.
+        assert horas_restantes_hoy is None and turno_completo is False
         return _proposal_result()
 
     monkeypatch.setattr(ai_plan_tools.pp, "_ppy_crear_propuesta", fake_crear)
@@ -451,7 +454,8 @@ def test_plan_propuesta_de_hoy_acepta_lotes_corriendo_como_avance(monkeypatch):
     def fake_crear(fecha_inicio, fecha_fin, username, *, source, objective,
                    excluded_parts, lotes_corriendo=None, agregados=None,
                    expandir_dias=0, max_bloques=None, sabados=None,
-                   tiempo_extra=False, adelanto_max_dias=None, adelantar_d1=True):
+                   tiempo_extra=False, adelanto_max_dias=None, adelantar_d1=True,
+                   horas_restantes_hoy=None, turno_completo=False):
         recibido["corriendo"] = lotes_corriendo
         recibido["objective"] = objective
         return _proposal_result()
@@ -642,3 +646,81 @@ def test_importar_ejecutar_cal_sin_partn_no_reporta_schedule(monkeypatch):
         username="ana", file_lookup=lambda _ref: (file_bytes, "cal.xlsx"))
     assert res["inventario_encontrado"] is False
     assert res["schedules_disponibles"] == 0
+
+
+def test_importar_con_schedule_hace_las_dos_cosas_en_una_confirmacion(monkeypatch):
+    """'Sincroniza inventario Y schedule': un solo token, los dos pasos."""
+    _fake_import_parsers(monkeypatch, ref_nuevo=date(2026, 7, 20),
+                         stored_max=date(2026, 7, 20))
+    vistas = []
+    monkeypatch.setattr(
+        ai_plan_tools.pp, "_pp_sincronizar_schedule_excel",
+        lambda *_a, aplicar=False, alcance="todos", **_k: vistas.append(
+            (aplicar, alcance)) or {"sheet_name": "Part 31", "parts": 404,
+                                    "schedules": 595, "applied": aplicar})
+
+    prep = ai_plan_tools.execute(
+        "plan_importar_preparar", {"con_schedule": True, "alcance": None},
+        username="ana", file_lookup=lambda _ref: (b"xlsm", "plan.xlsm"))
+    # La vista previa muestra los dos lados y avisa de lo que pisa.
+    assert prep["resumen"]["schedule_incluido"]["schedules"] == 595
+    assert vistas == [(False, "todos")]          # preview, todavia no escribe
+    assert "PISA el Schedule actual" in prep["instruccion"]
+
+    importado = []
+    monkeypatch.setattr(
+        ai_plan_tools, "_importar_plan_e_inventario",
+        lambda *_a, **_k: importado.append(1) or {"import_id": 44})
+    res = ai_plan_tools.execute(
+        "plan_importar_ejecutar", {"confirm_token": prep["confirm_token"]},
+        username="ana", file_lookup=lambda _ref: (b"xlsm", "plan.xlsm"))
+    # Inventario primero, schedule despues, con el mismo archivo.
+    assert importado == [1] and res["schedule"]["applied"] is True
+    assert vistas == [(False, "todos"), (True, "todos")]
+
+
+def test_importar_sin_con_schedule_sigue_sin_tocar_el_renglon_s(monkeypatch):
+    """El default no cambia: el Schedule se sigue preguntando aparte."""
+    _fake_import_parsers(monkeypatch, ref_nuevo=date(2026, 7, 20),
+                         stored_max=date(2026, 7, 20))
+    llamadas = []
+    monkeypatch.setattr(ai_plan_tools.pp, "_pp_sincronizar_schedule_excel",
+                        lambda *_a, **_k: llamadas.append(1) or {})
+    prep = ai_plan_tools.execute(
+        "plan_importar_preparar", {"con_schedule": None, "alcance": None},
+        username="ana", file_lookup=lambda _ref: (b"xlsm", "plan.xlsm"))
+    assert "schedule_incluido" not in prep["resumen"]
+    assert "NO se importa en este paso" in prep["instruccion"]
+
+    monkeypatch.setattr(ai_plan_tools, "_importar_plan_e_inventario",
+                        lambda *_a, **_k: {"import_id": 45})
+    res = ai_plan_tools.execute(
+        "plan_importar_ejecutar", {"confirm_token": prep["confirm_token"]},
+        username="ana", file_lookup=lambda _ref: (b"xlsm", "plan.xlsm"))
+    assert "schedule" not in res and llamadas == []
+
+
+def test_importar_con_schedule_no_calla_si_falla_el_segundo_paso(monkeypatch):
+    """Si el Schedule truena, el inventario YA entro: hay que decirlo."""
+    _fake_import_parsers(monkeypatch, ref_nuevo=date(2026, 7, 20),
+                         stored_max=date(2026, 7, 20))
+    monkeypatch.setattr(ai_plan_tools.pp, "_pp_sincronizar_schedule_excel",
+                        lambda *_a, **_k: {"schedules": 1})
+    prep = ai_plan_tools.execute(
+        "plan_importar_preparar", {"con_schedule": True, "alcance": "main"},
+        username="ana", file_lookup=lambda _ref: (b"xlsm", "plan.xlsm"))
+
+    def truena(*_a, aplicar=False, **_k):
+        if aplicar:
+            raise ValueError("Assy line inactiva")
+        return {"schedules": 1}
+
+    monkeypatch.setattr(ai_plan_tools.pp, "_pp_sincronizar_schedule_excel", truena)
+    monkeypatch.setattr(ai_plan_tools, "_importar_plan_e_inventario",
+                        lambda *_a, **_k: {"import_id": 46})
+    res = ai_plan_tools.execute(
+        "plan_importar_ejecutar", {"confirm_token": prep["confirm_token"]},
+        username="ana", file_lookup=lambda _ref: (b"xlsm", "plan.xlsm"))
+    assert res["import_id"] == 46          # el inventario si quedo
+    assert res["schedule_error"] == "Assy line inactiva"
+    assert "SI se importaron" in res["instruccion"]

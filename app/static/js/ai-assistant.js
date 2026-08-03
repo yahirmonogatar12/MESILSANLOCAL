@@ -9,9 +9,10 @@
 
     // Mismo catalogo que _ATTACH_KINDS en ai_assistant.py.
     const ATTACH_EXTENSIONS = ['.xlsx','.xlsm','.pdf','.png','.jpg','.jpeg','.webp','.gif','.csv','.txt','.md','.json'];
-    // Tope de archivos por mensaje: el mismo que mira el asistente al buscar
-    // los dos PPN a comparar (file_lookup.recientes).
-    const MAX_ATTACH_FILES = 4;
+    // Tope de archivos por mensaje: el mismo que mira el asistente al armar el
+    // dia (file_lookup.recientes). Un dia completo son 5: PPN ayer+hoy, Prod
+    // Plan de OVEN ayer+hoy y el Cal.
+    const MAX_ATTACH_FILES = 6;
     const attachKind = ext => (
         ['.xlsx','.xlsm'].includes(ext) ? 'excel'
         : ext === '.pdf' ? 'pdf'
@@ -860,9 +861,11 @@
                 '  </div>' +
                 '  <div class="ai-proposal-body"></div>' +
                 '  <div class="ai-proposal-foot">' +
+                '    <span class="ai-proposal-total"></span>' +
                 '    <span class="ai-proposal-status"></span>' +
                 '    <div class="ai-proposal-actions">' +
                 '      <button type="button" class="ai-proposal-btn ghost" data-act="download">Descargar</button>' +
+                '      <button type="button" class="ai-proposal-btn ghost" data-act="part">Descargar Part</button>' +
                 '      <button type="button" class="ai-proposal-btn" data-act="diff">Ver cambios al plan</button>' +
                 '      <button type="button" class="ai-proposal-btn" data-act="save">Guardar cambios</button>' +
                 '      <button type="button" class="ai-proposal-btn primary" data-act="confirm">Confirmar</button>' +
@@ -873,10 +876,12 @@
             this._proposalEl = overlay;
             this._proposalBody = overlay.querySelector('.ai-proposal-body');
             this._proposalStatus = overlay.querySelector('.ai-proposal-status');
+            this._proposalTotal = overlay.querySelector('.ai-proposal-total');
             const close = () => overlay.classList.remove('open');
             overlay.querySelector('.ai-proposal-close').addEventListener('click', close);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
             overlay.querySelector('[data-act="download"]').addEventListener('click', () => this.downloadProposal());
+            overlay.querySelector('[data-act="part"]').addEventListener('click', () => this.downloadPart());
             overlay.querySelector('[data-act="diff"]').addEventListener('click', () => {
                 // El comparador vive en plan-assy-ia.js (persistente en MainTemplate).
                 if (window.abrirDiffPropuestaIA) window.abrirDiffPropuestaIA(this._proposal.id);
@@ -903,24 +908,24 @@
             this._proposal.maxHoras = g.max_horas_bloque || 9;
             const applied = g.status === 'APPLIED';
             const rango = g.date_to && g.date_to !== g.date_from ? `${g.date_from} a ${g.date_to}` : g.date_from;
+            // Lotes y piezas viven en el total de abajo, que se recalcula al
+            // editar: aqui arriba quedarian pegados al valor del servidor.
             this._proposalStatus.textContent =
-                `v${g.version} · ${g.total_lotes} lotes · ${(g.total_qty || 0).toLocaleString()} pzs · ${rango}` +
-                (applied ? ' · APLICADA' : '');
+                `v${g.version} · ${rango}` + (applied ? ' · APLICADA' : '');
+            let totLotes = 0, totPzs = 0, totHoras = 0;
             const frag = document.createDocumentFragment();
             (g.grupos || []).forEach(gr => {
                 const box = document.createElement('div'); box.className = 'ai-proposal-group';
                 box.dataset.bloque = gr.bloque;
+                const lotes = (gr.lotes || []).length;
+                const pzs = (gr.lotes || []).reduce((s, l) => s + (parseInt(l.qty, 10) || 0), 0);
+                totLotes += lotes; totPzs += pzs; totHoras += gr.total_horas || 0;
                 const head = document.createElement('div');
                 head.className = 'ai-proposal-group-head' + (gr.excede ? ' excede' : '');
-                head.textContent = `${gr.bloque} · ${gr.lineas.join('+')} · ` +
-                    `${gr.total_horas.toFixed(2)}/${this._proposal.maxHoras} h` +
-                    (gr.excede ? ' · EXCEDE' : '');
                 box.appendChild(head);
-                const table = document.createElement('table'); table.className = 'ai-proposal-table';
-                table.innerHTML = '<thead><tr><th>#</th><th>Línea</th><th>Parte</th>' +
-                    '<th>Cantidad</th><th>UPH</th><th>Horas</th><th>Inicio</th><th>Fin</th>' +
-                    '<th>Falta</th><th></th></tr></thead>';
-                const tb = document.createElement('tbody');
+                this.paintGroupHead(box, gr.lineas, lotes, pzs, gr.total_horas || 0);
+                const table = this.buildProposalTable();
+                const tb = table.querySelector('tbody');
                 tb.dataset.bloque = gr.bloque;
                 (gr.lotes || []).forEach(l => {
                     const tr = document.createElement('tr'); tr.dataset.itemId = l.item_id;
@@ -955,7 +960,7 @@
                     tr.appendChild(dtd);
                     tb.appendChild(tr);
                 });
-                table.appendChild(tb); box.appendChild(table); frag.appendChild(box);
+                box.appendChild(table); frag.appendChild(box);
                 if (!applied) this.enableRowDrag(tb);
             });
             if (!(g.grupos || []).length) {
@@ -964,8 +969,56 @@
             }
             if (!applied) frag.appendChild(this.buildAddModelForm());
             this._proposalBody.innerHTML = ''; this._proposalBody.appendChild(frag);
+            this.setProposalTotal(totLotes, totPzs, totHoras);
             this._proposalEl.querySelector('[data-act="save"]').disabled = applied;
             this._proposalEl.querySelector('[data-act="confirm"]').disabled = applied;
+        }
+
+        // Una sola definicion de la tabla: la usan los grupos que vienen del
+        // servidor y los bloques vacios que se agregan a mano.
+        buildProposalTable() {
+            const table = document.createElement('table');
+            table.className = 'ai-proposal-table';
+            table.innerHTML = '<thead><tr><th>#</th><th>Línea</th><th>Parte</th>' +
+                '<th>Cantidad</th><th>UPH</th><th>Horas</th><th>Inicio</th><th>Fin</th>' +
+                '<th>Falta</th><th></th></tr></thead><tbody></tbody>';
+            return table;
+        }
+
+        // Bloque = equipo. El servidor ya respeta el bloque fijado a mano
+        // (lg_plan_proposal_items.bloque); lo que faltaba era tener uno vacio
+        // donde soltar renglones. Se guarda al arrastrar algo y darle Guardar.
+        addProposalBlock() {
+            const usados = new Set([...this._proposalBody
+                .querySelectorAll('.ai-proposal-group')].map(b => b.dataset.bloque));
+            let n = 1;
+            while (usados.has('B' + n)) n++;
+            if (n > 99) { this.notice('Ya no se pueden abrir más bloques.'); return; }
+            const bloque = 'B' + n;
+            const box = document.createElement('div');
+            box.className = 'ai-proposal-group'; box.dataset.bloque = bloque;
+            box.dataset.manual = '1';   // se puede cerrar mientras siga vacio
+            const head = document.createElement('div');
+            head.className = 'ai-proposal-group-head';
+            box.appendChild(head);
+            this.paintGroupHead(box, [], 0, 0, 0);
+            const table = this.buildProposalTable();
+            const tb = table.querySelector('tbody');
+            tb.dataset.bloque = bloque;
+            box.appendChild(table);
+            const add = this._proposalBody.querySelector('.ai-proposal-add');
+            this._proposalBody.insertBefore(box, add || null);
+            // enableRowDrag ANTES del placeholder: asi no le pone listeners de
+            // arrastre a un renglon que no es un lote.
+            this.enableRowDrag(tb);
+            // Un tbody vacio mide cero y no habria donde soltar. Este renglon da
+            // el alto; se esconde solo en cuanto cae el primer lote.
+            const hueco = document.createElement('tr');
+            hueco.className = 'ai-proposal-drop';
+            const td = document.createElement('td');
+            td.colSpan = 10; td.textContent = 'Suelta renglones aquí';
+            hueco.appendChild(td); tb.appendChild(hueco);
+            this.notice(`Bloque ${bloque} abierto. Arrastra renglones y dale Guardar.`);
         }
 
         buildAddModelForm() {
@@ -987,7 +1040,12 @@
             btn.type = 'button'; btn.className = 'ai-proposal-btn'; btn.textContent = 'Añadir';
             btn.addEventListener('click', () => this.addModelo(part.value, line.value, qty.value));
             part.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addModelo(part.value, line.value, qty.value); });
-            box.append(label, part, dl, line, qty, btn);
+            const nuevo = document.createElement('button');
+            nuevo.type = 'button'; nuevo.className = 'ai-proposal-btn ghost';
+            nuevo.textContent = '+ Bloque';
+            nuevo.title = 'Abre un equipo vacío para arrastrarle renglones';
+            nuevo.addEventListener('click', () => this.addProposalBlock());
+            box.append(label, part, dl, line, qty, btn, nuevo);
             return box;
         }
 
@@ -1037,19 +1095,69 @@
             });
         }
 
+        // Mismo formato en el render inicial y en cada recalculo: si divergen,
+        // el usuario ve dos numeros distintos para lo mismo.
+        // El encabezado se repinta en cada recalculo, asi que el texto vive en su
+        // propio span: escribir textContent en el head borraria la ✕.
+        paintGroupHead(box, lineas, lotes, pzs, horas) {
+            const head = box.querySelector('.ai-proposal-group-head');
+            let name = head.querySelector('.ai-proposal-group-name');
+            if (!name) {
+                head.textContent = '';
+                name = document.createElement('span');
+                name.className = 'ai-proposal-group-name';
+                head.appendChild(name);
+            }
+            name.textContent = this.proposalGroupHead(
+                box.dataset.bloque, lineas, lotes, pzs, horas);
+            // Solo los bloques abiertos a mano se pueden cerrar: los del
+            // servidor los arma el empaquetado y volverian en el siguiente grid.
+            if (!box.dataset.manual || head.querySelector('.ai-proposal-group-x')) return;
+            const x = document.createElement('button');
+            x.type = 'button'; x.className = 'ai-proposal-group-x';
+            x.textContent = '✕'; x.title = 'Cerrar este bloque';
+            x.addEventListener('click', () => {
+                if (box.querySelector('tbody tr[data-item-id]')) {
+                    this.notice('Saca primero los renglones de este bloque.');
+                    return;
+                }
+                box.remove();
+                this.recalcProposalHours();
+            });
+            head.appendChild(x);
+        }
+
+        proposalGroupHead(bloque, lineas, lotes, pzs, horas) {
+            if (!lotes) return `${bloque} · vacío`;
+            const maxH = this._proposal.maxHoras;
+            return `${bloque} · ${[...lineas].sort().join('+')} · ` +
+                `${lotes} lote${lotes === 1 ? '' : 's'} · ${pzs.toLocaleString()} pzs · ` +
+                `${horas.toFixed(2)}/${maxH} h` + (horas > maxH + 0.01 ? ' · EXCEDE' : '');
+        }
+
+        setProposalTotal(lotes, pzs, horas) {
+            if (!this._proposalTotal) return;
+            this._proposalTotal.textContent =
+                `TOTAL · ${lotes} lote${lotes === 1 ? '' : 's'} · ` +
+                `${pzs.toLocaleString()} pzs · ${horas.toFixed(2)} h`;
+        }
+
         recalcProposalHours() {
             // Mismo calculo que el grid del servidor (_ppy_propuesta_grid): reloj
             // encadenado desde el inicio del turno, saltando los renglones
             // marcados para quitar. Al guardar, el servidor lo recalcula igual.
             const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
             const maxH = this._proposal.maxHoras;
+            let totLotes = 0, totPzs = 0, totHoras = 0;
             this._proposalBody.querySelectorAll('.ai-proposal-group').forEach(box => {
-                let reloj = this._proposal.iniMin, total = 0, sec = 0;
+                let reloj = this._proposal.iniMin, total = 0, sec = 0, pzs = 0;
                 const lineas = new Set();
                 box.querySelectorAll('tbody tr').forEach(tr => {
-                    if (tr.classList.contains('deleted')) return;
+                    // El placeholder de un bloque vacio no es un lote.
+                    if (!tr.dataset.itemId || tr.classList.contains('deleted')) return;
                     const uph = parseInt(tr.dataset.uph, 10) || 0;
                     const qty = parseInt(tr.querySelector('.ai-proposal-qty')?.value, 10) || 0;
+                    pzs += qty;
                     const horas = uph ? qty / uph : 0;
                     const fin = reloj + Math.round(horas * 60);
                     const te = fin > this._proposal.finMin;
@@ -1064,13 +1172,14 @@
                     reloj = fin; total += horas;
                 });
                 const excede = total > maxH + 0.01;
-                const head = box.querySelector('.ai-proposal-group-head');
-                head.textContent = sec
-                    ? `${box.dataset.bloque} · ${[...lineas].sort().join('+')} · ` +
-                      `${total.toFixed(2)}/${maxH} h` + (excede ? ' · EXCEDE' : '')
-                    : `${box.dataset.bloque} · vacío`;
-                head.classList.toggle('excede', excede);
+                this.paintGroupHead(box, lineas, sec, pzs, total);
+                box.querySelector('.ai-proposal-group-head')
+                    .classList.toggle('excede', excede);
+                const hueco = box.querySelector('.ai-proposal-drop');
+                if (hueco) hueco.style.display = sec ? 'none' : '';
+                totLotes += sec; totPzs += pzs; totHoras += total;
             });
+            this.setProposalTotal(totLotes, totPzs, totHoras);
         }
 
         async addModelo(part, linea, cantidad) {
@@ -1085,7 +1194,45 @@
             } catch (e) { this.notice(e.message); }
         }
 
-        async saveProposalEdits() {
+        // El Excel de Planning pesa varios MB y se reescribe entero: tapa el
+        // modal para que se vea que trabaja y no se pueda pedir dos veces.
+        proposalWait(texto) {
+            const modal = this._proposalEl.querySelector('.ai-proposal-modal');
+            let capa = modal.querySelector('.ai-proposal-wait');
+            if (!texto) { if (capa) capa.remove(); return; }
+            if (!capa) {
+                capa = document.createElement('div');
+                capa.className = 'ai-proposal-wait';
+                modal.appendChild(capa);
+            }
+            capa.textContent = texto;
+        }
+
+        async downloadPart() {
+            // El Part se arma con los items YA guardados: lo que siga suelto en
+            // el modal no viajaria, asi que primero se guarda sin ruido.
+            if (!(await this.saveProposalEdits(true))) return;
+            const url = `/api/plan-proyectado/propuesta/${this._proposal.id}/part-excel`;
+            this.proposalWait('Generando el Part de Planning…');
+            try {
+                const r = await fetch(url, { credentials: 'same-origin' });
+                if (!r.ok) {
+                    const j = await r.json().catch(() => ({}));
+                    this.notice(j.error || 'No se pudo generar el Part.');
+                    return;
+                }
+                const cd = r.headers.get('Content-Disposition') || '';
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(await r.blob());
+                a.download = decodeURIComponent(
+                    (cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)/) || [])[1] || 'Part.xlsx');
+                a.click();
+                URL.revokeObjectURL(a.href);
+            } catch (e) { this.notice(e.message); }
+            finally { this.proposalWait(null); }
+        }
+
+        async saveProposalEdits(silencioso = false) {
             const ediciones = [];
             this._proposalBody.querySelectorAll('tr[data-item-id]').forEach(tr => {
                 const id = tr.dataset.itemId;
@@ -1104,13 +1251,17 @@
                 body.orden = [...this._proposalBody.querySelectorAll('tr[data-item-id]')]
                     .map(tr => tr.dataset.itemId);
             }
-            if (!ediciones.length && !body.orden) { this.notice('No hay cambios que guardar.'); return; }
+            if (!ediciones.length && !body.orden) {
+                if (!silencioso) this.notice('No hay cambios que guardar.');
+                return true;  // nada pendiente = ya esta al dia
+            }
             try {
                 const g = await this.api(`/api/plan-proyectado/propuesta/${this._proposal.id}/editar`,
                     { method: 'POST', body });
                 this.renderProposalGrid(g);
-                this.notice('Cambios guardados. La IA ya los ve; puedes confirmar o descargar.');
-            } catch (e) { this.notice(e.message); }
+                if (!silencioso) this.notice('Cambios guardados. La IA ya los ve; puedes confirmar o descargar.');
+                return true;
+            } catch (e) { this.notice(e.message); return false; }
         }
 
         async confirmProposal() {

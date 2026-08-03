@@ -1,11 +1,12 @@
-"""Compara dos PPN y reporta cuanto se atraso LG y que material quedo sin consumir.
+"""Compara dos reportes de LG y reporta el atraso y el material sin consumir.
 
-Misma cuenta que hace el import del PPN en Part Planning, pero sin tocar la BD:
-sirve para revisar un dia a mano. La logica vive en
-app/api/control_produccion/ppn.py.
+Sirve para PPN (tarjetas) y para el Prod Plan de OVEN. Misma cuenta que hace el
+import en Part Planning, pero sin tocar la BD: para revisar un dia a mano. La
+logica vive en app/api/control_produccion/ppn.py.
 
 Uso:
     python tools/ppn_delta.py "PPN 29.07.26.xlsx" "PPN 30.07.26 (1).xlsx"
+    python tools/ppn_delta.py "Prod Plan JULIO 29 2026.xlsx" "Prod Plan JULIO 30 2026.xlsx"
 """
 import os
 import sys
@@ -19,17 +20,21 @@ from app.api.control_produccion import ppn  # noqa: E402
 def leer(path):
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
-        hoja = ppn.hoja_ppn(wb)
+        hoja, fuente = ppn.hoja_reporte(wb)
         if hoja is None:
-            raise SystemExit(f"{path}: no tiene hoja PPN ({wb.sheetnames[:5]})")
-        return ppn.leer_ppn(wb[hoja])
+            raise SystemExit(f"{path}: no es PPN ni Prod Plan ({wb.sheetnames[:5]})")
+        fecha0, wos = ppn.LECTORES[fuente](wb[hoja])
+        return fecha0, wos, fuente
     finally:
         wb.close()
 
 
 def main(p_ayer, p_hoy):
-    dia, ayer = leer(p_ayer)
-    _, hoy = leer(p_hoy)
+    dia, ayer, fuente = leer(p_ayer)
+    _, hoy, fuente_hoy = leer(p_hoy)
+    if fuente != fuente_hoy:
+        raise SystemExit(f"No se comparan entre si: {fuente} vs {fuente_hoy}")
+    print(f"fuente: {fuente}")
     renglones, partes = ppn.sobrante(ppn.baseline(dia, ayer), hoy)
     prog = sum(r[1] for r in renglones)
     real = sum(r[2] for r in renglones)

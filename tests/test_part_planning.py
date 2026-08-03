@@ -1334,7 +1334,8 @@ def test_ppy_parse_plan_params_replay_y_legacy():
         "lotes_corriendo": {}, "agregados": [],
         "expandir_dias": 0, "max_bloques": None,
         "sabados": [], "tiempo_extra": False, "adelanto_max_dias": None,
-        "adelantar_d1": True,
+        "adelantar_d1": True, "horas_restantes_hoy": None,
+        "turno_completo": False,
     }
     guardado = '{"lotes_corriendo": {"EBR1": "M1"}, "agregados": [], ' \
                '"expandir_dias": 5, "max_bloques": 4, ' \
@@ -1344,7 +1345,8 @@ def test_ppy_parse_plan_params_replay_y_legacy():
         "lotes_corriendo": {"EBR1": "M1"}, "agregados": [],
         "expandir_dias": 5, "max_bloques": 4,
         "sabados": ["2026-07-25"], "tiempo_extra": True, "adelanto_max_dias": 1,
-        "adelantar_d1": False,
+        "adelantar_d1": False, "horas_restantes_hoy": None,
+        "turno_completo": False,
     }
     # JSON corrupto no revienta el apply: cae al plan normal
     assert _ppy_parse_plan_params("no-json")["max_bloques"] is None
@@ -1393,6 +1395,37 @@ def test_ppy_remain_es_objetivo_no_disparador(monkeypatch):
     # faltante = 60 - (-56) = 116 -> x1.10 = 127.6 -> caja de 20 -> 140
     assert props[0]["qty"] == 140
     assert props[0]["inventario_despues"] >= PPY_REMAIN_IDEAL
+
+
+def test_ppy_d3_deja_menos_colchon_que_las_demas(monkeypatch):
+    """D3 apunta a 40, no a 60: producirle de mas cuesta gente de otra linea."""
+    from app.api.control_produccion.part_planning import _ppy_remain_ideal
+
+    assert _ppy_remain_ideal("D3") == 40
+    assert _ppy_remain_ideal("D1") == _ppy_remain_ideal("M1") == 60
+    assert _ppy_remain_ideal(None) == 60          # sin linea, el objetivo normal
+    assert _ppy_remain_ideal(" d3 ") == 40        # como venga escrita
+
+    fecha = date(2026, 7, 15)
+    raw = {"BAJO000001": {"model": "M", "sub_assy": "MAIN", "c_t": 36,
+                          "uph": 100, "estandar_pack": 20}}
+    # Mismo faltante (-56) que el caso de M1 de arriba, cambiando solo la linea.
+    def lote_en(linea):
+        pp = _mock_ppy_schedule_dependencies(
+            monkeypatch,
+            {"BAJO000001": {"line": linea,
+                            "proj": {fecha: 44, fecha + timedelta(days=1): -56}}},
+            raw, lineas=(linea,),
+        )
+        props, _om, _ex = pp._ppy_simular_schedule(
+            fecha, fecha + timedelta(days=1), detailed=True)
+        assert len(props) == 1
+        return props[0]["cantidad"], props[0]["inventario_despues"]
+
+    # D3: 40 - (-56) = 96 -> x1.10 = 105.6 -> caja de 20 -> 120.
+    # M1: 60 - (-56) = 116 -> x1.10 = 127.6 -> caja de 20 -> 140.
+    assert lote_en("D3") == (120, 64)
+    assert lote_en("M1") == (140, 84)
 
 
 def test_ppy_d3_no_comparte_bloque_con_main():
@@ -1807,3 +1840,193 @@ def test_ppy_partes_excluidas_no_entran_al_plan(monkeypatch):
     monkeypatch.setattr(pp2, "_ppy_partes_excluidas", lambda *a, **k: {"ACQ30500849"})
     props, _om, _ex = pp2._ppy_simular_schedule(fecha, fecha, detailed=True)
     assert [p["numero_parte"] for p in props] == ["EBR76683912"]
+
+
+def _part10_ps_bytes(fechas, partes):
+    """Hoja 'Part 10' con el layout real: PART NUMBER en C, fechas desde D,
+    tipo de renglon (P/S/I) en N, mas otra hoja que no se debe tocar."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Part 10"
+    wb.create_sheet("LG")["A1"] = "no se toca"
+    ws["C2"] = "PART NUMBER"
+    for i, f in enumerate(fechas):
+        ws.cell(row=2, column=4 + i).value = f
+    fila = 3
+    for parte, sched in partes.items():
+        ws.cell(row=fila, column=3).value = parte
+        ws.cell(row=fila, column=14).value = "P"
+        ws.cell(row=fila + 1, column=14).value = "S"
+        for i, f in enumerate(fechas):
+            if sched.get(f):
+                ws.cell(row=fila + 1, column=4 + i).value = sched[f]
+        ws.cell(row=fila + 2, column=14).value = "I"
+        fila += 3
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def test_part_excel_reescribe_el_renglon_s_sin_tocar_lo_demas():
+    """Planning baja SU archivo con el schedule puesto, no uno generado."""
+    from app.api.control_produccion.part_planning import _pp_escribir_schedule_part
+
+    lun, mar, mie = date(2026, 8, 3), date(2026, 8, 4), date(2026, 8, 5)
+    orig = _part10_ps_bytes([lun, mar, mie], {
+        "EBR111": {lun: 100, mar: 200, mie: 300},
+        "EBR222": {lun: 50},
+    })
+    # La propuesta cubre lunes y martes; el miercoles es futuro que no toca.
+    schedule = {("EBR111", lun): 450, ("EBR222", mar): 80,
+                ("EBR111", mie): 300, ("EBR222", mie): 0}
+    salida, hoja, escritos = _pp_escribir_schedule_part(
+        orig, "Cal.xlsx", schedule, {lun, mar})
+    assert (hoja, escritos) == ("Part 10", 2)
+
+    wb = openpyxl.load_workbook(io.BytesIO(salida))
+    ws = wb["Part 10"]
+    cols = {c.column: (c.value.date() if isinstance(c.value, datetime) else c.value)
+            for c in ws[2][3:] if c.value}
+    leido, parte = {}, None
+    for fila in ws.iter_rows(min_row=3):
+        if fila[13].value == "P":
+            parte = fila[2].value
+        elif fila[13].value == "S" and parte:
+            for col, f in cols.items():
+                if fila[col - 1].value:
+                    leido[(parte, f)] = fila[col - 1].value
+    assert leido == {
+        ("EBR111", lun): 450,   # la propuesta pisa lo que habia
+        ("EBR222", mar): 80,    # lote nuevo
+        ("EBR111", mie): 300,   # fuera del rango: intacto
+        # EBR111 el martes y EBR222 el lunes se VACIAN: dentro del rango la
+        # propuesta es el plan completo del dia, igual que al aplicarla.
+    }
+    assert wb["LG"]["A1"].value == "no se toca"
+
+
+def _libro_con_extras():
+    """xlsx con las partes que openpyxl destruye al guardar: formulas
+    compartidas, sharedStrings, printerSettings y customXml.
+
+    openpyxl no puede CREARLAS, asi que se injertan en el zip a mano: lo que se
+    prueba es justamente que el escritor no las toque.
+    """
+    import zipfile
+
+    base = _part10_ps_bytes([date(2026, 8, 3), date(2026, 8, 4)],
+                            {"EBR000": {date(2026, 8, 3): 10}})
+    zin = zipfile.ZipFile(io.BytesIO(base))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for item in zin.infolist():
+            z.writestr(item, zin.read(item.filename))
+        z.writestr("xl/printerSettings/printerSettings1.bin", b"\x00\x01\x02")
+        z.writestr("customXml/item1.xml", b"<x/>")
+        z.writestr("xl/calcChain.xml", b'<?xml version="1.0"?><calcChain/>')
+    return buf.getvalue()
+
+
+def test_part_excel_conserva_el_libro_de_planning():
+    """Guardar con openpyxl destruye el xlsm real de Planning: se lleva
+    customXml, printerSettings y sharedStrings, y convierte sus 79,817 formulas
+    compartidas en nada. El escritor toca SOLO el XML de la hoja."""
+    import zipfile
+    from app.api.control_produccion.part_planning import _pp_escribir_schedule_part
+
+    lun = date(2026, 8, 3)
+    original = _libro_con_extras()
+
+    # Referencia: lo que haria abrir y guardar con openpyxl.
+    wb = openpyxl.load_workbook(io.BytesIO(original))
+    ref = io.BytesIO()
+    wb.save(ref)
+    wb.close()
+    perdidas = set(zipfile.ZipFile(io.BytesIO(original)).namelist()) - set(
+        zipfile.ZipFile(ref).namelist())
+    assert "customXml/item1.xml" in perdidas, "openpyxl deberia perderlo"
+
+    salida, _hoja, _n = _pp_escribir_schedule_part(
+        original, "Part.xlsx", {("EBR000", lun): 500}, {lun})
+
+    z0 = zipfile.ZipFile(io.BytesIO(original))
+    z1 = zipfile.ZipFile(io.BytesIO(salida))
+    assert set(z0.namelist()) == set(z1.namelist()), "no se pierde ni se agrega nada"
+    # Solo cambian la hoja y styles.xml (el color); el resto va byte a byte.
+    cambiadas = {n for n in z0.namelist() if z0.read(n) != z1.read(n)}
+    assert cambiadas <= {"xl/styles.xml"} | {
+        n for n in z0.namelist() if n.startswith("xl/worksheets/")}
+    for parte in ("customXml/item1.xml", "xl/printerSettings/printerSettings1.bin"):
+        assert z0.read(parte) == z1.read(parte), parte
+
+
+def test_part_excel_pinta_solo_lo_que_propuso_la_ia():
+    """Planning ve de un golpe que cantidades son de la propuesta."""
+    from app.api.control_produccion.part_planning import (
+        PP_COLOR_PROPUESTA, _pp_escribir_schedule_part,
+    )
+
+    lun, mar, mie = date(2026, 8, 3), date(2026, 8, 4), date(2026, 8, 5)
+    original = _part10_ps_bytes([lun, mar, mie], {
+        "EBR111": {lun: 100, mar: 200, mie: 300},
+        "EBR222": {lun: 50},
+    })
+    # La propuesta cubre lunes y martes; el miercoles solo se refresca.
+    salida, _h, _n = _pp_escribir_schedule_part(original, "Part.xlsx", {
+        ("EBR111", lun): 450, ("EBR222", mar): 80, ("EBR111", mie): 300,
+    }, {lun, mar})
+
+    ws = openpyxl.load_workbook(io.BytesIO(salida))["Part 10"]
+    leido, parte = {}, None
+    for fila in ws.iter_rows(min_row=3, max_row=8):
+        if fila[13].value == "P":
+            parte = fila[2].value
+        elif fila[13].value == "S" and parte:
+            for i, f in enumerate((lun, mar, mie)):
+                c = fila[3 + i]
+                leido[(parte, f)] = (c.value, c.fill.fgColor.rgb)
+
+    pintado = lambda v: (v, PP_COLOR_PROPUESTA)
+    assert leido[("EBR111", lun)] == pintado(450)   # la propuesta pisa lo que habia
+    assert leido[("EBR222", mar)] == pintado(80)    # lote nuevo
+    # Dentro del rango sin lote: se vacia, y una celda vacia no se pinta.
+    assert leido[("EBR111", mar)][0] is None
+    assert leido[("EBR222", lun)][0] is None
+    # Fuera del rango se refresca al schedule vigente, pero NO se pinta.
+    assert leido[("EBR111", mie)] == (300, "00000000")
+
+
+def test_part_excel_no_deja_prefijos_sin_declarar():
+    """Excel tira una parte entera si usa un prefijo que su raiz no declara.
+
+    styles.xml declara x14/x15 DENTRO de extLst; ElementTree los sube a la raiz
+    al serializar. Reponer la raiz original a secas los borraba y Excel quitaba
+    /xl/styles.xml con "prefijo no declarado", dejando TODAS las hojas sin
+    formato.
+    """
+    import re
+    import xml.etree.ElementTree as ET
+    from app.api.control_produccion.part_planning import _pp_serializar
+
+    crudo = (
+        b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        b'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+        b' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"'
+        b' xmlns:x14ac="http://x14ac" mc:Ignorable="x14ac">'
+        b'<cellXfs count="1"><xf numFmtId="0"/></cellXfs>'
+        b'<extLst><ext xmlns:x14="http://x14" uri="{U}"><x14:algo/></ext>'
+        b'<ext xmlns:x15="http://x15" uri="{V}"><x15:otro/></ext></extLst>'
+        b"</styleSheet>"
+    )
+    salida = _pp_serializar(ET.fromstring(crudo), crudo, "styleSheet")
+
+    # Tiene que parsear: si un prefijo quedara suelto, esto revienta igual que Excel.
+    ET.fromstring(salida)
+    texto = salida.decode("utf-8")
+    declarados = set(re.findall(r'xmlns:(\w+)=', texto))
+    usados = set(re.findall(r"<(\w+):", texto)) | set(re.findall(r"\s(\w+):\w+=", texto))
+    assert not (usados - declarados - {"xmlns"}), texto[:400]
+    # x14/x15 siguen resolviendo aunque ET los haya subido a la raiz...
+    assert {"x14", "x15"} <= declarados
+    # ...y mc:Ignorable con su x14ac sobrevive, aunque nadie lo use.
+    assert 'mc:Ignorable="x14ac"' in texto and "xmlns:x14ac=" in texto

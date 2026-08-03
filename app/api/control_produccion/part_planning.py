@@ -34,14 +34,20 @@ import json
 import logging
 import math
 import os
+import posixpath
 import re
+import xml.etree.ElementTree as ET
+import zipfile
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 import openpyxl
-from flask import Blueprint, jsonify, render_template, request, session
+from flask import (
+    Blueprint, jsonify, render_template, request, send_file, session,
+)
 
 from app.api.control_produccion import ppn
+from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
 from app.db_mysql import execute_query
 from app.config_mysql import get_pooled_connection
 from app.api.pda.shipping_material import get_dict_cursor
@@ -92,6 +98,12 @@ PPY_BLOQUES = 5
 # Se verifica en los planes reales: 15/07 -> M1+D1 y D3+D1+D2 ; 16/07 -> M2+M4
 # y D2+D3. En ninguno aparece D3 junto a una M.
 PPY_LINEAS_INCOMPATIBLES = {"D3": ("M1", "M2", "M3", "M4")}
+# D3 pide mas gente que las demas: mientras corre, su personal sale de otro
+# equipo y ese equipo para ("si produce D3 tiene que parar una linea"). El costo
+# es POR EL TIEMPO que D3 este corriendo, no el dia completo: 4 h de D3 le
+# quitan 4 h a otra linea, y si D3 no corre no le quita nada a nadie.
+# ponytail: 1 h por 1 h. Si D3 se llevara la gente de dos equipos, sube a 2.0.
+PPY_D3_HORAS_POR_HORA = 1.0
 # Preferencias observadas cuando dos acomodos dejan exactamente el mismo
 # hueco. No fuerzan un bloque ni desplazan una opcion con mejor ajuste.
 PPY_LINEAS_AFINES = {
@@ -99,6 +111,9 @@ PPY_LINEAS_AFINES = {
     "D2": ("D3",), "D3": ("D2",),
 }
 PPY_FAMILIA_LEN = 9  # ponytail: familia = prefijo del part_no (EBR807574xx); catalogo si hay excepciones
+# Parte sin hora conocida (OVEN no la trae, y el Cal tampoco): va despues de las
+# que si tienen hora, nunca antes. No la adelanta ni la castiga de mas.
+PPY_HORA_SIN_DATO = time(23, 59)
 PPY_MARGEN = 1.10  # siempre se planea 10% mas del faltante
 # Remanente ("Remain" en la hoja PLAN). NO es un disparador, es el OBJETIVO de
 # lo que se planea: cuando una parte se va a producir, el lote se calcula para
@@ -107,6 +122,18 @@ PPY_MARGEN = 1.10  # siempre se planea 10% mas del faltante
 #     qty = (60 - I_proyectado) x 1.10 -> caja cerrada
 PPY_REMAIN_IDEAL = 60  # objetivo del lote planeado
 PPY_REMAIN_MIN = 50    # piso que protege el colchon (scrap, etc.)
+# D3 deja menos colchon que el resto: su lote apunta a 40. Es la linea que se
+# lleva el personal de otro equipo mientras corre (ver PPY_D3_HORAS_POR_HORA),
+# asi que producirle de mas cuesta horas de las demas lineas.
+# ponytail: mismo patron que PPY_ANTICIPACION_POR_LINEA; si crece, va a lg_pp_config.
+PPY_REMAIN_POR_LINEA = {"D3": 40}
+
+
+def _ppy_remain_ideal(linea):
+    """Inventario en que debe quedar la parte despues de su lote."""
+    return PPY_REMAIN_POR_LINEA.get(
+        str(linea or "").strip().upper(), PPY_REMAIN_IDEAL
+    )
 # OJO: una parte NO se planea por tener el remanente bajo. Si no hay consumo no
 # se produce: un I de 44 son los 60 del plan anterior menos 16 de scrap, no un
 # faltante. Solo dispara el faltante real (I < 0). Medir contra 60 metia al
@@ -281,18 +308,82 @@ def init_part_planning_tables():
     execute_query(
         """
         CREATE TABLE IF NOT EXISTS lg_ppn_wo (
+            fuente VARCHAR(8) NOT NULL DEFAULT 'PPN',
             wo VARCHAR(30) NOT NULL,
             modelo VARCHAR(100) NULL,
             partes TEXT NULL,
             prog_qty INT NOT NULL DEFAULT 0,
+            pend_qty INT NOT NULL DEFAULT 0,
             plan_qty INT NOT NULL DEFAULT 0,
             result_qty INT NOT NULL DEFAULT 0,
             snapshot_date DATE NOT NULL,
-            PRIMARY KEY (wo)
+            PRIMARY KEY (fuente, wo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+    # PPN (tarjetas) y OVEN son dos flujos independientes: la tabla nacio solo
+    # con el PPN, asi que fuente entra a la PK para que uno no pise al otro.
+    falta_fuente = execute_query(
+        "SELECT COUNT(*) AS c FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lg_ppn_wo' "
+        "AND COLUMN_NAME = 'fuente'",
+        fetch="one",
+    )
+    if not falta_fuente["c"]:
+        execute_query(
+            "ALTER TABLE lg_ppn_wo "
+            "ADD COLUMN fuente VARCHAR(8) NOT NULL DEFAULT 'PPN' FIRST, "
+            "ADD COLUMN pend_qty INT NOT NULL DEFAULT 0 AFTER prog_qty, "
+            "DROP PRIMARY KEY, ADD PRIMARY KEY (fuente, wo)"
+        )
+
+    # Hora en que LG ocupa cada parte cada dia (Planned Start Time del PPN). Es
+    # la que ordena la secuencia cuando el dia va justo de horas.
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS lg_part_need_time (
+            part_no VARCHAR(100) NOT NULL,
+            need_date DATE NOT NULL,
+            need_time TIME NOT NULL,
+            PRIMARY KEY (part_no, need_date)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
     )
 
+    # Sub-ensamble: para surtir el ABQ hay que producir antes su PCB (EBR). Sale
+    # del PPN. NO hay inventario de ese nivel capturado en el MES: por eso el
+    # asistente lo pregunta en vez de suponerlo.
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS lg_sub_ensamble (
+            part_no VARCHAR(100) NOT NULL,
+            sub_part_no VARCHAR(100) NOT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (part_no, sub_part_no)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+
+    # El ultimo Part que subio Planning, tal cual. Se guarda para poder
+    # devolverselo con el renglon S ya actualizado en vez de generar un Excel
+    # nuevo: asi conserva su formato, sus formulas y sus otras hojas.
+    # ponytail: una sola fila (id=1). Si algun dia se quiere historial, esto es
+    # un AUTO_INCREMENT y un ORDER BY uploaded_at DESC LIMIT 1.
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS lg_plan_part_file (
+            id TINYINT NOT NULL DEFAULT 1,
+            original_filename VARCHAR(255) NOT NULL,
+            sheet_name VARCHAR(50) NOT NULL,
+            ref_date DATE NULL,
+            file_blob LONGBLOB NOT NULL,
+            uploaded_by VARCHAR(255) NOT NULL DEFAULT 'SISTEMA',
+            uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
     # Etapa 2: schedule diario (renglon S) capturado en MES o importado de Part 10
     execute_query(
         """
@@ -692,12 +783,13 @@ def _pp_layout_plan(ws, anio_fallback):
     return fila_fechas, max(0, min(col_fechas) - 1), col_fechas
 
 
-def _pp_ppn_baseline():
-    """Ultimo PPN importado: (fecha_snapshot, {wo: {partes, prog, plan, result}})."""
+def _pp_ppn_baseline(fuente="PPN"):
+    """Ultimo reporte importado: (fecha_snapshot, {wo: {partes, prog, ...}})."""
     try:
         rows = execute_query(
-            "SELECT wo, partes, prog_qty, plan_qty, result_qty, snapshot_date "
-            "FROM lg_ppn_wo",
+            "SELECT wo, modelo, partes, prog_qty, pend_qty, plan_qty, result_qty, "
+            "snapshot_date FROM lg_ppn_wo WHERE fuente = %s",
+            (fuente,),
             fetch="all",
         ) or []
     except Exception as e:  # tabla nueva: instalaciones sin migrar aun
@@ -710,18 +802,21 @@ def _pp_ppn_baseline():
         fecha = fecha.date()
     base = {
         r["wo"]: {
+            "modelo": r["modelo"] or "",
             "partes": {p for p in (r["partes"] or "").split(",") if p},
             "prog": int(r["prog_qty"] or 0),
+            "pend": int(r["pend_qty"] or 0),
             "plan": int(r["plan_qty"] or 0),
-            "result": int(r["result_qty"] or 0),
+            # OVEN no reporta acumulado construido; None se lo dice a sobrante().
+            "result": None if fuente == "OVEN" else int(r["result_qty"] or 0),
         }
         for r in rows
     }
     return fecha, base
 
 
-def _pp_parse_ppn(wb, hoja, base_override=None):
-    """PPN de LG -> mismo 'parsed' que el Cal, mas la correccion del dia que paso.
+def _pp_parse_ppn(wb, hoja, base_override=None, fuente="PPN"):
+    """Reporte de LG -> mismo 'parsed' que el Cal, mas la correccion del dia que paso.
 
     La demanda futura sale de los buckets del PPN (ya netos de lo construido).
     El renglon del dia del snapshot anterior se REBAJA con el material que LG no
@@ -733,7 +828,7 @@ def _pp_parse_ppn(wb, hoja, base_override=None):
     ultimo importado (el asistente recibe los dos archivos de una vez).
     """
     try:
-        fecha0, wos = ppn.leer_ppn(wb[hoja])
+        fecha0, wos = ppn.LECTORES[fuente](wb[hoja])
     except ValueError as e:
         return None, ({"success": False, "errors": [str(e)], "warnings": []}, 400)
 
@@ -743,20 +838,20 @@ def _pp_parse_ppn(wb, hoja, base_override=None):
     if sin_bom:
         listado = ", ".join(sin_bom[:10]) + ("..." if len(sin_bom) > 10 else "")
         warnings.append(
-            f"{len(sin_bom)} modelos sin BOM en el PPN; su demanda no se explota "
-            f"a partes: {listado}"
+            f"{len(sin_bom)} modelos sin BOM en el {fuente}; su demanda no se "
+            f"explota a partes: {listado}"
         )
 
-    base_fecha, base = base_override or _pp_ppn_baseline()
+    base_fecha, base = base_override or _pp_ppn_baseline(fuente)
     if base_override:
-        # El snapshot guardado dice hasta que PPN esta reflejado el plan. Si ya
-        # es de este dia o mas nuevo, la correccion ya se aplico: repetirla
+        # El snapshot guardado dice hasta que reporte esta reflejado el plan. Si
+        # ya es de este dia o mas nuevo, la correccion ya se aplico: repetirla
         # descontaria el mismo material dos veces.
-        aplicado, _ = _pp_ppn_baseline()
+        aplicado, _ = _pp_ppn_baseline(fuente)
         if aplicado and aplicado >= fecha0:
             base_fecha, base = None, {}
             warnings.append(
-                f"El plan ya refleja el PPN del {aplicado.isoformat()}; no se "
+                f"El plan ya refleja el {fuente} del {aplicado.isoformat()}; no se "
                 f"vuelve a rebajar el consumo de LG."
             )
     # Solo corrige hacia adelante: reimportar el mismo PPN (o uno viejo) no
@@ -790,7 +885,7 @@ def _pp_parse_ppn(wb, hoja, base_override=None):
             # ponytail: solo se corrige el dia del snapshot. Importa el PPN a
             # diario y el hueco es de un dia.
             warnings.append(
-                f"El PPN anterior era del {base_fecha.isoformat()}: los dias "
+                f"El {fuente} anterior era del {base_fecha.isoformat()}: los dias "
                 f"intermedios se quedan con el plan viejo."
             )
 
@@ -813,9 +908,21 @@ def _pp_parse_ppn(wb, hoja, base_override=None):
         "errors": [],
         # Snapshot a guardar en el confirm (no se toca en el preview).
         "ppn_date": fecha0,
+        "ppn_fuente": fuente,
+        # Hora a la que LG ocupa cada parte (solo el PPN la trae; OVEN no).
+        "need_times": [
+            (parte[:100], f, hora)
+            for (parte, f), hora in ppn.horas_parte(wos).items()
+        ],
+        # Ensamble -> PCB que hay que producir antes.
+        "sub_ensambles": [
+            (parte[:100], sub[:100])
+            for parte, sub in ppn.sub_ensambles(wos).items()
+        ],
         "ppn_wo": [
-            (wo[:30], w["modelo"][:100], ",".join(sorted(w["partes"]))[:65535],
-             w["dias"].get(fecha0, 0), w["plan"], w["result"], fecha0)
+            (fuente, wo[:30], w["modelo"][:100], ",".join(sorted(w["partes"]))[:65535],
+             w["dias"].get(fecha0, 0), sum(w["dias"].values()), w["plan"],
+             w["result"] or 0, fecha0)
             for wo, w in wos.items()
         ],
     }
@@ -823,26 +930,109 @@ def _pp_parse_ppn(wb, hoja, base_override=None):
 
 
 def _pp_guardar_snapshot_ppn(cursor, parsed):
-    """Reemplaza lg_ppn_wo con el PPN recien importado (dentro de la transaccion).
+    """Reemplaza el snapshot de esa fuente en lg_ppn_wo (dentro de la transaccion).
 
-    Solo avanza en el tiempo: reimportar un PPN viejo no pisa el snapshot bueno.
+    Solo avanza en el tiempo: reimportar un reporte viejo no pisa el bueno.
     """
     if not parsed.get("ppn_wo"):
         return False
-    cursor.execute("SELECT MAX(snapshot_date) AS f FROM lg_ppn_wo")
+    fuente = parsed.get("ppn_fuente", "PPN")
+    cursor.execute(
+        "SELECT MAX(snapshot_date) AS f FROM lg_ppn_wo WHERE fuente = %s", (fuente,)
+    )
     previo = (cursor.fetchone() or {}).get("f")
     if isinstance(previo, datetime):
         previo = previo.date()
     if previo is not None and previo > parsed["ppn_date"]:
         return False
-    cursor.execute("DELETE FROM lg_ppn_wo")
+    cursor.execute("DELETE FROM lg_ppn_wo WHERE fuente = %s", (fuente,))
     sql = (
-        "INSERT INTO lg_ppn_wo (wo, modelo, partes, prog_qty, plan_qty, "
-        "result_qty, snapshot_date) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        "INSERT INTO lg_ppn_wo (fuente, wo, modelo, partes, prog_qty, pend_qty, "
+        "plan_qty, result_qty, snapshot_date) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
     )
     for i in range(0, len(parsed["ppn_wo"]), PP_BATCH_SIZE):
         cursor.executemany(sql, parsed["ppn_wo"][i : i + PP_BATCH_SIZE])
+    _pp_guardar_need_times(cursor, parsed)
+    _pp_guardar_sub_ensambles(cursor, parsed)
     return True
+
+
+def _pp_guardar_sub_ensambles(cursor, parsed):
+    """Relacion ensamble->PCB del PPN. Solo agrega: es catalogo, no un saldo."""
+    filas = parsed.get("sub_ensambles") or []
+    if not filas:
+        return 0  # OVEN no la trae; no se borra lo que dejo el PPN
+    sql = (
+        "INSERT INTO lg_sub_ensamble (part_no, sub_part_no) VALUES (%s, %s) "
+        "ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP"
+    )
+    for i in range(0, len(filas), PP_BATCH_SIZE):
+        cursor.executemany(sql, filas[i : i + PP_BATCH_SIZE])
+    return len(filas)
+
+
+def _pp_sub_ensambles(partes=None):
+    """{parte: [PCBs que hay que producir antes]} del catalogo del PPN."""
+    sql = "SELECT part_no, sub_part_no FROM lg_sub_ensamble"
+    args = ()
+    if partes:
+        partes = [p for p in partes if p]
+        if not partes:
+            return {}
+        sql += " WHERE part_no IN (%s)" % ",".join(["%s"] * len(partes))
+        args = tuple(partes)
+    try:
+        rows = execute_query(sql, args, fetch="all") or []
+    except Exception as e:  # tabla nueva: instalaciones sin migrar aun
+        logger.warning("part_planning: no se pudo leer lg_sub_ensamble: %s", e)
+        return {}
+    salida = {}
+    for r in rows:
+        salida.setdefault(r["part_no"], []).append(r["sub_part_no"])
+    return salida
+
+
+def _pp_guardar_need_times(cursor, parsed):
+    """Horas de consumo del PPN: reemplaza las de ese dia en adelante."""
+    filas = parsed.get("need_times") or []
+    if not filas:
+        return 0  # OVEN no trae hora; no se borra lo que dejo el PPN
+    cursor.execute(
+        "DELETE FROM lg_part_need_time WHERE need_date >= %s", (parsed["ppn_date"],)
+    )
+    sql = (
+        "INSERT INTO lg_part_need_time (part_no, need_date, need_time) "
+        "VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE "
+        "need_time = LEAST(need_time, VALUES(need_time))"
+    )
+    for i in range(0, len(filas), PP_BATCH_SIZE):
+        cursor.executemany(sql, filas[i : i + PP_BATCH_SIZE])
+    return len(filas)
+
+
+def _pp_horas_necesarias(fecha_ini, fecha_fin):
+    """{(part_no, fecha): hora} en que LG ocupa cada parte, del PPN importado."""
+    try:
+        rows = execute_query(
+            "SELECT part_no, need_date, need_time FROM lg_part_need_time "
+            "WHERE need_date BETWEEN %s AND %s",
+            (fecha_ini, fecha_fin), fetch="all",
+        ) or []
+    except Exception as e:  # tabla nueva: instalaciones sin migrar aun
+        logger.warning("part_planning: no se pudo leer lg_part_need_time: %s", e)
+        return {}
+    horas = {}
+    for r in rows:
+        f = r["need_date"]
+        if isinstance(f, datetime):
+            f = f.date()
+        valor = r["need_time"]
+        if isinstance(valor, timedelta):  # TIME llega como timedelta en pymysql
+            total = int(valor.total_seconds()) % 86400
+            valor = time(total // 3600, (total % 3600) // 60)
+        horas[(r["part_no"], f)] = valor
+    return horas
 
 
 def _parse_lg_workbook(file_bytes, original_filename="", override_year=None,
@@ -872,9 +1062,9 @@ def _parse_lg_workbook(file_bytes, original_filename="", override_year=None,
         return error("El archivo esta corrupto o no es un Excel valido.")
 
     try:
-        hoja_ppn = ppn.hoja_ppn(wb)
-        if hoja_ppn is not None:
-            return _pp_parse_ppn(wb, hoja_ppn, ppn_base)
+        hoja_lg, fuente = ppn.hoja_reporte(wb)
+        if hoja_lg is not None:
+            return _pp_parse_ppn(wb, hoja_lg, ppn_base, fuente)
 
         hoja = _pp_hoja_plan(wb, original_filename)
         if hoja is None:
@@ -1162,6 +1352,372 @@ def _parse_part10_workbook(file_bytes, original_filename=""):
         }, None
     finally:
         wb.close()
+
+
+def _pp_guardar_part_file(cursor, file_bytes, filename, sheet_name, ref_date, usuario):
+    """Deja el Part recien subido como el vigente para descargarlo actualizado."""
+    cursor.execute(
+        "REPLACE INTO lg_plan_part_file "
+        "(id, original_filename, sheet_name, ref_date, file_blob, uploaded_by) "
+        "VALUES (1, %s, %s, %s, %s, %s)",
+        (str(filename or "Part.xlsx")[:255], str(sheet_name or "")[:50],
+         ref_date, file_bytes, usuario),
+    )
+
+
+def _pp_escribir_schedule_part(file_bytes, filename, schedule, fechas_propuesta=None):
+    """El MISMO Excel de Planning con el renglon S de la hoja Part N reescrito.
+
+    Se reescribe sobre su archivo en vez de generar uno nuevo para que puedan
+    usarlo tal cual: conserva formato, formulas y las demas hojas.
+
+    `schedule` es {(parte, fecha): piezas}. En las fechas de `fechas_propuesta`
+    manda la propuesta, asi que una celda sin lote se VACIA (ahi la propuesta ya
+    es el plan completo del dia); fuera de ese rango no se toca lo que hubiera.
+
+    Devuelve (bytes, hoja, renglones_escritos).
+    """
+    wb = openpyxl.load_workbook(
+        io.BytesIO(file_bytes), keep_vba=str(filename).lower().endswith(".xlsm")
+    )
+    try:
+        hoja = _pp_buscar_hoja_inventario(wb.sheetnames)
+        if not hoja:
+            raise ValueError("El Part guardado ya no trae una hoja 'Part N'.")
+        ws = wb[hoja]
+        # Mismo layout que _parse_part10_workbook: 'PART NUMBER' en col C, fechas
+        # de col D en adelante, tipo de renglon (P/S/I) en col N.
+        col_fechas, fila_header = {}, None
+        for fila in ws.iter_rows():
+            celda = fila[2].value if len(fila) > 2 else None
+            if isinstance(celda, str) and celda.strip().upper() == "PART NUMBER":
+                fila_header = fila[0].row
+                for c in fila[3:]:
+                    f = _pp_parse_fecha_celda(c.value, date.today().year)
+                    if f is not None:
+                        col_fechas[c.column] = f
+                break
+        if not col_fechas:
+            raise ValueError(f"No encontre las fechas del encabezado en '{hoja}'.")
+        parte, escritos, cambios, del_plan = None, 0, {}, set()
+        for fila in ws.iter_rows(min_row=fila_header + 1):
+            crudo = fila[13].value if len(fila) > 13 else None
+            tipo = str(crudo).strip().upper() if crudo is not None else ""
+            if tipo == "P":
+                parte = _pp_normalizar_parte(fila[2].value if len(fila) > 2 else None)
+            elif tipo == "S" and parte:
+                for col, fecha in col_fechas.items():
+                    qty = schedule.get((parte, fecha))
+                    if qty is None and fecha not in (fechas_propuesta or ()):
+                        continue
+                    # 0 se deja en blanco, como viene el archivo de Planning.
+                    cambios[(fila[0].row, col)] = int(qty or 0) or None
+                    # Solo se pinta el rango de la propuesta: fuera de el la
+                    # celda solo se refresca al schedule vigente.
+                    if fecha in (fechas_propuesta or ()):
+                        del_plan.add((fila[0].row, col))
+                escritos += 1
+        if not escritos:
+            raise ValueError(f"No encontre renglones S en la hoja '{hoja}'.")
+    finally:
+        wb.close()
+    # openpyxl solo sirvio para LOCALIZAR las celdas; guardar con el destruiria
+    # el libro de Planning (ver _pp_zip_set_cells).
+    return (_pp_zip_set_cells(file_bytes, hoja, cambios, PP_COLOR_PROPUESTA,
+                              pintar_solo=del_plan), hoja, escritos)
+
+
+# XML de una hoja: se edita dentro del zip, sin abrir el libro con openpyxl.
+_XL_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+
+
+def _pp_col_letra(n):
+    """28 -> 'AB'."""
+    s = ""
+    while n > 0:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def _pp_col_num(ref):
+    """'AB12' -> 28. Solo la parte de letras de una referencia de celda."""
+    n = 0
+    for ch in str(ref or ""):
+        if not ch.isalpha():
+            break
+        n = n * 26 + (ord(ch.upper()) - 64)
+    return n
+
+
+def _pp_raiz_xml(crudo, etiqueta):
+    """Etiqueta raiz del XML: sirve para releer sus prefijos y para reponerla."""
+    return re.search(rb"<(?:\w+:)?%s\b[^>]*>" % etiqueta.encode(), crudo)
+
+
+def _pp_registrar_prefijos(crudo, etiqueta):
+    """Registra en ET los prefijos xmlns TAL CUAL vienen en el XML.
+
+    Se barre el documento ENTERO, no solo la raiz: styles.xml declara x14 y x15
+    dentro de extLst, y si no se registran ET les inventa nombres (ns5:...) que
+    ya no coinciden con los que nombra mc:Ignorable.
+    """
+    for pfx, uri in re.findall(rb'xmlns:?([a-zA-Z0-9]*)="([^"]+)"', crudo):
+        ET.register_namespace(pfx.decode(), uri.decode())
+    return _pp_raiz_xml(crudo, etiqueta)
+
+
+def _pp_serializar(raiz_el, crudo, etiqueta):
+    """Serializa reponiendo la cabecera original (declaracion XML + raiz).
+
+    Los prefijos se registran AQUI, justo antes de escribir, porque
+    ET.register_namespace es estado GLOBAL: si entre el parseo y la escritura se
+    procesara otro XML con los mismos URIs bajo otros prefijos, la salida usaria
+    prefijos que la raiz no declara y Excel "repararia" el archivo.
+
+    Ademas ET tira las declaraciones xmlns que el documento no usa, y
+    mc:Ignorable las nombra por PREFIJO: por eso se repone la raiz tal cual. Los
+    prefijos que ET emite son por fuerza un subconjunto de los declarados ahi.
+    """
+    raiz_tag = _pp_registrar_prefijos(crudo, etiqueta)
+    salida = ET.tostring(raiz_el, encoding="UTF-8", xml_declaration=True)
+    nueva = _pp_raiz_xml(salida, etiqueta)
+    if not (raiz_tag and nueva):
+        return salida
+    return (crudo[:raiz_tag.start()]
+            + _pp_fusionar_raiz(raiz_tag.group(0), nueva.group(0))
+            + salida[nueva.end():])
+
+
+def _pp_fusionar_raiz(original, generada):
+    """Etiqueta raiz con TODO: lo que declaraba el archivo (mc:Ignorable y los
+    prefijos que nombra, que ET tira por no usarlos) MAS los xmlns que ET subio.
+
+    ET sube a la raiz los xmlns que el archivo declaraba en elementos HIJOS: en
+    styles.xml, x14 y x15 viven dentro de extLst. Reponer la raiz original a
+    secas los borraba y Excel tiraba styles.xml entero con "prefijo no
+    declarado", y sin styles.xml TODAS las hojas pierden su formato.
+    """
+    ya = set(re.findall(rb"xmlns:(\w+)=", original))
+    faltan = [m.group(0) for m in re.finditer(rb'xmlns:(\w+)="[^"]*"', generada)
+              if m.group(1) not in ya]
+    if not faltan:
+        return original
+    cierre = original[-2:] if original.endswith(b"/>") else original[-1:]
+    return original[:-len(cierre)] + b" " + b" ".join(faltan) + cierre
+
+
+# Ambar: las cantidades que puso la propuesta se ven de un golpe contra los
+# verdes y grises que ya trae la hoja de Planning.
+PP_COLOR_PROPUESTA = "FFFFC000"
+
+
+def _pp_estilos_pintados(estilos_crudo, bases, rgb):
+    """Agrega a styles.xml un relleno y un estilo por cada estilo base pisado.
+
+    Se CLONA el xf original y solo se le cambia el relleno, y los nuevos se
+    AGREGAN AL FINAL: insertarlos enmedio recorreria todos los indices
+    posteriores y cambiaria el formato del libro entero.
+    Devuelve (styles.xml nuevo, {estilo_base: estilo_pintado}).
+    """
+    raiz = ET.fromstring(estilos_crudo)
+    fills = raiz.find(f"{{{_XL_MAIN}}}fills")
+    xfs = raiz.find(f"{{{_XL_MAIN}}}cellXfs")
+    if fills is None or xfs is None:
+        return estilos_crudo, {}
+    fill = ET.SubElement(fills, f"{{{_XL_MAIN}}}fill")
+    patron = ET.SubElement(fill, f"{{{_XL_MAIN}}}patternFill")
+    patron.set("patternType", "solid")
+    ET.SubElement(patron, f"{{{_XL_MAIN}}}fgColor").set("rgb", rgb)
+    ET.SubElement(patron, f"{{{_XL_MAIN}}}bgColor").set("indexed", "64")
+    n_fills = len(fills.findall(f"{{{_XL_MAIN}}}fill"))
+    fills.set("count", str(n_fills))
+    originales = xfs.findall(f"{{{_XL_MAIN}}}xf")
+    mapa = {}
+    for base in sorted(bases):
+        plantilla = originales[base] if 0 <= base < len(originales) else None
+        nuevo = (ET.fromstring(ET.tostring(plantilla)) if plantilla is not None
+                 else ET.Element(f"{{{_XL_MAIN}}}xf"))
+        nuevo.set("fillId", str(n_fills - 1))
+        nuevo.set("applyFill", "1")
+        xfs.append(nuevo)
+        mapa[base] = len(xfs.findall(f"{{{_XL_MAIN}}}xf")) - 1
+    xfs.set("count", str(len(xfs.findall(f"{{{_XL_MAIN}}}xf"))))
+    return _pp_serializar(raiz, estilos_crudo, "styleSheet"), mapa
+
+
+def _pp_zip_set_cells(file_bytes, hoja, cambios, color=None, pintar_solo=None):
+    """Reescribe SOLO esas celdas dentro del zip del Excel, sin abrir el libro.
+
+    openpyxl no round-trippea un archivo real de Planning. Medido contra el xlsm
+    de ILSAN, al guardarlo pasa de 74 a 42 entradas (se lleva customXml, charts,
+    printerSettings, los _rels de 8 hojas y sharedStrings.xml entero), convierte
+    sus 79,817 formulas compartidas en nada, deja 3,901 celdas de texto sin
+    contenido y recorre los indices de estilo. Aqui se toca unicamente el XML de
+    esa hoja y todo lo demas se copia byte a byte.
+
+    cambios: {(fila, columna): valor|None} en indices 1-based; None vacia la celda.
+    color: RGB con el que se pintan las celdas que reciben cantidad.
+    pintar_solo: subconjunto de claves de `cambios` que se pinta.
+    """
+    zin = zipfile.ZipFile(io.BytesIO(file_bytes))
+    try:
+        libro = zin.read("xl/workbook.xml").decode("utf-8", "replace")
+        rid = None
+        for tag in re.findall(r"<sheet\b[^>]*>", libro):
+            n = re.search(r'name="([^"]+)"', tag)
+            if n and n.group(1).strip().upper() == str(hoja).strip().upper():
+                rid = re.search(r'r:id="([^"]+)"', tag)
+                break
+        if not rid:
+            raise ValueError(f"No encontre la hoja '{hoja}' en el archivo guardado.")
+        # El orden de los atributos cambia segun quien escribio el archivo, asi
+        # que se busca la etiqueta con ese Id y de ahi se saca el Target.
+        rels = zin.read("xl/_rels/workbook.xml.rels").decode("utf-8", "replace")
+        destino = None
+        for tag in re.findall(r"<Relationship\b[^>]*>", rels):
+            if re.search(r'Id="%s"' % re.escape(rid.group(1)), tag):
+                destino = re.search(r'Target="([^"]+)"', tag)
+                break
+        if not destino:
+            raise ValueError(f"El archivo no dice donde vive la hoja '{hoja}'.")
+        # El Target puede venir absoluto ("/xl/worksheets/x.xml"), relativo a xl/
+        # ("worksheets/x.xml") o con ".." segun quien escribio el archivo.
+        tgt = destino.group(1).replace("\\", "/")
+        ruta = tgt[1:] if tgt.startswith("/") else posixpath.normpath(
+            posixpath.join("xl", tgt))
+        crudo = zin.read(ruta)
+        _pp_registrar_prefijos(crudo, "worksheet")
+        raiz = ET.fromstring(crudo)
+        data = raiz.find(f"{{{_XL_MAIN}}}sheetData")
+        if data is None:
+            raise ValueError(f"La hoja '{hoja}' no trae datos.")
+        por_fila = {}
+        for (f, c), v in cambios.items():
+            por_fila.setdefault(f, {})[c] = v
+        habia_formula, pintar = False, []
+        for row in data.findall(f"{{{_XL_MAIN}}}row"):
+            fila_n = int(row.get("r") or 0)
+            quiere = por_fila.get(fila_n)
+            if not quiere:
+                continue
+            celdas = {_pp_col_num(c.get("r")): c for c in row}
+            for col, valor in sorted(quiere.items()):
+                c = celdas.get(col)
+                if c is None:
+                    if valor is None:
+                        continue  # ya estaba vacia
+                    c = ET.Element(f"{{{_XL_MAIN}}}c")
+                    c.set("r", f"{_pp_col_letra(col)}{row.get('r')}")
+                    # Hereda el estilo del vecino de la izquierda para que la
+                    # celda nueva se vea como las demas del renglon.
+                    izq = [k for k in celdas if k < col]
+                    estilo = celdas[max(izq)].get("s") if izq else None
+                    if estilo:
+                        c.set("s", estilo)
+                    row.insert(sum(1 for k in celdas if k < col), c)
+                    celdas[col] = c
+                for hijo in list(c):
+                    if hijo.tag.endswith("}f"):
+                        habia_formula = True
+                    c.remove(hijo)
+                c.attrib.pop("t", None)  # deja de ser texto/error: es numero
+                if valor is not None:
+                    ET.SubElement(c, f"{{{_XL_MAIN}}}v").text = str(int(valor))
+                    if pintar_solo is None or (fila_n, col) in pintar_solo:
+                        pintar.append(c)
+            # Al meter una celda nueva el spans del renglon queda corto: Excel lo
+            # recalcula, pero openpyxl le hace caso y leeria el renglon truncado.
+            if celdas and row.get("spans"):
+                row.set("spans", f"1:{max(celdas)}")
+        # El color entra por styles.xml: un relleno nuevo y un estilo clonado
+        # por cada estilo base, para no perder formato de numero ni bordes.
+        estilos_nuevos = None
+        if color and pintar:
+            estilos_nuevos, mapa = _pp_estilos_pintados(
+                zin.read("xl/styles.xml"),
+                {int(c.get("s") or 0) for c in pintar}, color)
+            for c in pintar:
+                c.set("s", str(mapa[int(c.get("s") or 0)]))
+        hoja_nueva = _pp_serializar(raiz, crudo, "worksheet")
+        # Si se quito una formula, calcChain apunta a una celda que ya no la
+        # tiene y Excel lo marca como dano. Es solo un cache: se saca y Excel lo
+        # reconstruye al abrir.
+        fuera = {"xl/calcChain.xml"} if (
+            habia_formula and "xl/calcChain.xml" in zin.namelist()) else set()
+        salida = io.BytesIO()
+        with zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                if item.filename in fuera:
+                    continue
+                datos = zin.read(item.filename)
+                if item.filename == ruta:
+                    datos = hoja_nueva
+                elif estilos_nuevos and item.filename == "xl/styles.xml":
+                    datos = estilos_nuevos
+                elif fuera and item.filename == "[Content_Types].xml":
+                    datos = re.sub(rb"<Override[^>]*calcChain[^>]*/>", b"", datos)
+                elif fuera and item.filename == "xl/_rels/workbook.xml.rels":
+                    datos = re.sub(rb"<Relationship[^>]*calcChain[^>]*/>", b"", datos)
+                zout.writestr(item, datos)
+        return salida.getvalue()
+    finally:
+        zin.close()
+
+
+def _pp_part_excel_propuesta(public_id, usuario, query=None):
+    """Devuelve (bytes, nombre) del Part de Planning ya con la propuesta dentro.
+
+    Lee los items en vivo, asi que refleja tambien las ediciones que Planning
+    haya hecho en el modal (cantidades, borrados, lotes agregados)."""
+    run_query = query or execute_query
+    archivo = run_query(
+        "SELECT original_filename, file_blob FROM lg_plan_part_file WHERE id=1",
+        fetch="one",
+    )
+    if not archivo or not archivo.get("file_blob"):
+        raise ValueError(
+            "Todavia no se ha importado ningun Part. Sube una vez el Excel de "
+            "Planning y despues se puede descargar actualizado."
+        )
+    header = run_query(
+        "SELECT id, date_from, date_to FROM lg_plan_proposals "
+        "WHERE public_id=%s AND created_by=%s",
+        (public_id, usuario), fetch="one",
+    )
+    if not header:
+        raise ValueError("Propuesta no encontrada o pertenece a otro usuario")
+    dia = lambda v: v.date() if isinstance(v, datetime) else v
+    d_ini, d_fin = dia(header["date_from"]), dia(header["date_to"])
+    fechas_prop = set()
+    if d_ini and d_fin:
+        fechas_prop = {
+            d_ini + timedelta(days=n) for n in range((d_fin - d_ini).days + 1)
+        }
+    # Fuera del rango se ve el schedule que Planning ya tiene (el futuro que
+    # todavia no toca esta propuesta); dentro, la propuesta lo reemplaza entero,
+    # igual que al aplicarla.
+    schedule = {
+        (r["part_no"], dia(r["sched_date"])): int(r["sched_qty"] or 0)
+        for r in run_query(
+            "SELECT part_no, sched_date, sched_qty FROM lg_schedule_daily",
+            fetch="all") or []
+        if dia(r["sched_date"]) not in fechas_prop
+    }
+    # Una parte puede llevar varios lotes el mismo dia: al Part va la suma.
+    schedule.update({
+        (r["part_no"], dia(r["sched_date"])): int(r["qty"] or 0)
+        for r in run_query(
+            "SELECT part_no, sched_date, SUM(qty_proposed) AS qty "
+            "FROM lg_plan_proposal_items WHERE proposal_id=%s "
+            "GROUP BY part_no, sched_date",
+            (header["id"],), fetch="all") or []
+    })
+    nombre = archivo["original_filename"] or "Part.xlsx"
+    contenido, _hoja, _n = _pp_escribir_schedule_part(
+        archivo["file_blob"], nombre, schedule, fechas_prop)
+    base, ext = os.path.splitext(nombre)
+    return contenido, f"{base} - propuesta {d_ini or ''}{ext or '.xlsx'}"
 
 
 # =============================
@@ -1498,6 +2054,8 @@ def api_pp_inventory_import():
             ),
         )
         import_id = cursor.lastrowid
+        _pp_guardar_part_file(cursor, file_bytes, archivo.filename,
+                              parsed["sheet_name"], parsed["ref_date"], usuario)
 
         sql_inv = (
             "INSERT INTO lg_part_inventory "
@@ -1817,6 +2375,8 @@ def _ppy_omission_codes(motivo):
         codigos.append("NO_ACTIVE_ALLOWED_LINE")
     if "sin horas" in texto:
         codigos.append("NO_CAPACITY")
+    if "personal de un equipo" in texto:
+        codigos.append("D3_STOPS_LINE")
     return codigos or ["NOT_SCHEDULABLE"]
 
 
@@ -1870,6 +2430,13 @@ def _ppy_schedule_changes(propuestas, schedule_snapshot):
         }
         for item in propuestas
     }
+    # Horas que pide cada renglon (qty/uph). Van sumadas porque una parte puede
+    # traer varios lotes el mismo dia; sirven para contrastarlas con lo que
+    # queda de turno y saber si aun se esta a tiempo de cambiarlo.
+    horas = {}
+    for item in propuestas:
+        clave = (item["part_no"], str(item["sched_date"]))
+        horas[clave] = horas.get(clave, 0.0) + float(item.get("horas_requeridas") or 0)
     changes = []
     for key in sorted(set(base) | set(final), key=lambda value: (value[1], value[0])):
         before = base.get(key)
@@ -1893,6 +2460,7 @@ def _ppy_schedule_changes(propuestas, schedule_snapshot):
                 "antes_linea": (before or {}).get("linea"),
                 "despues_linea": (after or {}).get("linea"),
                 "turno": (after or before or {}).get("turno"),
+                "horas": round(horas.get(key, 0.0), 2),
             }
         )
     return changes
@@ -1946,7 +2514,8 @@ def _ppy_parse_plan_params(value):
     base = {"lotes_corriendo": {}, "agregados": [],
             "expandir_dias": 0, "max_bloques": None,
             "sabados": [], "tiempo_extra": False, "adelanto_max_dias": None,
-            "adelantar_d1": True}
+            "adelantar_d1": True, "horas_restantes_hoy": None,
+            "turno_completo": False}
     if not value:
         return base
     try:
@@ -2050,9 +2619,11 @@ def _ppy_normalizar_agregados(agregados):
     return salida
 
 
-def _ppy_topar_adelanto(falt_total, ventana, inventario_primera_falta, max_dias):
+def _ppy_topar_adelanto(falt_total, ventana, inventario_primera_falta, max_dias,
+                        linea=None):
     """Topa cuanto cubre un lote de un solo dia: el faltante hasta llevar la
-    primera falta a remain 60, MAS ``max_dias`` de consumo diario promedio.
+    primera falta a su remain ideal (60; en D3 40), MAS ``max_dias`` de consumo
+    diario promedio.
 
     Sin tope, una parte con un hueco de varios dias (tipico de D1, ventana de 5)
     mete el faltante completo de la semana en el primer dia disponible y acapara
@@ -2064,7 +2635,7 @@ def _ppy_topar_adelanto(falt_total, ventana, inventario_primera_falta, max_dias)
     caidas = [max(0.0, vals[i - 1] - vals[i]) for i in range(1, len(vals))]
     dias = sum(1 for c in caidas if c > 0) or 1
     consumo_diario = sum(caidas) / dias
-    faltante_primer = PPY_REMAIN_IDEAL - inventario_primera_falta
+    faltante_primer = _ppy_remain_ideal(linea) - inventario_primera_falta
     tope = faltante_primer + consumo_diario * max_dias
     return min(falt_total, max(faltante_primer, tope))
 
@@ -2073,7 +2644,8 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                           replanear=True, excluded_parts=None,
                           lotes_corriendo=None, agregados=None, expandir_dias=0,
                           max_bloques=None, sabados=None, tiempo_extra=False,
-                          adelanto_max_dias=None, adelantar_d1=True):
+                          adelanto_max_dias=None, adelantar_d1=True,
+                          horas_restantes_hoy=None, turno_completo=False):
     """Propone schedule con MRP y capacidad, sin escribir datos operativos.
 
     replanear=True (default): toma el Schedule capturado como linea base para
@@ -2083,6 +2655,12 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
 
     replanear=False: calcula solamente incrementos sobre el Schedule vigente;
     se conserva para consultas de diagnostico, no para la propuesta completa.
+
+    horas_restantes_hoy: techo de reloj para el dia de HOY. Pedir cambios a
+    media tarde no puede planear 9 h que ya no existen; con esto lo que se
+    propone para hoy cabe en lo que queda de turno y se alcanza a aplicar. Va
+    congelado en plan_params para que la re-simulacion del apply no marque STALE
+    solo porque el reloj avanzo (mismo motivo que lotes_corriendo).
 
     Formula base: I(t) = I(t-1) - P(t) + S(t). Cada faltante se cubre con
     +10 %, caja cerrada, linea permitida y un maximo de 9 h del turno DIA.
@@ -2107,6 +2685,9 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
     # al pedir un solo dia ("plan para mañana" -> rango 17..17 -> 0 lotes).
     proy_fin = _ppy_sumar_dias_produccion(fecha_fin, PPY_ANTICIPACION_MAX)
     replanear_desde = fecha_ini if replanear else None
+    # Hora del PPN a la que LG ocupa cada parte: ordena la secuencia los dias
+    # que no alcanzan. Vacio si nunca se importo un PPN.
+    horas_necesarias = _pp_horas_necesarias(fecha_ini, proy_fin)
     if query is None:
         lineas_activas = _ppy_config_lineas()
         proy = _ppy_proyeccion_rango(fecha_ini, proy_fin,
@@ -2503,9 +3084,10 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                         adelantos.append((p, pin))
                 continue
             primera_falta, inventario_primera_falta = negativos[0]
-            # Al reponer, el lote deja el inventario en PPY_REMAIN_IDEAL, no en
-            # cero: ese colchon es el que absorbe el scrap.
-            falt_total = PPY_REMAIN_IDEAL - min(valor for _f, valor in ventana)
+            # Al reponer, el lote deja el inventario en el remain ideal de su
+            # linea (60; en D3 40), no en cero: ese colchon absorbe el scrap.
+            falt_total = _ppy_remain_ideal(info[p].get("line")) - min(
+                valor for _f, valor in ventana)
             cap_adelanto = (
                 adelanto_max_dias if adelanto_max_dias is not None
                 else PPY_ADELANTO_MAX_DIAS
@@ -2513,8 +3095,17 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
             if cap_adelanto is not None:
                 falt_total = _ppy_topar_adelanto(
                     falt_total, ventana, inventario_primera_falta, cap_adelanto,
+                    info[p].get("line"),
                 )
             inventario_hoy = next((valor for f, valor in ventana if f == d), 0)
+            # Hora del PPN a la que LG ocupa esta parte el dia que falta, y el
+            # ultimo dia en que producirla todavia llega a esa hora: si la mete
+            # al abrir el turno, el lote tiene que salir el dia anterior.
+            hora_necesaria = horas_necesarias.get((p, primera_falta))
+            horas_lote = (
+                _ppy_qty_pack(falt_total, info[p].get("pack") or PPY_PACK_DEFAULT)
+                / info[p]["uph"] if info[p].get("uph") else 0.0
+            )
             candidato = {
                 "part_no": p,
                 "falt_total": falt_total,
@@ -2525,6 +3116,10 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
                 # normal y solo entra porque se pidio expandir y hay consumo
                 # recurrente. Rellena capacidad libre; no es un faltante urgente.
                 "expansion": primera_falta > horizonte_normal,
+                "hora_necesaria": hora_necesaria,
+                "falta_efectiva": _ppy_dia_limite(
+                    primera_falta, hora_necesaria, horas_lote
+                ),
                 **info[p],
             }
             existente = asignacion_schedule.get((p, d))
@@ -2573,16 +3168,31 @@ def _ppy_simular_schedule(fecha_ini, fecha_fin, detailed=False, query=None,
         if candidatos:
             # Las horas son por GRUPO (M3+M4 comparten 9 h, no 9 h cada una).
             ocupadas_dia = {l: h for (f, l), h in horas_conf.items() if f == d}
-            horas_turno_dia = PPY_HORAS_SABADO if d.weekday() == 5 else None
+            horas_turno_dia = _ppy_horas_turno_dia(d, turno_completo)
             horas_rest = _ppy_horas_iniciales(
                 lineas_activas, ocupadas_dia, max_bloques,
                 horas_turno=horas_turno_dia, tiempo_extra=tiempo_extra,
             )
+            if horas_restantes_hoy is not None and d == fecha_ini:
+                # Techo de reloj: 9 h - lo ya ocupado, pero nunca mas de lo que
+                # queda de turno. Asi lo que se propone para hoy se alcanza a
+                # producir y el cambio se puede aplicar antes de que cierre.
+                horas_rest = {
+                    g: min(h, float(horas_restantes_hoy))
+                    for g, h in horas_rest.items()
+                }
             if d in capacidad_desconocida:
                 horas_rest = {g: 0.0 for g in horas_rest}
+            # Si lo que piden los candidatos no cabe en el dia, la secuencia deja
+            # de agrupar por familia y se ordena por la hora en que LG los ocupa.
+            piden = sum(
+                _ppy_qty_pack(c["falt_total"], c["pack"] or PPY_PACK_DEFAULT) / c["uph"]
+                for c in candidatos if c.get("uph")
+            )
             lotes, fuera = _ppy_armar_lotes(
                 candidatos, lineas_activas, horas_rest, estricto=True,
                 horas_ocupadas=ocupadas_dia,
+                apretado=piden > sum(horas_rest.values()),
             )
             for lote in lotes:
                 qty = int(lote["qty"])
@@ -2760,6 +3370,106 @@ def _ppy_capacidad_libre(propuestas, fecha_ini, query=None):
 # lo que termina despues de 17:30 es tiempo extra.
 PPY_TURNO_INICIO_MIN = 7 * 60 + 30
 PPY_TURNO_FIN_MIN = 17 * 60 + 30
+# Breaks del turno (plan-assy-helpers.js): 10 h de reloj menos 1 h de descansos
+# son las 9 h productivas de PPY_HORAS_TURNO.
+PPY_DESCANSOS = ((9 * 60 + 30, 9 * 60 + 45), (12 * 60, 12 * 60 + 30),
+                 (15 * 60, 15 * 60 + 15))
+# Dia de inventario de cierre de mes: todas las lineas paran produccion a las
+# 14:00 para poder contar.
+PPY_FIN_INVENTARIO_MIN = 14 * 60
+# El lunes se planea hasta las 16:00 en TODAS las lineas: despues del fin de
+# semana normalmente falta gente y la ultima hora y media no se cubre.
+PPY_FIN_LUNES_MIN = 16 * 60
+
+
+def _ppy_horas_productivas(desde_min, hasta_min):
+    """Horas de turno entre dos horas de reloj, ya sin los descansos de enmedio."""
+    if hasta_min <= desde_min:
+        return 0.0
+    minutos = hasta_min - desde_min - sum(
+        max(0, min(f, hasta_min) - max(i, desde_min)) for i, f in PPY_DESCANSOS
+    )
+    return round(max(0.0, minutos / 60.0), 2)
+
+
+# 07:30-16:00 menos 1 h de descansos.
+PPY_HORAS_LUNES = _ppy_horas_productivas(PPY_TURNO_INICIO_MIN, PPY_FIN_LUNES_MIN)
+
+
+def _ppy_fin_turno(fecha, inventario=False, tiempo_extra=False, turno_completo=False):
+    """Hora de reloj (en minutos) a la que ese dia deja de producirse.
+
+    turno_completo: el lunes en que SI llego el personal corre hasta las 17:30.
+    tiempo_extra: autorizado por Planning, corre +PPY_HORAS_EXTRA sobre lo que
+    cierre ese dia (un lunes con TE va hasta 19:00, no hasta 20:30).
+    """
+    if inventario:
+        fin = PPY_FIN_INVENTARIO_MIN
+    elif fecha.weekday() == 0 and not turno_completo:
+        fin = PPY_FIN_LUNES_MIN
+    else:
+        fin = PPY_TURNO_FIN_MIN
+    return fin + (int(PPY_HORAS_EXTRA * 60) if tiempo_extra else 0)
+
+
+def _ppy_horas_turno_dia(fecha, turno_completo=False):
+    """Horas productivas de ese dia, o None si son las 9 h normales.
+
+    Es el tope por BLOQUE que usa el motor: el sabado extraordinario son 8 h y
+    el lunes 7.5 h porque se corta a las 16:00 por falta de personal, salvo que
+    Planning avise que ese lunes si llego la gente."""
+    if fecha.weekday() == 5:
+        return PPY_HORAS_SABADO
+    if fecha.weekday() == 0 and not turno_completo:
+        return PPY_HORAS_LUNES
+    return None
+
+
+def _ppy_viernes_cierre(fecha):
+    """True si ese dia es el viernes en que cierra el mes (el del inventario).
+
+    El mes no puede cerrar entre semana, asi que el corte se recorre al viernes
+    MAS CERCANO al ultimo dia del mes, caiga antes o despues: agosto 2026
+    termina lunes 31 y cierra el viernes 28, pero septiembre termina miercoles
+    30 y cierra hasta el viernes 2 de octubre. Un viernes esta a <= 3 dias de
+    su fin de mes, y en esa ventana de 7 dias solo cabe un fin de mes, asi que
+    la correspondencia viernes<->mes es unica.
+    """
+    if fecha.weekday() != 4:
+        return False
+    return any(
+        (fecha + timedelta(days=n + 1)).month != (fecha + timedelta(days=n)).month
+        for n in range(-3, 4)
+    )
+
+
+def _ppy_horas_restantes(fecha, ahora=None, fin_min=None):
+    """Horas productivas del turno DIA que todavia quedan por delante ese dia.
+
+    El motor mide la capacidad contra las 9 h completas del turno, que a media
+    tarde ya no son ciertas: a las 16:00 solo queda 1.5 h de reloj para meter
+    algo nuevo. El UPH da las horas que pide cada lote; esto da contra cuantas
+    hay que compararlas para saber si aun se esta a tiempo de cambiarlo.
+
+    fin_min adelanta el cierre del turno (PPY_FIN_INVENTARIO_MIN los dias de
+    inventario); vale tambien para un dia futuro, que entonces ya no trae el
+    turno completo.
+    """
+    ahora = ahora or obtener_fecha_hora_mexico()
+    hoy = ahora.date()
+    if fecha < hoy:
+        return 0.0
+    turno = PPY_HORAS_SABADO if fecha.weekday() == 5 else PPY_HORAS_TURNO
+    fin = _ppy_fin_turno(fecha) if fin_min is None else int(fin_min)
+    desde = PPY_TURNO_INICIO_MIN
+    if fecha == hoy:
+        desde = max(desde, ahora.hour * 60 + ahora.minute)
+    if desde <= PPY_TURNO_INICIO_MIN and fin >= PPY_TURNO_FIN_MIN:
+        # Dia entero por delante. Las horas del sabado son politica (8 h), no
+        # reloj, asi que se toman de ahi; lo autorizado despues de las 17:30 se
+        # suma tal cual porque ya no hay descansos que descontar.
+        return round(turno + max(0.0, (fin - PPY_TURNO_FIN_MIN) / 60.0), 2)
+    return _ppy_horas_productivas(desde, fin)
 
 
 def _ppy_hhmm(total_minutos):
@@ -3069,9 +3779,16 @@ def _ppy_crear_propuesta(
     tiempo_extra=False,
     adelanto_max_dias=None,
     adelantar_d1=True,
+    horas_restantes_hoy=None,
+    turno_completo=False,
 ):
     """Calcula y persiste un borrador; no modifica schedule ni lotes."""
     excluded_parts = _ppy_normalizar_partes_excluidas(excluded_parts)
+    # Si el rango empieza HOY, el turno ya va corriendo: la capacidad de hoy es
+    # lo que queda de reloj, no las 9 h completas. Se congela aqui para que el
+    # apply re-simule con el mismo techo (si no, el reloj avanza y sale STALE).
+    if horas_restantes_hoy is None and fecha_ini == obtener_fecha_hora_mexico().date():
+        horas_restantes_hoy = _ppy_horas_restantes(fecha_ini)
     max_bloques = (
         None if not max_bloques else max(1, min(int(max_bloques), PPY_BLOQUES))
     )
@@ -3088,6 +3805,8 @@ def _ppy_crear_propuesta(
         expandir_dias=expandir_dias, max_bloques=max_bloques,
         sabados=sabados, tiempo_extra=tiempo_extra,
         adelanto_max_dias=adelanto_max_dias, adelantar_d1=adelantar_d1,
+        horas_restantes_hoy=horas_restantes_hoy,
+        turno_completo=turno_completo,
     )
     # Los parametros que forman el resultado se guardan para replicarlos en el
     # apply: sin esto la re-simulacion de frescura corre con otros params y la
@@ -3101,6 +3820,8 @@ def _ppy_crear_propuesta(
         "tiempo_extra": tiempo_extra,
         "adelanto_max_dias": adelanto_max_dias,
         "adelantar_d1": adelantar_d1,
+        "horas_restantes_hoy": horas_restantes_hoy,
+        "turno_completo": turno_completo,
     }
     schedule_snapshot = _ppy_schedule_snapshot(fecha_ini, fecha_fin)
     _ppy_attach_schedule_actual(propuestas, fecha_ini, fecha_fin)
@@ -3433,6 +4154,8 @@ def _ppy_aplicar_propuesta(public_id, usuario, *, version=1, items=None):
             tiempo_extra=params["tiempo_extra"],
             adelanto_max_dias=params["adelanto_max_dias"],
             adelantar_d1=params["adelantar_d1"],
+            horas_restantes_hoy=params["horas_restantes_hoy"],
+            turno_completo=params["turno_completo"],
         )
         _ppy_attach_schedule_actual(
             actuales, fecha_ini, fecha_fin, query=tx_query
@@ -4346,6 +5069,29 @@ def _ppy_es_dia_produccion(dia, sabados=None):
     return bool(sabados) and dia.weekday() == 5 and dia in sabados
 
 
+def _ppy_dia_limite(primera_falta, hora_necesaria, horas_lote):
+    """Ultimo dia de PRODUCCION en que ese lote todavia llega a tiempo.
+
+    LG ocupa la parte el dia `primera_falta` a `hora_necesaria`. Producirla ese
+    mismo dia solo sirve si cabe entre que abre el turno y esa hora: si LG la
+    mete a las 07:30 no hay ni un minuto, tiene que estar lista el dia anterior.
+    Sin hora conocida se respeta el dia del faltante, como siempre.
+    """
+    if not hora_necesaria:
+        return primera_falta
+    # Tampoco sirve el hueco posterior a la hora en que ese dia se deja de
+    # producir (el lunes, 16:00): ahi ya no hay quien lo corra.
+    fin = min(hora_necesaria.hour * 60 + hora_necesaria.minute,
+              _ppy_fin_turno(primera_falta))
+    disponibles = _ppy_horas_productivas(PPY_TURNO_INICIO_MIN, fin)
+    if disponibles >= horas_lote:
+        return primera_falta
+    f = primera_falta - timedelta(days=1)
+    while not _ppy_es_dia_produccion(f):
+        f -= timedelta(days=1)
+    return f
+
+
 def _ppy_sumar_dias_produccion(dia, dias):
     """Fecha tras avanzar N dias de PRODUCCION (L-V) desde `dia`.
 
@@ -4608,11 +5354,13 @@ def _ppy_proyeccion_rango(fecha_ini, fecha_fin, query=None, replanear_desde=None
 
 
 def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest, estricto=True,
-                     horas_ocupadas=None):
+                     horas_ocupadas=None, apretado=False):
     """Ajusta los candidatos a las horas disponibles por linea (9 h sin TE).
 
     candidatos: [{part_no, falt_total, falt_hoy, primera_falta(date), line,
-                  uph, pack, model, main_sub}]
+                  uph, pack, model, main_sub, hora_necesaria}]
+    apretado: el dia no da para todo, asi que se secuencia por la hora en que LG
+              ocupa cada parte en vez de agrupar por familia.
     horas_rest: {bloque: horas disponibles} (se muta al asignar). La capacidad
         son hasta 5 turnos de 9 h flexibles, no 9 h por linea: ver PPY_BLOQUES y
         _ppy_horas_iniciales().
@@ -4637,24 +5385,44 @@ def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest, estricto=True,
     estricto=False (propuesta de schedule): pack faltante se asume
     PPY_PACK_DEFAULT y sin UPH la parte entra sin presupuesto de horas.
     """
-    familias = {}
-    for c in candidatos:
-        familias.setdefault(_ppy_familia(c["part_no"]), []).append(c)
-    orden = sorted(
-        familias.items(),
-        key=lambda item: (
-            min(c["primera_falta"] for c in item[1]),
-            -max(c["falt_total"] for c in item[1]),
-            item[0],
-        ),
-    )
+    # Lo que manda es el ultimo dia en que el lote llega a tiempo, no el dia en
+    # que LG lo ocupa: una parte que entra mañana a las 07:30 hay que hacerla
+    # HOY, asi que compite con los faltantes de hoy, no con los de mañana.
+    limite = lambda c: c.get("falta_efectiva") or c["primera_falta"]
+    if apretado:
+        # El dia no alcanza para todo: juntar por familia deja de importar y
+        # manda la hora a la que LG ocupa cada parte (Planned Start Time del
+        # PPN). Si una se ocupa a las 10:00 hay que arrancarla desde que abre.
+        # Cada candidato va en su propio grupo para que no herede la linea del
+        # anterior, y el pase 3 reparte las horas en este orden.
+        orden = [
+            (c["part_no"], [c])
+            for c in sorted(candidatos, key=lambda c: (
+                limite(c),
+                c.get("hora_necesaria") or PPY_HORA_SIN_DATO,
+                -c["falt_total"],
+                c["part_no"],
+            ))
+        ]
+    else:
+        familias = {}
+        for c in candidatos:
+            familias.setdefault(_ppy_familia(c["part_no"]), []).append(c)
+        orden = sorted(
+            familias.items(),
+            key=lambda item: (
+                min(limite(c) for c in item[1]),
+                -max(c["falt_total"] for c in item[1]),
+                item[0],
+            ),
+        )
 
     lotes = []
     fuera = []
     plan = []       # pase 1: [(candidato, linea, qty_obj, pack, adelanto)]
     pedidas = {}    # linea -> horas que necesitaria para todo su faltante
     for _familia, grupo in orden:
-        grupo.sort(key=lambda c: (c["primera_falta"], -c["falt_total"], c["part_no"]))
+        grupo.sort(key=lambda c: (limite(c), -c["falt_total"], c["part_no"]))
         linea_familia = None
         for c in grupo:
             pack = c["pack"] if c["pack"] and c["pack"] > 0 else None
@@ -4739,6 +5507,25 @@ def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest, estricto=True,
     asignacion = _ppy_repartir_bloques(pedidas, horas_rest)
     libre = {linea: horas for linea, (_b, horas) in asignacion.items()}
 
+    # D3 pide mas gente: MIENTRAS CORRE, su personal sale de otro equipo, que
+    # pierde exactamente esas horas (4 h de D3 = 4 h menos, no el dia entero).
+    # Se cobran a la linea con mas carga asignada, para no borrar de un golpe a
+    # una chica; si aun asi una queda en cero, esa es la que para y lo dice.
+    paradas_por_d3 = []
+    if "D3" in asignacion:
+        resto = (min(pedidas.get("D3", 0.0), libre.get("D3", 0.0))
+                 * PPY_D3_HORAS_POR_HORA)
+        for linea in sorted(libre, key=lambda l: (-libre[l], l)):
+            if resto <= 1e-9:
+                break
+            if linea == "D3" or libre[linea] <= 0:
+                continue
+            quita = min(libre[linea], resto)
+            libre[linea] -= quita
+            resto -= quita
+            if libre[linea] <= 1e-9:
+                paradas_por_d3.append(linea)
+
     # Pase 3: cantidades ajustadas al cupo que le toco a cada linea.
     for c, linea, qty_obj, pack, adelanto in plan:
         bloque = (asignacion.get(linea) or (None, 0.0))[0]
@@ -4748,12 +5535,21 @@ def _ppy_armar_lotes(candidatos, lineas_activas, horas_rest, estricto=True,
             # No quedan horas en el bloque de su linea: aqui es donde entraria
             # el tiempo extra si planning lo autoriza.
             fuera.append({"part_no": c["part_no"], "qty": qty_obj,
-                          "motivo": "sin horas disponibles en el turno de " + linea})
+                          "motivo": (
+                              f"D3 corre hoy y ocupa el personal de un equipo: "
+                              f"{linea} no trabaja"
+                              if linea in paradas_por_d3
+                              else "sin horas disponibles en el turno de " + linea)})
             continue
         libre[linea] -= qty / c["uph"]
         notas = []
         if adelanto:
             notas.append(f"Adelanto: falta el {c['primera_falta'].strftime('%d/%m')}")
+        if c.get("hora_necesaria") and limite(c) < c["primera_falta"]:
+            notas.append(
+                f"LG lo ocupa el {c['primera_falta'].strftime('%d/%m')} a las "
+                f"{c['hora_necesaria'].strftime('%H:%M')}: tiene que salir antes"
+            )
         if qty < qty_obj:
             notas.append("parcial por horas")
         lotes.append({**c, "qty": qty, "linea": linea, "grupo": bloque,
@@ -4873,6 +5669,27 @@ def api_ppy_propuesta_grid(public_id):
         return jsonify({"success": False, "error": str(e)}), 404
     except Exception as e:
         logger.error("Error en api_ppy_propuesta_grid: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/plan-proyectado/propuesta/<public_id>/part-excel", methods=["GET"])
+@login_requerido
+@requiere_permiso_dropdown(PP_PERMISO_PAGINA, PP_PERMISO_SECCION, PROY_PERMISO_BOTON)
+def api_ppy_propuesta_part_excel(public_id):
+    """Baja el Part de Planning con el renglon S ya actualizado (sin aplicar)."""
+    try:
+        if not _PPY_UUID_RE.match(str(public_id or "")):
+            return jsonify({"success": False, "error": "propuesta invalida"}), 400
+        usuario = session.get("usuario") or "SISTEMA"
+        contenido, nombre = _pp_part_excel_propuesta(public_id, usuario)
+        return send_file(
+            io.BytesIO(contenido), as_attachment=True, download_name=nombre,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
+    except Exception as e:
+        logger.error("Error en api_ppy_propuesta_part_excel: %s", e, exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -5009,7 +5826,7 @@ def api_ppy_generate():
             if not proj:
                 continue
             # Solo dispara el faltante real (I < 0); al reponer, el lote
-            # deja el inventario en PPY_REMAIN_IDEAL, no en cero.
+            # deja el inventario en el remain ideal de su linea, no en cero.
             min_i = min(proj.values())
             if min_i >= 0:
                 continue
@@ -5017,7 +5834,7 @@ def api_ppy_generate():
             candidatos.append(
                 {
                     "part_no": p,
-                    "falt_total": PPY_REMAIN_IDEAL - min_i,
+                    "falt_total": _ppy_remain_ideal(d["line"]) - min_i,
                     "falt_hoy": max(0, -i_hoy),
                     "primera_falta": min(f for f, v in proj.items() if v < 0),
                     "line": d["line"],
@@ -5155,7 +5972,7 @@ def api_ppy_generate_faltantes():
             # Solo el faltante real; el lote deja el remanente ideal.
             min_i = min(valores)
             if min_i < 0:
-                faltantes[p] = PPY_REMAIN_IDEAL - min_i
+                faltantes[p] = _ppy_remain_ideal(d["line"]) - min_i
 
         datos_raw = _ppy_datos_raw(list(faltantes))
         nuevos = []

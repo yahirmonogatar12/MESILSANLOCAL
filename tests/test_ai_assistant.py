@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -1932,7 +1933,13 @@ def test_main_template_incluye_panel_y_metadatos_de_permiso():
     assert 'class="ai-launcher-logo"' in partial
     assert "icons/1538298822.svg" in partial
     assert '>Asistente</span>' not in partial.split('</button>', 1)[0]
-    assert "20260730c" in main  # cache-buster de ai-assistant.js/css
+    # Cache-buster en el js y el css del asistente. Se comprueba que exista y
+    # tenga forma de fecha, no su valor: fijar la version rompia el test en cada
+    # cambio de front, que es justo cuando hay que subirla.
+    for asset in ("js/ai-assistant.js", "css/ai-assistant.css"):
+        assert re.search(
+            re.escape(asset) + r"',\s*v='20\d{6}[a-z]?'", main
+        ), f"falta el cache-buster de {asset}"
 
 
 def test_cliente_permite_eliminar_chat_con_confirmacion():
@@ -2531,3 +2538,37 @@ def test_enrutador_de_analisis_selecciona_reporte_detallado():
     assert ai_assistant._detailed_analysis_report(
         "Cuántas entradas tuvo almacén en el turno nocturno"
     ) is None
+
+
+def test_texto_import_no_repregunta_el_schedule_ya_sincronizado():
+    """Con con_schedule el renglon S ya entro: volver a preguntarlo es mentir."""
+    from app.api.portal.ai_assistant import _plan_completion_text
+
+    base = {"plan_partes": 487, "plan_registros": 3688, "plan_fechas": 96,
+            "inventario_partes": 404, "import_id": 54,
+            "inventario_encontrado": True, "schedules_disponibles": 595}
+
+    # Sin con_schedule: sigue preguntando, como siempre.
+    solo = _plan_completion_text("plan_importar_ejecutar", base, "es")
+    assert "¿Quieres sincronizar también el Schedule?" in solo
+
+    # Con con_schedule: reporta lo que hizo y NO pregunta.
+    ambos = _plan_completion_text("plan_importar_ejecutar", {
+        **base, "schedule": {"parts": 129, "schedules": 525, "replaced": 480},
+    }, "es")
+    assert "¿Quieres sincronizar" not in ambos
+    assert "525" in ambos and "129" in ambos and "480" in ambos
+
+    # Si el segundo paso trono, se dice; tampoco se pregunta como si nada.
+    falla = _plan_completion_text("plan_importar_ejecutar", {
+        **base, "schedule_error": "Assy line inactiva",
+    }, "es")
+    assert "¿Quieres sincronizar" not in falla
+    assert "SÍ se importaron" in falla and "Assy line inactiva" in falla
+
+    # Los tres idiomas siguen la misma regla.
+    for lang in ("en", "ko"):
+        txt = _plan_completion_text("plan_importar_ejecutar", {
+            **base, "schedule": {"parts": 129, "schedules": 525, "replaced": 480},
+        }, lang)
+        assert "525" in txt and "?" not in txt.split("525")[1][:80]

@@ -144,8 +144,15 @@ def _plan_completion_text(action: str, result: dict[str, Any], language: str) ->
     if action == "plan_importar_ejecutar":
         # El Schedule (renglon S) no se sincroniza en el import; si el archivo
         # trae hoja Part N con renglones S, se pregunta si sincronizarlos.
+        # Salvo que se haya pedido con_schedule: ahi ya viene hecho (o fallado)
+        # en la misma confirmacion y preguntarlo otra vez seria mentir.
+        sched = result.get("schedule")
+        sched_err = result.get("schedule_error")
         sched_disp = int(result.get("schedules_disponibles") or 0)
-        preguntar_sched = bool(result.get("inventario_encontrado")) and sched_disp > 0
+        preguntar_sched = (
+            bool(result.get("inventario_encontrado")) and sched_disp > 0
+            and not sched and not sched_err
+        )
         if language == "ko":
             base = (
                 "**가져오기가 완료되었습니다.**\n\n"
@@ -159,6 +166,18 @@ def _plan_completion_text(action: str, result: dict[str, Any], language: str) ->
                 base += (
                     f"\n\n재고와 수요를 동기화했습니다. 파일에 Planning의 스케줄"
                     f"(S행) **{sched_disp:,}**건이 있습니다. **스케줄도 동기화할까요?** (예/아니오)"
+                )
+            elif sched:
+                base += (
+                    f"\n\n스케줄(S행)도 같은 작업에서 동기화했습니다: 부품 "
+                    f"**{int(sched.get('parts') or 0):,}**개, 일정 "
+                    f"**{int(sched.get('schedules') or 0):,}**개 (기존 "
+                    f"**{int(sched.get('replaced') or 0):,}**개 교체)."
+                )
+            elif sched_err:
+                base += (
+                    f"\n\n**주의:** 재고와 수요는 반영되었지만 스케줄은 실패했습니다: "
+                    f"{sched_err}. 스케줄만 다시 시도할 수 있습니다."
                 )
             return base
         if language == "en":
@@ -176,6 +195,18 @@ def _plan_completion_text(action: str, result: dict[str, Any], language: str) ->
                     f"**{sched_disp:,}** Planning schedule rows (row S). "
                     f"**Do you want to sync the Schedule too?** (yes/no)"
                 )
+            elif sched:
+                base += (
+                    f"\n\nThe Schedule (row S) was synced in the same operation: "
+                    f"**{int(sched.get('parts') or 0):,}** parts and "
+                    f"**{int(sched.get('schedules') or 0):,}** schedules, replacing "
+                    f"**{int(sched.get('replaced') or 0):,}** prior records."
+                )
+            elif sched_err:
+                base += (
+                    f"\n\n**Careful:** inventory and demand were imported, but the "
+                    f"Schedule was NOT: {sched_err}. You can retry just the Schedule."
+                )
             return base
         base = (
             "**Importación completada correctamente.**\n\n"
@@ -190,6 +221,18 @@ def _plan_completion_text(action: str, result: dict[str, Any], language: str) ->
                 f"\n\nEl inventario y la demanda quedaron sincronizados. El archivo "
                 f"trae **{sched_disp:,}** renglones de Schedule (renglón S) de "
                 f"Planning. **¿Quieres sincronizar también el Schedule?** (sí/no)"
+            )
+        elif sched:
+            base += (
+                f"\n\nEl **Schedule (renglón S)** se sincronizó en la misma "
+                f"operación: **{int(sched.get('parts') or 0):,}** partes y "
+                f"**{int(sched.get('schedules') or 0):,}** schedules, reemplazando "
+                f"**{int(sched.get('replaced') or 0):,}** registros anteriores."
+            )
+        elif sched_err:
+            base += (
+                f"\n\n**Ojo:** el inventario y la demanda SÍ se importaron, pero el "
+                f"Schedule NO: {sched_err}. Puedes reintentar solo el Schedule."
             )
         return base
 
@@ -533,10 +576,10 @@ def _upload_lookup(conversation_id: int):
         ultimo = max(candidatos, key=lambda p: p.stat().st_mtime)
         return _read(ultimo)
 
-    def recientes(limite=4):
+    def recientes(limite=6):
         """[(bytes, filename)] de los Excel de la conversacion, del mas nuevo al
-        mas viejo. Comparar dos PPN necesita mas de un adjunto: el chat sube uno
-        por turno, asi que el segundo llega en un turno anterior."""
+        mas viejo. Armar el dia necesita varios adjuntos a la vez: PPN de ayer y
+        de hoy, Prod Plan de OVEN de ayer y de hoy, y el Cal."""
         if not base.is_dir():
             return []
         candidatos = sorted(

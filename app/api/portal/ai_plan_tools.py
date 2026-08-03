@@ -29,6 +29,7 @@ from app.api.pda.shipping_material import get_dict_cursor
 
 from app.api.control_produccion import part_planning as pp
 from app.api.control_produccion import ppn
+from app.api.shared.datetime_helpers import obtener_fecha_hora_mexico
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,8 @@ _TOKEN_TTL = 900  # 15 min: la confirmacion caduca
 # Dias de demanda que se comparan entre dos PPN: la ventana que el plan del dia
 # puede cubrir. ponytail: fijo; si el horizonte de planeacion crece, sube aqui.
 PPN_VENTANA_CAMBIOS = 7
+# Un dia completo son 5 adjuntos: PPN ayer+hoy, Prod Plan ayer+hoy y el Cal.
+PPN_MAX_ADJUNTOS = 6
 
 TOOL_NAMES = frozenset({
     "plan_estado_faltantes",
@@ -230,6 +233,10 @@ def _importar_plan_e_inventario(file_bytes: bytes, filename: str, usuario: str) 
         parts_inv = 0
         sched_n = 0
         if inv_ok:
+            # Se guarda el archivo tal cual para poder devolverlo despues con el
+            # renglon S ya actualizado con la propuesta.
+            pp._pp_guardar_part_file(cursor, file_bytes, filename,
+                                     inv["sheet_name"], ref_lunes, usuario)
             sql_inv = (
                 "INSERT INTO lg_part_inventory "
                 "(part_no, board, line, lgemm, isemm, svc, dif, pendiente, rework, "
@@ -278,40 +285,65 @@ def _importar_plan_e_inventario(file_bytes: bytes, filename: str, usuario: str) 
     }
 
 
-def _ppn_par(file_lookup, limite: int = 4):
-    """Los dos PPN mas recientes de la conversacion, ordenados (anterior, actual).
+def _reportes(file_lookup, limite: int = PPN_MAX_ADJUNTOS):
+    """Reportes de LG adjuntos, agrupados: {fuente: [(fecha, wos, bytes, nombre)]}.
 
-    El asistente sube un archivo por turno, asi que comparar dos PPN significa
-    buscarlos entre los adjuntos. El orden lo da la fecha DENTRO del archivo, no
-    el orden en que se subieron.
+    Cada lista va del mas viejo al mas nuevo por la fecha de ADENTRO del archivo,
+    no por el orden en que se subieron. PPN (tarjetas) y OVEN (Prod Plan) son
+    flujos distintos y nunca se comparan entre si.
     """
     recientes = getattr(file_lookup, "recientes", None)
-    archivos = recientes(limite) if recientes else []
-    ppns = []
-    for file_bytes, filename in archivos:
+    grupos: dict[str, list] = {}
+    for file_bytes, filename in (recientes(limite) if recientes else []):
         if not file_bytes:
             continue
         try:
             leido = ppn.leer_bytes(file_bytes)
         except ValueError as e:
-            logger.warning("ai_plan_tools: PPN ilegible (%s): %s", filename, e)
+            logger.warning("ai_plan_tools: reporte LG ilegible (%s): %s", filename, e)
             continue
         if leido:
-            ppns.append((leido[0], leido[1], file_bytes, filename or "PPN.xlsx"))
-        if len(ppns) == 2:
-            break
-    if len(ppns) < 2:
-        raise ValueError(
-            "Necesito los dos PPN. Sube primero el del dia anterior y luego el "
-            f"de hoy (encontre {len(ppns)} en esta conversacion)."
-        )
-    ppns.sort(key=lambda x: x[0])
-    if ppns[0][0] == ppns[1][0]:
-        raise ValueError("Los dos archivos son del mismo dia; sube el PPN del dia anterior.")
-    return ppns[0], ppns[1]
+            fecha0, wos, fuente = leido
+            grupos.setdefault(fuente, []).append(
+                (fecha0, wos, file_bytes, filename or "reporte.xlsx")
+            )
+    for lista in grupos.values():
+        lista.sort(key=lambda x: x[0])
+    return grupos
 
 
-def _cal_adjunto(file_lookup, limite: int = 4):
+def _base_de(fuente: str, previos: list):
+    """(fecha, baseline) contra la que medir el consumo de LG, o None si no hay.
+
+    Primero el reporte anterior adjunto; si no lo subieron, el snapshot que quedo
+    en BD del ultimo import de esa fuente. Por eso basta con subir el del dia:
+    el de ayer ya se guardo ayer.
+    """
+    if previos:
+        fecha, wos = previos[-1][0], previos[-1][1]
+        return fecha, ppn.baseline(fecha, wos)
+    fecha, base = pp._pp_ppn_baseline(fuente)
+    return (fecha, base) if base else None
+
+
+def _ppn_par(file_lookup, limite: int = PPN_MAX_ADJUNTOS):
+    """Los dos reportes del mismo tipo mas recientes, (anterior, actual)."""
+    grupos = _reportes(file_lookup, limite)
+    for lista in grupos.values():
+        if len(lista) >= 2:
+            if lista[-2][0] == lista[-1][0]:
+                raise ValueError(
+                    "Los dos archivos son del mismo dia; sube el del dia anterior."
+                )
+            return lista[-2], lista[-1]
+    raise ValueError(
+        "Necesito dos reportes del mismo tipo (dos PPN, o dos Prod Plan de OVEN): "
+        "el del dia anterior y el de hoy. Encontre "
+        f"{sum(len(v) for v in grupos.values())} reporte(s) en esta conversacion."
+    )
+
+
+def _cal_adjunto(file_lookup, limite: int = PPN_MAX_ADJUNTOS):
     """El Cal/plan mas reciente entre los adjuntos (el que no es PPN)."""
     recientes = getattr(file_lookup, "recientes", None)
     for file_bytes, filename in (recientes(limite) if recientes else []):
@@ -326,29 +358,42 @@ def _cal_adjunto(file_lookup, limite: int = 4):
     return None, None
 
 
-def _ppn_comparar(anterior, actual) -> dict[str, Any]:
-    """Que construyo LG de verdad y como se movio la demanda entre dos PPN."""
-    fecha_ant, wos_ant, _, nombre_ant = anterior
+def _ppn_comparar(base, actual, anterior=None) -> dict[str, Any] | None:
+    """Que construyo LG de verdad y como se movio la demanda. None si no hay base.
+
+    base: (fecha, baseline) del reporte anterior, venga de otro adjunto o del
+    snapshot en BD. anterior: ese reporte completo cuando SI esta adjunto; solo
+    entonces se puede medir ademas el movimiento de la demanda.
+    """
+    if not base or not base[0] or not base[1]:
+        return None
+    fecha_ant, base_wos = base
     fecha_act, wos_act, _, nombre_act = actual
-    renglones, sin_consumir = ppn.sobrante(ppn.baseline(fecha_ant, wos_ant), wos_act)
+    if fecha_ant >= fecha_act:
+        return None  # el snapshot ya es de hoy: la correccion ya se aplico
+    renglones, sin_consumir = ppn.sobrante(base_wos, wos_act)
     plan_u = sum(r[1] for r in renglones)
     real_u = sum(r[2] for r in renglones)
 
-    # Como se movio la demanda en la ventana accionable. Mas alla de eso el PPN
-    # se mueve solo por W/O que LG agrega o quita, ruido para el plan del dia.
-    dem_ant = ppn.demanda(wos_ant)
-    dem_act = ppn.demanda(wos_act)
-    corte = fecha_act + timedelta(days=PPN_VENTANA_CAMBIOS)
+    # Como se movio la demanda en la ventana accionable. Mas alla de eso el
+    # reporte se mueve solo por W/O que LG agrega o quita, ruido para el dia.
     movs: dict[str, int] = {}
-    for clave in set(dem_ant) | set(dem_act):
-        parte, f = clave
-        if not (fecha_act <= f <= corte):
-            continue
-        delta = dem_act.get(clave, 0) - dem_ant.get(clave, 0)
-        if delta:
-            movs[parte] = movs.get(parte, 0) + delta
+    if anterior:
+        dem_ant = ppn.demanda(anterior[1])
+        dem_act = ppn.demanda(wos_act)
+        corte = fecha_act + timedelta(days=PPN_VENTANA_CAMBIOS)
+        for clave in set(dem_ant) | set(dem_act):
+            parte, f = clave
+            if not (fecha_act <= f <= corte):
+                continue
+            delta = dem_act.get(clave, 0) - dem_ant.get(clave, 0)
+            if delta:
+                movs[parte] = movs.get(parte, 0) + delta
 
+    nombre_ant = anterior[3] if anterior else f"snapshot en MES del {fecha_ant}"
     return {
+        # OVEN no trae acumulado construido; es lo que distingue a los dos flujos.
+        "fuente": "OVEN" if any(w["result"] is None for w in wos_act.values()) else "PPN",
         "ppn_anterior": nombre_ant,
         "ppn_actual": nombre_act,
         "dia_evaluado": fecha_ant.isoformat(),
@@ -358,7 +403,7 @@ def _ppn_comparar(anterior, actual) -> dict[str, Any]:
         "unidades_atrasadas": plan_u - real_u,
         "cumplimiento_pct": round(100 * real_u / plan_u, 1) if plan_u else None,
         "wo_desviados": [
-            {"wo": wo, "modelo": wos_ant[wo]["modelo"], "planeado": p,
+            {"wo": wo, "modelo": base_wos[wo].get("modelo", ""), "planeado": p,
              "construido": r, "atraso": p - r}
             for wo, p, r in sorted(renglones, key=lambda x: -(x[1] - x[2]))[:10]
             if p > r
@@ -506,13 +551,37 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                     "name": "plan_importar_preparar",
                     "description": (
                         "Analiza el ultimo Excel de plan adjunto y prepara su importacion. "
-                        "No modifica el MES; muestra el resumen y pide confirmacion posterior."
+                        "No modifica el MES; muestra el resumen y pide confirmacion posterior. "
+                        "Con con_schedule=true la MISMA confirmacion sincroniza tambien el "
+                        "renglon S: usalo cuando pidan 'sincroniza inventario Y schedule' o "
+                        "'los dos a la vez', en vez de encadenar plan_part_sincronizar."
                     ),
                     "strict": True,
                     "parameters": {
                         "type": "object",
-                        "properties": {},
-                        "required": [],
+                        "properties": {
+                            "con_schedule": {
+                                "type": ["boolean", "null"],
+                                "description": (
+                                    "true = una sola confirmacion importa plan e "
+                                    "inventario Y ADEMAS adopta el renglon S del "
+                                    "archivo como Schedule vigente (pisa lo que "
+                                    "haya, incluidas propuestas ya aplicadas). "
+                                    "null/false = solo plan e inventario, como "
+                                    "siempre, y el Schedule se pregunta aparte."
+                                ),
+                            },
+                            "alcance": {
+                                "type": ["string", "null"],
+                                "enum": ["main", "todos", None],
+                                "description": (
+                                    "Solo con con_schedule=true: 'main' sincroniza "
+                                    "unicamente M1-M4; null o 'todos' es el alcance "
+                                    "completo."
+                                ),
+                            },
+                        },
+                        "required": ["con_schedule", "alcance"],
                         "additionalProperties": False,
                     },
                 },
@@ -520,13 +589,14 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                     "type": "function",
                     "name": "plan_ppn_comparar",
                     "description": (
-                        "SOLO LECTURA. Compara los dos ultimos PPN adjuntos a la "
-                        "conversacion y reporta cuanto construyo LG de verdad el dia "
-                        "del PPN viejo, que material ya entregado quedo sin consumir "
-                        "en su piso, y como se movio la demanda por atrasos o "
-                        "adelantos. Usala cuando adjunten dos PPN o pidan 'compara "
-                        "estos PPN'. Devuelve confirm_token para aplicar el plan "
-                        "corregido con plan_ppn_aplicar."
+                        "SOLO LECTURA. Compara los dos ultimos reportes de LG del "
+                        "mismo tipo adjuntos a la conversacion (dos PPN de tarjetas "
+                        "o dos 'Prod Plan' de OVEN) y reporta cuanto construyo LG de "
+                        "verdad el dia del reporte viejo, que material ya entregado "
+                        "quedo sin consumir en su piso, y como se movio la demanda "
+                        "por atrasos o adelantos. Usala cuando adjunten dos PPN o dos "
+                        "Prod Plan, o pidan 'compara estos'. Devuelve confirm_token "
+                        "para aplicar el plan corregido con plan_ppn_aplicar."
                     ),
                     "strict": True,
                     "parameters": {
@@ -562,14 +632,17 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                 "type": "function",
                 "name": "plan_dia_preparar",
                 "description": (
-                    "Arma el dia con los archivos adjuntos y devuelve SOLO los "
-                    "renglones del turno que hay que cambiar. Toma lo que haya: el Cal "
-                    "del dia carga el plan LG, y si ademas estan los dos PPN (el de "
-                    "ayer y el de hoy) lo corrige con lo que LG realmente construyo. "
-                    "Si no hace falta cambiar nada devuelve sin_cambios y no pide "
-                    "confirmacion. USALA SIEMPRE que pidan cambios del turno, del dia "
-                    "o 'que hay que cambiar hoy' habiendo adjuntado el Cal o los PPN, "
-                    "en vez de preguntar que ajuste quieren."
+                    "Arma el dia con TODOS los archivos adjuntos de una sola vez y "
+                    "devuelve SOLO los renglones del turno que hay que cambiar, en "
+                    "una propuesta unica. Toma lo que haya: el Cal del dia carga el "
+                    "plan LG, y cada reporte de LG (PPN de tarjetas y 'Prod Plan' de "
+                    "OVEN) corrige su propio dia anterior con lo que LG realmente "
+                    "construyo; basta el del dia, la base de ayer sale del MES si no "
+                    "la adjuntan. Si no hace falta cambiar nada devuelve sin_cambios "
+                    "y no pide confirmacion. USALA SIEMPRE que pidan cambios del "
+                    "turno, del dia o 'que hay que cambiar hoy' habiendo adjuntado "
+                    "cualquiera de esos archivos, en vez de preguntar que ajuste "
+                    "quieren. Una sola llamada cubre PPN y OVEN juntos."
                 ),
                 "strict": True,
                 "parameters": {
@@ -579,8 +652,39 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                             "type": ["string", "null"],
                             "description": "Dia a revisar AAAA-MM-DD; null significa hoy",
                         },
+                        "inventario": {
+                            "type": ["boolean", "null"],
+                            "description": (
+                                "Solo el viernes de cierre de mes: true si ese "
+                                "dia se hara inventario (las lineas paran a las "
+                                "14:00), false si no. Mandalo null la primera "
+                                "vez: la herramienta avisa cuando toca "
+                                "preguntarlo y con que responder"
+                            ),
+                        },
+                        "turno_completo": {
+                            "type": ["boolean", "null"],
+                            "description": (
+                                "Solo importa en LUNES. Por default el lunes se "
+                                "planea hasta las 16:00 (7.5 h) porque tras el "
+                                "fin de semana suele faltar personal. true SOLO "
+                                "si Planning dice que ese lunes si llego la gente "
+                                "y se corre hasta las 17:30. NUNCA lo supongas."
+                            ),
+                        },
+                        "tiempo_extra": {
+                            "type": ["boolean", "null"],
+                            "description": (
+                                "true SOLO si Planning autoriza tiempo extra: "
+                                "cada bloque corre +3 h sobre lo que cierre ese "
+                                "dia (un lunes normal hasta 19:00, un dia normal "
+                                "hasta 20:30). NUNCA lo supongas para hacer que "
+                                "quepan los cambios: se pide."
+                            ),
+                        },
                     },
-                    "required": ["fecha"],
+                    "required": ["fecha", "inventario", "turno_completo",
+                                 "tiempo_extra"],
                     "additionalProperties": False,
                 },
             }
@@ -802,6 +906,16 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                                 "cubrir mas demanda antes de diferir. Default false."
                             ),
                         },
+                        "turno_completo": {
+                            "type": ["boolean", "null"],
+                            "description": (
+                                "Solo importa en LUNES. El lunes se planea hasta "
+                                "las 16:00 (7.5 h) porque tras el fin de semana "
+                                "suele faltar personal. Pon true SOLO si Planning "
+                                "avisa que ese lunes si llego la gente y se corre "
+                                "el turno completo hasta las 17:30. Default false."
+                            ),
+                        },
                         "sabados": {
                             "type": ["array", "null"],
                             "items": {"type": "string"},
@@ -838,7 +952,8 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
                         "fecha_inicio", "fecha_fin", "objetivo", "proceso_actual",
                         "partes_excluidas", "ajustes", "lotes_corriendo",
                         "agregados", "expandir_dias", "max_bloques",
-                        "tiempo_extra", "sabados", "adelanto_max_dias", "adelantar_d1",
+                        "tiempo_extra", "turno_completo", "sabados",
+                        "adelanto_max_dias", "adelantar_d1",
                     ],
                     "additionalProperties": False,
                 },
@@ -1006,6 +1121,9 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         if max_bloques:
             max_bloques = max(1, min(max_bloques, pp.PPY_BLOQUES))
         tiempo_extra = bool(arguments.get("tiempo_extra"))
+        # El lunes se corta a las 16:00 porque suele faltar gente; si Planning
+        # avisa que ese lunes si llego, corre las 9 h como cualquier dia.
+        turno_completo = bool(arguments.get("turno_completo"))
         # Sabados autorizados: solo los que caen dentro del rango pedido; el
         # motor descarta ademas los que no sean sabado.
         sabados = [
@@ -1022,6 +1140,10 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         # D1 build-ahead: default true; false = D1 no adelanta de a fuerza.
         ad1 = arguments.get("adelantar_d1")
         adelantar_d1 = True if ad1 is None else bool(ad1)
+        # Techo de reloj del primer dia. Normalmente lo calcula el motor solo;
+        # plan_dia_preparar lo manda ya recortado los dias de inventario, en que
+        # las lineas paran a las 14:00. No va en el schema: es interno.
+        horas_hoy = arguments.get("horas_restantes_hoy")
         propuesta = pp._ppy_crear_propuesta(
             fecha_inicio,
             fecha_fin,
@@ -1037,6 +1159,8 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             tiempo_extra=tiempo_extra,
             adelanto_max_dias=adelanto_max_dias,
             adelantar_d1=adelantar_d1,
+            horas_restantes_hoy=horas_hoy,
+            turno_completo=turno_completo,
         )
         pp._ppy_mark_proposal_pending(propuesta["proposal_id"], username)
         # Ajustes manuales por parte (capar cantidad, cambiar turno/linea o
@@ -1188,8 +1312,15 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "inventario_hoja": inv.get("sheet_name") if err2 is None else None,
             "inventario_partes": len(inv["inventory"]) if err2 is None else 0,
         }
+        # Un solo paso para inventario + schedule cuando lo piden asi. El token
+        # lleva la decision: se confirma exactamente lo que se previsualizo.
+        con_schedule = bool(arguments.get("con_schedule")) and err2 is None
+        alcance = str(arguments.get("alcance") or "todos").strip().lower()
         # El token liga el hash del archivo: confirmar importa exactamente lo previsualizado
-        token = _make_token("importar", {"sha": hashlib.sha256(file_bytes).hexdigest()})
+        token = _make_token("importar", {
+            "sha": hashlib.sha256(file_bytes).hexdigest(),
+            "con_schedule": con_schedule, "alcance": alcance,
+        })
         instruccion = "Muestra el resumen y pide al usuario confirmar la importacion."
         # Importar un archivo mas viejo que el ultimo revierte en silencio lo
         # que el mas nuevo actualizo (el upsert por parte+fecha gana el ultimo).
@@ -1218,12 +1349,28 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             instruccion += (" Avisa que el inventario NO se actualiza con este "
                             "archivo y que se usara el ya cargado.")
         else:
-            # Tiene hoja Part N: el import sincroniza inventario + demanda. El
-            # Schedule (renglon S) NO se importa aqui; se pregunta despues.
+            # Tiene hoja Part N. Por default el Schedule (renglon S) NO se
+            # importa aqui y se pregunta despues; con con_schedule va en la misma
+            # confirmacion, con su propia vista previa para que se vea que pisa.
             resumen["schedule_disponible"] = len(inv["schedules"])
-            instruccion += (" Aclara que se sincronizara inventario y demanda; el "
-                            "Schedule (renglon S) NO se importa en este paso y se "
-                            "preguntara si sincronizarlo despues de importar.")
+            if con_schedule:
+                resumen["schedule_incluido"] = pp._pp_sincronizar_schedule_excel(
+                    file_bytes, filename or "plan.xlsm", username,
+                    aplicar=False, alcance=alcance,
+                )
+                instruccion += (
+                    " Esta confirmacion hace LAS DOS COSAS: inventario y demanda, "
+                    "y ademas adopta el renglon S como Schedule vigente. Muestra "
+                    "los numeros de schedule_incluido (hoja, alcance, partes, "
+                    "schedules, rango) y ADVIERTE que eso PISA el Schedule actual, "
+                    "incluidas las propuestas que ya se hayan aplicado. Pide "
+                    "confirmacion explicita.")
+            else:
+                instruccion += (" Aclara que se sincronizara inventario y demanda; el "
+                                "Schedule (renglon S) NO se importa en este paso y se "
+                                "preguntara si sincronizarlo despues de importar. Si "
+                                "el usuario pide los dos a la vez, vuelve a llamar "
+                                "plan_importar_preparar con con_schedule=true.")
             # Es una foto semanal y el motor siempre usa la ultima (una fila por
             # parte, gana el ultimo import). Si esta foto es mas vieja que la ya
             # cargada, confirmar revierte el inventario. Solo se avisa; no bloquea.
@@ -1252,11 +1399,29 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             raise ValueError("El archivo ya no esta disponible; vuelve a adjuntarlo.")
         if payload.get("sha") != hashlib.sha256(file_bytes).hexdigest():
             raise ValueError("El archivo cambio desde la vista previa; vuelve a preparar la importacion.")
-        return _importar_plan_e_inventario(file_bytes, filename or "plan.xlsm", username)
+        salida = _importar_plan_e_inventario(file_bytes, filename or "plan.xlsm", username)
+        if payload.get("con_schedule"):
+            # Despues del inventario, nunca antes: el schedule se mide contra la
+            # foto que acaba de entrar. Va en su propia transaccion, asi que si
+            # falla aqui el inventario YA quedo importado; se dice, no se calla.
+            try:
+                salida["schedule"] = pp._pp_sincronizar_schedule_excel(
+                    file_bytes, filename or "plan.xlsm", username,
+                    aplicar=True, alcance=payload.get("alcance") or "todos",
+                )
+            except Exception as e:
+                salida["schedule_error"] = str(e)
+                salida["instruccion"] = (
+                    "El inventario y la demanda SI se importaron, pero el "
+                    "Schedule no: di exactamente eso y ofrece reintentar solo el "
+                    "Schedule con plan_part_sincronizar_preparar.")
+        return salida
 
     if name == "plan_ppn_comparar":
         anterior, actual = _ppn_par(file_lookup)
-        resumen = _ppn_comparar(anterior, actual)
+        resumen = _ppn_comparar(
+            (anterior[0], ppn.baseline(anterior[0], anterior[1])), actual, anterior
+        )
         token = _make_token("ppn_aplicar", {
             "sha_ant": hashlib.sha256(anterior[2]).hexdigest(),
             "sha_act": hashlib.sha256(actual[2]).hexdigest(),
@@ -1279,56 +1444,126 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             raise PermissionError(
                 "Necesitas permiso de Plan de produccion y de Proyeccion para armar el dia"
             )
-        # Trabaja con lo que haya adjunto: con los dos PPN corrige el consumo
-        # real de LG; con solo el Cal arma el dia sin esa correccion.
-        try:
-            anterior, actual = _ppn_par(file_lookup)
-        except ValueError as e:
-            anterior = actual = None
-            falta_ppn = str(e)
-        lg = _ppn_comparar(anterior, actual) if actual else None
-        # 1) PPN de hoy: demanda pendiente + correccion del dia que paso.
-        imp_ppn = _importar_ppn(
-            actual[2], actual[3], username,
-            (anterior[0], ppn.baseline(anterior[0], anterior[1])),
-        ) if actual else None
-        # 2) Cal del dia despues del PPN: es la demanda oficial y para las
-        #    partes compartidas trae mas que el PPN, asi que debe ganar de hoy
+        fecha = _parse_fecha(arguments.get("fecha"))
+        # 0) Cierre de mes: ese viernes puede haber inventario, y si lo hay las
+        #    lineas paran a las 14:00, o sea el dia trae menos horas. Nadie lo
+        #    sabe hasta preguntarlo, y se corta ANTES de importar los reportes
+        #    para no consumir su delta contra la base y quedarse a medias.
+        inventario = arguments.get("inventario")
+        if inventario is None and pp._ppy_viernes_cierre(fecha):
+            return {
+                "fecha": fecha.isoformat(),
+                "viernes_cierre_mes": True,
+                "instruccion": (
+                    f"El viernes {fecha:%d/%m} es el cierre de mes. PREGUNTA al "
+                    "usuario si ese dia se hara inventario, aclarando que si lo "
+                    "hay TODAS las lineas tienen que terminar produccion a las "
+                    "14:00 y el dia pierde horas de turno. Todavia no cargaste "
+                    "ni propusiste nada: espera la respuesta y vuelve a llamar "
+                    "plan_dia_preparar con inventario=true o inventario=false."
+                ),
+            }
+        # 1) Cada reporte de LG adjunto (PPN y/o OVEN): demanda pendiente mas la
+        #    correccion de su dia anterior. Basta con el del dia: si el de ayer
+        #    no viene adjunto, la base sale del snapshot que quedo en BD.
+        lg, cargados = {}, []
+        for fuente, lista in sorted(_reportes(file_lookup).items()):
+            actual = lista[-1]
+            base = _base_de(fuente, lista[:-1])
+            resumen = _ppn_comparar(base, actual, lista[-2] if len(lista) > 1 else None)
+            if resumen:
+                lg[fuente] = resumen
+            imp = _importar_ppn(actual[2], actual[3], username, base)
+            cargados.append(
+                f"{fuente}: {imp['plan_registros']} registros ({actual[3]})"
+                + ("" if resumen else "; sin base anterior, no se corrigio el dia que paso")
+            )
+        # 2) Cal del dia despues de los reportes: es la demanda oficial y para
+        #    las partes compartidas trae mas que ellos, asi que debe ganar de hoy
         #    en adelante. El dia corregido ya paso y el Cal no lo toca.
         cal_bytes, cal_nombre = _cal_adjunto(file_lookup)
         imp_cal = (
             _importar_plan_e_inventario(cal_bytes, cal_nombre, username)
             if cal_bytes else None
         )
-        if not actual and not imp_cal:
+        if not cargados and not imp_cal:
             raise ValueError(
-                "No encontre ni el Cal del dia ni los dos PPN entre los adjuntos. "
-                "Sube el Cal (y, si quieres corregir el atraso de LG, tambien el "
-                "PPN de ayer y el de hoy)."
+                "No encontre ni el Cal del dia ni un reporte de LG entre los "
+                "adjuntos. Sube el Cal y, si quieres corregir el atraso de LG, "
+                "tambien el PPN y/o el Prod Plan de OVEN de hoy."
             )
-        # 3) Que tendria que cambiar HOY con esos datos ya corregidos.
-        fecha = _parse_fecha(arguments.get("fecha"))
+        # 3) Que tendria que cambiar HOY con esos datos ya corregidos. Con
+        #    inventario el turno cierra a las 14:00, asi que la propuesta se arma
+        #    contra esas horas y no contra las 17:30 de siempre.
+        ahora = obtener_fecha_hora_mexico()
+        tiempo_extra = bool(arguments.get("tiempo_extra"))
+        turno_completo = bool(arguments.get("turno_completo"))
+        fin_min = pp._ppy_fin_turno(
+            fecha, inventario=bool(inventario), tiempo_extra=tiempo_extra,
+            turno_completo=turno_completo)
+        horas_rest = pp._ppy_horas_restantes(fecha, ahora, fin_min=fin_min)
         propuesta = execute(
             "plan_propuesta_preparar",
-            {"fecha_inicio": fecha.isoformat(), "fecha_fin": fecha.isoformat()},
+            {"fecha_inicio": fecha.isoformat(), "fecha_fin": fecha.isoformat(),
+             "horas_restantes_hoy": horas_rest, "tiempo_extra": tiempo_extra,
+             "turno_completo": turno_completo},
             username=username, file_lookup=file_lookup,
         )
         cambios = [
             c for c in propuesta.get("schedule_changes") or []
             if c.get("accion") != "CONSERVAR"
         ]
+        # El reloj manda: un cambio que pide mas horas de las que quedan de
+        # turno ya no se alcanza hoy por mucho que el plan lo pida.
+        # Las horas del turno son por linea (las lineas corren en paralelo), asi
+        # que la carga se acumula por linea, no en un solo total.
+        piden: dict[str, float] = {}
+        for c in cambios:
+            if c.get("accion") == "ELIMINAR":
+                continue  # quitar trabajo siempre cabe
+            c["alcanza_hoy"] = float(c.get("horas") or 0) <= horas_rest
+            linea = c.get("despues_linea") or c.get("antes_linea") or "SIN LINEA"
+            piden[linea] = round(piden.get(linea, 0.0) + float(c.get("horas") or 0), 2)
+        # Sub-ensamble: para surtir el ABQ/AJJ hay que producir antes su PCB, y
+        # de ese nivel el MES no tiene inventario. No se supone: se pregunta.
+        bom = pp._pp_sub_ensambles([c.get("part_no") for c in cambios])
+        sub_ensambles = [
+            {"part_no": c["part_no"], "pzas": int(c.get("despues_qty") or 0),
+             "sub_partes": bom[c["part_no"]]}
+            for c in cambios
+            if c.get("accion") != "ELIMINAR" and bom.get(c.get("part_no"))
+        ]
         salida = {
             "fecha": fecha.isoformat(),
+            "sub_ensambles": sub_ensambles,
+            "reloj": {
+                "hora_consultada": ahora.strftime("%H:%M"),
+                "horas_restantes_turno": horas_rest,
+                "cierra_turno": f"{fin_min // 60:02d}:{fin_min % 60:02d}" + "".join([
+                    " (inventario)" if inventario else "",
+                    " (lunes: falta gente)"
+                    if fecha.weekday() == 0 and not turno_completo else "",
+                    " +tiempo extra" if tiempo_extra else "",
+                ]),
+                "horas_que_piden_por_linea": piden,
+                "lineas_sin_tiempo": sorted(l for l, h in piden.items() if h > horas_rest),
+                "alcanza_el_turno": all(h <= horas_rest for h in piden.values()),
+                # El motor ya fijo lo que arranco: solo se toco lo posterior.
+                "hora_corte": propuesta.get("hora_corte_plan"),
+                "lotes_ya_fijados_por_hora": propuesta.get("lotes_fijados_por_hora"),
+            },
             "lg_ayer": {
-                k: lg[k] for k in
-                ("dia_evaluado", "unidades_planeadas", "unidades_construidas",
-                 "unidades_atrasadas", "pzas_sin_consumir")
-            } if lg else None,
+                fuente: {
+                    k: r[k] for k in
+                    ("dia_evaluado", "unidades_planeadas", "unidades_construidas",
+                     "unidades_atrasadas", "pzas_sin_consumir")
+                }
+                for fuente, r in lg.items()
+            } or None,
             "datos_cargados": {
-                "ppn": f"{imp_ppn['plan_registros']} registros ({actual[3]})" if imp_ppn
-                       else falta_ppn,
+                "reportes": cargados or "no se adjunto ningun PPN ni Prod Plan",
                 "cal": f"{imp_cal['plan_registros']} registros ({cal_nombre})" if imp_cal
-                       else "no se adjunto Cal; se uso solo el PPN",
+                       else "no se adjunto Cal; se uso solo el reporte de LG",
             },
             "sin_cambios": not cambios,
             "cambios": cambios,
@@ -1336,29 +1571,61 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "capacidad_libre": propuesta.get("capacidad_libre"),
             "excepciones": propuesta.get("exceptions"),
         }
+        sub_aviso = (
+            " ANTES de aplicar, PREGUNTA cuanto inventario hay de los PCB que "
+            "vienen en sub_ensambles: para surtir esas partes hay que producir "
+            "primero su PCB y el MES NO tiene ese inventario capturado, asi que "
+            "no lo supongas ni lo des por disponible. Nombra cada PCB con la "
+            "parte que lo consume y las piezas del lote. " if sub_ensambles else ""
+        )
+        inv_aviso = (
+            " Es el viernes de cierre de mes CON inventario: el dia se armo con "
+            "paro de todas las lineas a las 14:00, dilo al reportar las horas. "
+            if inventario else ""
+        )
+        # Las dos palancas del turno. Solo se ofrecen cuando el dia no alcanza:
+        # ninguna se activa sola, las dos las autoriza Planning.
+        if all(h <= horas_rest for h in piden.values()):
+            palancas = ""
+        else:
+            palancas = (
+                " No alcanza el turno. Ofrece (sin darlo por hecho) volver a "
+                "pedir el dia con tiempo_extra=true si Planning autoriza las +3 h"
+                + (", o con turno_completo=true si ese lunes SI llego la gente y "
+                   "se corre hasta las 17:30 en vez de las 16:00"
+                   if fecha.weekday() == 0 and not turno_completo else "")
+                + ". "
+            )
         sin_ppn = (
             "" if lg else
-            " No se compararon los dos PPN, asi que el plan NO trae la correccion "
-            "del consumo real de LG; dilo y ofrece que suban el PPN de ayer y el de "
-            "hoy para afinarlo. "
+            " No hubo con que comparar, asi que el plan NO trae la correccion del "
+            "consumo real de LG; dilo y ofrece que suban el PPN y/o el Prod Plan de "
+            "OVEN para afinarlo. "
         )
         if not cambios:
             salida["instruccion"] = (
-                ("Reporta lo que construyo LG ayer y d" if lg else "D")
+                ("Reporta por cada flujo (PPN de tarjetas, OVEN) lo que construyo LG "
+                 "ayer y d" if lg else "D")
                 + "i claramente que el turno de hoy NO necesita cambios: lo capturado "
                 "ya cubre el plan. No pidas confirmacion ni ofrezcas aplicar nada."
-                + sin_ppn
+                + inv_aviso + sin_ppn + sub_aviso
             )
             return salida
         salida["confirm_token"] = propuesta["confirm_token"]
         salida["proposal_id"] = propuesta.get("proposal_id")
         salida["instruccion"] = (
-            ("Reporta primero lo que LG construyo de verdad ayer y cuantas piezas ya "
-             "entregadas siguen en su piso. Luego l" if lg else "L")
+            ("Reporta primero, por cada flujo (PPN de tarjetas, OVEN), lo que LG "
+             "construyo de verdad ayer y cuantas piezas ya entregadas siguen en su "
+             "piso. Luego l" if lg else "L")
             + "ista SOLO los renglones que hay que cambiar en el turno (agregar, "
             "modificar o eliminar) con parte, linea y cantidad antes/despues; lo que "
-            "se conserva no se menciona. Aclara que el schedule aun no se toco y pide "
-            "confirmacion para aplicar esos cambios." + sin_ppn
+            "se conserva no se menciona. Di la hora consultada y cuantas horas de "
+            "turno quedan contra las que piden los cambios (campo 'reloj'); si "
+            "alcanza_el_turno es falso o algun renglon trae alcanza_hoy en falso, "
+            "marca cuales YA NO dan tiempo hoy y sugiere tiempo extra o pasarlos a "
+            "manana. Menciona los lotes que el motor ya fijo porque su hora calculada "
+            "arranco. Aclara que el schedule aun no se toco y pide confirmacion para "
+            "aplicar esos cambios." + palancas + inv_aviso + sin_ppn + sub_aviso
         )
         return salida
 

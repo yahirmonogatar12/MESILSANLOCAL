@@ -548,7 +548,7 @@
 .ai-proposal-modal {
     background:#0f1a2b; color:#e6edf6; border:1px solid #22304a; border-radius:12px;
     width:min(1180px,96vw); max-height:92vh; display:flex; flex-direction:column;
-    box-shadow:0 20px 60px rgba(0,0,0,.5); overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.5); overflow:hidden; position:relative;
 }
 .ai-proposal-head {
     display:flex; align-items:center; justify-content:space-between;
@@ -560,12 +560,35 @@
 }
 .ai-proposal-close:hover { color:#fff; }
 .ai-proposal-body { padding:14px 18px; overflow:auto; }
+/* Tapa el modal mientras se genera el Part: el Excel de Planning pesa varios MB
+   y tarda, asi que hay que ver que si esta trabajando (y no dejar doble clic). */
+.ai-proposal-wait {
+    position:absolute; inset:0; z-index:2; display:flex; gap:12px;
+    align-items:center; justify-content:center; flex-direction:column;
+    background:rgba(15,26,43,.86); color:#cfe0f7; font-size:13.5px;
+}
+.ai-proposal-wait::before {
+    content:''; width:30px; height:30px; border-radius:50%;
+    border:3px solid #2b3d5c; border-top-color:#7fb0ff;
+    animation:ai-proposal-spin .8s linear infinite;
+}
+@keyframes ai-proposal-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) {
+    .ai-proposal-wait::before { animation-duration:2.4s; }
+}
 .ai-proposal-group { margin-bottom:16px; }
 .ai-proposal-group-head {
     background:#1b2b45; color:#cfe0f7; font-weight:700; font-size:13px;
     padding:7px 12px; border-radius:6px 6px 0 0;
+    display:flex; align-items:center; gap:10px;
 }
 .ai-proposal-group-head.excede { background:#5a1f27; color:#ffd7dc; }
+.ai-proposal-group-name { flex:1 1 auto; }
+.ai-proposal-group-x {
+    flex:0 0 auto; background:none; border:0; cursor:pointer; padding:0 4px;
+    color:inherit; opacity:.55; font-size:13px; line-height:1;
+}
+.ai-proposal-group-x:hover { opacity:1; color:#ff9aa8; }
 .ai-proposal-table { width:100%; border-collapse:collapse; font-size:12.5px; }
 .ai-proposal-table th, .ai-proposal-table td {
     padding:5px 8px; border-bottom:1px solid #1c2942; text-align:left; white-space:nowrap;
@@ -584,11 +607,21 @@
 }
 .ai-proposal-del:hover { color:#fca5a5; }
 .ai-proposal-empty { color:#9fb2cc; padding:20px; text-align:center; }
+/* Zona de destino de un bloque recien abierto: sin esto el tbody mide cero y
+   no hay donde soltar. Se esconde en cuanto cae el primer lote. */
+.ai-proposal-drop td {
+    padding:18px; text-align:center; color:#7f93ad; font-size:12.5px;
+    border:1px dashed #2b3c5a; border-radius:6px; background:#111d31;
+}
 .ai-proposal-foot {
     display:flex; align-items:center; justify-content:space-between; gap:12px;
     padding:12px 18px; border-top:1px solid #22304a; background:#132239;
 }
-.ai-proposal-status { color:#9fb2cc; font-size:12.5px; }
+/* Total general, vivo: se recalcula con cada edicion de cantidad o borrado.
+   margin-right:auto en el status deja los dos pegados a la izquierda y los
+   botones a la derecha. */
+.ai-proposal-total { color:#e6edf6; font-size:13px; font-weight:700; white-space:nowrap; }
+.ai-proposal-status { color:#9fb2cc; font-size:12.5px; margin-right:auto; }
 .ai-proposal-actions { display:flex; gap:8px; }
 .ai-proposal-btn {
     padding:7px 14px; border:1px solid #2b3c5a; border-radius:6px; background:#1b2b45;
