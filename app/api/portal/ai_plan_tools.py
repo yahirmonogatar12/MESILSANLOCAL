@@ -61,6 +61,7 @@ TOOL_NAMES = frozenset({
     "plan_ppn_comparar",
     "plan_ppn_aplicar",
     "plan_dia_preparar",
+    "plan_bloqueo_parte",
 })
 
 
@@ -627,6 +628,59 @@ def tool_schemas(username: str) -> list[dict[str, Any]]:
             ]
         )
     if _has_plan(username) and _has_projection(username):
+        tools.append(
+            {
+                "type": "function",
+                "name": "plan_bloqueo_parte",
+                "description": (
+                    "Memoria del piso entre conversaciones. Guarda que una parte NO "
+                    "se puede producir y por que ('el 7421 no, falta material, llega "
+                    "el jueves'), la quita de las propuestas mientras siga bloqueada, "
+                    "y el dia que toca revisar hace que se PREGUNTE si ya se puede. "
+                    "USALA cuando Planning diga que algo no se puede producir, que ya "
+                    "se puede otra vez, o pregunte que hay bloqueado. Los bloqueos "
+                    "sobreviven al cierre del chat; no los guardes 'de memoria'."
+                ),
+                "strict": True,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "accion": {
+                            "type": "string",
+                            "enum": ["bloquear", "liberar", "listar"],
+                            "description": (
+                                "bloquear = deja de planearse; liberar = vuelve al "
+                                "plan; listar = solo consulta, no cambia nada"
+                            ),
+                        },
+                        "numero_parte": {
+                            "type": ["string", "null"],
+                            "description": (
+                                "Parte completa. Si Planning la nombra corta ('el "
+                                "7421'), complétala con la del plan; null solo en listar"
+                            ),
+                        },
+                        "motivo": {
+                            "type": ["string", "null"],
+                            "description": (
+                                "Por que no se puede, en las palabras de Planning "
+                                "('falta material'). Obligatorio al bloquear"
+                            ),
+                        },
+                        "revisar_el": {
+                            "type": ["string", "null"],
+                            "description": (
+                                "AAAA-MM-DD en que hay que volver a preguntar. Si "
+                                "dicen 'llega en 2 dias', calcula la fecha. null = no "
+                                "se pregunta sola y queda bloqueada hasta que la liberen"
+                            ),
+                        },
+                    },
+                    "required": ["accion", "numero_parte", "motivo", "revisar_el"],
+                    "additionalProperties": False,
+                },
+            }
+        )
         tools.append(
             {
                 "type": "function",
@@ -1439,6 +1493,40 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             ),
         }
 
+    if name == "plan_bloqueo_parte":
+        if not (_has_plan(username) and _has_projection(username)):
+            raise PermissionError(
+                "Necesitas permiso de Plan de produccion y de Proyeccion para "
+                "bloquear partes"
+            )
+        accion = str(arguments.get("accion") or "listar").strip().lower()
+        parte = str(arguments.get("numero_parte") or "").strip().upper()
+        if accion == "bloquear":
+            pp._pp_bloquear_parte(
+                parte, arguments.get("motivo"),
+                _parse_fecha(arguments.get("revisar_el"))
+                if arguments.get("revisar_el") else None,
+                username,
+            )
+        elif accion == "liberar":
+            pp._pp_desbloquear_parte(parte, username)
+        estado = pp._pp_bloqueos_activos()
+        return {
+            "accion": accion,
+            "bloqueos": estado["activos"],
+            "instruccion": (
+                {
+                    "bloquear": f"Confirma que {parte} queda fuera del plan y por que. "
+                                "Di desde cuando y, si trae fecha de revision, que ese "
+                                "dia se preguntara sola si ya se puede. Aclara que lo "
+                                "recordara aunque se cierre el chat.",
+                    "liberar": f"Confirma que {parte} vuelve a entrar al plan desde la "
+                               "proxima propuesta.",
+                }.get(accion, "Lista lo que hay bloqueado, con motivo y fecha de "
+                              "revision. Si no hay nada, dilo en una linea.")
+            ),
+        }
+
     if name == "plan_dia_preparar":
         if not (_has_plan(username) and _has_projection(username)):
             raise PermissionError(
@@ -1502,13 +1590,29 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             fecha, inventario=bool(inventario), tiempo_extra=tiempo_extra,
             turno_completo=turno_completo)
         horas_rest = pp._ppy_horas_restantes(fecha, ahora, fin_min=fin_min)
-        propuesta = execute(
-            "plan_propuesta_preparar",
-            {"fecha_inicio": fecha.isoformat(), "fecha_fin": fecha.isoformat(),
-             "horas_restantes_hoy": horas_rest, "tiempo_extra": tiempo_extra,
-             "turno_completo": turno_completo},
-            username=username, file_lookup=file_lookup,
-        )
+        # Lo que Planning dejo bloqueado en dias anteriores sigue valiendo: se
+        # saca del plan aqui, para que su capacidad la ocupe otra parte.
+        bloqueos = pp._pp_bloqueos_activos(hoy=fecha)
+        args_prop = {
+            "fecha_inicio": fecha.isoformat(), "fecha_fin": fecha.isoformat(),
+            "horas_restantes_hoy": horas_rest, "tiempo_extra": tiempo_extra,
+            "turno_completo": turno_completo,
+            "partes_excluidas": bloqueos["partes"],
+        }
+        try:
+            propuesta = execute("plan_propuesta_preparar", args_prop,
+                                username=username, file_lookup=file_lookup)
+        except ValueError as e:
+            # Una parte bloqueada que YA arranco hoy no se puede excluir (se
+            # borraria produccion real). Se planea sin esa exclusion y se dice.
+            if "no se pueden excluir" not in str(e):
+                raise
+            corriendo = [p for p in bloqueos["partes"] if p in str(e)]
+            args_prop["partes_excluidas"] = [
+                p for p in bloqueos["partes"] if p not in corriendo]
+            propuesta = execute("plan_propuesta_preparar", args_prop,
+                                username=username, file_lookup=file_lookup)
+            bloqueos["ya_corriendo"] = corriendo
         cambios = [
             c for c in propuesta.get("schedule_changes") or []
             if c.get("accion") != "CONSERVAR"
@@ -1535,6 +1639,7 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
         ]
         salida = {
             "fecha": fecha.isoformat(),
+            "bloqueos": bloqueos,
             "sub_ensambles": sub_ensambles,
             "reloj": {
                 "hora_consultada": ahora.strftime("%H:%M"),
@@ -1578,6 +1683,27 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "no lo supongas ni lo des por disponible. Nombra cada PCB con la "
             "parte que lo consume y las piezas del lote. " if sub_ensambles else ""
         )
+        # Lo que se recordo de dias pasados. Lo que llego a su fecha se
+        # PREGUNTA: que el material estuviera prometido no es que llego.
+        bloq_aviso = ""
+        if bloqueos["activos"]:
+            fuera = ", ".join(
+                f"{b['part_no']} ({b['motivo']})" for b in bloqueos["activos"])
+            bloq_aviso = (
+                f" Estas partes quedaron FUERA del plan por lo que Planning dijo "
+                f"antes: {fuera}. Dilo al reportar. ")
+        if bloqueos["por_revisar"]:
+            toca = ", ".join(b["part_no"] for b in bloqueos["por_revisar"])
+            bloq_aviso += (
+                f" HOY toca revisar {toca}: PREGUNTA si ya se puede producir "
+                "(por ejemplo si ya llego el material) y avisa que en cuanto "
+                "confirmen lo liberas con plan_bloqueo_parte y entra al plan. NO "
+                "lo des por resuelto solo porque llego la fecha. ")
+        if bloqueos.get("ya_corriendo"):
+            bloq_aviso += (
+                " OJO: " + ", ".join(bloqueos["ya_corriendo"]) + " esta bloqueada "
+                "pero su lote YA arranco hoy, asi que no se pudo sacar del plan; "
+                "avisalo. ")
         inv_aviso = (
             " Es el viernes de cierre de mes CON inventario: el dia se armo con "
             "paro de todas las lineas a las 14:00, dilo al reportar las horas. "
@@ -1608,7 +1734,7 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
                  "ayer y d" if lg else "D")
                 + "i claramente que el turno de hoy NO necesita cambios: lo capturado "
                 "ya cubre el plan. No pidas confirmacion ni ofrezcas aplicar nada."
-                + inv_aviso + sin_ppn + sub_aviso
+                + bloq_aviso + inv_aviso + sin_ppn + sub_aviso
             )
             return salida
         salida["confirm_token"] = propuesta["confirm_token"]
@@ -1625,7 +1751,7 @@ def execute(name: str, arguments: dict[str, Any], *, username: str, file_lookup)
             "marca cuales YA NO dan tiempo hoy y sugiere tiempo extra o pasarlos a "
             "manana. Menciona los lotes que el motor ya fijo porque su hora calculada "
             "arranco. Aclara que el schedule aun no se toco y pide confirmacion para "
-            "aplicar esos cambios." + palancas + inv_aviso + sin_ppn + sub_aviso
+            "aplicar esos cambios." + palancas + bloq_aviso + inv_aviso + sin_ppn + sub_aviso
         )
         return salida
 

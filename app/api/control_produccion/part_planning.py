@@ -370,6 +370,29 @@ def init_part_planning_tables():
         """
     )
 
+    # Restricciones que Planning le dice a la IA de palabra ("el 7421 no se
+    # puede, falta material, llega el jueves"). Viven aqui y no en la
+    # conversacion porque el chat se cierra y el piso no: mientras el bloqueo
+    # este ACTIVO la parte no se planea, y llegado revisar_el se PREGUNTA si ya
+    # se puede, en vez de desbloquearla sola.
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS lg_part_bloqueo (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            part_no VARCHAR(100) NOT NULL,
+            motivo VARCHAR(255) NOT NULL,
+            revisar_el DATE NULL,
+            estado VARCHAR(12) NOT NULL DEFAULT 'ACTIVO',
+            created_by VARCHAR(255) NOT NULL DEFAULT 'SISTEMA',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            resolved_by VARCHAR(255) NULL,
+            resolved_at DATETIME NULL,
+            PRIMARY KEY (id),
+            KEY idx_lgpb_estado (estado, part_no),
+            KEY idx_lgpb_revisar (revisar_el)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
     # El ultimo Part que subio Planning, tal cual. Se guarda para poder
     # devolverselo con el renglon S ya actualizado en vez de generar un Excel
     # nuevo: asi conserva su formato, sus formulas y sus otras hojas.
@@ -1668,6 +1691,79 @@ def _pp_zip_set_cells(file_bytes, hoja, cambios, color=None, pintar_solo=None):
         return salida.getvalue()
     finally:
         zin.close()
+
+
+def _pp_bloqueos_activos(hoy=None, query=None):
+    """Partes que Planning dejo bloqueadas, con cuales toca preguntar hoy.
+
+    `por_revisar` son las que ya llegaron a su fecha: NO se desbloquean solas,
+    porque que el material estuviera prometido para hoy no quiere decir que
+    llego. Se pregunta y Planning decide.
+    """
+    run_query = query or execute_query
+    hoy = hoy or obtener_fecha_hora_mexico().date()
+    filas = run_query(
+        "SELECT part_no, motivo, revisar_el, created_by, created_at "
+        "FROM lg_part_bloqueo WHERE estado='ACTIVO' ORDER BY part_no",
+        fetch="all",
+    ) or []
+    activos = []
+    for r in filas:
+        rev = r["revisar_el"]
+        rev = rev.date() if isinstance(rev, datetime) else rev
+        activos.append({
+            "part_no": str(r["part_no"] or "").strip().upper(),
+            "motivo": r["motivo"],
+            "revisar_el": rev.isoformat() if rev else None,
+            "toca_revisar": bool(rev and rev <= hoy),
+            "lo_puso": r["created_by"],
+        })
+    return {
+        "activos": activos,
+        "partes": [b["part_no"] for b in activos],
+        "por_revisar": [b for b in activos if b["toca_revisar"]],
+    }
+
+
+def _pp_bloquear_parte(part_no, motivo, revisar_el, usuario, query=None):
+    """Bloquea una parte. Un segundo bloqueo de la misma parte reemplaza al
+    anterior: la razon buena es siempre la ultima que dijo Planning."""
+    run_query = query or execute_query
+    part_no = _pp_normalizar_parte(part_no)
+    if not part_no:
+        raise ValueError("Falta el numero de parte a bloquear")
+    motivo = str(motivo or "").strip()[:255]
+    if not motivo:
+        raise ValueError("Un bloqueo sin motivo no sirve; di por que no se puede")
+    _pp_desbloquear_parte(part_no, usuario, query=run_query, silencioso=True)
+    run_query(
+        "INSERT INTO lg_part_bloqueo (part_no, motivo, revisar_el, created_by) "
+        "VALUES (%s, %s, %s, %s)",
+        (part_no, motivo, revisar_el, usuario),
+    )
+    return {"part_no": part_no, "motivo": motivo,
+            "revisar_el": revisar_el.isoformat() if revisar_el else None}
+
+
+def _pp_desbloquear_parte(part_no, usuario, query=None, silencioso=False):
+    """Libera la parte. El historico se conserva: se marca, no se borra."""
+    run_query = query or execute_query
+    part_no = _pp_normalizar_parte(part_no)
+    fila = run_query(
+        "SELECT id, motivo FROM lg_part_bloqueo "
+        "WHERE part_no=%s AND estado='ACTIVO' ORDER BY id DESC LIMIT 1",
+        (part_no,), fetch="one",
+    )
+    if not fila:
+        if silencioso:
+            return None
+        raise ValueError(f"{part_no} no esta bloqueada")
+    run_query(
+        "UPDATE lg_part_bloqueo SET estado='RESUELTO', resolved_by=%s, "
+        "resolved_at=NOW() WHERE part_no=%s AND estado='ACTIVO'",
+        (usuario, part_no),
+    )
+    return {"part_no": part_no, "motivo": fila["motivo"]}
 
 
 def _pp_part_excel_propuesta(public_id, usuario, query=None):

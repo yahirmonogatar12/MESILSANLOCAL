@@ -282,6 +282,9 @@ def _stub_dia(monkeypatch, schedule_changes, reportes=None, visto=None):
     monkeypatch.setattr(ai_plan_tools, "_importar_ppn", lambda *_a: {"plan_registros": 10})
     monkeypatch.setattr(ai_plan_tools, "_cal_adjunto", lambda *_a, **_k: (None, None))
     monkeypatch.setattr(ai_plan_tools.pp, "_pp_sub_ensambles", lambda _p: {})
+    # Sin bloqueos guardados salvo que el test diga lo contrario.
+    monkeypatch.setattr(ai_plan_tools.pp, "_pp_bloqueos_activos", lambda **_k: {
+        "activos": [], "partes": [], "por_revisar": []})
     real = ai_plan_tools.execute
 
     def fake(name, arguments, **kw):
@@ -768,3 +771,69 @@ def test_tool_ppn_comparar_pide_el_segundo_archivo(monkeypatch):
             "plan_ppn_comparar", {}, username="ana",
             file_lookup=_lookup_de((solo, "PPN 29.xlsx")),
         )
+
+
+def _stub_bloqueos(monkeypatch, filas, hoy=dt.date(2026, 8, 4)):
+    """lg_part_bloqueo sin BD: solo la logica de que se recuerda y que se pregunta."""
+    monkeypatch.setattr(pp, "obtener_fecha_hora_mexico",
+                        lambda: dt.datetime.combine(hoy, dt.time(8, 0)))
+    monkeypatch.setattr(pp, "execute_query", lambda *_a, **_k: filas)
+
+
+def test_bloqueo_se_recuerda_y_solo_se_pregunta_al_vencer(monkeypatch):
+    """Lo que Planning dijo ayer sigue valiendo hoy; el dia prometido se
+    PREGUNTA, no se da por resuelto."""
+    _stub_bloqueos(monkeypatch, [
+        {"part_no": "EBR80757421", "motivo": "falta material",
+         "revisar_el": dt.date(2026, 8, 6), "created_by": "yahir",
+         "created_at": None},
+        {"part_no": "ABQ30226610", "motivo": "molde en mantenimiento",
+         "revisar_el": None, "created_by": "yahir", "created_at": None},
+    ])
+    # Dos dias antes: se recuerda y NO se planea, pero todavia no se pregunta.
+    est = pp._pp_bloqueos_activos(hoy=dt.date(2026, 8, 4))
+    assert est["partes"] == ["EBR80757421", "ABQ30226610"]
+    assert est["por_revisar"] == []
+
+    # El dia prometido: toca preguntar, pero sigue bloqueada hasta que confirmen.
+    est = pp._pp_bloqueos_activos(hoy=dt.date(2026, 8, 6))
+    assert [b["part_no"] for b in est["por_revisar"]] == ["EBR80757421"]
+    assert "EBR80757421" in est["partes"], "no se libera sola al llegar la fecha"
+    # Un bloqueo sin fecha nunca se pregunta solo: espera a que lo liberen.
+    assert all(b["part_no"] != "ABQ30226610" for b in est["por_revisar"])
+
+    # Pasada la fecha sigue tocando, no se olvida.
+    est = pp._pp_bloqueos_activos(hoy=dt.date(2026, 8, 20))
+    assert [b["part_no"] for b in est["por_revisar"]] == ["EBR80757421"]
+
+
+def test_plan_dia_saca_del_plan_lo_bloqueado_y_lo_dice(monkeypatch):
+    """El bloqueo llega al motor como exclusion, no solo al texto."""
+    visto = {}
+    real = _stub_dia(monkeypatch, [
+        {"accion": "AGREGAR", "part_no": "P1", "horas": 1.0, "despues_linea": "M1"},
+    ], visto=visto)
+    monkeypatch.setattr(ai_plan_tools, "obtener_fecha_hora_mexico",
+                        lambda: dt.datetime(2026, 8, 6, 8, 0))
+    monkeypatch.setattr(ai_plan_tools.pp, "_pp_bloqueos_activos", lambda **_k: {
+        "activos": [{"part_no": "EBR80757421", "motivo": "falta material",
+                     "revisar_el": "2026-08-06", "toca_revisar": True,
+                     "lo_puso": "yahir"}],
+        "partes": ["EBR80757421"],
+        "por_revisar": [{"part_no": "EBR80757421", "motivo": "falta material",
+                         "revisar_el": "2026-08-06", "toca_revisar": True,
+                         "lo_puso": "yahir"}],
+    })
+    out = real("plan_dia_preparar",
+               {"fecha": "2026-08-06", "inventario": None,
+                "turno_completo": None, "tiempo_extra": None},
+               username="ana", file_lookup=None)
+
+    # Al motor le llega como exclusion: su capacidad la ocupa otra parte.
+    assert visto["partes_excluidas"] == ["EBR80757421"]
+    assert out["bloqueos"]["partes"] == ["EBR80757421"]
+    # Y el reporte dice ambas cosas: que quedo fuera y que hoy toca preguntar.
+    assert "FUERA del plan" in out["instruccion"]
+    assert "falta material" in out["instruccion"]
+    assert "HOY toca revisar EBR80757421" in out["instruccion"]
+    assert "PREGUNTA si ya se puede" in out["instruccion"]
