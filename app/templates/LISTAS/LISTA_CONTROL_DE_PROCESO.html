@@ -175,6 +175,11 @@
                             data-permiso-seccion="Almacén de Embarques"
                             data-permiso-boton="Catálogo números de parte embarques"
                             onclick="window.parent.mostrarAlmacenEmbarquesCatalogo ? window.parent.mostrarAlmacenEmbarquesCatalogo() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('almacen-embarques-catalogo-unique-container', '/almacen-embarques-catalogo-ajax?v=20260513b') : window.location.href='/control_proceso/almacen_embarques_catalogo')">Catálogo números de parte embarques</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_PROCESO"
+                            data-permiso-seccion="Almacén de Embarques"
+                            data-permiso-boton="Pendientes QA Embarques"
+                            onclick="window.parent.mostrarAlmacenEmbarquesPendientesQA ? window.parent.mostrarAlmacenEmbarquesPendientesQA() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('almacen-embarques-oqc-pendientes-unique-container', '/almacen-embarques-qa-pendientes-ajax') : window.location.href='/almacen-embarques-qa-pendientes-ajax')">Pendientes QA Embarques</li>
                 </ul>
             </li>
             <li class="sidebar-section">

@@ -41,6 +41,7 @@
     <link rel="stylesheet" href="/static/css/responsive-mobile.css">
     <link id="control-bom-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_bom.css', v='20260522a') }}">
     <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260522a') }}">
+    <link id="almacen-embarques-oqc-pendientes-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_oqc_pendientes.css', v='20260804d') }}">
     <link id="material-admin-inventory-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_admin_inventory.css', v='20260520j') }}">
     <link id="material-invoices-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_invoices.css', v='20260728manual1') }}">
     <link id="inventory-valuation-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventory_valuation.css', v='20260612a') }}">
@@ -784,6 +785,9 @@
         <div id="almacen-embarques-catalogo-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
+        <div id="almacen-embarques-oqc-pendientes-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
 
         <!-- Control de otras identificaciones -->
         <div id="registro-movimiento-identificacion-unique-container" style="display: none;">
@@ -1167,7 +1171,7 @@
 
     <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
     <script src="../static/js/unified-dropdowns.js?v=20260708"></script>
-    <script src="../static/js/sidebar-tabs.js?v=20260623k"></script>
+    <script src="../static/js/sidebar-tabs.js?v=20260804a"></script>
 
     <!-- MOBILE LISTS HAMBURGER MENU -->
     <script src="../static/js/mobile-lists-hamburger.js"></script>

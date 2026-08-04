@@ -1,0 +1,126 @@
+<div id="ae-oqc-pending-module" class="ae-oqc-pending-module">
+    <div class="ae-oqc-pending-filters">
+        <div class="ae-oqc-pending-header">
+            <h3>Pendientes QA Embarques</h3>
+            <span id="ae-oqc-pending-status" class="ae-oqc-pending-status"></span>
+        </div>
+        <div class="ae-oqc-pending-filter-grid">
+            <div class="ae-oqc-pending-field">
+                <label for="ae-oqc-pending-date-from">Fecha desde</label>
+                <input type="date" id="ae-oqc-pending-date-from">
+            </div>
+            <div class="ae-oqc-pending-field">
+                <label for="ae-oqc-pending-date-to">Fecha hasta</label>
+                <input type="date" id="ae-oqc-pending-date-to">
+            </div>
+            <div class="ae-oqc-pending-field ae-oqc-pending-field--wide">
+                <label for="ae-oqc-pending-search">No. parte / modelo / caja / folio</label>
+                <input
+                    type="text"
+                    id="ae-oqc-pending-search"
+                    placeholder="Filtrar pendientes"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+            </div>
+            <button type="button" id="ae-oqc-pending-search-btn" class="ae-oqc-pending-btn ae-oqc-pending-btn--primary">
+                Consultar
+            </button>
+            <button type="button" id="ae-oqc-pending-clear-btn" class="ae-oqc-pending-btn ae-oqc-pending-btn--secondary">
+                Limpiar
+            </button>
+        </div>
+    </div>
+
+    <div class="ae-oqc-pending-tables">
+        <div class="ae-oqc-pending-results">
+            <div class="ae-oqc-pending-table-header">
+                <h3>Pendiente Entrada Almacén</h3>
+                <span id="ae-oqc-pending-count" class="ae-oqc-pending-count">0 partes</span>
+                <span id="ae-oqc-pending-entry-qty-count" class="ae-oqc-pending-count">0 ea</span>
+            </div>
+            <div class="ae-oqc-pending-table-wrap">
+                <table class="ae-oqc-pending-table">
+                    <thead>
+                        <tr>
+                            <th>No. parte</th>
+                            <th>Modelo</th>
+                            <th>Cajas</th>
+                            <th>Piezas</th>
+                            <th>Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ae-oqc-pending-tbody">
+                        <tr>
+                            <td colspan="5" class="ae-oqc-pending-empty">Cargando pendientes...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="ae-oqc-pending-results">
+            <div class="ae-oqc-pending-table-header">
+                <h3>Pendiente Liberacion OQC</h3>
+                <span id="ae-oqc-release-pending-count" class="ae-oqc-pending-count">0 partes</span>
+                <span id="ae-oqc-release-pending-qty-count" class="ae-oqc-pending-count">0 ea</span>
+            </div>
+            <div class="ae-oqc-pending-table-wrap">
+                <table class="ae-oqc-pending-table">
+                    <thead>
+                        <tr>
+                            <th>No. parte</th>
+                            <th>Modelo</th>
+                            <th>Cajas</th>
+                            <th>Piezas</th>
+                            <th>Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ae-oqc-release-pending-tbody">
+                        <tr>
+                            <td colspan="5" class="ae-oqc-pending-empty">Cargando pendientes...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="ae-oqc-pending-modal" class="ae-oqc-pending-modal" aria-hidden="true">
+        <div class="ae-oqc-pending-modal__backdrop" data-ae-oqc-pending-close></div>
+        <section class="ae-oqc-pending-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ae-oqc-pending-modal-title">
+            <div class="ae-oqc-pending-modal__header">
+                <div>
+                    <h3 id="ae-oqc-pending-modal-title">Detalle de cajas pendientes</h3>
+                    <span id="ae-oqc-pending-modal-subtitle" class="ae-oqc-pending-modal__subtitle"></span>
+                </div>
+                <button type="button" class="ae-oqc-pending-icon-btn" data-ae-oqc-pending-close aria-label="Cerrar detalle">
+                    &times;
+                </button>
+            </div>
+            <div class="ae-oqc-pending-modal__meta">
+                <span id="ae-oqc-pending-detail-count">0 cajas</span>
+                <span id="ae-oqc-pending-detail-qty">0 ea</span>
+            </div>
+            <div class="ae-oqc-pending-detail-wrap">
+                <table class="ae-oqc-pending-table ae-oqc-pending-table--detail">
+                    <thead id="ae-oqc-pending-detail-head">
+                        <tr>
+                            <th>Box ID</th>
+                            <th>Cantidad</th>
+                            <th>Folio OQC</th>
+                            <th>Liberado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ae-oqc-pending-detail-tbody">
+                        <tr>
+                            <td colspan="4" class="ae-oqc-pending-empty">Selecciona un numero de parte.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/almacen_embarques_oqc_pendientes.js', v='20260804e') }}"></script>

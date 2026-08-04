@@ -1,0 +1,357 @@
+#control-proceso-content-area:not(.mes-area-hidden):has(> #almacen-embarques-oqc-pendientes-unique-container[style*="display: block"]) {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    height: calc(100dvh - var(--header-height, 100px)) !important;
+    max-height: calc(100dvh - var(--header-height, 100px)) !important;
+    box-sizing: border-box !important;
+    padding: 5px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+body:has(#global-tabs-bar:not(:empty)) #control-proceso-content-area:not(.mes-area-hidden):has(> #almacen-embarques-oqc-pendientes-unique-container[style*="display: block"]) {
+    height: calc(100dvh - var(--header-height, 100px) - 26px) !important;
+    max-height: calc(100dvh - var(--header-height, 100px) - 26px) !important;
+}
+
+#almacen-embarques-oqc-pendientes-unique-container[style*="display: block"] {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    box-sizing: border-box !important;
+    padding: 5px !important;
+    margin-top: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+}
+
+.ae-oqc-pending-module {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: #f3f7ff;
+}
+
+.ae-oqc-pending-filters {
+    flex: 0 0 auto;
+    min-height: 0;
+}
+
+.ae-oqc-pending-tables {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+}
+
+.ae-oqc-pending-filters,
+.ae-oqc-pending-results {
+    background: #444753;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.ae-oqc-pending-header,
+.ae-oqc-pending-table-header {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.ae-oqc-pending-header h3,
+.ae-oqc-pending-table-header h3 {
+    flex: 1;
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.ae-oqc-pending-status {
+    color: #b7d8ff;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.ae-oqc-pending-status.is-error {
+    color: #ff8c8c;
+}
+
+.ae-oqc-pending-filter-grid {
+    display: grid;
+    grid-template-columns: 150px 150px minmax(280px, 1fr) 108px 96px;
+    gap: 10px;
+    align-items: end;
+    padding: 12px 14px 14px;
+}
+
+.ae-oqc-pending-field {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ae-oqc-pending-field label {
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.ae-oqc-pending-field input {
+    height: 34px;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 5px;
+    padding: 0 10px;
+    background: #ffffff;
+    color: #142033;
+    font-size: 0.82rem;
+    outline: none;
+}
+
+.ae-oqc-pending-field input:focus {
+    border-color: #3aa5e8;
+    box-shadow: 0 0 0 2px rgba(58, 165, 232, 0.18);
+}
+
+.ae-oqc-pending-btn,
+.ae-oqc-pending-detail-btn,
+.ae-oqc-pending-icon-btn {
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.ae-oqc-pending-btn {
+    height: 36px;
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 0.78rem;
+}
+
+.ae-oqc-pending-btn--primary {
+    background: #3498db;
+}
+
+.ae-oqc-pending-btn--secondary {
+    background: #565a68;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+.ae-oqc-pending-results {
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ae-oqc-pending-count {
+    padding: 3px 10px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #b8c1d2;
+    font-size: 0.75rem;
+}
+
+.ae-oqc-pending-table-header .ae-oqc-pending-count:first-of-type {
+    margin-left: auto;
+}
+
+.ae-oqc-pending-table-wrap,
+.ae-oqc-pending-detail-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
+
+.ae-oqc-pending-table {
+    width: 100%;
+    min-width: 960px;
+    border-collapse: collapse;
+    table-layout: fixed;
+    color: #ffffff;
+    font-size: 0.78rem;
+}
+
+.ae-oqc-pending-table th,
+.ae-oqc-pending-table td {
+    padding: 9px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: center;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ae-oqc-pending-table tbody tr {
+    height: 47px;
+}
+
+.ae-oqc-pending-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #123152;
+    color: #ffffff;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+}
+
+.ae-oqc-pending-table tbody tr:nth-child(odd) {
+    background: #484b5a;
+}
+
+.ae-oqc-pending-table tbody tr:nth-child(even) {
+    background: #40434f;
+}
+
+.ae-oqc-pending-code {
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.ae-oqc-pending-empty {
+    height: 90px;
+    color: #bac4d8;
+    text-align: center;
+}
+
+.ae-oqc-pending-detail-btn {
+    min-width: 78px;
+    height: 28px;
+    border-radius: 5px;
+    background: #1ca866;
+    color: #ffffff;
+    font-size: 0.72rem;
+}
+
+.ae-oqc-pending-module.is-loading .ae-oqc-pending-results {
+    opacity: 0.72;
+}
+
+.ae-oqc-pending-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: none;
+}
+
+.ae-oqc-pending-modal.is-open {
+    display: block;
+}
+
+.ae-oqc-pending-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(9, 12, 20, 0.68);
+}
+
+.ae-oqc-pending-modal__dialog {
+    position: absolute;
+    top: clamp(86px, 9vh, 118px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(1120px, calc(100vw - 40px));
+    height: min(680px, calc(100vh - 138px));
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #444753;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+    overflow: hidden;
+}
+
+.ae-oqc-pending-modal__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #123152;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ae-oqc-pending-modal__header h3 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 0.94rem;
+}
+
+.ae-oqc-pending-modal__subtitle {
+    display: block;
+    margin-top: 3px;
+    color: #c2d7ef;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.ae-oqc-pending-icon-btn {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.ae-oqc-pending-modal__meta {
+    display: flex;
+    gap: 8px;
+    padding: 9px 14px;
+    background: rgba(255, 255, 255, 0.025);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ae-oqc-pending-modal__meta span {
+    padding: 3px 10px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.07);
+    color: #dce8f7;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.ae-oqc-pending-table--detail {
+    min-width: 780px;
+}
+
+@media (max-width: 980px) {
+    .ae-oqc-pending-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ae-oqc-pending-field--wide {
+        grid-column: 1 / -1;
+    }
+
+    .ae-oqc-pending-modal__dialog {
+        top: 48px;
+        width: calc(100vw - 20px);
+        height: calc(100vh - 72px);
+    }
+}

@@ -230,6 +230,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "almacen-embarques-movimientos-unique-container",
       "almacen-embarques-inventario-general-unique-container",
       "almacen-embarques-catalogo-unique-container",
+      "almacen-embarques-oqc-pendientes-unique-container",
       "registro-movimiento-identificacion-unique-container",
       "control-otras-identificaciones-unique-container",
       "control-movimiento-ns-producto-unique-container",
@@ -1789,6 +1790,16 @@ document.addEventListener("DOMContentLoaded", function () {
       "inicializarAlmacenEmbarquesCatalogoAjax",
     );
   };
+
+  // Almacén de Embarques - Pendientes QA
+  window.mostrarAlmacenEmbarquesPendientesQA = function () {
+    mostrarModuloAlmacenEmbarques(
+      "almacen-embarques-oqc-pendientes-unique-container",
+      "/almacen-embarques-qa-pendientes-ajax?v=20260804e",
+      "inicializarAlmacenEmbarquesPendientesQAAjax",
+    );
+  };
+  window.mostrarAlmacenEmbarquesPendientesOQC = window.mostrarAlmacenEmbarquesPendientesQA;
 
   // Control de salida de lineas
   window.mostrarControlSalidaLineas = function () {

@@ -38,6 +38,29 @@
         catch (e) {}
     }
 
+    const TAB_LABEL_OVERRIDES = {
+        'almacen-embarques-oqc-pendientes-unique-container': 'Pendientes QA Embarques',
+    };
+
+    function normalizarTabLabel(containerId, label) {
+        return TAB_LABEL_OVERRIDES[containerId] || label;
+    }
+
+    function normalizarLabelsPersistidos(state) {
+        let cambio = false;
+        Object.values(state).forEach(seccion => {
+            if (!seccion || !Array.isArray(seccion.tabs)) return;
+            seccion.tabs.forEach(tab => {
+                const labelNormalizado = normalizarTabLabel(tab.container, tab.label);
+                if (tab.label !== labelNormalizado) {
+                    tab.label = labelNormalizado;
+                    cambio = true;
+                }
+            });
+        });
+        return cambio;
+    }
+
     // Migracion de tabs que cambiaron de seccion navbar. Mueve la pestaña
     // guardada de una seccion vieja a la nueva, para que no quede "atrapada"
     // en la seccion anterior tras moverla en el menu. 2026-06-23: Trazabilidad
@@ -66,6 +89,7 @@
             }
             cambio = true;
         }
+        if (normalizarLabelsPersistidos(state)) cambio = true;
         if (cambio) writeState(state);
     }
     function getNavTabActiva() {
@@ -446,6 +470,7 @@
     // API: abrir/registrar un tab (lo crea si no existe)
     // ====================================================
     function openTab(containerId, label, path, onclick) {
+        label = normalizarTabLabel(containerId, label);
         const area = findAreaFor(containerId);
         if (!area) return;
 
@@ -646,6 +671,7 @@
         const bar = ensureGlobalTabsBar();
         bar.innerHTML = '';
         const state = readState();
+        if (normalizarLabelsPersistidos(state)) writeState(state);
         Object.entries(state).forEach(([navTab, seccion]) => {
             if (!seccion || !seccion.tabs) return;
             seccion.tabs.forEach(tab => {

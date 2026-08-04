@@ -226,6 +226,11 @@ const allDropdowns = [
     },
     {
         "pagina": "LISTA_CONTROL_DE_PROCESO",
+        "seccion": "Almacén de Embarques",
+        "boton": "Pendientes QA Embarques"
+    },
+    {
+        "pagina": "LISTA_CONTROL_DE_PROCESO",
         "seccion": "Control de otras identificaciones",
         "boton": "Registro de movimiento de identificacion"
     },

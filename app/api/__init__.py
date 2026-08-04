@@ -146,8 +146,9 @@ _MODULOS_REGISTRADOS = [
     "control_produccion.plan_imd",
     # WF_001-WF_005 (2026-07-12): Part Planning LG (import plan diario LG)
     "control_produccion.part_planning",
-    # Migracion 2026-05-27: Almacen de Embarques (6 modulos sidebar Control de proceso)
+    # Migracion 2026-05-27 + WF_001 2026-08-03: Almacen de Embarques
     "control_proceso.almacen_embarques",
+    "control_proceso.almacen_embarques_oqc_pendientes",
     # Fase 3.1 (2026-05-28): renders cortos + Control de salida de lineas
     "control_proceso.renders",
     "control_proceso.control_salida_lineas",

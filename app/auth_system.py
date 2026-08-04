@@ -517,7 +517,7 @@ class AuthSystem:
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de produccion SMT Plan', 'Acceso a Control de produccion SMT Plan'),
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de operacion de linea Main', 'Acceso a Control de operacion de linea Main'),
 
-            # LISTA CONTROL DE PROCESO - Almacen de Embarques (sidebar, 6 botones).
+            # LISTA CONTROL DE PROCESO - Almacen de Embarques (sidebar, 7 botones).
             # Migracion 2026-05-27: rutas movidas a app/api/control_proceso/almacen_embarques.py
             ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Entradas almacen embarques', 'Acceso a Entradas almacen embarques'),
             ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Salidas almacen embarques', 'Acceso a Salidas almacen embarques'),
@@ -525,6 +525,7 @@ class AuthSystem:
             ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Modificar movimientos embarques', 'Acceso a Modificar movimientos embarques'),
             ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Inventario general embarques', 'Acceso a Inventario general embarques'),
             ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Catálogo números de parte embarques', 'Acceso a Catálogo de números de parte de embarques'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Almacén de Embarques', 'Pendientes QA Embarques', 'Acceso a pendientes QA de entrada a almacén y liberación OQC de embarques'),
 
             # LISTA CONTROL DE PROCESO - Reporte diario de inspeccion
             ('LISTA_CONTROL_DE_PROCESO', 'Reporte diario de inspeccion', 'Reporte diario de inspeccion', 'Acceso a reporte diario de inspección'),
@@ -593,6 +594,42 @@ class AuthSystem:
             ('LISTA_DE_CONFIGPG', 'Configuración', 'Configuración de red', 'Acceso a configuración de red')
         ]
         
+        permiso_qa_pagina = 'LISTA_CONTROL_DE_PROCESO'
+        permiso_qa_seccion = 'Almacén de Embarques'
+        permiso_qa_old = 'Pendientes OQC embarques'
+        permiso_qa_new = 'Pendientes QA Embarques'
+        permiso_qa_desc = 'Acceso a pendientes QA de entrada a almacén y liberación OQC de embarques'
+        cursor.execute('''
+            SELECT id FROM permisos_botones
+            WHERE pagina = %s AND seccion = %s AND boton = %s
+        ''', (permiso_qa_pagina, permiso_qa_seccion, permiso_qa_old))
+        permiso_old_row = cursor.fetchone()
+        cursor.execute('''
+            SELECT id FROM permisos_botones
+            WHERE pagina = %s AND seccion = %s AND boton = %s
+        ''', (permiso_qa_pagina, permiso_qa_seccion, permiso_qa_new))
+        permiso_new_row = cursor.fetchone()
+        if permiso_old_row and permiso_new_row:
+            cursor.execute('''
+                INSERT IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                SELECT rol_id, %s
+                FROM rol_permisos_botones
+                WHERE permiso_boton_id = %s
+            ''', (permiso_new_row[0], permiso_old_row[0]))
+            cursor.execute('''
+                UPDATE permisos_botones
+                SET activo = 0
+                WHERE id = %s
+            ''', (permiso_old_row[0],))
+        elif permiso_old_row:
+            cursor.execute('''
+                UPDATE permisos_botones
+                SET boton = %s,
+                    descripcion = %s,
+                    activo = 1
+                WHERE id = %s
+            ''', (permiso_qa_new, permiso_qa_desc, permiso_old_row[0]))
+
         for pagina, seccion, boton, descripcion in permisos_botones:
             cursor.execute('''
                 INSERT IGNORE INTO permisos_botones (pagina, seccion, boton, descripcion)
