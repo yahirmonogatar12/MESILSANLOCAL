@@ -70,6 +70,8 @@
     <link id="inventario-reparacion-smd-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_reparacion_smd.css', v='20260605a') }}">
     <!-- WF_004: CSS persistente Trazabilidad de PCB (Control de resultados / Control de inventario) -->
     <link id="trazabilidad-pcb-css" rel="stylesheet" href="{{ url_for('static', filename='css/trazabilidad_pcb.css', v='20260623g') }}">
+    <!-- WF_004: CSS persistente Production Tracking By Process (Control de reporte / Product Tracking) -->
+    <link id="production-tracking-process-css" rel="stylesheet" href="{{ url_for('static', filename='css/production_tracking_process.css', v='20260805c') }}">
     <!-- WF_004: CSS persistente Inventario reparacion ASSY (Control de resultados / Control de inventario) -->
     <link id="inventario-reparacion-assy-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_reparacion_assy.css', v='20260605a') }}">
     <!-- WF_004: CSS persistente Inventario Exceso QA (Control de resultados / Control de inventario) -->
@@ -908,6 +910,13 @@
 
         <!-- Trazabilidad de PCB (Control de inventario) - unifica ASSY/IMD/SMT -->
         <div id="trazabilidad-pcb-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Production Tracking By Process (Control de reporte / Product Tracking).
+             Vive en esta area igual que Trazabilidad de PCB: Control de reporte no
+             tiene *-content-area propia. -->
+        <div id="production-tracking-process-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
@@ -3162,6 +3171,27 @@ function hideAllMaterialContainers() {
 
                 cargarContenidoDinamico('trazabilidad-pcb-unique-container', '/control_resultados/trazabilidad_pcb', () => {
                     if (typeof window.loadTrazabilidadPcbData === 'function') window.loadTrazabilidadPcbData();
+                });
+            };
+
+            // Production Tracking By Process (Control de reporte / Product Tracking).
+            // Historial de etapas de una pieza leido de la tabla Tracking.
+            // Mismo truco de area que Trazabilidad de PCB: el container vive dentro
+            // de control-resultados-content-area, que prepararPanelSeccion('reporte')
+            // deja oculto, asi que se muestra explicitamente.
+            window.mostrarProductionTrackingByProcess = function() {
+                prepararPanelSeccion('reporte');
+                const area = document.getElementById('control-resultados-content-area');
+                if (area) {
+                    area.classList.remove('mes-area-hidden');
+                    area.style.display = 'block';
+                    area.style.width = '100%';
+                }
+                const container = document.getElementById('production-tracking-process-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('production-tracking-process-unique-container', '/control_reporte/production_tracking', () => {
+                    if (typeof window.loadProductionTrackingData === 'function') window.loadProductionTrackingData();
                 });
             };
 

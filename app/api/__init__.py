@@ -118,6 +118,9 @@ _MODULOS_REGISTRADOS = [
     # WF_001-WF_004 (2026-06-09): Historial de Operadores por Maquina
     # (vista historial_estaciones_qa, solo lectura).
     "control_resultados.historial_operadores_maquina",
+    # WF_001-WF_004 (2026-08-04): Production Tracking By Process. Historial de
+    # etapas de una pieza (tabla Tracking, alimentada por triggers).
+    "control_reporte.production_tracking",
     # Migracion 2026-05-27: 3 modulos ICT (Control de resultados)
     "control_resultados.historial_ict",
     "control_resultados.historial_ict_pass_fail",

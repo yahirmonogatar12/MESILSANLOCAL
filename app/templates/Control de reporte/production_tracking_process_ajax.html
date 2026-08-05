@@ -1,0 +1,69 @@
+<!-- Production Tracking By Process - Version AJAX (solo lectura) -->
+<!-- Historial de etapas de una pieza desde la tabla Tracking (la llenan triggers).
+     CSS persistente en app/static/css/production_tracking_process.css (WF_004).
+     JS: production-tracking-process.js -->
+<div id="production-tracking-process-unique-container" class="ptp-container">
+
+  <div class="ptp-tabs">
+    <button class="ptp-tab active" data-panel="una">Una pieza</button>
+    <button class="ptp-tab" data-panel="lote">Varias piezas (importar Excel)</button>
+  </div>
+
+  <!-- ===================== UNA PIEZA ===================== -->
+  <section id="ptp-panel-una" class="ptp-panel active">
+    <div class="ptp-controls">
+      <div class="ptp-group">
+        <label class="ptp-label">Código de la pieza (QR o Barcode)</label>
+        <input type="text" id="ptp-codigo" class="ptp-input" style="min-width:400px"
+               placeholder="Escanea o pega el QR / barcode de la pieza..." autofocus/>
+      </div>
+      <button class="ptp-btn" id="ptp-buscar">Buscar</button>
+      <button class="ptp-btn" id="ptp-limpiar">Limpiar</button>
+      <button class="ptp-btn ptp-btn-export" id="ptp-exportar">Exportar Excel</button>
+      <div class="ptp-status" id="ptp-status">Escanea una pieza</div>
+    </div>
+
+    <div id="ptp-loading" class="ptp-loading">
+      <div class="ptp-spinner"></div>
+      <p>Buscando historial de la pieza…</p>
+    </div>
+
+    <!-- Una tarjeta por pieza encontrada; la construye el JS. -->
+    <div id="ptp-results"></div>
+  </section>
+
+  <!-- ===================== VARIAS PIEZAS (LOTE) ===================== -->
+  <section id="ptp-panel-lote" class="ptp-panel">
+    <div class="ptp-controls">
+      <div class="ptp-group">
+        <label class="ptp-label">Archivo Excel con los códigos (.xlsx)</label>
+        <input type="file" id="ptp-file" class="ptp-input" accept=".xlsx,.xlsm"/>
+      </div>
+      <button class="ptp-btn" id="ptp-lote-buscar">Consultar</button>
+      <button class="ptp-btn" id="ptp-lote-limpiar">Limpiar</button>
+      <button class="ptp-btn ptp-btn-export" id="ptp-lote-exportar">Exportar Excel</button>
+      <div class="ptp-status" id="ptp-lote-status">Selecciona un archivo</div>
+    </div>
+
+    <p class="ptp-hint">
+      Se leen todas las celdas del archivo, así que no importa en qué columna estén
+      los códigos ni si trae encabezados. Se aceptan QR y barcodes mezclados;
+      máximo 5000 códigos por archivo.
+    </p>
+
+    <div id="ptp-lote-loading" class="ptp-loading">
+      <div class="ptp-spinner"></div>
+      <p>Consultando el historial de los códigos del archivo…</p>
+    </div>
+
+    <div class="ptp-table-wrap ptp-table-wrap-lote">
+      <table class="ptp-table" id="ptp-lote-table">
+        <thead id="ptp-lote-head"></thead>
+        <tbody id="ptp-lote-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/production-tracking-process.js', v='20260805c') }}"></script>

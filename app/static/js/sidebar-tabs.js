@@ -625,7 +625,12 @@
         // areaId -> navTab (espejo invertido de SECCIONES_AREAS_MAP).
         // Containers ya resueltos por migrarTabsMovidas se excluyen para que el
         // mapeo por area (ambiguo si dos secciones comparten area) no los pise.
-        const RESUELTOS_EXPLICITO = new Set(['trazabilidad-pcb-unique-container']);
+        const RESUELTOS_EXPLICITO = new Set([
+            'trazabilidad-pcb-unique-container',
+            // Production Tracking By Process: mismo caso, container en
+            // control-resultados-content-area pero pertenece a Control de reporte.
+            'production-tracking-process-unique-container',
+        ]);
         const areaIdToNavTab = {};
         Object.entries(SECCIONES_AREAS_MAP).forEach(([navTab, areaId]) => {
             // 'control-resultados-content-area' es de Control de resultados (su

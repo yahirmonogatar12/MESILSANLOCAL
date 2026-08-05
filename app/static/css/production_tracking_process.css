@@ -1,0 +1,363 @@
+/* Production Tracking By Process - WF_004 CSS persistente.
+ * Mismo look del portal (basado en trazabilidad_pcb.css).
+ * Cargado desde MainTemplate.html con cache-busting ?v=20260805c.
+ * Fallback ptpEnsureStyles() en production-tracking-process.js. */
+
+.ptp-container * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.ptp-container {
+  font-family: 'LG regular', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #32323E;
+  color: lightgray;
+}
+
+/* Pestañas: una pieza / lote */
+.ptp-container .ptp-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.ptp-container .ptp-tab {
+  border: 1px solid #20688C;
+  background: #3C3940;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.ptp-container .ptp-tab.active {
+  background: #20688C;
+}
+
+.ptp-container .ptp-panel {
+  display: none;
+}
+
+.ptp-container .ptp-panel.active {
+  display: block;
+}
+
+.ptp-container .ptp-hint {
+  font-size: 11px;
+  color: #8fa5b5;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+/* Controles */
+.ptp-container .ptp-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  background: #34334E;
+  border: 1px solid #20688C;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.ptp-container .ptp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ptp-container .ptp-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #ecf0f1;
+  letter-spacing: .3px;
+}
+
+.ptp-container .ptp-input {
+  background: #2c3e50;
+  color: lightgray;
+  border: 1px solid #34495e;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.ptp-container .ptp-btn {
+  padding: 4px 10px;
+  border-radius: 5px;
+  border: 1px solid #20688C;
+  background: #3C3940;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  align-self: flex-end;
+}
+
+.ptp-container .ptp-btn:hover {
+  background: #2980b9;
+}
+
+.ptp-container .ptp-btn-export {
+  background: #456636;
+  border-color: #20688C;
+}
+
+.ptp-container .ptp-btn-export:hover {
+  background: #57803f;
+}
+
+.ptp-container .ptp-status {
+  margin-left: auto;
+  align-self: center;
+  background: #40424F;
+  border: 1px solid #5F6375;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+/* Tarjeta por pieza */
+.ptp-container .ptp-card {
+  border: 1px solid #5F6375;
+  border-radius: 6px;
+  background: #40424F;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.ptp-container .ptp-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  background: #34334E;
+  border-bottom: 2px solid #20688C;
+  padding: 10px 12px;
+}
+
+.ptp-container .ptp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ptp-container .ptp-k {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #8fa5b5;
+  letter-spacing: .3px;
+}
+
+.ptp-container .ptp-v {
+  font-size: 12px;
+  color: #ecf0f1;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+/* Tabla de etapas */
+.ptp-container .ptp-table-wrap {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #20688C #40424F;
+}
+
+.ptp-container .ptp-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #40424F;
+  font-size: 11px;
+}
+
+.ptp-container .ptp-table th {
+  background: #172A46;
+  color: #ecf0f1;
+  padding: 7px;
+  border: 1px solid #20688C;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.ptp-container .ptp-table td {
+  padding: 6px 7px;
+  border: 1px solid #5F6375;
+  color: lightgray;
+  white-space: nowrap;
+}
+
+.ptp-container .ptp-table tbody tr:hover td {
+  background: #485563;
+}
+
+/* Fila de etapa no alcanzada (o codigo sin historial): atenuada */
+.ptp-container .ptp-table tr.ptp-row-pendiente td {
+  color: #7b8794;
+}
+
+/* Tabla de lote: muchas columnas, encabezado fijo al hacer scroll vertical
+   y la columna del codigo fija al hacer scroll horizontal. */
+.ptp-container .ptp-table-wrap-lote {
+  max-height: 68vh;
+  overflow: auto;
+  border: 1px solid #5F6375;
+  border-radius: 6px;
+}
+
+.ptp-container .ptp-table-wrap-lote thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.ptp-container .ptp-table-wrap-lote tbody td:nth-child(2),
+.ptp-container .ptp-table-wrap-lote thead th:nth-child(2) {
+  position: sticky;
+  left: 0;
+  background: #3a3c48;
+  z-index: 1;
+}
+
+.ptp-container .ptp-table-wrap-lote thead th:nth-child(2) {
+  background: #172A46;
+  z-index: 3;
+}
+
+/* Celdas de etapa en la vista de lote: la fecha en claro, lo que falto
+   atenuado y el scrap en rojo, para leer la tabla de un vistazo. */
+.ptp-container .ptp-table td.ptp-cell-pendiente { color: #6b7684; }
+.ptp-container .ptp-table td.ptp-cell-na { color: #6b7684; font-style: italic; }
+.ptp-container .ptp-table td.ptp-cell-nd { color: #d9a441; font-style: italic; }
+.ptp-container .ptp-table td.ptp-cell-rep { color: #f39c12; }
+.ptp-container .ptp-table td.ptp-cell-scrap { color: #e74c3c; font-weight: 700; }
+.ptp-container .ptp-table td.ptp-cell-embarques { color: #3498db; }
+.ptp-container .ptp-table td.ptp-cell-salio { color: #b07cff; }
+
+/* Badges de estado */
+.ptp-container .ptp-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+
+.ptp-container .ptp-badge.hecho {
+  color: #27ae60;
+  background: rgba(39, 174, 96, .12);
+  border: 1px solid rgba(39, 174, 96, .4);
+}
+.ptp-container .ptp-badge.pendiente {
+  color: #95a5a6;
+  background: rgba(149, 165, 166, .1);
+  border: 1px solid rgba(149, 165, 166, .3);
+}
+/* No aplica (reparaciones / scrap que la pieza nunca necesito). Neutro y
+   discreto, pero sin la atenuacion de "falto pasar por aqui". */
+.ptp-container .ptp-badge.na {
+  color: #8fa5b5;
+  background: transparent;
+  border: 1px dashed rgba(143, 165, 181, .35);
+}
+/* No determinable: la pieza no tiene barcode y esa etapa se cruza por barcode.
+   Ambar, no gris: no es "no paso", es "no se puede saber", y conviene que
+   salte a la vista en vez de confundirse con una etapa faltante. */
+.ptp-container .ptp-badge.nd {
+  color: #d9a441;
+  background: rgba(217, 164, 65, .1);
+  border: 1px dashed rgba(217, 164, 65, .5);
+}
+.ptp-container .ptp-badge.rep {
+  color: #f39c12;
+  background: rgba(243, 156, 18, .12);
+  border: 1px solid rgba(243, 156, 18, .4);
+}
+.ptp-container .ptp-badge.embarques {
+  color: #3498db;
+  background: rgba(52, 152, 219, .12);
+  border: 1px solid rgba(52, 152, 219, .4);
+}
+.ptp-container .ptp-badge.salio {
+  color: #b07cff;
+  background: rgba(155, 89, 182, .12);
+  border: 1px solid rgba(155, 89, 182, .4);
+}
+.ptp-container .ptp-badge.scrap {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, .12);
+  border: 1px solid rgba(231, 76, 60, .4);
+}
+
+/* Loader */
+.ptp-container .ptp-loading {
+  display: none;
+  text-align: center;
+  background: #40424F;
+  border-radius: 6px;
+  padding: 18px;
+  margin: 8px 0;
+}
+
+.ptp-container .ptp-loading.active {
+  display: block;
+}
+
+.ptp-container .ptp-spinner {
+  border: 3px solid #555;
+  border-top: 3px solid #00D4FF;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 8px;
+  animation: spin-ptp 1s linear infinite;
+}
+
+@keyframes spin-ptp {
+  to { transform: rotate(360deg); }
+}
+
+/* Aviso de pieza sin barcode, entre la cabecera y la tabla de etapas */
+.ptp-container .ptp-aviso {
+  background: rgba(217, 164, 65, .08);
+  border-bottom: 1px solid rgba(217, 164, 65, .35);
+  color: #d9a441;
+  font-size: 11px;
+  line-height: 1.55;
+  padding: 9px 12px;
+}
+
+/* Mensaje vacio */
+.ptp-container .ptp-empty {
+  background: #40424F;
+  border: 1px solid #5F6375;
+  border-radius: 6px;
+  padding: 22px;
+  text-align: center;
+  font-size: 12px;
+  color: #95a5a6;
+}
+
+/* Scrollbar del modulo */
+.ptp-container ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.ptp-container ::-webkit-scrollbar-thumb {
+  background: #20688C;
+  border-radius: 3px;
+}
+.ptp-container ::-webkit-scrollbar-track {
+  background: #40424F;
+}
+
+@media(max-width: 900px) {
+  .ptp-container .ptp-status {
+    width: 100%;
+    order: 99;
+  }
+}
