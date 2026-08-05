@@ -36,7 +36,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Font LG Regular - COMENTADO: Problema MIME -->
     <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/yahirmonogatari/lg-fonts/lg-regular.css"> -->
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=20260805b">
     <link rel="stylesheet" href="/static/styleHeader.css">
     <link rel="stylesheet" href="/static/css/responsive-mobile.css">
     <link id="control-bom-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_bom.css', v='20260522a') }}">
@@ -549,6 +549,15 @@
 
     <!-- Contenedor principal para el sidebar -->
 <div class="main-content-container" id="material-container" style="display: none;">
+    <!-- Boton para ocultar/mostrar la lista lateral (mas espacio para modulos) -->
+    <button id="sidebar-toggle" type="button" title="Ocultar/mostrar lista" aria-label="Ocultar/mostrar lista"
+            onclick="document.body.classList.toggle('sidebar-hidden'); localStorage.setItem('sidebarHidden', document.body.classList.contains('sidebar-hidden'));">
+        <i class="bi bi-chevron-left"></i>
+    </button>
+    <script>
+        // Restaurar estado colapsado del sidebar entre recargas
+        if (localStorage.getItem('sidebarHidden') === 'true') document.body.classList.add('sidebar-hidden');
+    </script>
     <div class="sidebar-content" id="sidebar-content">
         <div id="informacion-basica-content">
             <!-- El contenido se cargará dinámicamente con JavaScript -->

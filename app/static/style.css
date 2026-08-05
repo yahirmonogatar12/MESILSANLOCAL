@@ -2184,3 +2184,55 @@ html, body {
 
 /* Migracion 2026-05-27: reglas de Historial AOI movidas a
  * app/static/css/control_historial_aoi.css (WF_004). */
+
+/* ============================================= */
+/* Colapsar el sidebar (mas espacio para modulos) */
+/* ============================================= */
+.sidebar-content {
+    transition: width .18s ease, min-width .18s ease;
+}
+
+body.sidebar-hidden .sidebar-content {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+#sidebar-toggle {
+    position: fixed;
+    top: calc(var(--header-height) + 6px);
+    left: calc(var(--sidebar-width) - 32px); /* pegado al borde derecho, dentro del sidebar */
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid #5a5d70;
+    border-radius: 50%;
+    background: #40424F;
+    color: #e6e6e6;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 600; /* por encima de la barra de pestañas (500) */
+    transition: left .18s ease;
+}
+
+#sidebar-toggle:hover { background: #4D505F; }
+
+/* Si hay barra de pestañas (26px), bajar el boton para no taparla */
+body:has(#global-tabs-bar:not(:empty)) #sidebar-toggle {
+    top: calc(var(--header-height) + 32px);
+}
+
+/* Con el sidebar oculto la barra de pestañas ocupa todo el ancho */
+body.sidebar-hidden #global-tabs-bar { left: 0 !important; }
+
+body.sidebar-hidden #sidebar-toggle { left: 4px; }
+body.sidebar-hidden #sidebar-toggle i { transform: rotate(180deg); }
+#sidebar-toggle i { display: inline-block; }
+
+/* En movil manda el menu hamburguesa, no este boton */
+@media (max-width: 768px) {
+    #sidebar-toggle { display: none; }
+    body.sidebar-hidden .sidebar-content { padding: revert; }
+}
