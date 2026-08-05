@@ -1,6 +1,6 @@
 /* Production Tracking By Process - WF_004 CSS persistente.
  * Mismo look del portal (basado en trazabilidad_pcb.css).
- * Cargado desde MainTemplate.html con cache-busting ?v=20260805c.
+ * Cargado desde MainTemplate.html con cache-busting ?v=20260805d.
  * Fallback ptpEnsureStyles() en production-tracking-process.js. */
 
 .ptp-container * {

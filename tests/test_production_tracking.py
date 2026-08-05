@@ -54,7 +54,10 @@ def test_etapas_de_excepcion_no_alcanzadas_son_na_y_el_resto_pendiente():
 def test_orden_de_etapas_es_el_del_flujo():
     etapas = [e["etapa"] for e in _fila_a_item(_fila())["etapas"]]
     assert etapas[:4] == ["SMT", "IMD", "Assy", "Vision"]
-    assert etapas[-3:] == ["Releases OQC", "Embarques", "Scrap"]
+    # Primer paso, y despues el bloque de retorno por exceso.
+    assert etapas[9:12] == ["Releases OQC", "Embarques", "Scrap"]
+    assert etapas[12:] == ["Entrada Exceso", "ICT retorno", "FCT retorno",
+                           "Packing retorno", "Salida Exceso (OQC)"]
 
 
 def test_ultima_etapa_es_la_mas_reciente_no_la_ultima_columna():
@@ -68,15 +71,19 @@ def test_ultima_etapa_es_la_mas_reciente_no_la_ultima_columna():
     assert item["estado_global"] == "Assy"
 
 
+def _etapa(item, nombre):
+    return next(e for e in item["etapas"] if e["etapa"] == nombre)
+
+
 def test_embarques_es_enum_no_booleano():
     en = _fila_a_item(_fila(Embarques="EN_EMBARQUES", Embarques_At=datetime(2026, 8, 3, 10, 0)))
     assert en["estado_global"] == "En embarques"
-    assert en["etapas"][-2]["estado"] == "EN EMBARQUES"
-    assert en["etapas"][-2]["clase"] == "embarques"
+    assert _etapa(en, "Embarques")["estado"] == "EN EMBARQUES"
+    assert _etapa(en, "Embarques")["clase"] == "embarques"
 
     salio = _fila_a_item(_fila(Embarques="SALIO", Embarques_At=datetime(2026, 8, 3, 10, 0)))
     assert salio["estado_global"] == "Salio de embarques"
-    assert salio["etapas"][-2]["clase"] == "salio"
+    assert _etapa(salio, "Embarques")["clase"] == "salio"
 
 
 def test_scrap_manda_sobre_embarques_y_sobre_la_ultima_etapa():
@@ -126,7 +133,8 @@ def test_sin_barcode_las_etapas_que_cruzan_por_barcode_son_indeterminables():
 def test_con_barcode_nada_es_indeterminable():
     item = _fila_a_item(_fila(Assy=1, Assy_At=datetime(2026, 7, 1, 8, 0)))
     assert item["sin_barcode"] is False
-    assert item["total"] == len(_ETAPAS)
+    # Todas menos el bloque de retorno, que no aplica si nunca fue a exceso.
+    assert item["total"] == len(_ETAPAS) - len(pt._ETAPAS_RETORNO)
     assert not any(e["clase"] == "nd" for e in item["etapas"])
 
 
@@ -166,6 +174,68 @@ def test_fila_sintetica_arma_la_forma_de_tracking_desde_las_fuentes():
     item = _fila_a_item(fila)
     assert item["sin_qr"] is True
     assert item["estado_global"] == "Salio de embarques"
+
+
+# ---------------------------------------------------------------------------
+# Retorno por exceso QA
+# ---------------------------------------------------------------------------
+
+
+def test_sin_entrada_a_exceso_todo_el_bloque_de_retorno_es_na():
+    por_etapa = {e["etapa"]: e for e in _fila_a_item(_fila())["etapas"]}
+    for etapa in ("Entrada Exceso", "ICT retorno", "FCT retorno",
+                  "Packing retorno", "Salida Exceso (OQC)"):
+        assert por_etapa[etapa]["estado"] == "N/A"
+    # Y no se cuentan en el denominador de una pieza que nunca fue a exceso.
+    assert _fila_a_item(_fila())["total"] == len(_ETAPAS) - len(pt._ETAPAS_RETORNO)
+
+
+def test_en_exceso_sin_reproceso_deja_las_de_retorno_pendientes():
+    """La señal operativa: la pieza llego a exceso y aun no se vuelve a probar."""
+    item = _fila_a_item(_fila(
+        Exceso_In=1, Exceso_In_At=datetime(2026, 8, 4, 12, 0),
+        Ret_ICT=0, Ret_FCT=0, Ret_Packing=0, Exceso_Out=0,
+    ))
+    por_etapa = {e["etapa"]: e for e in item["etapas"]}
+
+    assert item["en_exceso"] is True
+    assert item["estado_global"] == "En exceso QA"
+    assert por_etapa["Entrada Exceso"]["estado"] == "OK"
+    # "-" y no "N/A": aqui si falta que pase, es lo que se esta esperando.
+    for etapa in ("ICT retorno", "FCT retorno", "Salida Exceso (OQC)"):
+        assert por_etapa[etapa]["estado"] == "-"
+        assert por_etapa[etapa]["clase"] == "pendiente"
+    assert item["total"] == len(_ETAPAS)
+
+
+def test_liberado_de_exceso_manda_sobre_embarques():
+    """Si la pieza volvio y ya se libero, el estado de embarques del primer
+    paso quedo viejo y no debe ser el que se muestre."""
+    item = _fila_a_item(_fila(
+        Embarques="SALIO", Embarques_At=datetime(2026, 5, 1, 8, 0),
+        Exceso_In=1, Exceso_In_At=datetime(2026, 5, 29, 23, 59),
+        Exceso_Out=1, Exceso_Out_At=datetime(2026, 8, 5, 8, 20),
+    ))
+    assert item["estado_global"] == "Liberado de exceso"
+
+
+def test_scrap_sigue_mandando_sobre_exceso():
+    item = _fila_a_item(_fila(
+        Scrap=1, Scrap_At=datetime(2026, 6, 1, 8, 0),
+        Exceso_In=1, Exceso_In_At=datetime(2026, 5, 29, 23, 59),
+    ))
+    assert item["estado_global"] == "SCRAP"
+
+
+def test_retorno_se_busca_por_qr_y_por_barcode(monkeypatch):
+    """scan_code de qa_exceso_* viene mezclado (barcodes y QRs), asi que la
+    fila se debe resolver por cualquiera de sus dos codigos."""
+    monkeypatch.setattr(pt, "_retorno_exceso",
+                        lambda claves: {"EBR1922606180027": {"Exceso_In": datetime(2026, 8, 4)}})
+    fila = pt._aplicar_retorno([_fila()])[0]
+    assert fila["Exceso_In"] == 1
+    assert fila["Exceso_In_At"] == datetime(2026, 8, 4)
+    assert fila["Ret_ICT"] == 0 and fila["Ret_ICT_At"] is None
 
 
 def test_celda_de_lote_trae_la_fecha_salvo_en_embarques_y_lo_no_alcanzado():

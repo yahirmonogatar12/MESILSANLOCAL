@@ -3,7 +3,7 @@
 // la llenan triggers). WF_003 (API/JS) + WF_004 (CSS persistente).
 
 const PTP_CSS_ID = "production-tracking-process-css";
-const PTP_CSS_VER = "20260805c";
+const PTP_CSS_VER = "20260805d";
 const PTP_CSS_HREF = "/static/css/production_tracking_process.css?v=" + PTP_CSS_VER;
 
 function ptpEnsureStyles() {

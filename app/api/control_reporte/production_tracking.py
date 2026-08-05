@@ -13,8 +13,14 @@ Piezas sin fila en Tracking: se reconstruye su historial leyendo directamente
 las tablas de origen (ver _historial_desde_fuentes). Pasa con las lineas que no
 escanean el barcode en ASSY, donde el QR y el barcode nunca se ven juntos y por
 lo tanto la fila nunca se creo. Lo que no se puede determinar se marca como
-"SIN QR" o "SIN BARCODE", nunca como "-": en trazabilidad, "no se sabe" y "no
-paso por ahi" no son lo mismo.
+"QR NO VINCULADO" o "BARCODE NO VINCULADO", nunca como "-": en trazabilidad,
+"no se sabe" y "no paso por ahi" no son lo mismo.
+
+Retorno por exceso QA (qa_exceso_entradas / qa_exceso_salidas): las 5 ultimas
+etapas son la segunda vuelta de la pieza. Sus ICT/FCT/Packing son el ULTIMO
+paso POSTERIOR a la entrada a exceso, porque es material que regreso y se
+volvio a probar; el primer paso sigue visible arriba, sin pisarse. Tampoco son
+columnas de Tracking: se leen al vuelo (ver _retorno_exceso).
 
 JS cliente: app/static/js/production-tracking-process.js
 Template:   app/templates/Control de reporte/production_tracking_process_ajax.html
@@ -56,7 +62,23 @@ _ETAPAS = [
     ("Releases_OQC", "Releases_OQC_At", "Releases OQC"),
     ("Embarques", "Embarques_At", "Embarques"),
     ("Scrap", "Scrap_At", "Scrap"),
+    # --- Retorno por exceso QA ---------------------------------------------
+    # Segunda vuelta de la pieza. No son columnas de Tracking: se leen al vuelo
+    # de qa_exceso_entradas / qa_exceso_salidas y se inyectan en la fila.
+    # Las de "retorno" son el ULTIMO paso por esa estacion DESPUES de la entrada
+    # a exceso: es material que regreso y se volvio a probar, asi que la fecha
+    # util es la del reproceso, no la del primer paso (que ya sale arriba).
+    ("Exceso_In", "Exceso_In_At", "Entrada Exceso"),
+    ("Ret_ICT", "Ret_ICT_At", "ICT retorno"),
+    ("Ret_FCT", "Ret_FCT_At", "FCT retorno"),
+    ("Ret_Packing", "Ret_Packing_At", "Packing retorno"),
+    ("Exceso_Out", "Exceso_Out_At", "Salida Exceso (OQC)"),
 ]
+
+# Etapas del bloque de retorno. Si la pieza nunca entro a exceso son "N/A"
+# (no aplica); si entro pero aun no se reproceso quedan en "-", que es
+# justamente la señal de "sigue en exceso".
+_ETAPAS_RETORNO = ["Exceso_In", "Ret_ICT", "Ret_FCT", "Ret_Packing", "Exceso_Out"]
 
 # Etapas por las que una pieza sana NO tiene que pasar. Si no las alcanzo se
 # muestran como "N/A" en vez de "-": no haberlas tocado es lo normal, mientras
@@ -276,9 +298,112 @@ def _historial_desde_fuentes(barcodes):
     return encontrado
 
 
-def _fila_sintetica(barcode, etapas):
-    """Fila con la forma de Tracking, armada desde las fuentes. NO se guarda."""
-    fila = {"QR": None, "Barcode": barcode}
+# --- Retorno por exceso QA ---------------------------------------------------
+#
+# qa_exceso_entradas confirma que la pieza llego al almacen de exceso;
+# qa_exceso_salidas, que ya se libero por OQC. Entre una y otra la pieza se
+# vuelve a probar, asi que lo que interesa de ICT/FCT/Packing es el ULTIMO paso
+# POSTERIOR a la entrada, no el primero de su vida.
+#
+# scan_code viene mezclado: 4,052 barcodes y 28 QR (medido 2026-08-05). Las
+# consultas de reproceso cruzan por barcode, asi que para esas 28 el bloque de
+# retorno mostrara la entrada/salida pero no el reproceso. Cruzarlas requeriria
+# un JOIN con OR entre dos columnas, que sobre estas tablas degenera en full
+# scan (ya paso una vez y bloqueo la linea).
+_SQL_EXCESO_ENTRADA = """
+    SELECT scan_code AS k, MAX(entry_at) AS ts FROM qa_exceso_entradas
+    WHERE scan_code IN ({ph}) GROUP BY scan_code"""
+
+_SQL_EXCESO_SALIDA = """
+    SELECT scan_code AS k, MAX(released_at) AS ts FROM qa_exceso_salidas
+    WHERE scan_code IN ({ph}) GROUP BY scan_code"""
+
+# El JOIN contra la entrada acota por fecha dentro de la misma consulta, asi que
+# no hace falta traer entry_at a Python ni armar pares (codigo, fecha).
+_FUENTES_RETORNO = [
+    ("Ret_ICT", """
+        SELECT e.scan_code AS k, MAX(h.ts) AS ts
+        FROM qa_exceso_entradas e
+        JOIN history_ict h ON h.barcode = e.scan_code
+         AND h.resultado = 'OK' AND h.ts > e.entry_at
+        WHERE e.scan_code IN ({ph}) GROUP BY e.scan_code"""),
+    ("Ret_FCT", """
+        SELECT e.scan_code AS k, MAX(f.end_at) AS ts
+        FROM qa_exceso_entradas e
+        JOIN fct_test_results f ON f.serial_number = e.scan_code
+         AND f.final_result = 'PASS' AND f.end_at > e.entry_at
+        WHERE e.scan_code IN ({ph}) GROUP BY e.scan_code"""),
+    ("Ret_Packing", """
+        SELECT e.scan_code AS k, MAX(b.last_scan) AS ts
+        FROM qa_exceso_entradas e
+        JOIN box_scans b ON b.serial = e.scan_code AND b.last_scan > e.entry_at
+        WHERE e.scan_code IN ({ph}) GROUP BY e.scan_code"""),
+]
+
+
+def _retorno_exceso(claves):
+    """{clave: {columna: fecha}} del bloque de retorno.
+
+    `claves` son QRs y/o barcodes: qa_exceso_* guarda cualquiera de los dos en
+    scan_code, asi que se consulta con ambos y se resuelve por el que empate.
+    """
+    claves = [c for c in dict.fromkeys(claves) if c]
+    if not claves:
+        return {}
+
+    ph = ", ".join(["%s"] * len(claves))
+    fuera = {}
+
+    def anota(k, col, valor):
+        if k and valor is not None:
+            fuera.setdefault(k, {})[col] = valor
+
+    for col, plantilla in ([("Exceso_In", _SQL_EXCESO_ENTRADA),
+                            ("Exceso_Out", _SQL_EXCESO_SALIDA)] + _FUENTES_RETORNO):
+        for r in execute_query(plantilla.format(ph=ph), claves, fetch="all") or []:
+            anota(r.get("k"), col, r.get("ts"))
+
+    return fuera
+
+
+def _aplicar_retorno(filas):
+    """Inyecta el bloque de retorno en cada fila, buscando por su QR y su Barcode."""
+    claves = []
+    for f in filas:
+        claves += [f.get("QR"), f.get("Barcode")]
+    retorno = _retorno_exceso(claves)
+    if not retorno:
+        return filas
+
+    for f in filas:
+        datos = retorno.get(f.get("QR")) or retorno.get(f.get("Barcode")) or {}
+        for col in _ETAPAS_RETORNO:
+            ts = datos.get(col)
+            f[col] = 1 if ts is not None else 0
+            f[f"{col}_At"] = ts
+    return filas
+
+
+def _tiene_algo(fila):
+    """True si la fila reconstruida registro al menos una etapa."""
+    return any(fila.get(col) for col, _, _ in _ETAPAS)
+
+
+def _es_qr(codigo):
+    """El QR de este sistema siempre tiene la forma 'I<lote>;MAIN;<parte>;<n>;'."""
+    return bool(codigo) and codigo.startswith("I") and ";MAIN;" in codigo
+
+
+def _fila_sintetica(codigo, etapas):
+    """Fila con la forma de Tracking, armada desde las fuentes. NO se guarda.
+
+    El codigo puede ser QR o barcode (qa_exceso_* guarda ambos en scan_code),
+    asi que se coloca en la columna que le toca: si va en la equivocada, el
+    modulo marcaria como indeterminables justo las etapas que si se conocen.
+    """
+    es_qr = _es_qr(codigo)
+    fila = {"QR": codigo if es_qr else None,
+            "Barcode": None if es_qr else codigo}
     for col, col_at, _ in _ETAPAS:
         if col == "Embarques":
             fila[col] = etapas.get("Embarques")
@@ -300,6 +425,9 @@ def _fila_a_item(row):
     # indeterminables, no ausentes. Son los dos lados del mismo hueco.
     sin_barcode = not (row.get("Barcode") or "").strip()
     sin_qr = not (row.get("QR") or "").strip()
+    # Sin entrada a exceso, todo el bloque de retorno es "no aplica". Con
+    # entrada pero sin reproceso, queda en "-": la pieza sigue en exceso.
+    sin_exceso = not row.get("Exceso_In")
 
     for col, col_at, label in _ETAPAS:
         valor = row.get(col)
@@ -310,7 +438,9 @@ def _fila_a_item(row):
         # "NO VINCULADO" y no "sin": la pieza casi seguro TIENE el otro codigo,
         # con su propio historial. Lo que falta es la union entre ambos, que
         # nadie registro. Decir "sin QR" sugeriria que la pieza no lo trae.
-        if not ok and sin_barcode and col in _ETAPAS_POR_BARCODE:
+        if not ok and sin_exceso and col in _ETAPAS_RETORNO:
+            estado, clase = "N/A", "na"
+        elif not ok and sin_barcode and col in _ETAPAS_POR_BARCODE:
             estado, clase = "BARCODE NO VINCULADO", "nd"
         elif not ok and sin_qr and col in _ETAPAS_POR_QR:
             estado, clase = "QR NO VINCULADO", "nd"
@@ -350,9 +480,15 @@ def _fila_a_item(row):
             "celda": celda,
         })
 
-    # Estado global: scrap y embarques mandan sobre la ultima etapa cronologica.
+    # Estado global: scrap manda sobre todo; luego exceso, porque si la pieza
+    # esta en el almacen de exceso ese es su lugar AHORA y el estado de
+    # embarques que trae es el del primer paso, ya viejo.
     if row.get("Scrap"):
         estado_global, clase_global = "SCRAP", "scrap"
+    elif row.get("Exceso_In") and not row.get("Exceso_Out"):
+        estado_global, clase_global = "En exceso QA", "embarques"
+    elif row.get("Exceso_Out"):
+        estado_global, clase_global = "Liberado de exceso", "hecho"
     elif row.get("Embarques") == "SALIO":
         estado_global, clase_global = "Salio de embarques", "salio"
     elif row.get("Embarques") == "EN_EMBARQUES":
@@ -369,12 +505,15 @@ def _fila_a_item(row):
         total -= len(_ETAPAS_POR_BARCODE)
     if sin_qr:
         total -= len(_ETAPAS_POR_QR)
+    if sin_exceso:
+        total -= len(_ETAPAS_RETORNO)  # nunca fue a exceso: no le aplican
 
     return {
         "qr": row.get("QR") or "",
         "barcode": row.get("Barcode") or "",
         "sin_barcode": sin_barcode,
         "sin_qr": sin_qr,
+        "en_exceso": bool(row.get("Exceso_In")),
         "estado_global": estado_global,
         "clase_global": clase_global,
         "registradas": registradas,
@@ -392,15 +531,18 @@ def _query_items(limit):
 
     filas = _buscar_filas(codigo, limit)
     if filas:
-        return [dict(_fila_a_item(r), reconstruido=False) for r in filas]
+        return [dict(_fila_a_item(r), reconstruido=False)
+                for r in _aplicar_retorno(filas)]
 
     # No hay fila en Tracking. Puede seguir habiendo historial: si la pieza
     # nunca se vinculo a un QR, ICT/FCT/Packing/OQC igual la registraron por
-    # barcode. Se arma la vista desde esas tablas, sin guardar nada.
-    fuentes = _historial_desde_fuentes([codigo])
-    if codigo in fuentes:
-        return [dict(_fila_a_item(_fila_sintetica(codigo, fuentes[codigo])),
-                     reconstruido=True)]
+    # barcode. Y aunque no tenga nada de eso, una entrada a exceso ya es
+    # historia: una pieza que esta en el almacen de exceso no puede salir como
+    # "sin historial". Se arma la vista desde esas tablas, sin guardar nada.
+    fila = _aplicar_retorno(
+        [_fila_sintetica(codigo, _historial_desde_fuentes([codigo]).get(codigo, {}))])[0]
+    if _tiene_algo(fila):
+        return [dict(_fila_a_item(fila), reconstruido=True)]
     return []
 
 
@@ -523,14 +665,25 @@ def _buscar_lote(codigos):
     for i in range(0, len(faltantes), _LOTE_CHUNK):
         fuentes.update(_historial_desde_fuentes(faltantes[i:i + _LOTE_CHUNK]))
 
-    items = []
+    # Bloque de retorno por exceso, por tandas. Se arma una fila por codigo
+    # ANTES de decidir si existe: una pieza cuyo unico registro es la entrada a
+    # exceso no tiene fila en Tracking ni historial por barcode, pero esta en el
+    # almacen de exceso y no puede salir como "sin historial".
+    resueltas = {}
     for cod in codigos:
         row = por_qr.get(cod) or por_barcode.get(cod)
-        reconstruido = False
+        resueltas[cod] = row if row is not None else _fila_sintetica(cod, fuentes.get(cod, {}))
+    filas_unicas = list({id(r): r for r in resueltas.values()}.values())
+    for i in range(0, len(filas_unicas), _LOTE_CHUNK):
+        _aplicar_retorno(filas_unicas[i:i + _LOTE_CHUNK])
 
-        if row is None and cod in fuentes:
-            row = _fila_sintetica(cod, fuentes[cod])
-            reconstruido = True
+    items = []
+    for cod in codigos:
+        en_tracking = cod in por_qr or cod in por_barcode
+        row = resueltas.get(cod)
+        reconstruido = not en_tracking
+        if not en_tracking and not _tiene_algo(row):
+            row = None
 
         if row is None:
             items.append({
@@ -541,6 +694,7 @@ def _buscar_lote(codigos):
                 "barcode": "",
                 "sin_barcode": False,
                 "sin_qr": False,
+                "en_exceso": False,
                 "estado_global": "No encontrado",
                 "clase_global": "pendiente",
                 "registradas": 0,
