@@ -256,7 +256,7 @@
 }
 
 .ae-register-field--reason {
-    width: 180px;
+    width: 135px;
 }
 
 .ae-register-field--part-number {
@@ -265,7 +265,7 @@
 }
 
 .ae-register-field--quantity {
-    width: 180px;
+    width: 135px;
 }
 
 .ae-register-field label {
@@ -326,28 +326,55 @@
     flex-wrap: nowrap;
     justify-content: flex-start;
     align-items: end;
-    gap: 12px;
+    gap: 8px;
     padding: 12px 16px 16px;
 }
 
 .ae-return-query-form .ae-filter-group {
     flex: 0 0 auto;
+    min-width: 0;
+}
+
+.ae-return-query-form .ae-return-query-field--part {
+    flex: 1 1 150px;
 }
 
 .ae-return-query-form .ae-filter-group input {
-    width: 180px;
+    width: 150px;
     min-height: 34px;
 }
 
-.ae-return-query-form .ae-return-query-field--date input {
-    width: 150px;
+.ae-return-query-form .ae-return-query-field--part input {
+    width: 100%;
 }
 
-.ae-return-query-form .ae-btn-primary {
+.ae-return-query-form .ae-filter-group select {
+    width: 104px;
+    min-height: 34px;
+    padding: 0 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: #ffffff;
+    color: #1d2635;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.ae-return-query-form .ae-return-query-field--date input {
+    width: 126px;
+}
+
+.ae-return-query-form .ae-btn-primary,
+.ae-return-query-form .ae-btn-secondary {
     min-height: 36px;
-    min-width: 116px;
-    width: 116px;
-    flex: 0 0 116px;
+    min-width: 0;
+    width: 100px;
+    flex: 0 0 100px;
+}
+
+.ae-return-query-form .ae-btn-secondary {
+    width: 88px;
+    flex-basis: 88px;
 }
 
 .ae-split-results {
@@ -2210,8 +2237,10 @@ body.ae-column-resizing * {
     .ae-register-form__action,
     .ae-return-query-form .ae-filter-group,
     .ae-return-query-form .ae-filter-group input,
+    .ae-return-query-form .ae-filter-group select,
     .ae-return-query-form .ae-return-query-field--date input,
-    .ae-return-query-form .ae-btn-primary {
+    .ae-return-query-form .ae-btn-primary,
+    .ae-return-query-form .ae-btn-secondary {
         width: 100%;
         max-width: none;
         flex: initial;

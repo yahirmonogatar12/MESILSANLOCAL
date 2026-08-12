@@ -1759,7 +1759,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesRetorno = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-retorno-unique-container",
-      "/almacen-embarques-retorno-ajax?v=20260513b",
+      "/almacen-embarques-retorno-ajax?v=20260812a",
       "inicializarAlmacenEmbarquesRetornoAjax",
     );
   };

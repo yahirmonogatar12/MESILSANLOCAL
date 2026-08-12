@@ -75,8 +75,19 @@
                     <label for="almacen-embarques-returns-date-to">Fecha hasta</label>
                     <input type="date" id="almacen-embarques-returns-date-to">
                 </div>
+                <div class="ae-filter-group ae-return-query-field--type">
+                    <label for="almacen-embarques-returns-type-filter">Tipo</label>
+                    <select id="almacen-embarques-returns-type-filter">
+                        <option value="">Todos</option>
+                        <option value="Exceso">Exceso</option>
+                        <option value="OS&D">OS&amp;D</option>
+                    </select>
+                </div>
                 <button id="almacen-embarques-returns-filter-btn" class="ae-btn-primary" type="button">
                     Consultar
+                </button>
+                <button id="almacen-embarques-returns-clear-btn" class="ae-btn-secondary" type="button">
+                    Limpiar
                 </button>
             </div>
         </div>
@@ -204,4 +215,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260526a') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260812a') }}"></script>

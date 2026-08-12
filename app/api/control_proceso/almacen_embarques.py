@@ -184,6 +184,7 @@ def _obtener_limite_historial_embarques(default=300, filtered=5000):
             request.args.get("search", "").strip(),
             request.args.get("fecha_desde", "").strip(),
             request.args.get("fecha_hasta", "").strip(),
+            request.args.get("tipo", "").strip(),
         )
     )
     return filtered if tiene_filtros else default
@@ -374,6 +375,7 @@ def _obtener_historial_salidas_almacen_embarques(limit=300):
 
 
 def _obtener_historial_retorno_almacen_embarques(limit=300):
+    tipo = (request.args.get("tipo", "") or "").strip()
     sql = """
         SELECT
             id,
@@ -413,6 +415,9 @@ def _obtener_historial_retorno_almacen_embarques(limit=300):
             "registered_by",
         ],
     )
+    if tipo:
+        sql += " AND LOWER(TRIM(SUBSTRING_INDEX(COALESCE(reason, ''), '/', 1))) = LOWER(%s)"
+        params.append(tipo)
     sql += " ORDER BY COALESCE(movement_at, created_at) DESC LIMIT %s"
     params.append(limit)
 

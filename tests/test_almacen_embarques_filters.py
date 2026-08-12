@@ -1,4 +1,5 @@
 from flask import Flask
+from unittest.mock import patch
 
 from app.api.control_proceso import almacen_embarques as ae
 
@@ -57,3 +58,21 @@ def test_limite_historial_embarques_con_fecha_usa_limite_de_export():
 
 def test_limite_historial_embarques_con_busqueda_usa_limite_de_export():
     assert _obtener_limite("?search=ABC123") == 5000
+
+
+def test_limite_historial_embarques_con_tipo_usa_limite_de_export():
+    assert _obtener_limite("?tipo=OS%26D") == 5000
+
+
+def test_historial_retorno_filtra_tipo_normalizado():
+    app = Flask(__name__)
+    with patch.object(ae, "execute_query", return_value=[]) as mocked_query:
+        with app.test_request_context(
+            "/api/almacen-embarques/retorno?fecha_desde=2026-08-12&fecha_hasta=2026-08-12&tipo=OS%26D"
+        ):
+            rows = ae._obtener_historial_retorno_almacen_embarques(limit=3)
+
+    sql, params = mocked_query.call_args.args[:2]
+    assert rows == []
+    assert "SUBSTRING_INDEX(COALESCE(reason, ''), '/', 1)" in sql
+    assert params == ("2026-08-12", "2026-08-12", "OS&D", 3)

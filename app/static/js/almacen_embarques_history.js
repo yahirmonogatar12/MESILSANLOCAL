@@ -1117,7 +1117,9 @@
       searchInput: document.getElementById("almacen-embarques-returns-search"),
       dateFrom: document.getElementById("almacen-embarques-returns-date-from"),
       dateTo: document.getElementById("almacen-embarques-returns-date-to"),
+      typeFilter: document.getElementById("almacen-embarques-returns-type-filter"),
       dateFilterBtn: document.getElementById("almacen-embarques-returns-filter-btn"),
+      clearFilterBtn: document.getElementById("almacen-embarques-returns-clear-btn"),
       entryExportBtn: document.getElementById("almacen-embarques-return-in-export-btn"),
       entryBody: document.getElementById("almacen-embarques-return-in-tbody"),
       entryCount: document.getElementById("almacen-embarques-return-in-count"),
@@ -1194,6 +1196,10 @@
     const search = elements.searchInput?.value?.trim();
     if (search) {
       params.set("search", search);
+    }
+    const typeFilter = elements.typeFilter?.value?.trim();
+    if (typeFilter) {
+      params.set("tipo", typeFilter);
     }
     return params;
   }
@@ -2543,13 +2549,26 @@
 
   function clearReturnForm() {
     const elements = getReturnModuleElements();
+    const currentReason = elements.reason?.value || "Exceso";
     if (elements.movementType) elements.movementType.value = "entry";
     if (elements.partNumber) elements.partNumber.value = "";
     if (elements.quantity) elements.quantity.value = "";
-    if (elements.reason) elements.reason.value = "Exceso";
+    if (elements.reason) elements.reason.value = currentReason;
     if (elements.location) elements.location.value = "";
     if (elements.remarks) elements.remarks.value = "";
     setReturnFormStatus("");
+  }
+
+  async function clearReturnFilters() {
+    const elements = getReturnModuleElements();
+    if (elements.searchInput) {
+      elements.searchInput.value = "";
+    }
+    if (elements.typeFilter) {
+      elements.typeFilter.value = "";
+    }
+    setReturnDateInputsToToday(elements);
+    await loadReturnsModule();
   }
 
   function exportReturnsByMovement(movementType) {
@@ -2899,7 +2918,12 @@
       elements.dateFilterBtn.dataset.bound = "true";
     }
 
-    [elements.searchInput, elements.dateFrom, elements.dateTo].forEach((input) => {
+    if (elements.clearFilterBtn && elements.clearFilterBtn.dataset.bound !== "true") {
+      elements.clearFilterBtn.addEventListener("click", clearReturnFilters);
+      elements.clearFilterBtn.dataset.bound = "true";
+    }
+
+    [elements.searchInput, elements.dateFrom, elements.dateTo, elements.typeFilter].forEach((input) => {
       if (!input || input.dataset.bound === "true") {
         return;
       }
