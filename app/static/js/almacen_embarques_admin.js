@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260522a";
+  const ASSET_VERSION = "20260813a";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
 
   const movementModuleState = {
@@ -717,8 +717,29 @@
     return JSON.parse(JSON.stringify(row || {}));
   }
 
+  function isReturnExitMovement(row) {
+    if (!row || row.movement_type !== "return") {
+      return false;
+    }
+
+    if (row.return_movement_kind) {
+      return row.return_movement_kind === "exit";
+    }
+
+    const returnQuantity = Number(row.return_quantity ?? row.quantity_primary ?? 0);
+    const lossQuantity = Number(row.loss_quantity ?? row.quantity_secondary ?? 0);
+    return lossQuantity > 0 && returnQuantity <= lossQuantity;
+  }
+
   function getMovementQuantity(row) {
+    if (row.display_quantity !== undefined && row.display_quantity !== null && row.display_quantity !== "") {
+      return row.display_quantity;
+    }
+
     if (row.movement_type === "return") {
+      if (isReturnExitMovement(row)) {
+        return row.loss_quantity ?? row.quantity_secondary ?? 0;
+      }
       return row.return_quantity ?? row.quantity_primary ?? 0;
     }
     return row.quantity_primary ?? row.quantity ?? 0;
@@ -2033,9 +2054,18 @@
         break;
       case "cantidad":
         if (movementModuleState.draftRow.movement_type === "return") {
-          movementModuleState.draftRow.return_quantity = nextValue === "" ? "" : Number(nextValue);
+          const numericValue = nextValue === "" ? "" : Number(nextValue);
+          if (isReturnExitMovement(movementModuleState.draftRow)) {
+            movementModuleState.draftRow.loss_quantity = numericValue;
+            movementModuleState.draftRow.quantity_secondary = numericValue;
+          } else {
+            movementModuleState.draftRow.return_quantity = numericValue;
+            movementModuleState.draftRow.quantity_primary = numericValue;
+          }
+          movementModuleState.draftRow.display_quantity = numericValue;
         } else {
           movementModuleState.draftRow.quantity_primary = nextValue === "" ? "" : Number(nextValue);
+          movementModuleState.draftRow.display_quantity = movementModuleState.draftRow.quantity_primary;
         }
         break;
       case "zona":
@@ -2073,7 +2103,11 @@
         changes.movement_at = buildMovementDateTimeValue(draftRow);
       } else if (field.name === "cantidad") {
         if (draftRow.movement_type === "return") {
-          changes.return_quantity = draftValue;
+          if (isReturnExitMovement(draftRow)) {
+            changes.loss_quantity = draftValue;
+          } else {
+            changes.return_quantity = draftValue;
+          }
         } else {
           changes.quantity = draftValue;
         }

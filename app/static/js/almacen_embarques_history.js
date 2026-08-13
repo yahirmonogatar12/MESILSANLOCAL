@@ -2549,8 +2549,9 @@
 
   function clearReturnForm() {
     const elements = getReturnModuleElements();
+    const currentMovementType = elements.movementType?.value || "entry";
     const currentReason = elements.reason?.value || "Exceso";
-    if (elements.movementType) elements.movementType.value = "entry";
+    if (elements.movementType) elements.movementType.value = currentMovementType;
     if (elements.partNumber) elements.partNumber.value = "";
     if (elements.quantity) elements.quantity.value = "";
     if (elements.reason) elements.reason.value = currentReason;

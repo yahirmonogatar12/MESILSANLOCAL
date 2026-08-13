@@ -76,3 +76,51 @@ def test_historial_retorno_filtra_tipo_normalizado():
     assert rows == []
     assert "SUBSTRING_INDEX(COALESCE(reason, ''), '/', 1)" in sql
     assert params == ("2026-08-12", "2026-08-12", "OS&D", 3)
+
+
+def _movimiento_retorno_row(quantity_primary, quantity_secondary, detail="Exceso"):
+    return {
+        "movement_type": "return",
+        "movement_label": "Retorno",
+        "record_id": 15,
+        "fecha": "2026-08-12",
+        "hora": "11:54:16",
+        "folio": "EMB-RET-20260812-115416-985",
+        "part_number": "ACQ30500846",
+        "quantity_primary": quantity_primary,
+        "quantity_secondary": quantity_secondary,
+        "product_model": "pending",
+        "customer": "LG",
+        "zone_code": "pending",
+        "location_value": "",
+        "detail": detail,
+        "departure_code": None,
+        "registered_by": "Rubi Garcia",
+        "last_adjusted_by": None,
+        "last_adjusted_at": None,
+    }
+
+
+def _obtener_movimientos_con_rows(rows):
+    app = Flask(__name__)
+    with patch.object(ae, "execute_query", return_value=rows):
+        with app.test_request_context("/api/almacen-embarques/movimientos?tipo=return"):
+            return ae._obtener_movimientos_editables_almacen_embarques(limit=5)
+
+
+def test_movimientos_editables_retorno_entrada_muestra_cantidad_retorno():
+    rows = _obtener_movimientos_con_rows([_movimiento_retorno_row(14, 0)])
+
+    assert rows[0]["display_quantity"] == 14
+    assert rows[0]["return_quantity"] == 14
+    assert rows[0]["loss_quantity"] == 0
+    assert rows[0]["return_movement_kind"] == "entry"
+
+
+def test_movimientos_editables_salida_retorno_muestra_cantidad_salida():
+    rows = _obtener_movimientos_con_rows([_movimiento_retorno_row(0, 13)])
+
+    assert rows[0]["display_quantity"] == 13
+    assert rows[0]["return_quantity"] == 0
+    assert rows[0]["loss_quantity"] == 13
+    assert rows[0]["return_movement_kind"] == "exit"

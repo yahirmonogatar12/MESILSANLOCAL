@@ -604,29 +604,49 @@ def _obtener_movimientos_editables_almacen_embarques(limit=500):
     params.append(limit)
 
     rows = execute_query(sql, tuple(params), fetch="all") or []
-    return [
-        {
-            "movement_type": _normalizar_texto_embarques_historial(row.get("movement_type")),
+    normalized_rows = []
+    for row in rows:
+        movement_type = _normalizar_texto_embarques_historial(row.get("movement_type"))
+        quantity_primary = _normalizar_numero_embarques_historial(row.get("quantity_primary")) or 0
+        quantity_secondary = _normalizar_numero_embarques_historial(row.get("quantity_secondary")) or 0
+        detail = _normalizar_texto_embarques_historial(row.get("detail"))
+        is_return_exit = movement_type == "return" and _es_salida_retorno_embarques(
+            quantity_primary,
+            quantity_secondary,
+            detail,
+        )
+        display_quantity = quantity_secondary if is_return_exit else quantity_primary
+
+        normalized_row = {
+            "movement_type": movement_type,
             "movement_label": _normalizar_texto_embarques_historial(row.get("movement_label")),
             "record_id": row.get("record_id"),
             "fecha": _normalizar_texto_embarques_historial(row.get("fecha")),
             "hora": _normalizar_texto_embarques_historial(row.get("hora")),
             "folio": _normalizar_texto_embarques_historial(row.get("folio")),
             "part_number": _normalizar_texto_embarques_historial(row.get("part_number")),
-            "quantity_primary": _normalizar_numero_embarques_historial(row.get("quantity_primary")),
-            "quantity_secondary": _normalizar_numero_embarques_historial(row.get("quantity_secondary")),
+            "quantity_primary": quantity_primary,
+            "quantity_secondary": quantity_secondary,
+            "display_quantity": display_quantity,
             "product_model": _normalizar_texto_embarques_historial(row.get("product_model")),
             "customer": _normalizar_texto_embarques_historial(row.get("customer")),
             "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
             "location_value": _normalizar_texto_embarques_historial(row.get("location_value")),
-            "detail": _normalizar_texto_embarques_historial(row.get("detail")),
+            "detail": detail,
             "departure_code": _normalizar_texto_embarques_historial(row.get("departure_code")),
             "registered_by": _normalizar_texto_embarques_historial(row.get("registered_by")),
             "last_adjusted_by": _normalizar_texto_embarques_historial(row.get("last_adjusted_by")),
             "last_adjusted_at": _normalizar_texto_embarques_historial(row.get("last_adjusted_at")),
         }
-        for row in rows
-    ]
+
+        if movement_type == "return":
+            normalized_row["return_quantity"] = quantity_primary
+            normalized_row["loss_quantity"] = quantity_secondary
+            normalized_row["return_movement_kind"] = "exit" if is_return_exit else "entry"
+
+        normalized_rows.append(normalized_row)
+
+    return normalized_rows
 
 
 def _obtener_detalle_movimiento_almacen_embarques(movement_type, record_id):
@@ -4279,7 +4299,7 @@ def export_almacen_embarques_movimientos():
                 "Tipo": "movement_label",
                 "Folio": "folio",
                 "No. Parte": "part_number",
-                "Cantidad": "quantity_primary",
+                "Cantidad": "display_quantity",
                 "Modelo": "product_model",
                 "Cliente": "customer",
                 "Zona": "zone_code",
