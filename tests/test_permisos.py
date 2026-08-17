@@ -30,6 +30,14 @@ def test_routes_reexporta_el_mismo_decorador():
     assert routes.requiere_permiso_dropdown is permisos.requiere_permiso_dropdown
 
 
+def test_catalogo_extra_conserva_permisos_eco():
+    from app.api.admin.usuarios import EXTRA_DROPDOWN_PERMISSIONS
+    from app.auth_system import ECO_APPROVE_PERMISSION, ECO_CREATE_PERMISSION
+
+    assert ECO_CREATE_PERMISSION in EXTRA_DROPDOWN_PERMISSIONS
+    assert ECO_APPROVE_PERMISSION in EXTRA_DROPDOWN_PERMISSIONS
+
+
 def test_blueprints_usan_el_decorador_centralizado():
     # Los 7 proxies se eliminaron; ahora importan el canonico.
     import app.api.control_produccion.plan_assy as pa
