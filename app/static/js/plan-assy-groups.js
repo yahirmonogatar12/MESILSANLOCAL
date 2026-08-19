@@ -615,13 +615,54 @@ function mostrarNotificacionConflictos(cantidad) {
   }, 8000);
 }
 
+// Saca el plan de donde este y lo inserta en groups[targetGroupIndex] en insertIndex.
+// insertIndex null = al final. Devuelve true si movio algo.
+function movePlanInGroups(groups, lotNo, targetGroupIndex, insertIndex) {
+  const targetGroup = groups[targetGroupIndex];
+  if (!targetGroup) return false;
+
+  let plan = null;
+  groups.forEach(group => {
+    const i = group.plans.findIndex(p => p.lot_no === lotNo);
+    if (i === -1) return;
+    [plan] = group.plans.splice(i, 1);
+    // al sacarlo del propio grupo destino los indices posteriores se recorren
+    if (group === targetGroup && insertIndex != null && i < insertIndex) insertIndex--;
+  });
+  if (!plan) return false;
+
+  if (insertIndex == null || insertIndex > targetGroup.plans.length) {
+    insertIndex = targetGroup.plans.length;
+  }
+  targetGroup.plans.splice(insertIndex, 0, plan);
+  return true;
+}
+
+if (typeof module !== 'undefined') module.exports = { movePlanInGroups };
+
+// Escribe group_no/sequence del orden visual actual sobre los objetos en memoria
+// (incluye originalPlansData) para que un re-render completo respete el arrastre
+// en vez de volver a leer el orden viejo de la BD.
+function stampGroupSequence() {
+  visualGroups.groups.forEach((group, groupIndex) => {
+    group.plans.forEach((plan, planIndex) => {
+      plan.group_no = groupIndex + 1;
+      plan.sequence = planIndex + 1;
+      const original = originalPlansData.find(p => p.lot_no === plan.lot_no);
+      if (original) {
+        original.group_no = groupIndex + 1;
+        original.sequence = planIndex + 1;
+      }
+    });
+  });
+}
+
 // Configurar drag & drop entre grupos y dentro de grupos
 function setupGroupDragDrop() {
   const tbody = document.getElementById("assy-tableBody");
   let draggedElement = null;
   let draggedFromGroup = null;
   let dropIndicator = null;
-  let isDraggingOverDropZone = false;
 
   // Crear indicador visual de insercion
   function createDropIndicator() {
@@ -658,8 +699,31 @@ function setupGroupDragDrop() {
     clearDropIndicator();
     draggedElement = null;
     draggedFromGroup = null;
-    isDraggingOverDropZone = false;
   });
+
+  // Mover un plan a un grupo/posicion en memoria y re-renderizar.
+  // insertIndex null = al final del grupo destino.
+  function movePlan(lotNo, targetGroupIndex, insertIndex) {
+    if (!movePlanInGroups(visualGroups.groups, lotNo, targetGroupIndex, insertIndex)) return;
+
+    visualGroups.planAssignments.set(lotNo, targetGroupIndex);
+    stampGroupSequence();
+    renderCurrentVisualGroups();
+
+    setTimeout(() => {
+      updateSequenceNumbers();
+      resaltarConflictosLineaHorario();
+      const movedRow = document.querySelector(`tr[data-lot="${lotNo}"]`);
+      if (movedRow) {
+        movedRow.style.transition = 'background-color 0.3s ease';
+        movedRow.style.backgroundColor = '#27ae60';
+        setTimeout(() => {
+          movedRow.style.backgroundColor = '';
+          setTimeout(() => { movedRow.style.transition = ''; }, 300);
+        }, 800);
+      }
+    }, 100);
+  }
 
   tbody.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -669,14 +733,12 @@ function setupGroupDragDrop() {
     // Verificar si estamos sobre una zona de drop entre grupos
     const dropZone = e.target.closest('.group-drop-zone');
     if (dropZone) {
-      isDraggingOverDropZone = true;
       clearDropIndicator(); // Limpiar indicador de reordenamiento
       dropZone.style.backgroundColor = '#20688C';
       dropZone.style.borderColor = '#3498db';
       return;
     }
 
-    isDraggingOverDropZone = false;
     // limpiar estilos de todas las drop-zones si no estamos sobre una
     const allZones = tbody.querySelectorAll('.group-drop-zone');
     allZones.forEach(z => { z.style.backgroundColor = '#34495e'; z.style.borderColor = '#20688C'; });
@@ -688,38 +750,17 @@ function setupGroupDragDrop() {
       return;
     }
 
-    const targetGroupIndex = parseInt(targetRow.dataset.groupIndex);
-    const draggedGroupIndex = parseInt(draggedElement.dataset.groupIndex);
+    // Indicador de insercion sobre cualquier fila, sea del grupo que sea
+    clearDropIndicator();
+    dropIndicator = createDropIndicator();
 
-    // Solo permitir reordenamiento dentro del mismo grupo
-    if (targetGroupIndex === draggedGroupIndex) {
-      clearDropIndicator();
+    const rect = targetRow.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
 
-      // Crear nuevo indicador
-      dropIndicator = createDropIndicator();
-
-      // Determinar donde insertar el indicador
-      const rect = targetRow.getBoundingClientRect();
-      const midpoint = rect.top + rect.height / 2;
-
-      if (e.clientY < midpoint) {
-        // Insertar antes de la fila target
-        targetRow.parentNode.insertBefore(dropIndicator, targetRow);
-      } else {
-        // Insertar despuos de la fila target
-        const nextSibling = targetRow.nextSibling;
-        // Verificar que el siguiente elemento no sea un header de grupo o drop zone
-        if (nextSibling &&
-          !nextSibling.classList.contains('group-header-row') &&
-          !nextSibling.classList.contains('group-drop-zone') &&
-          !nextSibling.classList.contains('group-spacer')) {
-          targetRow.parentNode.insertBefore(dropIndicator, nextSibling);
-        } else {
-          targetRow.parentNode.insertBefore(dropIndicator, nextSibling);
-        }
-      }
+    if (e.clientY < midpoint) {
+      targetRow.parentNode.insertBefore(dropIndicator, targetRow);
     } else {
-      clearDropIndicator();
+      targetRow.parentNode.insertBefore(dropIndicator, targetRow.nextSibling);
     }
   });
 
@@ -738,138 +779,33 @@ function setupGroupDragDrop() {
 
     clearDropIndicator();
 
+    const lotNo = draggedElement.dataset.lot;
     const dropZone = e.target.closest('.group-drop-zone');
 
-    if (dropZone && isDraggingOverDropZone) {
-      // Movimiento entre grupos
-      const targetGroupIndex = parseInt(dropZone.dataset.groupIndex);
-      const lotNo = draggedElement.dataset.lot;
-
-      // Actualizar asignacion
-      visualGroups.planAssignments.set(lotNo, targetGroupIndex);
-
-      // Recargar tabla con nueva asignacion
-      reloadTableWithCurrentData();
-
-      // Actualizar secuencias y fechas de inicio
-      setTimeout(() => {
-        updateSequenceNumbers();
-      }, 100);
-
-      // Restaurar estilos
+    if (dropZone) {
+      // Soltar en la banda del grupo: se va al final de ese grupo
       dropZone.style.backgroundColor = '#34495e';
       dropZone.style.borderColor = '#20688C';
-
-      // Feedback visual
-      const dropZoneContent = dropZone.querySelector('.drop-zone-content');
-      const originalText = dropZoneContent.innerHTML;
-
-      dropZoneContent.innerHTML = `? Plan ${lotNo.split('-')[2]} movido aquo`;
-      dropZoneContent.classList.add('drop-zone-success');
-
-      setTimeout(() => {
-        dropZoneContent.innerHTML = originalText;
-        dropZoneContent.classList.remove('drop-zone-success');
-      }, 1500);
-
-    } else {
-      // Reordenamiento dentro del mismo grupo
-      const targetRow = e.target.closest('.assy-row');
-      if (!targetRow || targetRow === draggedElement) {
-        return;
-      }
-
-      const targetGroupIndex = parseInt(targetRow.dataset.groupIndex);
-      const draggedGroupIndex = parseInt(draggedElement.dataset.groupIndex);
-
-      // Solo proceder si es el mismo grupo
-      if (targetGroupIndex === draggedGroupIndex) {
-        reorderWithinGroup(draggedElement, targetRow, targetGroupIndex, e.clientY);
-      }
+      movePlan(lotNo, parseInt(dropZone.dataset.groupIndex), null);
+      return;
     }
 
-    isDraggingOverDropZone = false;
+    // Soltar sobre una fila: se inserta en esa posicion, sea del grupo que sea
+    const targetRow = e.target.closest('.assy-row');
+    if (!targetRow || targetRow === draggedElement) return;
+
+    const targetGroupIndex = parseInt(targetRow.dataset.groupIndex);
+    const targetGroup = visualGroups.groups[targetGroupIndex];
+    if (!targetGroup) return;
+
+    const targetIndex = targetGroup.plans.findIndex(p => p.lot_no === targetRow.dataset.lot);
+    if (targetIndex === -1) return;
+
+    const rect = targetRow.getBoundingClientRect();
+    const insertIndex = e.clientY < rect.top + rect.height / 2 ? targetIndex : targetIndex + 1;
+
+    movePlan(lotNo, targetGroupIndex, insertIndex);
   });
-}
-
-// Funcion para reordenar planes dentro del mismo grupo
-function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
-  const lotNo = draggedRow.dataset.lot;
-  const targetLotNo = targetRow.dataset.lot;
-
-
-
-  // Obtener el grupo actual
-  const currentGroup = visualGroups.groups[groupIndex];
-  if (!currentGroup) {
-
-    return;
-  }
-
-  // Encontrar ondices de los planes
-  const draggedIndex = currentGroup.plans.findIndex(plan => plan.lot_no === lotNo);
-  const targetIndex = currentGroup.plans.findIndex(plan => plan.lot_no === targetLotNo);
-
-  if (draggedIndex === -1 || targetIndex === -1) {
-
-    return;
-  }
-
-
-
-  // Determinar la nueva posicion basada en la posicion del mouse
-  const rect = targetRow.getBoundingClientRect();
-  const midpoint = rect.top + rect.height / 2;
-  let newIndex;
-
-  if (clientY < midpoint) {
-    // Insertar antes del target
-    newIndex = targetIndex;
-  } else {
-    // Insertar despuos del target
-    newIndex = targetIndex + 1;
-  }
-
-  // Ajustar si estamos moviendo hacia adelante
-  if (draggedIndex < newIndex) {
-    newIndex--;
-  }
-
-
-
-  // Solo proceder si realmente hay cambio
-  if (draggedIndex === newIndex) {
-
-    return;
-  }
-
-  // Reordenar el array
-  const [movedPlan] = currentGroup.plans.splice(draggedIndex, 1);
-  currentGroup.plans.splice(newIndex, 0, movedPlan);
-
-
-
-  // Re-renderizar la tabla usando los grupos ya reordenados
-  renderCurrentVisualGroups();
-
-  // Actualizar secuencias y fechas
-  setTimeout(() => {
-    updateSequenceNumbers();
-
-    // Feedback visual sutil
-    const movedRowAfterReload = document.querySelector(`tr[data-lot="${lotNo}"]`);
-    if (movedRowAfterReload) {
-      movedRowAfterReload.style.transition = 'background-color 0.3s ease';
-      movedRowAfterReload.style.backgroundColor = '#27ae60';
-
-      setTimeout(() => {
-        movedRowAfterReload.style.backgroundColor = '';
-        setTimeout(() => {
-          movedRowAfterReload.style.transition = '';
-        }, 300);
-      }, 800);
-    }
-  }, 100);
 }
 
 // Calcular tiempos para cada grupo
