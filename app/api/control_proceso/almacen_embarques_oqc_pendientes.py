@@ -5,6 +5,7 @@ Rutas:
   GET /almacen-embarques-oqc-pendientes-ajax
   GET /api/almacen-embarques/qa-pendientes
   GET /api/almacen-embarques/qa-pendientes/cajas
+  GET /api/almacen-embarques/qa-pendientes/cajas/export
 """
 
 import logging
@@ -13,7 +14,13 @@ from datetime import date, datetime, timedelta
 
 from flask import Blueprint, jsonify, render_template, request
 
-from app.api.shared import execute_query, login_requerido, requiere_permiso_dropdown
+from app.api.shared import (
+    excel_response,
+    execute_query,
+    login_requerido,
+    obtener_fecha_hora_mexico,
+    requiere_permiso_dropdown,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -540,6 +547,50 @@ def _obtener_pendientes_oqc_cajas():
     }, 200
 
 
+def _nombre_archivo_seguro(value):
+    normalized = "".join(
+        char if char.isalnum() or char in {"-", "_"} else "_"
+        for char in _normalizar_texto(value)
+    ).strip("_")
+    return normalized or "detalle"
+
+
+def _exportar_detalle_pendientes_qa(payload):
+    detail_type = payload.get("type") or "entrada"
+    part_number = payload.get("part_number") or "detalle"
+    boxes = payload.get("boxes") or []
+    timestamp = obtener_fecha_hora_mexico().strftime("%Y%m%d_%H%M%S")
+    safe_part = _nombre_archivo_seguro(part_number)
+
+    if detail_type == "liberacion":
+        return excel_response(
+            boxes,
+            ["Box ID", "Pendiente", "LQC", "OQC", "Ultimo LQC", "Linea"],
+            [
+                "box_code",
+                "pending_quantity",
+                "lqc_quantity",
+                "oqc_quantity",
+                "last_lqc_scan",
+                "lineas",
+            ],
+            [24, 14, 12, 12, 22, 18],
+            "Pendiente liberacion OQC",
+            f"pendiente_liberacion_oqc_{safe_part}_{timestamp}",
+            freeze="A2",
+        )
+
+    return excel_response(
+        boxes,
+        ["Box ID", "Cantidad", "Folio OQC", "Liberado"],
+        ["box_code", "quantity", "oqc_folio", "released_at"],
+        [24, 14, 22, 22],
+        "Pendiente entrada almacen",
+        f"pendiente_entrada_almacen_{safe_part}_{timestamp}",
+        freeze="A2",
+    )
+
+
 @bp.route("/almacen-embarques-qa-pendientes-ajax")
 @bp.route("/almacen-embarques-oqc-pendientes-ajax")
 @login_requerido
@@ -578,4 +629,19 @@ def api_almacen_embarques_oqc_pendientes_cajas():
         return jsonify(payload), status_code
     except Exception as e:
         logger.error("Error API detalle pendientes QA embarques: %s\n%s", e, traceback.format_exc())
+        return jsonify({"success": False, "error": str(e), "boxes": []}), 500
+
+
+@bp.route("/api/almacen-embarques/qa-pendientes/cajas/export")
+@bp.route("/api/almacen-embarques/oqc-pendientes/cajas/export")
+@login_requerido
+@_requiere_permiso_pendientes_oqc
+def export_almacen_embarques_oqc_pendientes_cajas():
+    try:
+        payload, status_code = _obtener_pendientes_oqc_cajas()
+        if status_code != 200:
+            return jsonify(payload), status_code
+        return _exportar_detalle_pendientes_qa(payload)
+    except Exception as e:
+        logger.error("Error exportando detalle pendientes QA embarques: %s\n%s", e, traceback.format_exc())
         return jsonify({"success": False, "error": str(e), "boxes": []}), 500
