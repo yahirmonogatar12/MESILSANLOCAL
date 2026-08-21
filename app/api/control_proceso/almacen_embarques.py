@@ -142,6 +142,169 @@ def _es_salida_retorno_embarques(return_quantity, loss_quantity, reason=""):
     )
 
 
+MOVEMENT_HISTORY_TYPE_LABELS = {
+    "entry": "Entrada",
+    "exit": "Salida",
+    "return": "Retorno",
+}
+
+MOVEMENT_HISTORY_ACTION_LABELS = {
+    "update": "Modificacion",
+    "delete": "Eliminacion",
+}
+
+MOVEMENT_HISTORY_FIELD_LABELS = {
+    "deleted": "Registro eliminado",
+    "folio": "Folio",
+    "part_number": "No. parte",
+    "quantity": "Cantidad",
+    "return_quantity": "Cantidad entrada retorno",
+    "loss_quantity": "Cantidad salida retorno",
+    "available_quantity": "Disponible",
+    "previous_quantity": "Inventario anterior",
+    "new_quantity": "Inventario nuevo",
+    "product_model": "Modelo",
+    "description": "Descripcion",
+    "customer": "Cliente",
+    "zone_code": "Zona",
+    "location_code": "Ubicacion",
+    "destination_area": "Destino",
+    "departure_code": "Departure",
+    "reason": "Motivo",
+    "requested_by": "Solicitado por",
+    "remarks": "Comentarios",
+    "registered_by": "Usuario registro",
+    "movement_at": "Fecha movimiento",
+}
+
+
+def _cargar_json_ajuste_movimiento_embarques(raw_value, fallback=None):
+    if raw_value in (None, ""):
+        return fallback
+    if isinstance(raw_value, (dict, list)):
+        return raw_value
+    try:
+        return json.loads(raw_value)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return fallback
+
+
+def _etiqueta_campo_ajuste_movimiento_embarques(field_name):
+    normalized_field = _normalizar_texto_embarques_historial(field_name)
+    return MOVEMENT_HISTORY_FIELD_LABELS.get(normalized_field, normalized_field)
+
+
+def _campos_ajuste_movimiento_embarques(changed_fields_raw):
+    changed_fields = _cargar_json_ajuste_movimiento_embarques(changed_fields_raw, {})
+    if isinstance(changed_fields, dict):
+        return [str(key) for key in changed_fields.keys()]
+    if isinstance(changed_fields, list):
+        return [str(item) for item in changed_fields]
+    return []
+
+
+def _formatear_valor_ajuste_movimiento_embarques(value):
+    if value is None:
+        return ""
+    if isinstance(value, (datetime, date)):
+        return _normalizar_texto_embarques_historial(value)
+    if isinstance(value, Decimal):
+        value = _normalizar_numero_embarques_historial(value)
+    return str(value)
+
+
+def _resumir_campos_ajuste_movimiento_embarques(changed_fields_raw):
+    field_names = _campos_ajuste_movimiento_embarques(changed_fields_raw)
+    if not field_names:
+        return ""
+    return ", ".join(
+        _etiqueta_campo_ajuste_movimiento_embarques(field_name)
+        for field_name in field_names
+    )
+
+
+def _cantidad_resumen_ajuste_movimiento_embarques(values):
+    if not isinstance(values, dict):
+        return None
+
+    if "quantity" in values:
+        return values.get("quantity")
+
+    return_quantity = values.get("return_quantity")
+    loss_quantity = values.get("loss_quantity")
+    has_return_quantity = return_quantity not in (None, "")
+    has_loss_quantity = loss_quantity not in (None, "")
+
+    if not has_return_quantity and not has_loss_quantity:
+        return None
+
+    normalized_return = normalize_integer(return_quantity) or 0
+    normalized_loss = normalize_integer(loss_quantity) or 0
+    if has_loss_quantity and _es_salida_retorno_embarques(
+        normalized_return,
+        normalized_loss,
+        values.get("reason"),
+    ):
+        return loss_quantity
+
+    if has_return_quantity:
+        return return_quantity
+
+    return loss_quantity
+
+
+def _resumir_valores_ajuste_movimiento_embarques(values_raw, changed_fields_raw):
+    values = _cargar_json_ajuste_movimiento_embarques(values_raw, {})
+    if values in ({}, [], None):
+        return ""
+
+    changed_field_names = _campos_ajuste_movimiento_embarques(changed_fields_raw)
+    if isinstance(values, dict):
+        if "deleted" in changed_field_names:
+            summary_parts = []
+            for label, key in (("Folio", "folio"), ("No. parte", "part_number")):
+                if values.get(key) in (None, ""):
+                    continue
+                summary_parts.append(
+                    f"{label}: {_formatear_valor_ajuste_movimiento_embarques(values.get(key))}"
+                )
+
+            quantity = _cantidad_resumen_ajuste_movimiento_embarques(values)
+            if quantity not in (None, ""):
+                summary_parts.append(
+                    f"Cantidad: {_formatear_valor_ajuste_movimiento_embarques(quantity)}"
+                )
+
+            return " | ".join(summary_parts)
+
+        keys = [
+            field_name
+            for field_name in changed_field_names
+            if field_name in values
+        ] or list(values.keys())
+        return " | ".join(
+            f"{_etiqueta_campo_ajuste_movimiento_embarques(key)}: "
+            f"{_formatear_valor_ajuste_movimiento_embarques(values.get(key, ''))}"
+            for key in keys
+        )
+
+    if isinstance(values, list):
+        return ", ".join(
+            _formatear_valor_ajuste_movimiento_embarques(item)
+            for item in values
+        )
+
+    return _formatear_valor_ajuste_movimiento_embarques(values)
+
+
+def _fecha_hora_ajuste_movimiento_embarques(adjusted_at):
+    if isinstance(adjusted_at, datetime):
+        return adjusted_at.strftime("%Y-%m-%d"), adjusted_at.strftime("%H:%M:%S")
+
+    value = _normalizar_texto_embarques_historial(adjusted_at)
+    return value[:10], value[11:19] if len(value) >= 19 else ""
+
+
 def _aplicar_filtros_historial_embarques(sql, params, search_columns):
     """Aplicar filtros comunes de historial para los módulos de embarques."""
     search = request.args.get("search", "").strip()
@@ -647,6 +810,124 @@ def _obtener_movimientos_editables_almacen_embarques(limit=500):
         normalized_rows.append(normalized_row)
 
     return normalized_rows
+
+
+def _obtener_historial_modificaciones_almacen_embarques(limit=1000):
+    limit = min(max(int(limit or 1000), 1), 10000)
+    tipo = normalize_search(request.args.get("tipo")).lower()
+    accion = normalize_search(request.args.get("accion")).lower()
+    search = normalize_search(request.args.get("search"))
+    fecha_desde = normalize_search(request.args.get("fecha_desde"))
+    fecha_hasta = normalize_search(request.args.get("fecha_hasta"))
+
+    sql = f"""
+        SELECT
+            a.id,
+            a.movement_type,
+            a.record_id,
+            a.folio,
+            a.part_number,
+            a.adjustment_action,
+            a.previous_values_json,
+            a.new_values_json,
+            a.changed_fields_json,
+            a.notes,
+            a.adjusted_by,
+            a.adjusted_at
+        FROM `{SHIPPING_TABLES['movement_adjustments']}` a
+        WHERE 1 = 1
+    """
+    params = []
+
+    if tipo in {"entry", "exit", "return"}:
+        sql += " AND a.movement_type = %s"
+        params.append(tipo)
+
+    if accion in {"update", "delete"}:
+        sql += " AND a.adjustment_action = %s"
+        params.append(accion)
+
+    if fecha_desde:
+        sql += " AND DATE(a.adjusted_at) >= %s"
+        params.append(fecha_desde)
+
+    if fecha_hasta:
+        sql += " AND DATE(a.adjusted_at) <= %s"
+        params.append(fecha_hasta)
+
+    if search:
+        like_value = f"%{search}%"
+        sql += """
+            AND (
+                COALESCE(a.folio, '') LIKE %s
+                OR COALESCE(a.part_number, '') LIKE %s
+                OR COALESCE(a.adjustment_action, '') LIKE %s
+                OR COALESCE(a.movement_type, '') LIKE %s
+                OR COALESCE(a.changed_fields_json, '') LIKE %s
+                OR COALESCE(a.previous_values_json, '') LIKE %s
+                OR COALESCE(a.new_values_json, '') LIKE %s
+                OR COALESCE(a.notes, '') LIKE %s
+                OR COALESCE(a.adjusted_by, '') LIKE %s
+            )
+        """
+        params.extend([like_value] * 9)
+
+    sql += " ORDER BY a.adjusted_at DESC, a.id DESC LIMIT %s"
+    params.append(limit)
+
+    rows = execute_query(sql, tuple(params), fetch="all") or []
+    normalized_rows = []
+    for row in rows:
+        movement_type = _normalizar_texto_embarques_historial(
+            row.get("movement_type")
+        )
+        adjustment_action = _normalizar_texto_embarques_historial(
+            row.get("adjustment_action")
+        )
+        fecha, hora = _fecha_hora_ajuste_movimiento_embarques(row.get("adjusted_at"))
+        changed_fields_raw = row.get("changed_fields_json")
+
+        normalized_rows.append(
+            {
+                "id": row.get("id"),
+                "record_id": row.get("record_id"),
+                "fecha": fecha,
+                "hora": hora,
+                "movement_type": movement_type,
+                "movement_label": MOVEMENT_HISTORY_TYPE_LABELS.get(
+                    movement_type, movement_type
+                ),
+                "adjustment_action": adjustment_action,
+                "action_label": MOVEMENT_HISTORY_ACTION_LABELS.get(
+                    adjustment_action, adjustment_action
+                ),
+                "folio": _normalizar_texto_embarques_historial(row.get("folio")),
+                "part_number": _normalizar_texto_embarques_historial(
+                    row.get("part_number")
+                ),
+                "changed_fields": _resumir_campos_ajuste_movimiento_embarques(
+                    changed_fields_raw
+                ),
+                "previous_values": _resumir_valores_ajuste_movimiento_embarques(
+                    row.get("previous_values_json"), changed_fields_raw
+                ),
+                "new_values": _resumir_valores_ajuste_movimiento_embarques(
+                    row.get("new_values_json"), changed_fields_raw
+                ),
+                "notes": _normalizar_texto_embarques_historial(row.get("notes")),
+                "adjusted_by": _normalizar_texto_embarques_historial(
+                    row.get("adjusted_by")
+                ),
+                "adjusted_at": _normalizar_texto_embarques_historial(
+                    row.get("adjusted_at")
+                ),
+            }
+        )
+
+    return {
+        "rows": normalized_rows,
+        "summary": {"total_records": len(normalized_rows)},
+    }
 
 
 def _obtener_detalle_movimiento_almacen_embarques(movement_type, record_id):
@@ -4312,6 +4593,51 @@ def export_almacen_embarques_movimientos():
     except Exception as e:
         logger.error(
             f"Error exportando movimientos de embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/almacen-embarques/movimientos/historial")
+@login_requerido
+def api_almacen_embarques_movimientos_historial():
+    """Obtener historial de modificaciones de movimientos de embarques."""
+    try:
+        payload = _obtener_historial_modificaciones_almacen_embarques()
+        return jsonify({"success": True, **payload})
+    except Exception as e:
+        logger.error(
+            f"Error API historial modificaciones embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/almacen-embarques/movimientos/historial/export")
+@login_requerido
+def export_almacen_embarques_movimientos_historial():
+    """Exportar historial de modificaciones de movimientos de embarques."""
+    try:
+        payload = _obtener_historial_modificaciones_almacen_embarques(limit=10000)
+        return _exportar_historial_embarques_excel(
+            "Historial Movimientos",
+            "historial_modificaciones_embarques.xlsx",
+            {
+                "Fecha": "fecha",
+                "Hora": "hora",
+                "Accion": "action_label",
+                "Tipo": "movement_label",
+                "Folio": "folio",
+                "No. Parte": "part_number",
+                "Campos": "changed_fields",
+                "Antes": "previous_values",
+                "Despues": "new_values",
+                "Usuario": "adjusted_by",
+                "Motivo": "notes",
+            },
+            payload["rows"],
+        )
+    except Exception as e:
+        logger.error(
+            f"Error exportando historial modificaciones embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
 

@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260813a";
+  const ASSET_VERSION = "20260821a";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
 
   const movementModuleState = {
@@ -8,6 +8,11 @@
     editingKey: "",
     originalRow: null,
     draftRow: null,
+  };
+
+  const movementHistoryState = {
+    rows: [],
+    config: null,
   };
 
   const confirmState = {
@@ -199,19 +204,31 @@
   }
 
   function syncScrollableHeight(moduleRoot) {
-    const bodyWrap = moduleRoot?.querySelector(".ae-table-body-wrap");
-    if (!bodyWrap) {
+    const bodyWraps = [...(moduleRoot?.querySelectorAll(".ae-table-body-wrap") || [])];
+    if (!bodyWraps.length) {
       return;
     }
 
     const viewportHeight =
       window.innerHeight || document.documentElement.clientHeight || 0;
-    const rect = bodyWrap.getBoundingClientRect();
+    const rootRect = moduleRoot.getBoundingClientRect();
     const bottomGap = 20;
-    const availableHeight = Math.max(220, viewportHeight - rect.top - bottomGap);
 
-    bodyWrap.style.height = `${availableHeight}px`;
-    bodyWrap.style.maxHeight = `${availableHeight}px`;
+    bodyWraps.forEach((bodyWrap) => {
+      const rect = bodyWrap.getBoundingClientRect();
+      const isVisible =
+        rect.width > 0 &&
+        rect.right > rootRect.left + 1 &&
+        rect.left < rootRect.right - 1;
+
+      if (!isVisible) {
+        return;
+      }
+
+      const availableHeight = Math.max(220, viewportHeight - rect.top - bottomGap);
+      bodyWrap.style.height = `${availableHeight}px`;
+      bodyWrap.style.maxHeight = `${availableHeight}px`;
+    });
   }
 
   function syncTableWidths(moduleRoot) {
@@ -226,6 +243,11 @@
       const bodyWrap = shell.querySelector(":scope > .ae-table-body-wrap");
       const bodyTable = shell.querySelector(".ae-history-table--body");
       if (!headerWrap || !headerTable || !bodyWrap || !bodyTable) {
+        return;
+      }
+
+      const shellRect = shell.getBoundingClientRect();
+      if (shellRect.width <= 0 || bodyWrap.clientWidth <= 0) {
         return;
       }
 
@@ -1628,6 +1650,208 @@
     window.open(url, "_blank");
   }
 
+  function refreshModuleLayout(prefix) {
+    const moduleRoot = getModuleRoot(prefix);
+    if (!moduleRoot) {
+      return;
+    }
+
+    moduleRoot.querySelectorAll(".ae-table-shell").forEach((shell) => {
+      delete shell.dataset.columnWidthsReady;
+    });
+    bindColumnResizers(moduleRoot);
+    syncScrollableHeight(moduleRoot);
+    syncTableWidths(moduleRoot);
+  }
+
+  function getMovementHistoryElements() {
+    return {
+      ...getElements("almacen-embarques-movements-history"),
+      openBtn: document.getElementById("almacen-embarques-movements-history-btn"),
+      backBtn: document.getElementById("almacen-embarques-movements-history-back-btn"),
+      actionSelect: document.getElementById("almacen-embarques-movements-history-action"),
+    };
+  }
+
+  function buildMovementHistoryQuery() {
+    const elements = getMovementHistoryElements();
+    const params = buildQuery("almacen-embarques-movements-history");
+
+    if (elements.actionSelect?.value) {
+      params.set("accion", elements.actionSelect.value);
+    }
+
+    return params;
+  }
+
+  function setMovementHistoryStatus(message = "", isError = false) {
+    const { statusLabel } = getMovementHistoryElements();
+    if (!statusLabel) {
+      return;
+    }
+    statusLabel.textContent = message;
+    statusLabel.style.color = isError ? "#ff8f8f" : "#8fb8ff";
+  }
+
+  function setMovementHistoryLoading(message) {
+    const { tableBody } = getMovementHistoryElements();
+    if (!tableBody) {
+      return;
+    }
+    tableBody.innerHTML = `<tr><td colspan="11" class="ae-empty-cell">${escapeHtml(
+      message,
+    )}</td></tr>`;
+  }
+
+  function renderMovementHistoryEmpty(message) {
+    const { tableBody, countLabel } = getMovementHistoryElements();
+    if (countLabel) {
+      countLabel.textContent = "0 registros";
+    }
+    if (tableBody) {
+      tableBody.innerHTML = `<tr><td colspan="11" class="ae-empty-cell">${escapeHtml(
+        message,
+      )}</td></tr>`;
+    }
+  }
+
+  function renderMovementHistoryRows(rows) {
+    return rows
+      .map((row) => {
+        const actionVariant = row.adjustment_action === "delete" ? "warning" : "neutral";
+        return `
+          <tr>
+            <td>${escapeHtml(row.fecha || "-")}</td>
+            <td>${escapeHtml(row.hora || "-")}</td>
+            <td>${buildBadge(row.action_label || row.adjustment_action || "-", actionVariant)}</td>
+            <td>${escapeHtml(row.movement_label || row.movement_type || "-")}</td>
+            <td>${escapeHtml(row.folio || "-")}</td>
+            <td><strong>${escapeHtml(row.part_number || "-")}</strong></td>
+            <td class="ae-history-cell--summary">${escapeHtml(row.changed_fields || "-")}</td>
+            <td class="ae-history-cell--summary">${escapeHtml(row.previous_values || "-")}</td>
+            <td class="ae-history-cell--summary">${escapeHtml(row.new_values || "-")}</td>
+            <td>${escapeHtml(row.adjusted_by || "-")}</td>
+            <td class="ae-history-cell--summary">${escapeHtml(row.notes || "-")}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  async function loadMovementHistory() {
+    const config = movementHistoryState.config;
+    const elements = getMovementHistoryElements();
+    if (!config?.historyApiUrl || !elements.tableBody) {
+      return;
+    }
+
+    setMovementHistoryLoading("Cargando historial de modificaciones...");
+    setMovementHistoryStatus("Consultando historial...");
+
+    try {
+      const params = buildMovementHistoryQuery();
+      const response = await fetch(`${config.historyApiUrl}?${params.toString()}`, {
+        credentials: "same-origin",
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+
+      const rows = payload.rows || [];
+      movementHistoryState.rows = rows;
+
+      if (!rows.length) {
+        renderMovementHistoryEmpty("Sin modificaciones para los filtros actuales.");
+        setMovementHistoryStatus("Sin registros para los filtros actuales");
+        refreshModuleLayout("almacen-embarques-movements");
+        return;
+      }
+
+      elements.tableBody.innerHTML = renderMovementHistoryRows(rows);
+      if (elements.countLabel) {
+        elements.countLabel.textContent = getRecordCountLabel(rows);
+      }
+
+      const updatedAt = new Date().toLocaleTimeString("es-MX", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      setMovementHistoryStatus(`Actualizado a las ${updatedAt}`);
+      refreshModuleLayout("almacen-embarques-movements");
+    } catch (error) {
+      console.error("Error cargando historial de modificaciones:", error);
+      renderMovementHistoryEmpty("No fue posible cargar el historial.");
+      setMovementHistoryStatus(error.message || "Error al consultar historial", true);
+      refreshModuleLayout("almacen-embarques-movements");
+    }
+  }
+
+  function exportMovementHistory() {
+    const config = movementHistoryState.config;
+    if (!config?.historyExportUrl) {
+      return;
+    }
+    const params = buildMovementHistoryQuery();
+    window.open(`${config.historyExportUrl}?${params.toString()}`, "_blank");
+  }
+
+  function clearMovementHistoryFilters() {
+    const elements = getMovementHistoryElements();
+    if (elements.searchInput) elements.searchInput.value = "";
+    if (elements.typeSelect) elements.typeSelect.value = "";
+    if (elements.actionSelect) elements.actionSelect.value = "";
+    if (elements.dateFrom) elements.dateFrom.value = "";
+    if (elements.dateTo) elements.dateTo.value = "";
+  }
+
+  function setMovementHistoryView(isOpen) {
+    const moduleRoot = getModuleRoot("almacen-embarques-movements");
+    if (!moduleRoot) {
+      return;
+    }
+    moduleRoot.classList.toggle("is-history-active", Boolean(isOpen));
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => refreshModuleLayout("almacen-embarques-movements"));
+    });
+  }
+
+  function bindMovementHistoryModule(config) {
+    const elements = getMovementHistoryElements();
+    if (!elements.openBtn || elements.openBtn.dataset.historyBound === "true") {
+      return;
+    }
+
+    movementHistoryState.config = config;
+
+    elements.openBtn.addEventListener("click", async () => {
+      cancelMovementEdit();
+      setMovementHistoryView(true);
+      await loadMovementHistory();
+    });
+
+    elements.backBtn?.addEventListener("click", () => {
+      setMovementHistoryView(false);
+      setMovementHistoryStatus("");
+    });
+
+    elements.searchBtn?.addEventListener("click", loadMovementHistory);
+    elements.exportBtn?.addEventListener("click", exportMovementHistory);
+    elements.clearBtn?.addEventListener("click", async () => {
+      clearMovementHistoryFilters();
+      await loadMovementHistory();
+    });
+    elements.searchInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        loadMovementHistory();
+      }
+    });
+
+    elements.openBtn.dataset.historyBound = "true";
+  }
+
   function getCatalogFormElements() {
     return {
       modal: document.getElementById("almacen-embarques-catalog-modal"),
@@ -2693,6 +2917,7 @@
 
     if (config.prefix === "almacen-embarques-movements") {
       bindMovementTable(config);
+      bindMovementHistoryModule(config);
     }
     if (config.prefix === "almacen-embarques-catalog") {
       bindCatalogModule(config);
@@ -2718,6 +2943,8 @@
       prefix: "almacen-embarques-movements",
       apiUrl: "/api/almacen-embarques/movimientos",
       exportUrl: "/api/almacen-embarques/movimientos/export",
+      historyApiUrl: "/api/almacen-embarques/movimientos/historial",
+      historyExportUrl: "/api/almacen-embarques/movimientos/historial/export",
       colspan: 12,
       emptyMessage: "No hay movimientos disponibles para los filtros actuales.",
       renderer: renderMovementsRows,

@@ -3,116 +3,252 @@
     class="almacen-embarques-history-module"
     data-module-type="movements"
 >
-    <div class="ae-filters-card">
-        <div class="ae-card-header">
-            <h3>Filtros de búsqueda</h3>
-        </div>
-        <div class="ae-filters">
-            <div class="ae-filter-group ae-filter-group--wide">
-                <label for="almacen-embarques-movements-search">Buscar</label>
-                <input
-                    type="text"
-                    id="almacen-embarques-movements-search"
-                    placeholder="No. parte, folio, departure, zona, ubicación, cliente o usuario"
-                >
+    <div id="almacen-embarques-movements-stage" class="ae-movements-stage">
+        <section class="ae-movements-pane ae-movements-pane--main">
+            <div class="ae-filters-card">
+                <div class="ae-card-header">
+                    <h3>Filtros de búsqueda</h3>
+                </div>
+                <div class="ae-filters">
+                    <div class="ae-filter-group ae-filter-group--wide">
+                        <label for="almacen-embarques-movements-search">Buscar</label>
+                        <input
+                            type="text"
+                            id="almacen-embarques-movements-search"
+                            placeholder="No. parte, folio, departure, zona, ubicación, cliente o usuario"
+                        >
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-movements-type">Tipo</label>
+                        <select id="almacen-embarques-movements-type">
+                            <option value="">Todos</option>
+                            <option value="entry">Entradas</option>
+                            <option value="exit">Salidas</option>
+                            <option value="return">Retornos</option>
+                        </select>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-movements-date-from">Fecha desde</label>
+                        <input type="date" id="almacen-embarques-movements-date-from">
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-movements-date-to">Fecha hasta</label>
+                        <input type="date" id="almacen-embarques-movements-date-to">
+                    </div>
+                    <button id="almacen-embarques-movements-search-btn" class="ae-btn-primary">
+                        Consultar
+                    </button>
+                    <button id="almacen-embarques-movements-clear-btn" class="ae-btn-secondary">
+                        Limpiar filtros
+                    </button>
+                    <button id="almacen-embarques-movements-export-btn" class="ae-btn-export">
+                        Exportar Excel
+                    </button>
+                    <button id="almacen-embarques-movements-history-btn" class="ae-btn-secondary">
+                        Historial
+                    </button>
+                </div>
             </div>
-            <div class="ae-filter-group">
-                <label for="almacen-embarques-movements-type">Tipo</label>
-                <select id="almacen-embarques-movements-type">
-                    <option value="">Todos</option>
-                    <option value="entry">Entradas</option>
-                    <option value="exit">Salidas</option>
-                    <option value="return">Retornos</option>
-                </select>
-            </div>
-            <div class="ae-filter-group">
-                <label for="almacen-embarques-movements-date-from">Fecha desde</label>
-                <input type="date" id="almacen-embarques-movements-date-from">
-            </div>
-            <div class="ae-filter-group">
-                <label for="almacen-embarques-movements-date-to">Fecha hasta</label>
-                <input type="date" id="almacen-embarques-movements-date-to">
-            </div>
-            <button id="almacen-embarques-movements-search-btn" class="ae-btn-primary">
-                Consultar
-            </button>
-            <button id="almacen-embarques-movements-clear-btn" class="ae-btn-secondary">
-                Limpiar filtros
-            </button>
-            <button id="almacen-embarques-movements-export-btn" class="ae-btn-export">
-                Exportar Excel
-            </button>
-        </div>
-    </div>
 
-    <div class="ae-results-card">
-        <div class="ae-card-header">
-            <h3>Modificar movimientos</h3>
-            <span id="almacen-embarques-movements-count" class="ae-record-count">
-                0 piezas
-            </span>
-            <span id="almacen-embarques-movements-status" class="ae-status-text"></span>
-        </div>
-        <div class="ae-table-shell">
-            <div class="ae-table-head">
-                <table class="ae-history-table ae-history-table--head">
-                    <colgroup>
-                        <col style="width: 7%;">
-                        <col style="width: 6%;">
-                        <col style="width: 8%;">
-                        <col style="width: 15%;">
-                        <col style="width: 11%;">
-                        <col style="width: 7%;">
-                        <col style="width: 10%;">
-                        <col style="width: 8%;">
-                        <col style="width: 7%;">
-                        <col style="width: 10%;">
-                        <col style="width: 5%;">
-                        <col style="width: 7%;">
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Hora</th>
-                            <th>Tipo</th>
-                            <th>Folio</th>
-                            <th>No. parte</th>
-                            <th>Cantidad</th>
-                            <th>Modelo</th>
-                            <th>Cliente</th>
-                            <th>Zona</th>
-                            <th>Ubicación / Destino</th>
-                            <th>Departure</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
-                </table>
+            <div class="ae-results-card">
+                <div class="ae-card-header">
+                    <h3>Modificar movimientos</h3>
+                    <span id="almacen-embarques-movements-count" class="ae-record-count">
+                        0 piezas
+                    </span>
+                    <span id="almacen-embarques-movements-status" class="ae-status-text"></span>
+                </div>
+                <div class="ae-table-shell">
+                    <div class="ae-table-head">
+                        <table class="ae-history-table ae-history-table--head">
+                            <colgroup>
+                                <col style="width: 7%;">
+                                <col style="width: 6%;">
+                                <col style="width: 8%;">
+                                <col style="width: 15%;">
+                                <col style="width: 11%;">
+                                <col style="width: 7%;">
+                                <col style="width: 10%;">
+                                <col style="width: 8%;">
+                                <col style="width: 7%;">
+                                <col style="width: 10%;">
+                                <col style="width: 5%;">
+                                <col style="width: 7%;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th>Tipo</th>
+                                    <th>Folio</th>
+                                    <th>No. parte</th>
+                                    <th>Cantidad</th>
+                                    <th>Modelo</th>
+                                    <th>Cliente</th>
+                                    <th>Zona</th>
+                                    <th>Ubicación / Destino</th>
+                                    <th>Departure</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="ae-table-body-wrap">
+                        <table class="ae-history-table ae-history-table--body">
+                            <colgroup>
+                                <col style="width: 7%;">
+                                <col style="width: 6%;">
+                                <col style="width: 8%;">
+                                <col style="width: 15%;">
+                                <col style="width: 11%;">
+                                <col style="width: 7%;">
+                                <col style="width: 10%;">
+                                <col style="width: 8%;">
+                                <col style="width: 7%;">
+                                <col style="width: 10%;">
+                                <col style="width: 5%;">
+                                <col style="width: 7%;">
+                            </colgroup>
+                            <tbody id="almacen-embarques-movements-tbody">
+                                <tr>
+                                    <td colspan="12" class="ae-empty-cell">Cargando movimientos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="ae-table-body-wrap">
-                <table class="ae-history-table ae-history-table--body">
-                    <colgroup>
-                        <col style="width: 7%;">
-                        <col style="width: 6%;">
-                        <col style="width: 8%;">
-                        <col style="width: 15%;">
-                        <col style="width: 11%;">
-                        <col style="width: 7%;">
-                        <col style="width: 10%;">
-                        <col style="width: 8%;">
-                        <col style="width: 7%;">
-                        <col style="width: 10%;">
-                        <col style="width: 5%;">
-                        <col style="width: 7%;">
-                    </colgroup>
-                    <tbody id="almacen-embarques-movements-tbody">
-                        <tr>
-                            <td colspan="12" class="ae-empty-cell">Cargando movimientos...</td>
-                        </tr>
-                    </tbody>
-                </table>
+        </section>
+
+        <section class="ae-movements-pane ae-movements-pane--history">
+            <div class="ae-filters-card">
+                <div class="ae-card-header ae-card-header--closure">
+                    <div class="ae-card-header__title-group">
+                        <button
+                            type="button"
+                            id="almacen-embarques-movements-history-back-btn"
+                            class="ae-back-btn"
+                            title="Regresar a movimientos"
+                            aria-label="Regresar a movimientos"
+                        >
+                            &#8592;
+                        </button>
+                        <h3>Historial de modificaciones</h3>
+                    </div>
+                    <span id="almacen-embarques-movements-history-status" class="ae-status-text"></span>
+                </div>
+                <div class="ae-filters ae-movement-history-filters">
+                    <div class="ae-filter-group ae-filter-group--wide">
+                        <label for="almacen-embarques-movements-history-search">Buscar</label>
+                        <input
+                            type="text"
+                            id="almacen-embarques-movements-history-search"
+                            placeholder="No. parte, folio, campo, motivo o usuario"
+                        >
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-movements-history-type">Tipo</label>
+                        <select id="almacen-embarques-movements-history-type">
+                            <option value="">Todos</option>
+                            <option value="entry">Entradas</option>
+                            <option value="exit">Salidas</option>
+                            <option value="return">Retornos</option>
+                        </select>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-movements-history-action">Acción</label>
+                        <select id="almacen-embarques-movements-history-action">
+                            <option value="">Todas</option>
+                            <option value="update">Modificaciones</option>
+                            <option value="delete">Eliminaciones</option>
+                        </select>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-movements-history-date-from">Fecha desde</label>
+                        <input type="date" id="almacen-embarques-movements-history-date-from">
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-movements-history-date-to">Fecha hasta</label>
+                        <input type="date" id="almacen-embarques-movements-history-date-to">
+                    </div>
+                    <button id="almacen-embarques-movements-history-search-btn" class="ae-btn-primary">
+                        Consultar
+                    </button>
+                    <button id="almacen-embarques-movements-history-clear-btn" class="ae-btn-secondary">
+                        Limpiar filtros
+                    </button>
+                    <button id="almacen-embarques-movements-history-export-btn" class="ae-btn-export">
+                        Exportar Excel
+                    </button>
+                </div>
             </div>
-        </div>
+
+            <div class="ae-results-card ae-movement-history-card">
+                <div class="ae-card-header">
+                    <h3>Historial</h3>
+                    <span id="almacen-embarques-movements-history-count" class="ae-record-count">
+                        0 registros
+                    </span>
+                </div>
+                <div class="ae-table-shell">
+                    <div class="ae-table-head">
+                        <table class="ae-history-table ae-history-table--head">
+                            <colgroup>
+                                <col style="width: 7%;">
+                                <col style="width: 6%;">
+                                <col style="width: 8%;">
+                                <col style="width: 7%;">
+                                <col style="width: 13%;">
+                                <col style="width: 10%;">
+                                <col style="width: 11%;">
+                                <col style="width: 14%;">
+                                <col style="width: 14%;">
+                                <col style="width: 8%;">
+                                <col style="width: 12%;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th>Acción</th>
+                                    <th>Tipo</th>
+                                    <th>Folio</th>
+                                    <th>No. parte</th>
+                                    <th>Campos</th>
+                                    <th>Antes</th>
+                                    <th>Después</th>
+                                    <th>Usuario</th>
+                                    <th>Motivo</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="ae-table-body-wrap">
+                        <table class="ae-history-table ae-history-table--body">
+                            <colgroup>
+                                <col style="width: 7%;">
+                                <col style="width: 6%;">
+                                <col style="width: 8%;">
+                                <col style="width: 7%;">
+                                <col style="width: 13%;">
+                                <col style="width: 10%;">
+                                <col style="width: 11%;">
+                                <col style="width: 14%;">
+                                <col style="width: 14%;">
+                                <col style="width: 8%;">
+                                <col style="width: 12%;">
+                            </colgroup>
+                            <tbody id="almacen-embarques-movements-history-tbody">
+                                <tr>
+                                    <td colspan="11" class="ae-empty-cell">Selecciona Historial para consultar modificaciones.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20260813a') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20260821a') }}"></script>
