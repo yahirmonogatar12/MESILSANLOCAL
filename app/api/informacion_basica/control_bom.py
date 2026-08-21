@@ -545,7 +545,8 @@ BOM_EXCEL_HEADER_ALIASES = {
     "location_text": ["location", "ubicacion", "ubicación"],
     "maker": ["maker", "manufacturer", "fabricante"],
     "supplier": ["supplier", "customer", "vendor", "proveedor"],
-    "item_class": ["item asset category", "asset category", "item class", "classification", "자재대분류"],
+    # "Item Asset Category" es asset_name en KS, columna distinta de item_class (자재대분류).
+    "item_class": ["자재대분류", "item class", "classification"],
     "item_process": ["품목공정", "item process", "process"],
     "process_name": ["세부공정", "process name", "detail process"],
     "valid_from": ["appl start date", "valid from", "start date"],

@@ -1176,13 +1176,28 @@ def _eco_diff_normalize_bool(value):
     return '1' if _eco_parse_bool(value) else '0'
 
 
+_ECO_DIFF_SENTINEL_DATES = ('9999-12-31',)
+_ECO_DIFF_LIST_FIELDS = ('maker', 'supplier', 'alt_item_no', 'alt_item_name', 'alt_spec', 'alt_maker')
+
+
+def _eco_diff_normalize_list(value):
+    """Campos multi-valor de KS: el orden y el espacio tras la coma no son un cambio."""
+    text = _eco_diff_normalize(value)
+    if ',' not in text:
+        return text
+    return ','.join(sorted(p for p in (part.strip() for part in text.split(',')) if p))
+
+
 def _eco_diff_field_value(item, field):
     if field == 'qty':
         return _eco_diff_normalize_qty(item.get('qty'))
     if field == 'is_alternate':
         return _eco_diff_normalize_bool(item.get('is_alternate'))
     if field in ('valid_from', 'valid_to'):
-        return _eco_diff_normalize(item.get(field))
+        value = _eco_diff_normalize(item.get(field))
+        return '' if value in _ECO_DIFF_SENTINEL_DATES else value
+    if field in _ECO_DIFF_LIST_FIELDS:
+        return _eco_diff_normalize_list(item.get(field))
     return _eco_diff_normalize(item.get(field))
 
 
@@ -2213,15 +2228,17 @@ def _eco_item_key(item_no, bom_level):
     return f"{_eco_normalize_upper(item_no)}|{_eco_normalize_text(bom_level)}"
 
 
-def _eco_component_tuple(part_no, bom_rev, item, effective_date, eco, idx):
+def _eco_component_tuple(part_no, bom_rev, item, effective_date, eco, idx, added_keys=()):
     item_no = _eco_normalize_upper(item.get('material_code') or item.get('numero_parte') or item.get('item_no'))
     item_process = _ks_process_value(item.get('item_process'), item.get('tipo_material'), item.get('process_name'))
     process_name = _eco_normalize_text(item.get('process_name')) or item_process
     location_text = _eco_normalize_text(item.get('location_text') or item.get('ubicacion') or item.get('posicion_assy'))
+    bom_level = _eco_normalize_text(item.get('bom_level')) or f"01-{idx:02d}"
+    is_new = _eco_item_key(item_no, bom_level) in added_keys
     return (
         part_no,
         bom_rev,
-        _eco_normalize_text(item.get('bom_level')) or f"01-{idx:02d}",
+        bom_level,
         _eco_normalize_text(item.get('item_seq')) or str(idx),
         item_no,
         _eco_normalize_text(item.get('item_name')) or item_no,
@@ -2235,7 +2252,8 @@ def _eco_component_tuple(part_no, bom_rev, item, effective_date, eco, idx):
         item_process,
         _eco_normalize_text(item.get('proveedor') or item.get('supplier')),
         _eco_normalize_text(item.get('item_class') or item.get('classification')),
-        _eco_effective_valid_from(item.get('valid_from'), effective_date),
+        _eco_effective_valid_from(item.get('valid_from'), effective_date) if is_new
+            else (_eco_normalize_date(item.get('valid_from')) or None),
         _eco_normalize_date(item.get('valid_to')) or None,
         '사용',
         _eco_parse_bool(item.get('is_alternate')),
@@ -2245,7 +2263,7 @@ def _eco_component_tuple(part_no, bom_rev, item, effective_date, eco, idx):
         _eco_normalize_text(item.get('alt_maker')),
         _eco_normalize_upper(item.get('child_bom_part_no')),
         _eco_parse_bool(item.get('is_sub_bom')),
-        _eco_normalize_text(item.get('remark')) or f"ECO {eco.get('eco_no')}",
+        _eco_normalize_text(item.get('remark')) or (f"ECO {eco.get('eco_no')}" if is_new else None),
         _eco_normalize_text(item.get('item_remark')) or _eco_normalize_text(eco.get('notes')),
     )
 
@@ -2332,6 +2350,7 @@ def _aprobar_eco_familia(eco_id, approved_by, eco):
             part_diffs = diff_by_part.get(part_no, [])
             adds = [d for d in part_diffs if d.get('action') == 'ADD']
             removes = [d for d in part_diffs if d.get('action') == 'REMOVE']
+            add_keys = {_eco_item_key(d.get('item_no'), d.get('bom_level')) for d in adds}
             modifies = [d for d in part_diffs if d.get('action') == 'MODIFY']
 
             for d in removes:
@@ -2383,7 +2402,7 @@ def _aprobar_eco_familia(eco_id, approved_by, eco):
                 )
             )
             component_values = [
-                _eco_component_tuple(part_no, bom_rev, item, effective_date, eco, idx)
+                _eco_component_tuple(part_no, bom_rev, item, effective_date, eco, idx, add_keys)
                 for idx, item in enumerate(ordered_items, start=1)
             ]
             if component_values:
@@ -2528,6 +2547,16 @@ def aprobar_eco(eco_id, approved_by='desconocido'):
             (part_no, bom_rev)
         )
 
+        add_keys = {
+            _eco_item_key(d.get('item_no'), d.get('bom_level'))
+            for d in (execute_query(
+                "SELECT item_no, bom_level FROM engineering_change_diff "
+                "WHERE engineering_change_id = %s AND action = 'ADD'",
+                (int(eco_id),),
+                fetch='all'
+            ) or [])
+        }
+
         component_values = []
         for idx, item in enumerate(items, start=1):
             item_no = _eco_normalize_upper(item.get('material_code') or item.get('numero_parte'))
@@ -2536,10 +2565,12 @@ def aprobar_eco(eco_id, approved_by='desconocido'):
             item_process = _ks_process_value(item.get('item_process'), item.get('tipo_material'))
             process_name = _eco_normalize_text(item.get('process_name')) or item_process
             location_text = _eco_normalize_text(item.get('location_text') or item.get('ubicacion') or item.get('posicion_assy'))
+            bom_level = _eco_normalize_text(item.get('bom_level')) or f"01-{idx:02d}"
+            is_new = _eco_item_key(item_no, bom_level) in add_keys
             component_values.append((
                 part_no,
                 bom_rev,
-                _eco_normalize_text(item.get('bom_level')) or f"01-{idx:02d}",
+                bom_level,
                 _eco_normalize_text(item.get('item_seq')) or str(idx),
                 item_no,
                 _eco_normalize_text(item.get('item_name')) or item_no,
@@ -2553,7 +2584,8 @@ def aprobar_eco(eco_id, approved_by='desconocido'):
                 item_process,
                 _eco_normalize_text(item.get('proveedor')),
                 _eco_normalize_text(item.get('item_class') or item.get('classification')),
-                _eco_effective_valid_from(item.get('valid_from'), effective_date),
+                _eco_effective_valid_from(item.get('valid_from'), effective_date) if is_new
+                    else (_eco_normalize_date(item.get('valid_from')) or None),
                 _eco_normalize_date(item.get('valid_to')) or None,
                 '사용',
                 _eco_parse_bool(item.get('is_alternate')),
@@ -2563,7 +2595,7 @@ def aprobar_eco(eco_id, approved_by='desconocido'):
                 _eco_normalize_text(item.get('alt_maker')),
                 _eco_normalize_upper(item.get('child_bom_part_no')),
                 _eco_parse_bool(item.get('is_sub_bom')),
-                f"ECO {eco.get('eco_no')}",
+                _eco_normalize_text(item.get('remark')) or (f"ECO {eco.get('eco_no')}" if is_new else None),
                 _eco_normalize_text(eco.get('notes')),
             ))
 
