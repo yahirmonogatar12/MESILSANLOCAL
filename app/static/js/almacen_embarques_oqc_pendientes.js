@@ -1,14 +1,16 @@
 (function () {
   "use strict";
 
-  const VERSION = "20260804e";
+  const VERSION = "20260820a";
   const STYLESHEET_ID = "almacen-embarques-oqc-pendientes-css";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_oqc_pendientes.css?v=${VERSION}`;
   const API_SUMMARY = "/api/almacen-embarques/qa-pendientes";
   const API_DETAIL = "/api/almacen-embarques/qa-pendientes/cajas";
+  const API_DETAIL_EXPORT = "/api/almacen-embarques/qa-pendientes/cajas/export";
 
   let lastEntryRows = [];
   let lastReleaseRows = [];
+  let currentDetailQuery = "";
 
   function ensureStyles() {
     const current = document.getElementById(STYLESHEET_ID);
@@ -32,6 +34,24 @@
 
   function byId(id) {
     return document.getElementById(id);
+  }
+
+  function modalElement() {
+    const moduleModal = root()?.querySelector("#ae-oqc-pending-modal");
+    const modals = Array.from(document.querySelectorAll("#ae-oqc-pending-modal"));
+    const modal = moduleModal || modals[0] || null;
+
+    modals.forEach((candidate) => {
+      if (candidate !== modal) {
+        candidate.remove();
+      }
+    });
+
+    if (modal && modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
+
+    return modal;
   }
 
   function escapeHtml(value) {
@@ -257,8 +277,21 @@
     return meta;
   }
 
+  function setDetailExportEnabled(enabled) {
+    const button = byId("ae-oqc-pending-detail-export-btn");
+    if (!button) return;
+    button.disabled = !enabled;
+  }
+
+  function exportCurrentDetail() {
+    if (!currentDetailQuery) {
+      return;
+    }
+    window.open(`${API_DETAIL_EXPORT}?${currentDetailQuery}`, "_blank");
+  }
+
   function openModal(type, partNumber) {
-    const modal = byId("ae-oqc-pending-modal");
+    const modal = modalElement();
     if (!modal) return;
     const meta = setDetailHeader(type);
     modal.classList.add("is-open");
@@ -270,10 +303,12 @@
   }
 
   function closeModal() {
-    const modal = byId("ae-oqc-pending-modal");
+    const modal = modalElement();
     if (!modal) return;
     modal.classList.remove("is-open");
     modal.setAttribute("aria-hidden", "true");
+    currentDetailQuery = "";
+    setDetailExportEnabled(false);
   }
 
   function renderDetailBoxes(type, boxes) {
@@ -286,6 +321,7 @@
     const totalQty = boxes.reduce((sum, box) => sum + Number(box.pending_quantity || box.quantity || 0), 0);
     if (count) count.textContent = `${formatNumber(boxes.length)} caja${boxes.length === 1 ? "" : "s"}`;
     if (qty) qty.textContent = `${formatNumber(totalQty)} ea`;
+    setDetailExportEnabled(boxes.length > 0 && Boolean(currentDetailQuery));
 
     if (!boxes.length) {
       tbody.innerHTML = `<tr><td colspan="${meta.loadingColspan}" class="ae-oqc-pending-empty">${escapeHtml(meta.empty)}</td></tr>`;
@@ -334,13 +370,18 @@
     const qty = byId("ae-oqc-pending-detail-qty");
     if (count) count.textContent = "0 cajas";
     if (qty) qty.textContent = "0 ea";
+    currentDetailQuery = "";
+    setDetailExportEnabled(false);
 
     try {
       const params = buildParams({ part_number: partNumber, tipo: normalizedType, limit: 5000 });
+      currentDetailQuery = params.toString();
       const data = await fetchJson(`${API_DETAIL}?${params.toString()}`);
       renderDetailBoxes(normalizedType, data.boxes || []);
     } catch (error) {
       console.error("Error cargando detalle QA:", error);
+      currentDetailQuery = "";
+      setDetailExportEnabled(false);
       if (tbody) {
         tbody.innerHTML = `<tr><td colspan="${meta.loadingColspan}" class="ae-oqc-pending-empty">${escapeHtml(error.message || "No fue posible cargar el detalle.")}</td></tr>`;
       }
@@ -364,7 +405,6 @@
       const searchButton = target.closest("#ae-oqc-pending-search-btn");
       const clearButton = target.closest("#ae-oqc-pending-clear-btn");
       const detailButton = target.closest(".ae-oqc-pending-detail-btn");
-      const closeButton = target.closest("[data-ae-oqc-pending-close]");
 
       if (searchButton) {
         event.preventDefault();
@@ -380,10 +420,6 @@
         event.preventDefault();
         loadDetail(detailButton.dataset.detailType || "entrada", detailButton.dataset.partNumber || "");
         return;
-      }
-      if (closeButton) {
-        event.preventDefault();
-        closeModal();
       }
     });
 
@@ -401,8 +437,41 @@
     moduleRoot.dataset.aeOqcPendingBound = "true";
   }
 
+  function bindModalEvents() {
+    const modal = modalElement();
+    if (!modal || modal.dataset.aeOqcPendingModalBound === "true") return;
+
+    modal.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+      if (!target) return;
+      const closeButton = target.closest("[data-ae-oqc-pending-close]");
+      const exportButton = target.closest("[data-ae-oqc-pending-export]");
+
+      if (closeButton) {
+        event.preventDefault();
+        closeModal();
+        return;
+      }
+
+      if (exportButton) {
+        event.preventDefault();
+        exportCurrentDetail();
+      }
+    });
+
+    modal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    });
+
+    modal.dataset.aeOqcPendingModalBound = "true";
+  }
+
   function init() {
     ensureStyles();
+    modalElement();
+    bindModalEvents();
     setDefaultDates(false);
     bindEvents();
     loadSummary();

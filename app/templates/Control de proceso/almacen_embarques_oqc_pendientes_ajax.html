@@ -94,9 +94,20 @@
                     <h3 id="ae-oqc-pending-modal-title">Detalle de cajas pendientes</h3>
                     <span id="ae-oqc-pending-modal-subtitle" class="ae-oqc-pending-modal__subtitle"></span>
                 </div>
-                <button type="button" class="ae-oqc-pending-icon-btn" data-ae-oqc-pending-close aria-label="Cerrar detalle">
-                    &times;
-                </button>
+                <div class="ae-oqc-pending-modal__actions">
+                    <button
+                        type="button"
+                        id="ae-oqc-pending-detail-export-btn"
+                        class="ae-oqc-pending-btn ae-oqc-pending-btn--export"
+                        data-ae-oqc-pending-export
+                        disabled
+                    >
+                        Exportar
+                    </button>
+                    <button type="button" class="ae-oqc-pending-icon-btn" data-ae-oqc-pending-close aria-label="Cerrar detalle">
+                        &times;
+                    </button>
+                </div>
             </div>
             <div class="ae-oqc-pending-modal__meta">
                 <span id="ae-oqc-pending-detail-count">0 cajas</span>
@@ -123,4 +134,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_oqc_pendientes.js', v='20260804e') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_oqc_pendientes.js', v='20260820a') }}"></script>

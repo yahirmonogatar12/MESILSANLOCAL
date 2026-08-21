@@ -254,7 +254,7 @@ body:has(#global-tabs-bar:not(:empty)) #control-proceso-content-area:not(.mes-ar
 .ae-oqc-pending-modal {
     position: fixed;
     inset: 0;
-    z-index: 12000;
+    z-index: 2147483600;
     display: none;
 }
 
@@ -270,11 +270,11 @@ body:has(#global-tabs-bar:not(:empty)) #control-proceso-content-area:not(.mes-ar
 
 .ae-oqc-pending-modal__dialog {
     position: absolute;
-    top: clamp(86px, 9vh, 118px);
+    top: 14px;
     left: 50%;
     transform: translateX(-50%);
     width: min(1120px, calc(100vw - 40px));
-    height: min(680px, calc(100vh - 138px));
+    height: min(760px, calc(100dvh - 28px));
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -308,8 +308,27 @@ body:has(#global-tabs-bar:not(:empty)) #control-proceso-content-area:not(.mes-ar
     font-weight: 700;
 }
 
-.ae-oqc-pending-icon-btn {
+.ae-oqc-pending-modal__actions {
     margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ae-oqc-pending-btn--export {
+    min-width: 92px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 6px;
+    background: #1ca866;
+}
+
+.ae-oqc-pending-btn--export:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+.ae-oqc-pending-icon-btn {
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -350,8 +369,8 @@ body:has(#global-tabs-bar:not(:empty)) #control-proceso-content-area:not(.mes-ar
     }
 
     .ae-oqc-pending-modal__dialog {
-        top: 48px;
+        top: 10px;
         width: calc(100vw - 20px);
-        height: calc(100vh - 72px);
+        height: calc(100dvh - 20px);
     }
 }

@@ -1795,7 +1795,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesPendientesQA = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-oqc-pendientes-unique-container",
-      "/almacen-embarques-qa-pendientes-ajax?v=20260804e",
+      "/almacen-embarques-qa-pendientes-ajax?v=20260820a",
       "inicializarAlmacenEmbarquesPendientesQAAjax",
     );
   };
