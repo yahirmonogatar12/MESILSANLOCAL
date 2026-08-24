@@ -1,8 +1,14 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260522a";
+  const ASSET_VERSION = "20260824b";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
   const adjustmentState = {};
+  const movementBoxesState = {
+    sourceButton: null,
+    config: null,
+    folio: "",
+    rows: [],
+  };
   const returnPrintState = {
     exitRows: [],
     selectedKeys: new Set(),
@@ -99,6 +105,239 @@
         >
       </div>
     `;
+  }
+
+  function renderFolioButton(row, movementType) {
+    const folio = row?.folio || "";
+    if (!folio) {
+      return "-";
+    }
+
+    return `
+      <button
+        type="button"
+        class="ae-folio-link"
+        data-action="view-box-detail"
+        data-movement-type="${escapeHtml(movementType)}"
+        data-folio="${escapeHtml(folio)}"
+      >
+        ${escapeHtml(folio)}
+      </button>
+    `;
+  }
+
+  function getMovementBoxesModal() {
+    let modal = document.getElementById("ae-movement-boxes-modal");
+    if (modal) {
+      return modal;
+    }
+
+    modal = document.createElement("div");
+    modal.id = "ae-movement-boxes-modal";
+    modal.className = "ae-movement-boxes-modal";
+    modal.innerHTML = `
+      <div class="ae-movement-boxes-modal__backdrop" data-action="close-boxes-modal"></div>
+      <div class="ae-movement-boxes-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ae-movement-boxes-modal-title">
+        <div class="ae-movement-boxes-modal__header">
+          <div>
+            <h4 id="ae-movement-boxes-modal-title">Detalle de cajas</h4>
+            <p data-role="boxes-folio">-</p>
+          </div>
+          <button type="button" class="ae-movement-boxes-modal__close" data-action="close-boxes-modal" aria-label="Cerrar">
+            &times;
+          </button>
+        </div>
+        <div class="ae-movement-boxes-modal__summary">
+          <span data-role="boxes-count">0 cajas</span>
+          <span data-role="boxes-quantity">0 piezas</span>
+          <span data-role="boxes-status"></span>
+        </div>
+        <div class="ae-movement-boxes-modal__body">
+          <div class="ae-movement-boxes-table-wrap">
+            <table class="ae-history-table ae-movement-boxes-table">
+              <colgroup>
+                <col style="width: 30%;">
+                <col style="width: 25%;">
+                <col style="width: 15%;">
+                <col style="width: 15%;">
+                <col style="width: 15%;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Box ID</th>
+                  <th>No. de parte</th>
+                  <th>Cantidad</th>
+                  <th>Fecha</th>
+                  <th>Hora</th>
+                </tr>
+              </thead>
+              <tbody data-role="boxes-tbody">
+                <tr>
+                  <td colspan="5" class="ae-empty-cell">Cargando cajas...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="ae-movement-boxes-modal__actions">
+          <button type="button" class="ae-btn-export" data-action="export-boxes-modal" data-role="boxes-export" disabled>Exportar Excel</button>
+          <button type="button" class="ae-btn-secondary" data-action="close-boxes-modal">Cerrar</button>
+        </div>
+      </div>
+    `;
+
+    modal.addEventListener("click", (event) => {
+      if (event.target.closest('[data-action="export-boxes-modal"]')) {
+        exportMovementBoxesModal();
+        return;
+      }
+      if (event.target.closest('[data-action="close-boxes-modal"]')) {
+        closeMovementBoxesModal({ restoreFocus: true });
+      }
+    });
+    modal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMovementBoxesModal({ restoreFocus: true });
+      }
+    });
+
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function setMovementBoxesStatus(message = "", isError = false) {
+    const modal = getMovementBoxesModal();
+    const statusLabel = modal.querySelector('[data-role="boxes-status"]');
+    if (statusLabel) {
+      statusLabel.textContent = message;
+      statusLabel.style.color = isError ? "#ff9a9a" : "#8fb8ff";
+    }
+  }
+
+  function renderMovementBoxesRows(rows) {
+    if (!rows.length) {
+      return '<tr><td colspan="5" class="ae-empty-cell">No hay cajas registradas para este folio.</td></tr>';
+    }
+
+    return rows
+      .map(
+        (row) => `
+          <tr>
+            <td><strong>${escapeHtml(row.box_id || "-")}</strong></td>
+            <td>${escapeHtml(row.part_number || "-")}</td>
+            <td>${formatNumber(row.quantity)}</td>
+            <td>${escapeHtml(row.fecha || "-")}</td>
+            <td>${escapeHtml(row.hora || "-")}</td>
+          </tr>
+        `,
+      )
+      .join("");
+  }
+
+  function setMovementBoxesExportEnabled(enabled) {
+    const modal = getMovementBoxesModal();
+    const exportButton = modal.querySelector('[data-role="boxes-export"]');
+    if (exportButton) {
+      exportButton.disabled = !enabled;
+    }
+  }
+
+  function exportMovementBoxesModal() {
+    const config = movementBoxesState.config;
+    const folio = movementBoxesState.folio;
+    if (!config?.boxDetailExportUrl || !folio || !movementBoxesState.rows.length) {
+      return;
+    }
+
+    const params = new URLSearchParams({ folio });
+    window.open(`${config.boxDetailExportUrl}?${params.toString()}`, "_blank");
+  }
+
+  async function openMovementBoxesModal(config, folio, sourceButton = null) {
+    const modal = getMovementBoxesModal();
+    movementBoxesState.sourceButton = sourceButton;
+    movementBoxesState.config = config;
+    movementBoxesState.folio = folio || "";
+    movementBoxesState.rows = [];
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+    modal.tabIndex = -1;
+    setMovementBoxesExportEnabled(false);
+
+    const folioLabel = modal.querySelector('[data-role="boxes-folio"]');
+    const countLabel = modal.querySelector('[data-role="boxes-count"]');
+    const quantityLabel = modal.querySelector('[data-role="boxes-quantity"]');
+    const tableBody = modal.querySelector('[data-role="boxes-tbody"]');
+
+    if (folioLabel) {
+      folioLabel.textContent = folio || "-";
+    }
+    if (countLabel) {
+      countLabel.textContent = "0 cajas";
+    }
+    if (quantityLabel) {
+      quantityLabel.textContent = "0 piezas";
+    }
+    if (tableBody) {
+      tableBody.innerHTML = '<tr><td colspan="5" class="ae-empty-cell">Cargando cajas...</td></tr>';
+    }
+    setMovementBoxesStatus("Consultando cajas...");
+
+    try {
+      const params = new URLSearchParams({ folio });
+      const response = await fetch(`${config.boxDetailUrl}?${params.toString()}`, {
+        credentials: "same-origin",
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+
+      const rows = payload.rows || [];
+      movementBoxesState.rows = rows;
+      const summary = payload.summary || {};
+      if (tableBody) {
+        tableBody.innerHTML = renderMovementBoxesRows(rows);
+      }
+      if (countLabel) {
+        const totalBoxes = Number(summary.total_boxes ?? rows.length) || 0;
+        countLabel.textContent = `${formatNumber(totalBoxes)} ${totalBoxes === 1 ? "caja" : "cajas"}`;
+      }
+      if (quantityLabel) {
+        quantityLabel.textContent = getQuantityTotalLabel(summary.total_quantity || 0);
+      }
+      setMovementBoxesExportEnabled(Boolean(rows.length));
+      setMovementBoxesStatus(rows.length ? "Actualizado" : "Sin cajas para este folio");
+    } catch (error) {
+      console.error("Error consultando cajas del folio:", error);
+      if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="5" class="ae-empty-cell">No fue posible cargar las cajas.</td></tr>';
+      }
+      setMovementBoxesStatus(error.message || "Error al consultar cajas", true);
+    }
+
+    requestAnimationFrame(() => modal.focus());
+  }
+
+  function closeMovementBoxesModal({ restoreFocus = false } = {}) {
+    const modal = document.getElementById("ae-movement-boxes-modal");
+    if (!modal) {
+      return;
+    }
+
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+
+    const sourceButton = movementBoxesState.sourceButton;
+    movementBoxesState.sourceButton = null;
+    movementBoxesState.config = null;
+    movementBoxesState.folio = "";
+    movementBoxesState.rows = [];
+    if (restoreFocus && sourceButton && document.body.contains(sourceButton)) {
+      requestAnimationFrame(() => sourceButton.focus());
+    }
   }
 
   let departureModalState = {
@@ -1612,7 +1851,7 @@
           <tr>
             <td>${escapeHtml(row.fecha)}</td>
             <td>${escapeHtml(row.hora)}</td>
-            <td>${escapeHtml(row.folio)}</td>
+            <td>${renderFolioButton(row, "entry")}</td>
             <td><strong>${escapeHtml(row.part_number)}</strong></td>
             <td>${formatNumber(row.cantidad)}</td>
             <td>${escapeHtml(row.product_model || "-")}</td>
@@ -1633,7 +1872,7 @@
           <tr>
             <td>${escapeHtml(row.fecha)}</td>
             <td>${escapeHtml(row.hora)}</td>
-            <td>${escapeHtml(row.folio)}</td>
+            <td>${renderFolioButton(row, "exit")}</td>
             <td><strong>${escapeHtml(row.part_number)}</strong></td>
             <td>${formatNumber(row.cantidad)}</td>
             <td>${buildDepartureCell(row)}</td>
@@ -3047,6 +3286,18 @@
       elements.tableBody.dataset.departureBound = "true";
     }
 
+    if (config.boxDetailUrl && elements.tableBody.dataset.boxDetailBound !== "true") {
+      elements.tableBody.addEventListener("click", (event) => {
+        const button = event.target.closest('[data-action="view-box-detail"]');
+        if (!button) {
+          return;
+        }
+        event.preventDefault();
+        openMovementBoxesModal(config, button.dataset.folio || "", button);
+      });
+      elements.tableBody.dataset.boxDetailBound = "true";
+    }
+
     elements.searchBtn?.addEventListener("click", () => loadModule(config));
     elements.exportBtn?.addEventListener("click", () => exportModule(config));
     elements.clearBtn?.addEventListener("click", () => {
@@ -3095,6 +3346,8 @@
       prefix: "almacen-embarques-entries",
       apiUrl: "/api/almacen-embarques/entradas",
       exportUrl: "/api/almacen-embarques/entradas/export",
+      boxDetailUrl: "/api/almacen-embarques/entradas/cajas",
+      boxDetailExportUrl: "/api/almacen-embarques/entradas/cajas/export",
       adjustmentModule: "entradas",
       adjustmentLabel: "Entrada",
       colspan: 10,
@@ -3109,6 +3362,8 @@
       prefix: "almacen-embarques-exits",
       apiUrl: "/api/almacen-embarques/salidas",
       exportUrl: "/api/almacen-embarques/salidas/export",
+      boxDetailUrl: "/api/almacen-embarques/salidas/cajas",
+      boxDetailExportUrl: "/api/almacen-embarques/salidas/cajas/export",
       adjustmentModule: "salidas",
       adjustmentLabel: "Salida",
       colspan: 9,

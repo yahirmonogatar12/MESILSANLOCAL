@@ -473,6 +473,7 @@
 
 .ae-btn-primary:disabled,
 .ae-btn-success:disabled,
+.ae-btn-export:disabled,
 .ae-btn-secondary:disabled {
     cursor: not-allowed;
     opacity: 0.55;
@@ -1254,6 +1255,30 @@ body.ae-column-resizing * {
     font-weight: 700;
 }
 
+.ae-folio-link {
+    border: none;
+    background: transparent;
+    color: var(--ilsan-text-light);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 2px 4px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-decoration: underline;
+    text-decoration-color: rgba(143, 184, 255, 0.4);
+    text-underline-offset: 3px;
+}
+
+.ae-folio-link:hover,
+.ae-folio-link:focus {
+    color: #8fb8ff;
+    outline: none;
+    text-decoration-color: #8fb8ff;
+}
+
 .ae-row-editing td {
     background-color: rgba(52, 152, 219, 0.08) !important;
 }
@@ -1673,6 +1698,126 @@ body.ae-column-resizing * {
     justify-content: flex-end;
     gap: 10px;
     padding: 0 18px 18px;
+}
+
+.ae-movement-boxes-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 3400;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+}
+
+.ae-movement-boxes-modal.is-open {
+    display: flex;
+}
+
+.ae-movement-boxes-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 14, 24, 0.68);
+}
+
+.ae-movement-boxes-modal__dialog {
+    position: relative;
+    width: min(92vw, 980px);
+    max-height: min(86vh, 760px);
+    display: flex;
+    flex-direction: column;
+    background: #2b3040;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.36);
+    overflow: hidden;
+}
+
+.ae-movement-boxes-modal__header,
+.ae-movement-boxes-modal__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    background: #313748;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ae-movement-boxes-modal__actions {
+    justify-content: flex-end;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: none;
+}
+
+.ae-movement-boxes-modal__header h4 {
+    margin: 0;
+    color: var(--ilsan-text-light);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.ae-movement-boxes-modal__header p {
+    margin: 5px 0 0;
+    color: #8fb8ff;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.ae-movement-boxes-modal__close {
+    border: none;
+    background: transparent;
+    color: var(--ilsan-text-gray);
+    font-size: 1.45rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.ae-movement-boxes-modal__summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: rgba(255, 255, 255, 0.025);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ae-movement-boxes-modal__summary span {
+    color: var(--ilsan-text-gray);
+    font-size: 0.78rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+.ae-movement-boxes-modal__summary [data-role="boxes-status"] {
+    margin-left: auto;
+    background: transparent;
+    padding-inline: 0;
+}
+
+.ae-movement-boxes-modal__body {
+    min-height: 0;
+    overflow: hidden;
+    background: #2b3040;
+}
+
+.ae-movement-boxes-table-wrap {
+    max-height: min(58vh, 520px);
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ilsan-accent-blue) var(--ilsan-dark-tertiary);
+}
+
+.ae-movement-boxes-table {
+    min-width: 720px;
+}
+
+.ae-movement-boxes-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 .ae-return-print-modal {

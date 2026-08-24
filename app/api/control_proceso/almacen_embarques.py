@@ -537,6 +537,89 @@ def _obtener_historial_salidas_almacen_embarques(limit=300):
     ]
 
 
+def _obtener_cajas_movimiento_almacen_embarques(movement_type, folio, limit=2000):
+    movement_type = normalize_search(movement_type).lower()
+    folio = normalize_search(folio)
+    if movement_type not in {"entry", "exit"}:
+        raise ValueError("Tipo de movimiento no soportado.")
+    if not folio:
+        raise ValueError("Folio requerido.")
+
+    limit = min(max(int(limit or 2000), 1), 10000)
+    rows = execute_query(
+        f"""
+        SELECT
+            box_code,
+            part_number,
+            quantity,
+            DATE(movement_at) AS fecha,
+            DATE_FORMAT(movement_at, '%%H:%%i:%%s') AS hora,
+            movement_at
+        FROM `{SHIPPING_TABLES['movement_boxes']}`
+        WHERE movement_type = %s
+          AND movement_folio = %s
+        ORDER BY movement_at ASC, id ASC
+        LIMIT %s
+        """,
+        (movement_type, folio, limit),
+        fetch="all",
+    ) or []
+
+    result_rows = [
+        {
+            "box_id": _normalizar_texto_embarques_historial(row.get("box_code")),
+            "part_number": _normalizar_texto_embarques_historial(
+                row.get("part_number")
+            ),
+            "quantity": _normalizar_numero_embarques_historial(row.get("quantity")),
+            "fecha": _normalizar_texto_embarques_historial(row.get("fecha")),
+            "hora": _normalizar_texto_embarques_historial(row.get("hora")),
+            "movement_at": _normalizar_texto_embarques_historial(
+                row.get("movement_at")
+            ),
+        }
+        for row in rows
+    ]
+
+    return {
+        "movement_type": movement_type,
+        "folio": folio,
+        "rows": result_rows,
+        "summary": {
+            "total_boxes": len(result_rows),
+            "total_quantity": sum(
+                _normalizar_numero_embarques_historial(row.get("quantity")) or 0
+                for row in rows
+            ),
+        },
+    }
+
+
+def _exportar_cajas_movimiento_almacen_embarques(
+    movement_type,
+    folio,
+    sheet_name,
+    filename,
+):
+    payload = _obtener_cajas_movimiento_almacen_embarques(
+        movement_type,
+        folio,
+        limit=10000,
+    )
+    return _exportar_historial_embarques_excel(
+        sheet_name,
+        filename,
+        {
+            "Box ID": "box_id",
+            "No. Parte": "part_number",
+            "Cantidad": "quantity",
+            "Fecha": "fecha",
+            "Hora": "hora",
+        },
+        payload["rows"],
+    )
+
+
 def _obtener_historial_retorno_almacen_embarques(limit=300):
     tipo = (request.args.get("tipo", "") or "").strip()
     sql = """
@@ -4116,6 +4199,43 @@ def export_almacen_embarques_entradas():
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/api/almacen-embarques/entradas/cajas")
+@login_requerido
+def api_almacen_embarques_entradas_cajas():
+    """Consultar cajas registradas bajo un folio de entrada."""
+    try:
+        folio = request.args.get("folio", "")
+        payload = _obtener_cajas_movimiento_almacen_embarques("entry", folio)
+        return jsonify({"success": True, **payload})
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        logger.error(
+            f"Error API cajas entrada almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/almacen-embarques/entradas/cajas/export")
+@login_requerido
+def export_almacen_embarques_entradas_cajas():
+    """Exportar cajas registradas bajo un folio de entrada."""
+    try:
+        return _exportar_cajas_movimiento_almacen_embarques(
+            "entry",
+            request.args.get("folio", ""),
+            "Cajas Entrada",
+            "cajas_entrada_almacen_embarques.xlsx",
+        )
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        logger.error(
+            f"Error exportando cajas entrada almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @bp.route("/api/almacen-embarques/salidas")
 @login_requerido
 def api_almacen_embarques_salidas():
@@ -4160,6 +4280,43 @@ def export_almacen_embarques_salidas():
             f"Error exportando salidas almacén embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/almacen-embarques/salidas/cajas")
+@login_requerido
+def api_almacen_embarques_salidas_cajas():
+    """Consultar cajas registradas bajo un folio de salida."""
+    try:
+        folio = request.args.get("folio", "")
+        payload = _obtener_cajas_movimiento_almacen_embarques("exit", folio)
+        return jsonify({"success": True, **payload})
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        logger.error(
+            f"Error API cajas salida almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/almacen-embarques/salidas/cajas/export")
+@login_requerido
+def export_almacen_embarques_salidas_cajas():
+    """Exportar cajas registradas bajo un folio de salida."""
+    try:
+        return _exportar_cajas_movimiento_almacen_embarques(
+            "exit",
+            request.args.get("folio", ""),
+            "Cajas Salida",
+            "cajas_salida_almacen_embarques.xlsx",
+        )
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        logger.error(
+            f"Error exportando cajas salida almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @bp.route("/api/almacen-embarques/<module_name>/ajustes/template")

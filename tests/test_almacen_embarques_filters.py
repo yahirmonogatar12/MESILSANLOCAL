@@ -207,3 +207,94 @@ def test_historial_eliminaciones_movimientos_resume_snapshot_operativo():
         "No. parte: EAV62074702 | Cantidad: 720"
     )
     assert payload["rows"][0]["new_values"] == ""
+
+
+def test_detalle_cajas_movimiento_embarques_filtra_folio_y_resume():
+    rows = [
+        {
+            "box_code": "LGB922608199398",
+            "part_number": "EBR80757438",
+            "quantity": 20,
+            "fecha": "2026-08-24",
+            "hora": "07:42:47",
+            "movement_at": datetime(2026, 8, 24, 7, 42, 47),
+        },
+        {
+            "box_code": "LGB922608199402",
+            "part_number": "EBR80757438",
+            "quantity": 20,
+            "fecha": "2026-08-24",
+            "hora": "07:42:47",
+            "movement_at": datetime(2026, 8, 24, 7, 42, 47),
+        },
+    ]
+
+    with patch.object(ae, "execute_query", return_value=rows) as mocked_query:
+        payload = ae._obtener_cajas_movimiento_almacen_embarques(
+            "entry",
+            "EMB-ENT-20260824-074247-544",
+            limit=10,
+        )
+
+    sql, params = mocked_query.call_args.args[:2]
+    assert ae.SHIPPING_TABLES["movement_boxes"] in sql
+    assert "movement_type = %s" in sql
+    assert "movement_folio = %s" in sql
+    assert params == ("entry", "EMB-ENT-20260824-074247-544", 10)
+    assert payload["summary"] == {"total_boxes": 2, "total_quantity": 40}
+    assert payload["rows"][0]["box_id"] == "LGB922608199398"
+    assert payload["rows"][0]["part_number"] == "EBR80757438"
+    assert payload["rows"][0]["quantity"] == 20
+    assert payload["rows"][0]["fecha"] == "2026-08-24"
+    assert payload["rows"][0]["hora"] == "07:42:47"
+
+
+def test_exportar_cajas_movimiento_embarques_usa_datos_del_folio():
+    payload = {
+        "rows": [
+            {
+                "box_id": "LGB922608199398",
+                "part_number": "EBR80757438",
+                "quantity": 20,
+                "fecha": "2026-08-24",
+                "hora": "07:42:47",
+            }
+        ],
+        "summary": {"total_boxes": 1, "total_quantity": 20},
+    }
+
+    with patch.object(
+        ae,
+        "_obtener_cajas_movimiento_almacen_embarques",
+        return_value=payload,
+    ) as mocked_detail:
+        with patch.object(
+            ae,
+            "_exportar_historial_embarques_excel",
+            return_value="excel-response",
+        ) as mocked_export:
+            result = ae._exportar_cajas_movimiento_almacen_embarques(
+                "exit",
+                "EMB-SAL-20260824-074247-544",
+                "Cajas Salida",
+                "cajas_salida_almacen_embarques.xlsx",
+            )
+
+    mocked_detail.assert_called_once_with(
+        "exit",
+        "EMB-SAL-20260824-074247-544",
+        limit=10000,
+    )
+    mocked_export.assert_called_once_with(
+        "Cajas Salida",
+        "cajas_salida_almacen_embarques.xlsx",
+        {
+            "Box ID": "box_id",
+            "No. Parte": "part_number",
+            "Cantidad": "quantity",
+            "Fecha": "fecha",
+            "Hora": "hora",
+        },
+        payload["rows"],
+    )
+    assert result == "excel-response"
