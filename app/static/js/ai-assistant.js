@@ -8,15 +8,15 @@
     };
 
     // Mismo catalogo que _ATTACH_KINDS en ai_assistant.py.
-    const ATTACH_EXTENSIONS = ['.xlsx','.xlsm','.pdf','.png','.jpg','.jpeg','.webp','.gif','.csv','.txt','.md','.json'];
-    // Tope de archivos por mensaje: el mismo que mira el asistente al armar el
-    // dia (file_lookup.recientes). Un dia completo son 5: PPN ayer+hoy, Prod
-    // Plan de OVEN ayer+hoy y el Cal.
-    const MAX_ATTACH_FILES = 6;
+    const ATTACH_EXTENSIONS = ['.xlsx','.xlsm','.pdf','.png','.jpg','.jpeg','.webp','.gif','.csv','.txt','.md','.json','.zip','.rar'];
+    // Tope de archivos por mensaje. El backend reparte un presupuesto de texto
+    // comun, asi que muchos archivos grandes se truncan antes de llegar todos.
+    const MAX_ATTACH_FILES = 100;
     const attachKind = ext => (
         ['.xlsx','.xlsm'].includes(ext) ? 'excel'
         : ext === '.pdf' ? 'pdf'
         : ['.png','.jpg','.jpeg','.webp','.gif'].includes(ext) ? 'imagen'
+        : ['.zip','.rar'].includes(ext) ? 'comprimido'
         : 'texto'
     );
     const attachLabel = filename => (String(filename).split('.').pop() || 'DOC').toUpperCase().slice(0, 4);
@@ -592,7 +592,7 @@
                     message.content,
                     message.created_at,
                     message.status,
-                    message.content_json?.attachment || null
+                    message.content_json?.attachments || message.content_json?.attachment || null
                 );
                 const artifacts = message.content_json?.artifacts || [];
                 artifacts.forEach(artifact => this.appendArtifact(artifact, bubble.parentElement));
@@ -647,7 +647,8 @@
             const bubble = document.createElement('div'); bubble.className = 'ai-bubble';
             if (role === 'user') bubble.textContent = content;
             else this.renderMarkdown(bubble, content);
-            if (attachment?.filename) this.appendMessageAttachment(bubble, attachment);
+            const adjuntos = Array.isArray(attachment) ? attachment : (attachment ? [attachment] : []);
+            adjuntos.filter(item => item?.filename).forEach(item => this.appendMessageAttachment(bubble, item));
             const meta = document.createElement('div'); meta.className = 'ai-message-meta'; meta.textContent = `${this.formatDate(date || new Date())}${status !== 'complete' ? ` · ${status}` : ''}`;
             wrapper.append(bubble, meta); this.messages.appendChild(wrapper); this.scrollBottom(); return bubble;
         }
@@ -1460,8 +1461,11 @@
         renderAttachmentChip(state) {
             const nombres = this.pendingFiles.map(f => f.filename);
             if (!nombres.length) return;
+            const muestra = nombres.slice(0, 3).join(', ');
             this.setAttachmentState(
-                nombres.length === 1 ? nombres[0] : `${nombres.length} archivos: ${nombres.join(', ')}`,
+                nombres.length === 1
+                    ? nombres[0]
+                    : `${nombres.length} archivos: ${muestra}${nombres.length > 3 ? ` y ${nombres.length - 3} mas` : ''}`,
                 state,
                 nombres[nombres.length - 1],
             );
@@ -1493,10 +1497,7 @@
                     size_bytes: file.size,
                     kind: attachKind(ext)
                 };
-                this.pendingFiles.push({
-                    file_ref: data.file_ref,
-                    filename: this.pendingAttachment.filename,
-                });
+                this.pendingFiles.push({file_ref: data.file_ref, ...this.pendingAttachment});
                 this.attachmentUploading = false;
                 this.renderAttachmentChip('ready');
             } catch (error) {
@@ -1553,8 +1554,8 @@
             if (!content) return;
             if (!this.currentConversation) await this.newChat(false);
             if (!this.currentConversation) return;
-            const fileRef = this.pendingFileRef;
-            const attachment = this.pendingAttachment ? {...this.pendingAttachment} : null;
+            const fileRefs = this.pendingFiles.map(f => f.file_ref);
+            const attachment = this.pendingFiles.map(f => ({...f}));
             this.lastUserMessage = content;
             this.root.querySelector('#ai-retry').hidden = true;
             this.input.value = '';
@@ -1574,7 +1575,7 @@
                 const response = await fetch(`/api/ai/conversations/${this.currentConversation.public_id}/messages/stream`, {
                     method:'POST', signal:this.controller.signal,
                     headers:{'Content-Type':'application/json','Accept':'text/event-stream','X-Requested-With':'XMLHttpRequest'},
-                    body:JSON.stringify({content, client_message_id:clientId, language:this.language.value, page_context:this.pageContext(), file_ref:fileRef || null})
+                    body:JSON.stringify({content, client_message_id:clientId, language:this.language.value, page_context:this.pageContext(), file_ref:fileRefs[fileRefs.length - 1] || null, file_refs:fileRefs})
                 });
                 if (!response.ok) {
                     const data = await response.json().catch(() => ({}));

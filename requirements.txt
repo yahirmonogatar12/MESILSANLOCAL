@@ -27,6 +27,10 @@ python-pptx>=1.0.0,<2.0.0
 
 # OpenAI Responses API para el asistente IA
 openai>=1.0.0,<3.0.0
+# Opcional: adjuntar .rar en el chat (los .zip usan zipfile de la stdlib).
+# Requiere ademas el binario unrar/bsdtar en el servidor; sin esto el asistente
+# pide que el archivo se suba como .zip.
+rarfile>=4.0
 
 # Para web scraping y parsing
 beautifulsoup4>=4.12.0

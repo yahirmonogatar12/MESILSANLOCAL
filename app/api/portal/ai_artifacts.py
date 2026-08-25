@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import logging
 import os
@@ -1372,6 +1373,27 @@ def _artifact_record(public_id: str) -> dict[str, Any] | None:
     finally:
         cursor.close()
         conn.close()
+
+
+def build_table_excel(
+    *, title: str, columns: list[str], rows: list[dict[str, Any]], language: str = "es"
+) -> bytes:
+    """Excel con formato a partir de una tabla suelta, sin pasar por run_report.
+
+    Lo usa la exportacion de datos que el asistente saco de los archivos
+    adjuntos: mismo encabezado, autoajuste y blindaje contra formulas que los
+    Excel de reporte, pero sin trazabilidad de reporte MES.
+    """
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = _safe_title(title, "Datos")[:31]
+    _fill_excel_data_sheet(
+        sheet, rows, columns,
+        font_name=_preferred_font(language), navy="1F4E79", table_name="TablaDatos",
+    )
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
 
 
 def create_artifact(

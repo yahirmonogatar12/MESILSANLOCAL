@@ -168,6 +168,77 @@ def test_editar_excel_adjunto_rechaza_celda_u_hoja_invalida(tmp_path):
         ai_assistant._aplicar_cambios_excel(origen, [{"hoja": "NoExiste", "celda": "A1", "valor": 1}])
 
 
+def test_varios_adjuntos_llegan_todos_y_reparten_presupuesto(tmp_path, monkeypatch):
+    monkeypatch.setattr(ai_assistant, "_upload_root", lambda: tmp_path)
+    folder = tmp_path / "9"
+    folder.mkdir()
+    refs = []
+    for i in range(3):
+        ref = f"csv{i}"
+        (folder / f"{ref}.csv").write_text(f"BARCODE,CURRENT\nNFM{i},1.6{i}\n", "utf-8")
+        (folder / f"{ref}.name").write_text(f"pcb_{i}.csv", "utf-8")
+        refs.append(ref)
+    infos = [ai_assistant._uploaded_file_info(9, ref) for ref in refs]
+
+    partes = ai_assistant._turn_attachment_parts(9, refs, infos)
+
+    assert len(partes) == 3  # antes solo viajaba el ultimo adjunto
+    for i, parte in enumerate(partes):
+        assert f"pcb_{i}.csv" in parte["text"] and f"NFM{i}" in parte["text"]
+
+
+def test_adjunto_zip_se_descomprime_para_el_modelo(tmp_path, monkeypatch):
+    monkeypatch.setattr(ai_assistant, "_upload_root", lambda: tmp_path)
+    folder = tmp_path / "11"
+    folder.mkdir()
+    with ZipFile(folder / "z1.zip", "w") as zf:
+        zf.writestr("uno.csv", "BARCODE,CURRENT\nNFM-A,1.61\n")
+        zf.writestr("dos.csv", "BARCODE,CURRENT\nNFM-B,1.62\n")
+        zf.writestr("logo.png", b"PNG-falso")
+    (folder / "z1.name").write_text("voltajes.zip", "utf-8")
+
+    partes = ai_assistant._attachment_input_parts(11, "z1", ai_assistant._uploaded_file_info(11, "z1"))
+
+    texto = partes[0]["text"]
+    assert "voltajes.zip" in texto
+    assert "NFM-A" in texto and "NFM-B" in texto
+    assert "logo.png" not in texto  # las imagenes dentro del zip se omiten
+
+
+def test_excel_desde_tabla_convierte_numeros_y_arma_libro():
+    columnas, filas = ai_assistant._tabla_a_filas(
+        ["Fecha", "Barcode", "Current", "Juicio"],
+        [["2026-05-11", "NFM961M0032S2445002604200309", "1.63", "OK"],
+         ["2026-05-09", "NFM961M0032S2445002604240739", "1,620", ""]],
+    )
+
+    assert columnas == ["Fecha", "Barcode", "Current", "Juicio"]
+    assert filas[0]["Current"] == 1.63  # llega como texto, entra a Excel como numero
+    assert filas[1]["Current"] == 1620  # separador de miles
+    assert filas[0]["Barcode"] == "NFM961M0032S2445002604200309"  # no se vuelve numero
+
+    libro = load_workbook(BytesIO(
+        ai_artifacts.build_table_excel(title="Current por CSV", columns=columnas, rows=filas)
+    ))
+    hoja = libro.active
+    assert [c.value for c in hoja[1]] == columnas
+    assert hoja["C2"].value == 1.63
+
+
+def test_excel_desde_tabla_rechaza_tabla_vacia():
+    with pytest.raises(ValueError):
+        ai_assistant._tabla_a_filas([], [["a"]])
+    with pytest.raises(ValueError):
+        ai_assistant._tabla_a_filas(["Col"], [])
+
+
+def test_instrucciones_habilitan_excel_desde_adjuntos():
+    texto = ai_openai.build_instructions({"language": "es", "table_excel_enabled": True})
+    assert "excel_desde_tabla" in texto
+    assert "no puedes generar Excel" in texto
+    assert "excel_desde_tabla" not in ai_openai.build_instructions({"language": "es"})
+
+
 def test_adjunto_rechaza_referencia_ajena_o_manipulada(tmp_path, monkeypatch):
     monkeypatch.setattr(ai_assistant, "_upload_root", lambda: tmp_path)
     folder = tmp_path / "44"
@@ -184,8 +255,10 @@ def test_cliente_muestra_y_recupera_el_nombre_del_adjunto():
     stylesheet = (root / "app/static/css/ai-assistant.css").read_text(encoding="utf-8")
     template = (root / "app/templates/components/ai_assistant.html").read_text(encoding="utf-8")
 
-    assert "message.content_json?.attachment || null" in javascript
-    assert "appendMessageAttachment(bubble, attachment)" in javascript
+    assert "message.content_json?.attachments || message.content_json?.attachment || null" in javascript
+    assert "appendMessageAttachment(bubble, item)" in javascript
+    assert "file_refs:fileRefs" in javascript
+    assert "MAX_ATTACH_FILES = 100" in javascript
     assert "setAttachmentState(file.name, 'uploading')" in javascript
     assert "this.attachmentUploading" in javascript
     assert ".ai-attach-info[hidden]" in stylesheet
