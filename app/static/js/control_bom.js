@@ -1027,7 +1027,7 @@
         const tbody = document.getElementById('ecoListTableBody');
         ecoListPage = Math.max(1, Number(page || ecoListPage || 1));
 
-        tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#aaa; text-align:center;">Cargando...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:12px; color:#aaa; text-align:center;">Cargando...</td></tr>';
         setEcoListStatus('Consultando ECOs...');
 
         try {
@@ -1041,7 +1041,7 @@
 
             const rows = data.data || [];
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#aaa; text-align:center;">No hay ECOs con esos filtros.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="padding:12px; color:#aaa; text-align:center;">No hay ECOs con esos filtros.</td></tr>';
                 ecoListMeta = data.meta || ecoListMeta;
                 updateEcoListPagination(ecoListMeta);
                 setEcoListStatus('Sin ECOs para mostrar.');
@@ -1095,7 +1095,6 @@
                         <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(row.bom_revision)}</td>
                         <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(formatFechaEfectiva(row.effective_at))}</td>
                         <td style="padding:8px; border-bottom:1px solid #283747;">${statusBadge(row.status)}</td>
-                        <td style="padding:8px; border-bottom:1px solid #283747; text-align:right;">${escapeHtml(row.item_count || 0)}</td>
                         <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(row.approved_by || '-')}</td>
                         <td style="padding:8px; border-bottom:1px solid #283747; text-align:center;">
                             ${viewControl}
@@ -1118,7 +1117,7 @@
             }
         } catch (error) {
             console.error('Error cargando ECOs:', error);
-            tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#e74c3c; text-align:center;">Error cargando ECOs.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="padding:12px; color:#e74c3c; text-align:center;">Error cargando ECOs.</td></tr>';
             updateEcoListPagination({ filters_active: false });
             setEcoListStatus(`Error: ${escapeHtml(error.message)}`);
         }
