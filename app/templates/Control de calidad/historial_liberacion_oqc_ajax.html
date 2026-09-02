@@ -1,0 +1,134 @@
+<!-- TEMPLATE AJAX (fragment): Historial de Liberacion OQC
+     CSS: app/static/css/historial_liberacion_oqc.css (persistente en MainTemplate.html, WF_004)
+     JS:  app/static/js/historial_liberacion_oqc.js
+     Container: historial-liberacion-oqc-unique-container (WF_002)
+-->
+
+<div
+    id="historial-liberacion-oqc-module"
+    class="almacen-embarques-history-module oqc-release-history-module"
+>
+    <div class="ae-filters-card">
+        <div class="ae-card-header">
+            <h3>Filtros de busqueda</h3>
+        </div>
+        <div class="ae-filters oqc-release-history-filters">
+            <div class="ae-filter-group ae-filter-group--wide">
+                <label for="historial-liberacion-oqc-search">Buscar</label>
+                <input
+                    type="text"
+                    id="historial-liberacion-oqc-search"
+                    placeholder="Folio OQC, Box ID, no. parte, modelo, inspector"
+                >
+            </div>
+            <div class="ae-filter-group">
+                <label for="historial-liberacion-oqc-date-from">Fecha desde</label>
+                <input type="date" id="historial-liberacion-oqc-date-from">
+            </div>
+            <div class="ae-filter-group">
+                <label for="historial-liberacion-oqc-date-to">Fecha hasta</label>
+                <input type="date" id="historial-liberacion-oqc-date-to">
+            </div>
+            <div class="ae-filter-group">
+                <label for="historial-liberacion-oqc-status">Estado</label>
+                <select id="historial-liberacion-oqc-status">
+                    <option value="">Todos</option>
+                    <option value="released">Liberada</option>
+                    <option value="received_shipping">Recibida embarques</option>
+                    <option value="exception">Excepcion</option>
+                    <option value="rejected">Rechazada</option>
+                    <option value="cancelled">Cancelada</option>
+                </select>
+            </div>
+            <div class="ae-filter-group">
+                <label for="historial-liberacion-oqc-source">Fuente</label>
+                <select id="historial-liberacion-oqc-source">
+                    <option value="">Todas</option>
+                    <option value="batch">Lote</option>
+                    <option value="manual">Manual</option>
+                    <option value="migration">Migracion</option>
+                </select>
+            </div>
+            <div class="ae-filter-group">
+                <label for="historial-liberacion-oqc-qc">QC</label>
+                <select id="historial-liberacion-oqc-qc">
+                    <option value="">Todos</option>
+                    <option value="passed">OK</option>
+                    <option value="failed">NG</option>
+                    <option value="unknown">Sin dato</option>
+                </select>
+            </div>
+            <button id="historial-liberacion-oqc-search-btn" class="ae-btn-primary" type="button">
+                Consultar
+            </button>
+            <button id="historial-liberacion-oqc-clear-btn" class="ae-btn-secondary" type="button">
+                Limpiar filtros
+            </button>
+            <button id="historial-liberacion-oqc-export-btn" class="ae-btn-export" type="button">
+                Exportar Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="ae-results-card oqc-release-history-card">
+        <div class="ae-card-header">
+            <h3>Historial de liberaciones OQC</h3>
+            <span id="historial-liberacion-oqc-count" class="ae-record-count">
+                0 cajas mostradas
+            </span>
+            <span id="historial-liberacion-oqc-status-label" class="ae-status-text"></span>
+        </div>
+        <div class="ae-table-shell">
+            <div class="ae-table-head">
+                <table class="ae-history-table ae-history-table--head">
+                    <colgroup>
+                        <col style="width: 8%;">
+                        <col style="width: 7%;">
+                        <col style="width: 13%;">
+                        <col style="width: 15%;">
+                        <col style="width: 13%;">
+                        <col style="width: 7%;">
+                        <col style="width: 18%;">
+                        <col style="width: 8%;">
+                        <col style="width: 11%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Folio OQC</th>
+                            <th>Box ID</th>
+                            <th>No. parte</th>
+                            <th>Cantidad</th>
+                            <th>Modelo</th>
+                            <th>Cliente</th>
+                            <th>Liberado por</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="ae-table-body-wrap">
+                <table class="ae-history-table ae-history-table--body">
+                    <colgroup>
+                        <col style="width: 8%;">
+                        <col style="width: 7%;">
+                        <col style="width: 13%;">
+                        <col style="width: 15%;">
+                        <col style="width: 13%;">
+                        <col style="width: 7%;">
+                        <col style="width: 18%;">
+                        <col style="width: 8%;">
+                        <col style="width: 11%;">
+                    </colgroup>
+                    <tbody id="historial-liberacion-oqc-tbody">
+                        <tr>
+                            <td colspan="9" class="ae-empty-cell">Cargando historial...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/historial_liberacion_oqc.js', v='20260902b') }}"></script>

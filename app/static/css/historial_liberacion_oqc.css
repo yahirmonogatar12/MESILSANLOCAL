@@ -1,0 +1,92 @@
+/* Historial de liberacion OQC.
+   Usa la base visual de almacen_embarques_history.css; aqui solo se ajusta
+   el contenedor de Control de calidad y detalles propios de esta tabla. */
+
+#calidad-content-area:not(.mes-area-hidden):has(> #historial-liberacion-oqc-unique-container[style*="display: block"]) {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    padding: 5px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#historial-liberacion-oqc-unique-container[style*="display: block"] {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    padding: 5px !important;
+    margin-top: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+}
+
+.oqc-release-history-module .oqc-release-history-filters {
+    align-items: flex-end;
+}
+
+.oqc-release-history-module .oqc-release-history-filters .ae-filter-group--wide {
+    flex: 1 1 300px;
+    min-width: min(100%, 300px);
+}
+
+.oqc-release-history-module .oqc-release-history-filters select {
+    width: 150px;
+}
+
+.oqc-release-history-card .ae-table-body-wrap {
+    overflow-y: scroll !important;
+}
+
+.oqc-release-history-card .ae-table-head {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.oqc-release-history-card .ae-table-head::-webkit-scrollbar {
+    width: 12px;
+    height: 0;
+}
+
+.oqc-release-history-card .ae-table-head::-webkit-scrollbar-track,
+.oqc-release-history-card .ae-table-head::-webkit-scrollbar-thumb,
+.oqc-release-history-card .ae-table-head::-webkit-scrollbar-corner {
+    background: transparent;
+    border-color: transparent;
+}
+
+.oqc-release-history-card .ae-history-table {
+    min-width: 980px;
+}
+
+.oqc-release-user-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.oqc-release-cell-main {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 992px) {
+    .oqc-release-history-module .oqc-release-history-filters .ae-filter-group,
+    .oqc-release-history-module .oqc-release-history-filters input,
+    .oqc-release-history-module .oqc-release-history-filters select,
+    .oqc-release-history-module .oqc-release-history-filters button {
+        width: 100%;
+        max-width: none;
+    }
+}

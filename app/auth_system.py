@@ -567,6 +567,8 @@ class AuthSystem:
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Reportes de calidad', 'Acceso a reportes de calidad'),
             # WF_001 (2026-05-28): seed modulo Historial de liberacion LQC en Inspeccion de calidad.
             ('LISTA_CONTROL_DE_CALIDAD', 'Inspeccion de calidad', 'Historial de liberacion LQC', 'Acceso al historial de liberacion LQC'),
+            # WF_001 (2026-09-02): seed modulo Historial de liberacion OQC en Inspeccion de calidad.
+            ('LISTA_CONTROL_DE_CALIDAD', 'Inspeccion de calidad', 'Historial de liberacion OQC', 'Acceso al historial de liberacion OQC'),
             # WF_001 (2026-06-05): seed modulos PPM's en Control de calidad.
             ('LISTA_CONTROL_DE_CALIDAD', "PPM's", "PPM's IQC", "Acceso al modulo PPM's IQC"),
             ('LISTA_CONTROL_DE_CALIDAD', "PPM's", "PPM's LQC", "Acceso al modulo PPM's LQC"),

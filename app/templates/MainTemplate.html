@@ -93,6 +93,8 @@
     <link id="history-vision-pass-fail-css" rel="stylesheet" href="{{ url_for('static', filename='css/history_vision_pass_fail.css', v='20260527b') }}">
     <!-- WF_004: CSS persistente Historial de liberacion LQC (Control de calidad / Inspeccion de calidad) -->
     <link id="historial-liberacion-lqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_liberacion_lqc.css', v='20260604a') }}">
+    <!-- WF_004: CSS persistente Historial de liberacion OQC (Control de calidad / Inspeccion de calidad) -->
+    <link id="historial-liberacion-oqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_liberacion_oqc.css', v='20260902b') }}">
     <!-- WF_004: CSS persistente PPM's IQC/LQC/OQC (Control de calidad). -->
     <link id="ppms-iqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/ppms_iqc.css', v='20260605a') }}">
     <link id="ppms-lqc-css" rel="stylesheet" href="{{ url_for('static', filename='css/ppms_lqc.css', v='20260608d') }}">
@@ -432,7 +434,7 @@
     <script src="{{ url_for('static', filename='js/lib/axios.min.js', v='20260526a') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js?v=20260520a"></script>
-    <script src="/static/js/scriptMain.js?v=20260623k"></script>
+    <script src="/static/js/scriptMain.js?v=20260902b"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -848,6 +850,7 @@
         <div id="historial-inspeccion-master-sample-smt-unique-container" style="display: none;"></div>
         <div id="control-inspeccion-oqc-unique-container" style="display: none;"></div>
         <div id="historial-liberacion-lqc-unique-container" style="display: none;"></div>
+        <div id="historial-liberacion-oqc-unique-container" style="display: none;"></div>
         <!-- WF_002: contenedores unicos para modulos PPM's. -->
         <div id="ppms-iqc-unique-container" style="display: none;"></div>
         <div id="ppms-lqc-unique-container" style="display: none;"></div>

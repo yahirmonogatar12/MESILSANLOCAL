@@ -106,6 +106,11 @@ const allDropdowns = [
     },
     {
         "pagina": "LISTA_CONTROL_DE_CALIDAD",
+        "seccion": "Inspeccion de calidad",
+        "boton": "Historial de liberacion OQC"
+    },
+    {
+        "pagina": "LISTA_CONTROL_DE_CALIDAD",
         "seccion": "PPM's",
         "boton": "PPM's IQC"
     },

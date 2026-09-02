@@ -2841,6 +2841,13 @@ function _mostrarModuloCalidad(containerId, ruta, initCb) {
     if (typeof window.prepararPanelSeccion === "function") {
       window.prepararPanelSeccion("calidad");
     }
+    const calidadArea = document.getElementById("calidad-content-area");
+    if (calidadArea) {
+      calidadArea.querySelectorAll(":scope > [id]").forEach((el) => {
+        if (el.classList.contains("section-tabs-bar")) return;
+        el.style.display = "none";
+      });
+    }
     const container = document.getElementById(containerId);
     if (container) container.style.display = "block";
 
@@ -2929,6 +2936,18 @@ window.mostrarHistorialLiberacionLQC = function () {
     () => {
       if (typeof window.inicializarHistorialLiberacionLQC === "function") {
         window.inicializarHistorialLiberacionLQC();
+      }
+    },
+  );
+};
+
+window.mostrarHistorialLiberacionOQC = function () {
+  _mostrarModuloCalidad(
+    "historial-liberacion-oqc-unique-container",
+    "/historial_liberacion_oqc/ajax",
+    () => {
+      if (typeof window.inicializarHistorialLiberacionOQC === "function") {
+        window.inicializarHistorialLiberacionOQC();
       }
     },
   );

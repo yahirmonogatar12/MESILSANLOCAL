@@ -96,6 +96,8 @@ _MODULOS_REGISTRADOS = [
     "control_calidad.smt_historial",
     # Migracion 2026-05-28: Historial de liberacion LQC
     "control_calidad.historial_liberacion_lqc",
+    # WF_001-WF_004 (2026-09-02): Historial de liberacion OQC
+    "control_calidad.historial_liberacion_oqc",
     # WF_001-WF_004 (2026-06-05): modulos PPM's IQC/LQC/OQC
     "control_calidad.ppms",
     # WF_001-WF_004 (2026-06-09): CRUD stations_qa para maquinas de calidad
