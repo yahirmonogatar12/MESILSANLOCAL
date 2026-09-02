@@ -14,7 +14,7 @@
     const MAX_ATTACH_FILES = 100;
     const attachKind = ext => (
         ['.xlsx','.xlsm'].includes(ext) ? 'excel'
-        : ext === '.pdf' ? 'pdf'
+        : ext === '.pdf' ? 'pdf'    
         : ['.png','.jpg','.jpeg','.webp','.gif'].includes(ext) ? 'imagen'
         : ['.zip','.rar'].includes(ext) ? 'comprimido'
         : 'texto'
