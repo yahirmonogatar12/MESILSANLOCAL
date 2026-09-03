@@ -1,7 +1,7 @@
 (function () {
   const PREFIX = "historial-liberacion-oqc";
   const MODULE_ID = `${PREFIX}-module`;
-  const ASSET_VERSION = "20260902b";
+  const ASSET_VERSION = "20260903a";
   const TABLE_COLSPAN = 9;
   const STYLESHEETS = [
     {
@@ -68,9 +68,6 @@
       searchInput: document.getElementById(`${PREFIX}-search`),
       dateFrom: document.getElementById(`${PREFIX}-date-from`),
       dateTo: document.getElementById(`${PREFIX}-date-to`),
-      statusFilter: document.getElementById(`${PREFIX}-status`),
-      sourceFilter: document.getElementById(`${PREFIX}-source`),
-      qcFilter: document.getElementById(`${PREFIX}-qc`),
       searchBtn: document.getElementById(`${PREFIX}-search-btn`),
       clearBtn: document.getElementById(`${PREFIX}-clear-btn`),
       exportBtn: document.getElementById(`${PREFIX}-export-btn`),
@@ -92,15 +89,6 @@
     }
     if (elements.dateTo?.value) {
       params.set("fecha_hasta", elements.dateTo.value);
-    }
-    if (elements.statusFilter?.value) {
-      params.set("status", elements.statusFilter.value);
-    }
-    if (elements.sourceFilter?.value) {
-      params.set("source", elements.sourceFilter.value);
-    }
-    if (elements.qcFilter?.value) {
-      params.set("qc", elements.qcFilter.value);
     }
 
     return params;
@@ -251,9 +239,6 @@
       elements.searchInput,
       elements.dateFrom,
       elements.dateTo,
-      elements.statusFilter,
-      elements.sourceFilter,
-      elements.qcFilter,
     ].forEach((input) => {
       if (input) input.value = "";
     });
@@ -280,9 +265,6 @@
       elements.searchInput,
       elements.dateFrom,
       elements.dateTo,
-      elements.statusFilter,
-      elements.sourceFilter,
-      elements.qcFilter,
     ].forEach((input) => {
       input?.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
