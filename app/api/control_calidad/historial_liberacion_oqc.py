@@ -36,6 +36,7 @@ _requiere_permiso_oqc = requiere_permiso_dropdown(*PERMISO_MODULO)
 OQC_LIMIT_INICIAL = 300
 OQC_LIMIT_FILTRADO = 5000
 OQC_LIMIT_EXPORT = 10000
+OQC_SEARCH_COLLATION = "utf8mb4_unicode_ci"
 
 OQC_STATUS_LABELS = {
     "released": "Liberada",
@@ -165,6 +166,14 @@ def _release_datetime_expr():
     return "COALESCE(o.released_at, o.created_at)"
 
 
+def _like_historial_oqc_expr(expr):
+    return (
+        f"CONVERT(COALESCE({expr}, '') USING utf8mb4) "
+        f"COLLATE {OQC_SEARCH_COLLATION} LIKE "
+        f"CONVERT(%s USING utf8mb4) COLLATE {OQC_SEARCH_COLLATION}"
+    )
+
+
 def _movimientos_embarques_subquery():
     return """
         SELECT
@@ -227,26 +236,30 @@ def _where_historial_oqc(filters):
 
     if filters.get("search"):
         like_value = f"%{filters['search']}%"
+        search_expressions = [
+            "o.oqc_folio",
+            "o.box_code",
+            "o.part_number",
+            "pn.part_number",
+            "pn.model",
+            "pn.customer",
+            "o.destination",
+            "o.employee_id",
+            "op.name",
+            "er.folio",
+            "mb.entry_folio",
+            "mb.exit_folio",
+            _part_number_expr(),
+        ]
+        like_clauses = [
+            _like_historial_oqc_expr(expr) for expr in search_expressions
+        ]
         where.append(
-            f"""
-            (
-                COALESCE(o.oqc_folio, '') LIKE %s
-                OR COALESCE(o.box_code, '') LIKE %s
-                OR COALESCE(o.part_number, '') LIKE %s
-                OR COALESCE(pn.part_number, '') LIKE %s
-                OR COALESCE(pn.model, '') LIKE %s
-                OR COALESCE(pn.customer, '') LIKE %s
-                OR COALESCE(o.destination, '') LIKE %s
-                OR COALESCE(o.employee_id, '') LIKE %s
-                OR COALESCE(op.name, '') LIKE %s
-                OR COALESCE(er.folio, '') LIKE %s
-                OR COALESCE(mb.entry_folio, '') LIKE %s
-                OR COALESCE(mb.exit_folio, '') LIKE %s
-                OR {_part_number_expr()} LIKE %s
-            )
-            """
+            "(\n                "
+            + "\n                OR ".join(like_clauses)
+            + "\n            )"
         )
-        params.extend([like_value] * 13)
+        params.extend([like_value] * len(search_expressions))
 
     return " AND ".join(where), params
 
