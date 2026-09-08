@@ -1,0 +1,288 @@
+<!-- Control de FPA - Fragmento AJAX. Tarjetas/filtros/botones vienen de ict.css
+     (cargado en MainTemplate.html); modal con prefijo fpa- porque la clase generica
+     .modal la redefinen otros modulos. JS al final del fragmento. -->
+<div id="fpa-module" class="ict-page"
+     data-can-request="{{ 'true' if can_request else 'false' }}"
+     data-can-adjust="{{ 'true' if can_adjust else 'false' }}">
+
+
+  <!-- Tarjeta de filtros -->
+  <div class="filters-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+      </svg>
+      <h3>Filtros de Busqueda</h3>
+    </div>
+    <div id="fpa-filters" class="fpa-filters">
+      <div class="filter-group">
+        <label for="fpa-filter-from">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Fecha desde
+        </label>
+        <input type="date" id="fpa-filter-from">
+      </div>
+
+      <div class="filter-group">
+        <label for="fpa-filter-to">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Fecha hasta
+        </label>
+        <input type="date" id="fpa-filter-to">
+      </div>
+
+      <div class="filter-group">
+        <label for="fpa-filter-folio">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          Folio
+        </label>
+        <input type="text" id="fpa-filter-folio" placeholder="FPA-20260902-1">
+      </div>
+
+      <div class="filter-group">
+        <label for="fpa-filter-part">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          No Parte FPA
+        </label>
+        <input type="text" id="fpa-filter-part" placeholder="Ej. EBR24212302">
+      </div>
+
+      <div class="filter-group">
+        <label for="fpa-filter-requester">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+          </svg>
+          Solicitante
+        </label>
+        <input type="text" id="fpa-filter-requester" placeholder="Usuario...">
+      </div>
+
+      <div class="filter-group">
+        <label for="fpa-filter-status">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Estado
+        </label>
+        <select id="fpa-filter-status">
+          <option value="">Todos</option>
+          <option value="PENDIENTE">PENDIENTE</option>
+          <option value="PARCIAL">PARCIAL</option>
+          <option value="COMPLETADA">COMPLETADA</option>
+          <option value="CANCELADA">CANCELADA</option>
+        </select>
+      </div>
+
+      <button id="fpa-search" class="btn-primary" type="button">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        Consultar
+      </button>
+      <button id="fpa-clear" class="btn-export" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m-9 0v14a2 2 0 002 2h6a2 2 0 002-2V6"></path>
+        </svg>
+        Limpiar
+      </button>
+    </div>
+  </div>
+
+  <!-- Tarjeta de resultados -->
+  <div class="results-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <h3>Solicitudes de FPA</h3>
+      <span class="record-count" id="fpa-record-count">0 registros</span>
+      <span class="record-count" title="Confirmadas / Consumidas / Solicitadas">Conf. / Cons. / Solic.</span>
+      {% if can_request %}
+      <button id="fpa-new-request" class="btn-primary fpa-btn-header" type="button">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 4v16m8-8H4"></path>
+        </svg>
+        Nueva Solicitud
+      </button>
+      {% endif %}
+      <a id="fpa-export" class="btn-export" href="/api/control-fpa/export">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Exportar Excel
+      </a>
+    </div>
+    <div id="fpa-list-error" class="fpa-error" aria-live="polite"></div>
+    <div class="table-wrap">
+      <div class="table-loading" id="fpa-table-loading">
+        <div class="spinner"></div>
+        <span>Cargando datos...</span>
+      </div>
+      <table id="fpa-table" class="fpa-table" aria-label="Solicitudes de etiquetas FPA">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Fecha / Hora</th>
+            <th>Solicitante</th>
+            <th>No Parte FPA</th>
+            <th>PGM MICOM</th>
+            <th>PGM COMP</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="fpa-tbody"></tbody>
+      </table>
+    </div>
+    <div class="ict-pagination" id="fpa-pagination">
+      <div class="ict-pagination-info">
+        <span id="fpa-pagination-summary">0 - 0 de 0</span>
+      </div>
+      <div class="ict-pagination-controls">
+        <label class="ict-pagination-perpage">
+          Por pagina
+          <select id="fpa-per-page">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </label>
+        <button id="fpa-page-prev" type="button" class="btn-page" title="Anterior">&lsaquo;</button>
+        <span class="ict-pagination-current">
+          <span id="fpa-page-current">1</span><span> / <span id="fpa-page-total">1</span></span>
+        </span>
+        <button id="fpa-page-next" type="button" class="btn-page" title="Siguiente">&rsaquo;</button>
+      </div>
+    </div>
+  </div>
+
+  {% if can_request %}
+  <!-- Modal de nueva solicitud -->
+  <div id="fpa-request-modal" class="fpa-modal" hidden>
+    <div class="fpa-modal-content" role="dialog" aria-modal="true" aria-labelledby="fpa-request-modal-title">
+      <div class="fpa-modal-header">
+        <div class="fpa-modal-title-group">
+          <svg class="fpa-modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+          </svg>
+          <div>
+            <h3 id="fpa-request-modal-title">Nueva Solicitud de Etiquetas</h3>
+            <span class="fpa-modal-subtitle">Las etiquetas las imprime MICOM en piso</span>
+          </div>
+        </div>
+        <button type="button" class="fpa-close-btn" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="fpa-modal-body">
+        <form id="fpa-request-form" class="fpa-filters fpa-request-grid">
+          <div class="filter-group fpa-group-part">
+            <label for="fpa-part-number">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              No Parte FPA
+            </label>
+            <input type="text" id="fpa-part-number" maxlength="80" required autocomplete="off" placeholder="Ej. EBR24212302">
+          </div>
+
+          <div class="filter-group fpa-group-code">
+            <label for="fpa-pgm-micom">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+              </svg>
+              PGM MICOM
+            </label>
+            <input type="text" id="fpa-pgm-micom" maxlength="120" autocomplete="off" placeholder="SAA44992 301(D579)">
+          </div>
+
+          <div class="filter-group fpa-group-qty">
+            <label for="fpa-qty-micom">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"></path>
+              </svg>
+              Cantidad
+            </label>
+            <input type="number" id="fpa-qty-micom" min="0" max="999" value="0">
+          </div>
+
+          <div class="filter-group fpa-group-code">
+            <label for="fpa-pgm-comp">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+              </svg>
+              PGM COMP
+            </label>
+            <input type="text" id="fpa-pgm-comp" maxlength="120" autocomplete="off" placeholder="SAA44992 301(D579)">
+          </div>
+
+          <div class="filter-group fpa-group-qty">
+            <label for="fpa-qty-comp">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"></path>
+              </svg>
+              Cantidad
+            </label>
+            <input type="number" id="fpa-qty-comp" min="0" max="999" value="0">
+          </div>
+
+          <div class="fpa-modal-actions">
+            <span id="fpa-form-error" class="fpa-error" aria-live="polite"></span>
+            <button id="fpa-request-cancel" class="btn-page fpa-btn-cancel" type="button">Cancelar</button>
+            <button id="fpa-submit" class="btn-primary" type="submit">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm2-16h4a2 2 0 012 2v2H7V5a2 2 0 012-2z"></path>
+              </svg>
+              Solicitar a MICOM
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Modal de detalle / ajuste -->
+  <div id="fpa-modal" class="fpa-modal" hidden>
+    <div class="fpa-modal-content" role="dialog" aria-modal="true" aria-labelledby="fpa-modal-title">
+      <div class="fpa-modal-header">
+        <div class="fpa-modal-title-group">
+          <svg class="fpa-modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>
+            <path d="M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            <path d="M9 12h6M9 16h6"></path>
+          </svg>
+          <div>
+            <h3 id="fpa-modal-title">Detalle FPA</h3>
+            <span class="fpa-modal-subtitle">Folio: <span id="fpa-modal-folio"></span></span>
+          </div>
+        </div>
+        <button type="button" class="fpa-close-btn" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="fpa-modal-body" class="fpa-modal-body"></div>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/control_fpa.js', v='20260908b') }}"></script>

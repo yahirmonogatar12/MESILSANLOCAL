@@ -1,0 +1,396 @@
+/* Control de FPA - Tema ILSAN.
+   Las tarjetas, filtros, botones, spinner y paginacion vienen de ict.css
+   (cargado en MainTemplate.html). El modal lleva prefijo propio: ver nota abajo. */
+
+/* ponytail: copia de #ict-filters; ict.css lo tiene scopeado por id, no por clase */
+.fpa-filters {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 10px;
+    row-gap: 10px;
+    padding: 12px 18px 16px;
+    align-items: flex-end;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+/* ict.css achica el btn-primary solo dentro de #ict-filters; mismo ajuste aqui
+   para que Consultar/Limpiar queden a la altura de los inputs. */
+#fpa-filters .btn-primary,
+#fpa-filters .btn-export {
+    align-self: flex-end;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+}
+
+#fpa-filters .btn-primary {
+    min-width: 110px;
+}
+
+.fpa-group-code input {
+    min-width: 230px;
+}
+
+.fpa-group-qty input {
+    width: 90px;
+}
+
+/* btn-primary a escala del card-header (junto a Exportar Excel) */
+.fpa-btn-header {
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-size: 0.75rem;
+}
+
+/* ========== MODAL ==========
+   Prefijo propio a proposito: la clase generica .modal la redefinen otros
+   modulos (p.ej. Registro_de_material_real.css con z-index 1000) y el modal
+   terminaba pintado por debajo del .app-header fijo (z-index 9999). */
+.fpa-modal {
+    display: flex;
+    position: fixed;
+    z-index: 15000;
+    inset: 0;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(6px);
+    animation: fpaFadeIn 0.3s ease;
+}
+
+.fpa-modal[hidden] {
+    display: none;
+}
+
+@keyframes fpaFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fpa-modal-content {
+    background: linear-gradient(135deg, var(--ilsan-dark-secondary) 0%, #2d2d3f 100%);
+    margin: auto;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    width: 95%;
+    max-width: 760px;
+    max-height: 92vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: fpaSlideDown 0.3s ease;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes fpaSlideDown {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.fpa-modal-header {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.fpa-modal-title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fpa-modal-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--ilsan-accent-blue);
+}
+
+.fpa-modal-header h3 {
+    color: var(--ilsan-text-light);
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.fpa-modal-subtitle {
+    display: block;
+    color: var(--ilsan-text-gray);
+    font-size: 0.75rem;
+}
+
+.fpa-close-btn {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    color: var(--ilsan-accent-red);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.fpa-close-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.fpa-close-btn:hover,
+.fpa-close-btn:focus {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.5);
+    transform: rotate(90deg);
+}
+
+.fpa-modal-body {
+    padding: 16px 20px 20px;
+    overflow: auto;
+}
+
+.fpa-request-grid {
+    padding: 0;
+}
+
+.fpa-request-grid .fpa-group-part input,
+.fpa-request-grid .fpa-group-code input {
+    min-width: 260px;
+}
+
+.fpa-modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fpa-modal-actions .fpa-error {
+    margin-right: auto;
+}
+
+.fpa-btn-cancel {
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.fpa-error {
+    color: #ff8f8f;
+    font-size: 0.75rem;
+    align-self: center;
+}
+
+.fpa-error:empty {
+    display: none;
+}
+
+.results-card>.fpa-error:not(:empty) {
+    display: block;
+    padding: 8px 18px 0;
+}
+
+/* ========== TABLA ========== */
+.fpa-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--ilsan-dark-secondary);
+}
+
+.fpa-table th,
+.fpa-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.fpa-table thead th {
+    background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
+    color: var(--ilsan-text-light);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.fpa-table tbody td {
+    color: var(--ilsan-text-light);
+}
+
+.fpa-table tbody tr:nth-child(even) td {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.fpa-table tbody tr:hover td {
+    background-color: rgba(52, 152, 219, 0.12);
+}
+
+.fpa-empty {
+    padding: 30px !important;
+    color: var(--ilsan-text-gray);
+}
+
+/* Celda de codigo PGM: codigo + contadores conf/cons/solic */
+.fpa-code {
+    text-align: left !important;
+    max-width: 260px;
+    white-space: normal;
+}
+
+.fpa-code small {
+    display: block;
+    margin-top: 3px;
+    color: var(--ilsan-accent-blue);
+    font-size: 0.7rem;
+}
+
+/* ========== BADGE DE ESTADO ========== */
+.fpa-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-gray);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.fpa-status.PENDIENTE {
+    background: rgba(52, 152, 219, 0.18);
+    color: #8fd0ef;
+}
+
+.fpa-status.PARCIAL {
+    background: rgba(230, 126, 34, 0.18);
+    color: #ffd080;
+}
+
+.fpa-status.COMPLETADA {
+    background: rgba(69, 102, 54, 0.35);
+    color: #83e2a3;
+}
+
+.fpa-status.CANCELADA {
+    background: rgba(142, 35, 35, 0.3);
+    color: #ff9aa5;
+}
+
+/* ========== ACCIONES POR RENGLON ========== */
+.fpa-action {
+    margin: 0 3px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fpa-action:hover {
+    border-color: var(--ilsan-accent-blue);
+    background: rgba(52, 152, 219, 0.18);
+}
+
+.fpa-action-adjust:hover {
+    border-color: #e67e22;
+    background: rgba(230, 126, 34, 0.18);
+}
+
+/* ========== DETALLE EN MODAL ========== */
+#fpa-modal .fpa-modal-content {
+    max-width: 1100px;
+}
+
+.fpa-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.fpa-detail-box {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.fpa-detail-box b {
+    color: var(--ilsan-text-gray);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.fpa-detail-box span {
+    color: var(--ilsan-text-light);
+    font-size: 0.85rem;
+}
+
+#fpa-modal-body h4 {
+    margin: 16px 0 8px;
+    color: var(--ilsan-text-light);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.fpa-mini-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--ilsan-dark-secondary);
+}
+
+.fpa-mini-table th,
+.fpa-mini-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 6px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--ilsan-text-light);
+}
+
+.fpa-mini-table thead th {
+    background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
+    font-weight: 600;
+}
+
+.fpa-adjust-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 768px) {
+    .fpa-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .fpa-group-code input,
+    .fpa-group-qty input {
+        min-width: 0;
+        width: 100%;
+    }
+}

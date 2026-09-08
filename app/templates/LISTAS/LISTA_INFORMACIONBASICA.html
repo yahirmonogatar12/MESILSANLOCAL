@@ -93,6 +93,11 @@
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Control de produccion" 
                         data-permiso-boton="Control de BOM">Control de BOM</li>
+                    <li class="sidebar-link" tabindex="0"
+                        onclick="window.parent.mostrarControlFPAInfo ? window.parent.mostrarControlFPAInfo() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-fpa-info-container', '/informacion_basica/control_fpa') : window.location.href='/informacion_basica/control_fpa')"
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA"
+                        data-permiso-seccion="Control de produccion"
+                        data-permiso-boton="Control de FPA">Control de FPA</li>
                     <li class="sidebar-link" tabindex="0" 
                         onclick="window.parent.mostrarControlBOMSMTInfo ? window.parent.mostrarControlBOMSMTInfo() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-bom-smt-info-container', '/informacion_basica/control_de_bom_smt') : window.location.href='/informacion_basica/control_de_bom_smt')"
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 

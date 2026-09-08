@@ -168,3 +168,15 @@ Los endpoints clave viven principalmente en `app/routes.py` y blueprints adicion
 ## Licencia
 
 Uso interno. Ajusta según políticas de tu organización.
+# Integración Control de FPA
+
+Configure estas variables antes de usar **Información básica → Control de
+producción → Control de FPA**:
+
+```env
+MICOM_API_URL=http://127.0.0.1:3012
+MICOM_INTEGRATION_SECRET=cambiar-por-un-secreto-compartido
+```
+
+`MICOM_INTEGRATION_SECRET` debe coincidir con el backend MICOM. MES firma todas
+las solicitudes servidor-a-servidor y no expone el secreto al navegador.

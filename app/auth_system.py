@@ -47,6 +47,27 @@ ECO_APPROVE_PERMISSION = {
     'descripcion': 'Permite aprobar ECOs y aplicar cambios al BOM desde Control de BOM',
 }
 
+FPA_VIEW_PERMISSION = {
+    'pagina': 'LISTA_INFORMACIONBASICA',
+    'seccion': 'Control de produccion',
+    'boton': 'Control de FPA',
+    'descripcion': 'Permite ver el módulo y el historial de Control de FPA',
+}
+
+FPA_REQUEST_PERMISSION = {
+    'pagina': 'LISTA_INFORMACIONBASICA',
+    'seccion': 'Control de produccion',
+    'boton': 'Solicitar etiquetas FPA',
+    'descripcion': 'Permite crear solicitudes de etiquetas FPA para MICOM',
+}
+
+FPA_ADJUST_PERMISSION = {
+    'pagina': 'LISTA_INFORMACIONBASICA',
+    'seccion': 'Control de produccion',
+    'boton': 'Ajustar cantidades FPA',
+    'descripcion': 'Permite ajustar cantidades FPA con motivo obligatorio',
+}
+
 class AuthSystem:
     def __init__(self, app=None):
         self.app = app
@@ -475,6 +496,18 @@ class AuthSystem:
                 ECO_APPROVE_PERMISSION['seccion'],
                 ECO_APPROVE_PERMISSION['boton'],
                 ECO_APPROVE_PERMISSION['descripcion'],
+            ),
+            (
+                FPA_VIEW_PERMISSION['pagina'], FPA_VIEW_PERMISSION['seccion'],
+                FPA_VIEW_PERMISSION['boton'], FPA_VIEW_PERMISSION['descripcion'],
+            ),
+            (
+                FPA_REQUEST_PERMISSION['pagina'], FPA_REQUEST_PERMISSION['seccion'],
+                FPA_REQUEST_PERMISSION['boton'], FPA_REQUEST_PERMISSION['descripcion'],
+            ),
+            (
+                FPA_ADJUST_PERMISSION['pagina'], FPA_ADJUST_PERMISSION['seccion'],
+                FPA_ADJUST_PERMISSION['boton'], FPA_ADJUST_PERMISSION['descripcion'],
             ),
             
             # LISTA CONTROL DE PRODUCCIÓN - Información básica

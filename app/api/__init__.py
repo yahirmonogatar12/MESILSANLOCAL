@@ -75,6 +75,7 @@ _MODULOS_REGISTRADOS = [
     "admin.usuarios",
     "admin.departamentos",
     "informacion_basica.control_bom",
+    "informacion_basica.control_fpa",
     # WF_001-WF_005 (2026-06-19): Administracion de usuario acotada por departamento
     "informacion_basica.admin_usuarios_depto",
     # WF_001-WF_005 (2026-06-19): Gestion de roles acotada por departamento
