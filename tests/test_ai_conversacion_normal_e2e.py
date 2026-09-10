@@ -1785,3 +1785,287 @@ def test_agrupar_esta_declarada_y_se_ejecuta_por_http(client, mundo):
     entregado = json.dumps(mundo.vistas_por_el_modelo[-1], ensure_ascii=False, default=str)
     assert "agrupado_por" in entregado and "grupos" in entregado
     assert "Agrupado por fecha" in cuerpo
+
+
+# ---------------------------------------------------------------------------
+# Graficas: el asistente decide tipo y series, no el generador.
+# ---------------------------------------------------------------------------
+COLS_TENDENCIA = ["semana", "M1", "M2", "M3"]
+FILAS_TENDENCIA = [{"semana": f"W{20 + i}", "M1": 300 - i * 9, "M2": 180 + i * 4,
+                    "M3": 749 - i * 20} for i in range(6)]
+
+
+def _graficas_de(data: bytes):
+    pres = _abrir_pptx(data)
+    return [sh.chart for d in pres.slides for sh in d.shapes if sh.has_chart]
+
+
+def test_una_grafica_de_lineas_con_varias_series(mundo):
+    """Pedian tendencia por linea y salian barras con una sola serie."""
+    from app.api.portal.ai_artifacts import build_table_powerpoint
+
+    graficas = _graficas_de(build_table_powerpoint(
+        title="Tendencia", columns=COLS_TENDENCIA, rows=FILAS_TENDENCIA,
+        grafica={"tipo": "lineas", "eje_x": "semana", "series": ["M1", "M2", "M3"]}))
+
+    assert len(graficas) == 1
+    grafica = graficas[0]
+    assert "LINE" in str(grafica.chart_type)
+    assert [s.name for s in grafica.plots[0].series] == ["M1", "M2", "M3"]
+    assert list(grafica.plots[0].categories)[0] == "W20"
+    assert grafica.has_legend, "con varias series hace falta leyenda"
+
+
+def test_sin_spec_se_conserva_la_grafica_automatica(mundo):
+    from app.api.portal.ai_artifacts import build_table_powerpoint
+
+    graficas = _graficas_de(build_table_powerpoint(
+        title="x", columns=COLS_TENDENCIA, rows=FILAS_TENDENCIA))
+    assert len(graficas) == 1
+    assert "COLUMN" in str(graficas[0].chart_type)
+
+
+def test_se_puede_pedir_sin_grafica(mundo):
+    from app.api.portal.ai_artifacts import build_table_powerpoint
+
+    assert not _graficas_de(build_table_powerpoint(
+        title="x", columns=COLS_TENDENCIA, rows=FILAS_TENDENCIA,
+        grafica={"tipo": "ninguna", "eje_x": None, "series": None}))
+
+
+def test_un_spec_incompleto_cae_al_automatico_en_vez_de_fallar(mundo):
+    """Una columna inexistente no debe dejar la diapositiva vacia."""
+    from app.api.portal.ai_artifacts import build_table_powerpoint
+
+    for spec in (
+        {"tipo": "lineas", "eje_x": "columna_que_no_existe", "series": ["M1"]},
+        {"tipo": "lineas", "eje_x": "semana", "series": []},
+        {"tipo": "inventado", "eje_x": "semana", "series": ["M1"]},
+    ):
+        graficas = _graficas_de(build_table_powerpoint(
+            title="x", columns=COLS_TENDENCIA, rows=FILAS_TENDENCIA, grafica=spec))
+        assert len(graficas) == 1, spec
+        assert "COLUMN" in str(graficas[0].chart_type), spec
+
+
+def test_las_series_no_numericas_no_rompen_la_grafica(mundo):
+    from app.api.portal.ai_artifacts import build_table_powerpoint
+
+    filas = [{"semana": "W1", "M1": 10, "nota": "sin dato"},
+             {"semana": "W2", "M1": 12, "nota": "otra"}]
+    graficas = _graficas_de(build_table_powerpoint(
+        title="x", columns=["semana", "M1", "nota"], rows=filas,
+        grafica={"tipo": "lineas", "eje_x": "semana", "series": ["M1", "nota"]}))
+    assert [s.name for s in graficas[0].plots[0].series] == ["M1"], "la columna de texto se omite"
+
+
+def test_la_herramienta_explica_como_armar_la_tendencia():
+    schema = ai_assistant._table_pptx_tool_schema()
+    grafica = schema["parameters"]["properties"]["grafica"]
+    assert "UNA COLUMNA POR SERIE" in grafica["description"].upper()
+    assert set(["lineas", "barras", "ninguna"]).issubset(set(grafica["properties"]["tipo"]["enum"]))
+    assert "grafica" in schema["parameters"]["required"]
+
+
+def test_el_prompt_pide_pivotear_para_las_tendencias():
+    prompt = ai_openai.build_instructions({"language": "es", "table_excel_enabled": True})
+    # Los saltos de linea del fuente no deben importar para el aserto.
+    plano = " ".join(prompt.split())
+    assert "UNA COLUMNA POR SERIE" in plano
+    assert "manda el parámetro grafica con tipo, eje_x y series" in plano
+    assert "excel_agrupar" in plano
+
+
+# ---------------------------------------------------------------------------
+# Estructura libre: la IA decide las diapositivas.
+# ---------------------------------------------------------------------------
+def _presentacion_libre(diapositivas, **extra):
+    from app.api.portal.ai_artifacts import build_table_powerpoint
+
+    return _abrir_pptx(build_table_powerpoint(
+        title="Tendencia", columns=COLS_TENDENCIA, rows=FILAS_TENDENCIA,
+        diapositivas=diapositivas, **extra))
+
+
+def _titulos(pres):
+    salida = []
+    for d in pres.slides:
+        textos = [sh.text_frame.text.strip() for sh in d.shapes
+                  if getattr(sh, "has_text_frame", False) and sh.text_frame.text.strip()]
+        salida.append(textos[0] if textos else "")
+    return salida
+
+
+def test_la_ia_define_cuantas_diapositivas_y_de_que(mundo):
+    """Antes eran 7 fijas sin importar lo que se pidiera."""
+    pres = _presentacion_libre(
+        [
+            {"titulo": "Portada propia", "contenido": "portada", "vinetas": ["Planta ILSAN"]},
+            {"titulo": "Hallazgos", "contenido": "texto",
+             "vinetas": ["M3 llego a 749 en W20.", "M2 es la unica que sube."]},
+            {"titulo": "Tendencia", "contenido": "grafica", "vinetas": []},
+        ],
+        grafica={"tipo": "lineas", "eje_x": "semana", "series": ["M1", "M2", "M3"]})
+
+    titulos = _titulos(pres)
+    assert len(pres.slides) == 4, "tres pedidas mas la de fuentes"
+    assert titulos[:3] == ["Portada propia", "Hallazgos", "Tendencia"]
+    graficas = [sh.chart for d in pres.slides for sh in d.shapes if sh.has_chart]
+    assert len(graficas) == 1 and len(graficas[0].plots[0].series) == 3
+
+
+def test_la_hoja_de_fuentes_no_la_puede_quitar(mundo):
+    """El diseno es suyo; la procedencia no."""
+    pres = _presentacion_libre([{"titulo": "Solo esto", "contenido": "texto", "vinetas": ["x"]}])
+    assert "Fuentes" in _titulos(pres)[-1]
+    todo = " ".join(sh.text_frame.text for d in pres.slides for sh in d.shapes
+                    if getattr(sh, "has_text_frame", False))
+    assert "Registros:" in todo and "Generado:" in todo
+
+
+def test_una_diapositiva_de_tabla_muestra_los_datos(mundo):
+    """El formato fijo nunca mostraba la tabla, solo agregados."""
+    pres = _presentacion_libre([{"titulo": "Detalle", "contenido": "tabla", "vinetas": []}])
+    tablas = [sh.table for d in pres.slides for sh in d.shapes if getattr(sh, "has_table", False)]
+
+    assert len(tablas) == 1
+    tabla = tablas[0]
+    assert len(tabla.columns) == len(COLS_TENDENCIA)
+    assert len(tabla.rows) == len(FILAS_TENDENCIA) + 1, "encabezado mas datos"
+    assert tabla.cell(0, 0).text == "semana"
+    assert tabla.cell(1, 0).text == "W20"
+
+
+def test_un_spec_invalido_cae_al_formato_de_siempre(mundo):
+    for spec in ([], [{"sin_titulo": True}], "no es una lista", [{"titulo": "   "}]):
+        pres = _presentacion_libre(spec)
+        assert len(pres.slides) >= 6, f"deberia usar el formato fijo con {spec!r}"
+        assert "Conclusiones" in " ".join(_titulos(pres))
+
+
+def test_se_respetan_los_topes_de_diapositivas_y_vinetas(mundo):
+    from app.api.portal import ai_artifacts
+
+    muchas = [{"titulo": f"D{i}", "contenido": "texto", "vinetas": ["v"]} for i in range(40)]
+    pres = _presentacion_libre(muchas)
+    assert len(pres.slides) == ai_artifacts._MAX_DIAPOSITIVAS + 1, "20 mas fuentes"
+
+    limpias = ai_artifacts._ppt_diapositivas_libres(
+        [{"titulo": "x", "vinetas": [f"v{i}" for i in range(30)]}])
+    assert len(limpias[0]["vinetas"]) == ai_artifacts._MAX_VINETAS
+
+
+def test_pedir_grafica_sin_spec_avisa_en_vez_de_dejarla_vacia(mundo):
+    pres = _presentacion_libre([{"titulo": "Tendencia", "contenido": "grafica", "vinetas": []}])
+    todo = " ".join(sh.text_frame.text for d in pres.slides for sh in d.shapes
+                    if getattr(sh, "has_text_frame", False))
+    assert "No se recibio una grafica valida" in todo
+
+
+def test_la_herramienta_explica_la_estructura_libre():
+    schema = ai_assistant._table_pptx_tool_schema()
+    diapos = schema["parameters"]["properties"]["diapositivas"]
+    assert "tú decides" in diapos["description"]
+    assert "La hoja de fuentes se agrega sola" in diapos["description"]
+    tipos = diapos["items"]["properties"]["contenido"]["enum"]
+    assert {"portada", "texto", "tabla", "grafica", "imagen"}.issubset(set(tipos))
+    assert "diapositivas" in schema["parameters"]["required"]
+
+
+# ---------------------------------------------------------------------------
+# Excel: la IA arma el libro.
+# ---------------------------------------------------------------------------
+HOJAS_LIBRES = [
+    {"nombre": "Resumen", "columnas": ["linea", "defectos"],
+     "filas": [{"linea": "M1", "defectos": 1650}, {"linea": "M3", "defectos": 3980}],
+     "grafica": {"tipo": "barras", "titulo": "Por linea", "eje_x": "linea",
+                 "series": ["defectos"]}},
+    {"nombre": "Tendencia", "columnas": COLS_TENDENCIA, "filas": FILAS_TENDENCIA,
+     "grafica": {"tipo": "lineas", "titulo": "Semanal", "eje_x": "semana",
+                 "series": ["M1", "M2", "M3"]}},
+]
+
+
+def _libro(hojas, **extra):
+    import io as _io
+
+    from openpyxl import load_workbook
+
+    from app.api.portal.ai_artifacts import build_table_excel
+
+    return load_workbook(_io.BytesIO(build_table_excel(
+        title="x", columns=["a"], rows=[{"a": 1}], hojas=hojas, **extra)))
+
+
+def test_la_ia_reparte_el_excel_en_varias_hojas(mundo):
+    """Antes todo iba amontonado en una sola tabla."""
+    wb = _libro(HOJAS_LIBRES)
+
+    assert wb.sheetnames == ["Resumen", "Tendencia", "Fuentes"]
+    assert wb["Resumen"].max_row == 3, "encabezado mas dos lineas"
+    assert wb["Tendencia"].max_column == len(COLS_TENDENCIA)
+    assert wb["Resumen"]["A1"].value == "linea"
+
+
+def test_cada_hoja_puede_traer_su_grafica(mundo):
+    wb = _libro(HOJAS_LIBRES)
+    assert len(wb["Resumen"]._charts) == 1
+    assert len(wb["Tendencia"]._charts) == 1
+    # La de tendencia lleva las tres series.
+    assert len(wb["Tendencia"]._charts[0].series) == 3
+
+
+def test_la_hoja_de_fuentes_se_agrega_sola(mundo):
+    wb = _libro(HOJAS_LIBRES)
+    hoja = wb["Fuentes"]
+    valores = {hoja.cell(f, 1).value: hoja.cell(f, 2).value for f in range(1, hoja.max_row + 1)}
+    assert valores["Proviene del MES"] == "No"
+    assert valores["Registros"] == sum(len(h["filas"]) for h in HOJAS_LIBRES)
+
+
+def test_el_estilo_corporativo_se_respeta_en_todas_las_hojas(mundo):
+    wb = _libro(HOJAS_LIBRES)
+    for nombre in ("Resumen", "Tendencia"):
+        hoja = wb[nombre]
+        assert hoja["A1"].font.name == "LG Smart UI Regular"
+        assert str(hoja["A1"].fill.start_color.rgb).endswith("000000")
+        assert hoja["A2"].font.name == "LG Smart UI Regular", "tambien los datos"
+
+
+def test_nombres_de_hoja_repetidos_o_largos_no_rompen_el_libro(mundo):
+    wb = _libro([
+        {"nombre": "Datos", "columnas": ["a"], "filas": [{"a": 1}], "grafica": None},
+        {"nombre": "Datos", "columnas": ["a"], "filas": [{"a": 2}], "grafica": None},
+        {"nombre": "N" * 60, "columnas": ["a"], "filas": [{"a": 3}], "grafica": None},
+    ])
+    assert len(set(wb.sheetnames)) == len(wb.sheetnames), "Excel no admite repetidos"
+    assert all(len(n) <= 31 for n in wb.sheetnames), "ni nombres de mas de 31"
+
+
+def test_sin_hojas_se_conserva_el_libro_de_una_tabla(mundo):
+    wb = _libro(None)
+    assert wb.sheetnames == ["x"], "una hoja con el titulo, como siempre"
+
+
+def test_hojas_invalidas_caen_a_la_tabla_unica(mundo):
+    for spec in ([], "no es lista", [{"nombre": "Vacia", "columnas": [], "filas": []}]):
+        assert _libro(spec).sheetnames == ["x"], spec
+
+
+def test_una_grafica_mal_especificada_no_deja_la_hoja_rota(mundo):
+    wb = _libro([{"nombre": "H", "columnas": ["a", "b"],
+                  "filas": [{"a": "x", "b": 1}],
+                  "grafica": {"tipo": "lineas", "eje_x": "no_existe", "series": ["b"]}}])
+    assert wb["H"].max_row == 2, "los datos si estan"
+    assert len(wb["H"]._charts) == 0, "solo se omite la grafica"
+
+
+def test_la_herramienta_de_excel_explica_las_hojas():
+    schema = ai_assistant._table_excel_tool_schema()
+    hojas = schema["parameters"]["properties"]["hojas"]
+    assert "varias hojas" in hojas["description"]
+    assert "la hoja de fuentes se agrega sola" in hojas["description"].lower()
+    assert "hojas" in schema["parameters"]["required"]
+    # PowerPoint no recibe hojas ni Excel diapositivas.
+    assert "diapositivas" not in schema["parameters"]["properties"]
+    assert "hojas" not in ai_assistant._table_pptx_tool_schema()["parameters"]["properties"]

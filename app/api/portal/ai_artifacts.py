@@ -1367,6 +1367,117 @@ def _pptx_franja_util(prs, con_plantilla: bool):
     return arriba + _In(.25), abajo - _In(.15), arriba
 
 
+_TIPOS_GRAFICA = {"lineas", "barras", "barras_apiladas", "pastel", "ninguna"}
+
+
+def _grafica_explicita(rows, columns, spec):
+    """(tipo_pptx, ChartData) a partir de lo que el asistente pidio.
+
+    Devuelve None si el spec no alcanza: mejor caer al automatico que dibujar
+    una grafica vacia.
+    """
+    from pptx.chart.data import ChartData
+    from pptx.enum.chart import XL_CHART_TYPE
+
+    tipo = str((spec or {}).get("tipo") or "").strip().lower()
+    if tipo not in _TIPOS_GRAFICA or tipo == "ninguna":
+        return None
+    eje_x = str((spec or {}).get("eje_x") or "").strip()
+    series = [str(x).strip() for x in ((spec or {}).get("series") or []) if str(x).strip()]
+    if eje_x not in columns or not series:
+        return None
+    series = [s for s in series if s in columns and s != eje_x][:12]
+    if not series:
+        return None
+
+    categorias = [str(fila.get(eje_x) if fila.get(eje_x) is not None else "") for fila in rows]
+    datos = ChartData()
+    datos.categories = categorias
+    vacias = 0
+    for nombre in series:
+        valores = []
+        for fila in rows:
+            try:
+                valores.append(float(str(fila.get(nombre)).replace(",", "")))
+            except (TypeError, ValueError):
+                valores.append(None)
+        if all(v is None for v in valores):
+            vacias += 1
+            continue
+        datos.add_series(nombre, valores)
+    if vacias == len(series):
+        return None
+    equivalencias = {
+        "lineas": XL_CHART_TYPE.LINE_MARKERS,
+        "barras": XL_CHART_TYPE.COLUMN_CLUSTERED,
+        "barras_apiladas": XL_CHART_TYPE.COLUMN_STACKED,
+        "pastel": XL_CHART_TYPE.PIE,
+    }
+    return equivalencias[tipo], datos
+
+
+_MAX_DIAPOSITIVAS = 20
+_MAX_VINETAS = 12
+_MAX_FILAS_TABLA = 15
+_MAX_COLS_TABLA = 8
+
+
+def _ppt_tabla(slide, rows, columns, izq, arriba, ancho, alto, estilo, font):
+    """Tabla nativa de PowerPoint; la presentacion nunca mostraba los datos."""
+    cols = [str(c) for c in (columns or [])][:_MAX_COLS_TABLA]
+    datos = list(rows or [])[:_MAX_FILAS_TABLA]
+    if not cols or not datos:
+        return False
+    from pptx.dml.color import RGBColor
+    from pptx.util import Pt
+
+    forma = slide.shapes.add_table(len(datos) + 1, len(cols), izq, arriba, ancho, alto)
+    tabla = forma.table
+    encabezado = _hex_a_rgb(estilo["relleno_encabezado"], (0, 0, 0))
+    texto_encabezado = _hex_a_rgb(_texto_sobre(estilo["relleno_encabezado"]), (255, 255, 255))
+    for c, nombre in enumerate(cols):
+        celda = tabla.cell(0, c)
+        celda.text = nombre
+        celda.fill.solid()
+        celda.fill.fore_color.rgb = RGBColor(*encabezado)
+        parrafo = celda.text_frame.paragraphs[0]
+        parrafo.font.bold = True
+        parrafo.font.size = Pt(12)
+        parrafo.font.name = font
+        parrafo.font.color.rgb = RGBColor(*texto_encabezado)
+    for f, fila in enumerate(datos, start=1):
+        for c, nombre in enumerate(cols):
+            celda = tabla.cell(f, c)
+            valor = fila.get(nombre)
+            celda.text = "" if valor is None else str(valor)
+            parrafo = celda.text_frame.paragraphs[0]
+            parrafo.font.size = Pt(11)
+            parrafo.font.name = font
+    return True
+
+
+def _ppt_diapositivas_libres(spec) -> list[dict[str, Any]]:
+    """Valida la estructura pedida; devuelve [] si no sirve y se usa la fija."""
+    if not isinstance(spec, list):
+        return []
+    limpias = []
+    for cruda in spec[:_MAX_DIAPOSITIVAS]:
+        if not isinstance(cruda, dict):
+            continue
+        titulo = str(cruda.get("titulo") or "").strip()
+        if not titulo:
+            continue
+        contenido = str(cruda.get("contenido") or "texto").strip().lower()
+        if contenido not in {"texto", "tabla", "grafica", "imagen", "portada"}:
+            contenido = "texto"
+        vinetas = [
+            " ".join(str(v).split())[:300]
+            for v in (cruda.get("vinetas") or []) if str(v).strip()
+        ][:_MAX_VINETAS]
+        limpias.append({"titulo": titulo[:120], "contenido": contenido, "vinetas": vinetas})
+    return limpias
+
+
 def _add_ppt_text(slide, text: str, left, top, width, height, *, size=20, bold=False, color=(31, 78, 121), font="Calibri"):
     from pptx.dml.color import RGBColor
     from pptx.util import Pt
@@ -1429,6 +1540,65 @@ def _build_powerpoint(result: dict[str, Any], title: str, language: str, target:
             slide.shapes.add_picture(str(logo), prs.slide_width - Inches(1.05),
                                      Inches(.18), width=Inches(.8))
 
+    pedidas = _ppt_diapositivas_libres(result.get("diapositivas"))
+    if pedidas:
+        for indice, hoja in enumerate(pedidas):
+            slide = prs.slides.add_slide(blank)
+            if hoja["contenido"] == "portada":
+                _add_ppt_text(slide, hoja["titulo"], MARG, ALTO / 3, ANCHO, Inches(1.2),
+                              size=32, bold=True, color=titulo_rgb, font=font)
+                if hoja["vinetas"]:
+                    _add_ppt_text(slide, "\n".join(hoja["vinetas"]), MARG,
+                                  ALTO / 3 + Inches(1.3), ANCHO, Inches(1.4),
+                                  size=18, color=(90, 90, 90), font=font)
+                continue
+            slide_title(slide, hoja["titulo"])
+            cursor = TOPE
+            alto_libre = ALTO_CUERPO
+            if hoja["vinetas"]:
+                alto_texto = min(alto_libre, Inches(.45) * len(hoja["vinetas"]) + Inches(.3))
+                _add_ppt_text(slide, "\n".join("\u2022 " + v for v in hoja["vinetas"]),
+                              MARG, cursor, ANCHO, alto_texto,
+                              size=18, color=texto_rgb, font=font)
+                if hoja["contenido"] == "texto":
+                    continue
+                cursor += alto_texto + Inches(.1)
+                alto_libre = max(Inches(1.5), (TOPE + ALTO_CUERPO) - cursor)
+            if hoja["contenido"] == "tabla":
+                _ppt_tabla(slide, rows, columns, MARG, cursor, ANCHO, alto_libre, estilo, font)
+            elif hoja["contenido"] == "grafica":
+                pedida = _grafica_explicita(rows, columns, result.get("grafica"))
+                if pedida:
+                    tipo_grafica, datos_grafica = pedida
+                    marco = slide.shapes.add_chart(
+                        tipo_grafica, MARG, cursor, ANCHO, alto_libre, datos_grafica)
+                    marco.chart.has_legend = True
+                    marco.chart.legend.include_in_layout = False
+                else:
+                    _add_ppt_text(slide, "No se recibio una grafica valida para esta diapositiva.",
+                                  MARG, cursor, ANCHO, Inches(1), size=16,
+                                  color=(120, 120, 120), font=font)
+            elif hoja["contenido"] == "imagen" and result.get("imagen"):
+                marco = slide.shapes.add_picture(
+                    io.BytesIO(result["imagen"]), MARG, cursor, height=alto_libre)
+                if marco.width > ANCHO:
+                    factor = ANCHO / marco.width
+                    marco.width, marco.height = ANCHO, int(marco.height * factor)
+                marco.left = int((prs.slide_width - marco.width) / 2)
+        # La procedencia no la decide el asistente: siempre va.
+        slide = prs.slides.add_slide(blank)
+        slide_title(slide, "Fuentes y m\u00e9todo / Sources / \ucd9c\ucc98")
+        _add_ppt_text(
+            slide,
+            f"{'Fuente MES' if desde_mes else 'Fuente'}: {result.get('source')}\n"
+            f"Reporte: {result.get('report')}\n"
+            f"Registros: {len(rows)}\n"
+            f"Generado: {now_local():%Y-%m-%d %H:%M:%S}",
+            MARG, TOPE, ANCHO, ALTO_CUERPO, size=19, color=texto_rgb, font=font,
+        )
+        prs.save(target)
+        return
+
     slide = prs.slides.add_slide(blank)
     _add_ppt_text(slide, title, MARG, ALTO / 3, ANCHO, Inches(1.2),
                   size=32, bold=True, color=titulo_rgb, font=font)
@@ -1457,7 +1627,19 @@ def _build_powerpoint(result: dict[str, Any], title: str, language: str, target:
     slide = prs.slides.add_slide(blank)
     slide_title(slide, "Distribución de datos / Data distribution / 데이터 분포")
     chart_added = False
-    if numeric and categorical:
+    # Lo que el asistente pidio manda; el automatico es solo el respaldo.
+    pedida = _grafica_explicita(rows, columns, result.get("grafica"))
+    if pedida:
+        tipo_grafica, datos_grafica = pedida
+        marco = slide.shapes.add_chart(tipo_grafica, MARG, TOPE, ANCHO, ALTO_CUERPO, datos_grafica)
+        grafico = marco.chart
+        if len(datos_grafica._series_lst if hasattr(datos_grafica, "_series_lst") else []) != 1:
+            grafico.has_legend = True
+            grafico.legend.include_in_layout = False
+        chart_added = True
+    elif str((result.get("grafica") or {}).get("tipo") or "").lower() == "ninguna":
+        chart_added = True  # se pidio expresamente sin grafica
+    if not chart_added and numeric and categorical:
         category, metric = categorical[0], numeric[0]
         totals: Counter[str] = Counter()
         for row in rows:
@@ -1531,9 +1713,92 @@ def _artifact_record(public_id: str) -> dict[str, Any] | None:
         conn.close()
 
 
+_MAX_HOJAS_LIBRES = 10
+_TABLE_EXCEL_MAX_COLS_LIBRE = 30
+
+
+def _excel_hojas_libres(spec) -> list[dict[str, Any]]:
+    """Valida las hojas pedidas; [] si no sirven y se usa la hoja unica."""
+    if not isinstance(spec, list):
+        return []
+    limpias, usados = [], set()
+    for cruda in spec[:_MAX_HOJAS_LIBRES]:
+        if not isinstance(cruda, dict):
+            continue
+        columnas = [str(c) for c in (cruda.get("columnas") or []) if str(c).strip()]
+        filas = [f for f in (cruda.get("filas") or []) if isinstance(f, dict)]
+        if not columnas or not filas:
+            continue
+        # Excel no admite hojas con el mismo nombre ni de mas de 31 caracteres.
+        nombre = _safe_title(str(cruda.get("nombre") or "Datos"), "Datos")[:31] or "Datos"
+        base, n = nombre, 2
+        while nombre.lower() in usados:
+            nombre = f"{base[:28]}_{n}"
+            n += 1
+        usados.add(nombre.lower())
+        limpias.append({
+            "nombre": nombre,
+            "columnas": columnas[:_TABLE_EXCEL_MAX_COLS_LIBRE],
+            "filas": filas,
+            "grafica": cruda.get("grafica") if isinstance(cruda.get("grafica"), dict) else None,
+        })
+    return limpias
+
+
+def _grafica_excel(hoja, datos_hoja, spec, filas_datos: int) -> bool:
+    """Grafica nativa de Excel a la derecha de la tabla."""
+    from openpyxl.chart import BarChart, LineChart, Reference
+
+    tipo = str((spec or {}).get("tipo") or "").strip().lower()
+    if tipo not in {"lineas", "barras"}:
+        return False
+    columnas = datos_hoja["columnas"]
+    eje_x = str((spec or {}).get("eje_x") or "").strip()
+    series = [str(x).strip() for x in ((spec or {}).get("series") or []) if str(x).strip()]
+    series = [x for x in series if x in columnas and x != eje_x]
+    if eje_x not in columnas or not series or filas_datos < 1:
+        return False
+
+    grafico = LineChart() if tipo == "lineas" else BarChart()
+    grafico.title = str((spec or {}).get("titulo") or "").strip() or None
+    grafico.height, grafico.width = 9, 18
+    for nombre in series[:12]:
+        col = columnas.index(nombre) + 1
+        grafico.add_data(
+            Reference(hoja, min_col=col, min_row=1, max_row=filas_datos + 1),
+            titles_from_data=True,
+        )
+    col_x = columnas.index(eje_x) + 1
+    grafico.set_categories(
+        Reference(hoja, min_col=col_x, min_row=2, max_row=filas_datos + 1))
+    from openpyxl.utils import get_column_letter
+
+    hoja.add_chart(grafico, f"{get_column_letter(len(columnas) + 2)}2")
+    return True
+
+
+def _hoja_de_fuentes(workbook, estilo, filas_totales: int) -> None:
+    """La procedencia no la decide el asistente: siempre va."""
+    from openpyxl.styles import Font
+
+    hoja = workbook.create_sheet("Fuentes")
+    hoja.column_dimensions["A"].width = 26
+    hoja.column_dimensions["B"].width = 60
+    datos = [
+        ("Fuente", "Archivos adjuntos al chat"),
+        ("Proviene del MES", "No"),
+        ("Registros", filas_totales),
+        ("Generado", now_local().strftime("%Y-%m-%d %H:%M:%S")),
+    ]
+    for indice, (etiqueta, valor) in enumerate(datos, start=1):
+        hoja.cell(indice, 1, etiqueta).font = Font(name=estilo["fuente"], bold=True)
+        hoja.cell(indice, 2, valor).font = Font(name=estilo["fuente"])
+
+
 def build_table_excel(
     *, title: str, columns: list[str], rows: list[dict[str, Any]], language: str = "es",
     estilo: dict[str, Any] | None = None, imagen: bytes | None = None,
+    hojas: list | None = None,
 ) -> bytes:
     """Excel con formato a partir de una tabla suelta, sin pasar por run_report.
 
@@ -1543,13 +1808,28 @@ def build_table_excel(
     """
     _activo = resolver_estilo(estilo, language)
     workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = _safe_title(title, "Datos")[:31]
-    _fill_excel_data_sheet(
-        sheet, rows, columns,
-        font_name=_activo["fuente"], navy=_activo["relleno_encabezado"],
-        table_name="TablaDatos", estilo_tabla=_activo["tabla_estilo"],
-    )
+    pedidas = _excel_hojas_libres(hojas)
+    if pedidas:
+        workbook.remove(workbook.active)
+        total = 0
+        for indice, datos_hoja in enumerate(pedidas, start=1):
+            sheet = workbook.create_sheet(datos_hoja["nombre"])
+            _fill_excel_data_sheet(
+                sheet, datos_hoja["filas"], datos_hoja["columnas"],
+                font_name=_activo["fuente"], navy=_activo["relleno_encabezado"],
+                table_name=f"Tabla{indice}", estilo_tabla=_activo["tabla_estilo"],
+            )
+            _grafica_excel(sheet, datos_hoja, datos_hoja["grafica"], len(datos_hoja["filas"]))
+            total += len(datos_hoja["filas"])
+        _hoja_de_fuentes(workbook, _activo, total)
+    else:
+        sheet = workbook.active
+        sheet.title = _safe_title(title, "Datos")[:31]
+        _fill_excel_data_sheet(
+            sheet, rows, columns,
+            font_name=_activo["fuente"], navy=_activo["relleno_encabezado"],
+            table_name="TablaDatos", estilo_tabla=_activo["tabla_estilo"],
+        )
     if imagen:
         _insertar_imagen_excel(workbook, imagen, len(columns))
     buffer = io.BytesIO()
@@ -1576,6 +1856,7 @@ def _insertar_imagen_excel(workbook, imagen: bytes, columnas: int) -> None:
 def build_table_powerpoint(
     *, title: str, columns: list[str], rows: list[dict[str, Any]], language: str = "es",
     estilo: dict[str, Any] | None = None, imagen: bytes | None = None,
+    grafica: dict[str, Any] | None = None, diapositivas: list | None = None,
 ) -> bytes:
     """Presentacion a partir de una tabla suelta, sin pasar por run_report.
 
@@ -1598,6 +1879,8 @@ def build_table_powerpoint(
                 "report": "Tabla armada por el asistente desde los adjuntos",
                 "estilo": estilo,
                 "imagen": imagen,
+                "grafica": grafica,
+                "diapositivas": diapositivas,
             },
             title, language, destino,
         )

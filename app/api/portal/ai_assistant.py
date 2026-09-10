@@ -1720,8 +1720,65 @@ def _table_pptx_tool_schema() -> dict[str, Any]:
                         "vaya DENTRO de este PowerPoint o Excel."
                     ),
                 },
+                "grafica": {
+                    "type": ["object", "null"],
+                    "description": (
+                        "Cómo graficar. Déjalo en null y se elige una gráfica automática simple. "
+                        "Para una TENDENCIA con varias series (defectos por semana y línea, "
+                        "producción por día y área) mándalo: pon una columna por serie. Ejemplo: "
+                        "columnas ['semana','M1','M2','D1'], eje_x 'semana', series ['M1','M2','D1']."
+                    ),
+                    "properties": {
+                        "tipo": {
+                            "type": ["string", "null"],
+                            "enum": ["lineas", "barras", "barras_apiladas", "pastel", "ninguna", None],
+                            "description": "lineas para tendencias en el tiempo; barras para comparar categorías.",
+                        },
+                        "eje_x": {"type": ["string", "null"], "description": "Nombre de la columna del eje horizontal."},
+                        "series": {
+                            "type": ["array", "null"],
+                            "items": {"type": "string"},
+                            "description": "Nombres de las columnas a graficar, una por serie. Máximo 12.",
+                        },
+                    },
+                    "required": ["tipo", "eje_x", "series"],
+                    "additionalProperties": False,
+                },
+                "diapositivas": {
+                    "type": ["array", "null"],
+                    "description": (
+                        "Estructura de la presentación, en orden. Déjalo en null y sale el formato "
+                        "ejecutivo de siempre (portada, alcance, KPIs, gráfica, hallazgos, "
+                        "conclusiones). Mándalo para armar una presentación a la medida: tú decides "
+                        "cuántas diapositivas, sus títulos y qué lleva cada una. Máximo 20. La hoja "
+                        "de fuentes se agrega sola al final. Escribe viñetas concretas con las "
+                        "cifras que obtuviste, no frases genéricas."
+                    ),
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "titulo": {"type": "string", "description": "Título de la diapositiva."},
+                            "contenido": {
+                                "type": ["string", "null"],
+                                "enum": ["portada", "texto", "tabla", "grafica", "imagen", None],
+                                "description": (
+                                    "portada para la primera; texto sólo viñetas; tabla muestra los "
+                                    "datos; grafica usa el parámetro grafica; imagen usa imagen_id."
+                                ),
+                            },
+                            "vinetas": {
+                                "type": ["array", "null"],
+                                "items": {"type": "string"},
+                                "description": "Viñetas, máximo 12. Van arriba del contenido.",
+                            },
+                        },
+                        "required": ["titulo", "contenido", "vinetas"],
+                        "additionalProperties": False,
+                    },
+                },
             },
-            "required": ["titulo", "columnas", "filas", "estilo", "imagen_id"],
+            "required": ["titulo", "columnas", "filas", "estilo",
+                         "imagen_id", "grafica", "diapositivas"],
             "additionalProperties": False,
         },
     }
@@ -1781,8 +1838,44 @@ def _table_excel_tool_schema() -> dict[str, Any]:
                         "vaya DENTRO de este PowerPoint o Excel."
                     ),
                 },
+                "hojas": {
+                    "type": ["array", "null"],
+                    "description": (
+                        "Estructura del libro. Déjalo en null y sale una sola hoja con la tabla de "
+                        "columnas/filas. Mándalo para armar varias hojas: resumen y detalle, una "
+                        "hoja por línea, o datos más su gráfica. Máximo 10 hojas; la hoja de "
+                        "fuentes se agrega sola. Cuando uses hojas, columnas y filas de arriba se "
+                        "ignoran: cada hoja trae las suyas."
+                    ),
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "nombre": {"type": "string", "description": "Nombre de la pestaña, máximo 31 caracteres."},
+                            "columnas": {"type": "array", "items": {"type": "string"},
+                                         "description": "Encabezados de esta hoja."},
+                            "filas": {"type": "array", "items": {"type": "array", "items": {"type": "string"}},
+                                      "description": "Filas de esta hoja, en el orden de sus columnas."},
+                            "grafica": {
+                                "type": ["object", "null"],
+                                "description": "Gráfica nativa de Excel junto a la tabla. null para no poner ninguna.",
+                                "properties": {
+                                    "tipo": {"type": ["string", "null"], "enum": ["lineas", "barras", None]},
+                                    "titulo": {"type": ["string", "null"], "description": "Título de la gráfica."},
+                                    "eje_x": {"type": ["string", "null"], "description": "Columna del eje horizontal."},
+                                    "series": {"type": ["array", "null"], "items": {"type": "string"},
+                                               "description": "Una columna por serie."},
+                                },
+                                "required": ["tipo", "titulo", "eje_x", "series"],
+                                "additionalProperties": False,
+                            },
+                        },
+                        "required": ["nombre", "columnas", "filas", "grafica"],
+                        "additionalProperties": False,
+                    },
+                },
             },
-            "required": ["titulo", "columnas", "filas", "estilo", "imagen_id"],
+            "required": ["titulo", "columnas", "filas", "estilo",
+                         "imagen_id", "hojas"],
             "additionalProperties": False,
         },
     }
@@ -1809,6 +1902,23 @@ def _compactar_historial(mensajes: list[dict[str, Any]]) -> tuple[list[dict[str,
         total -= _peso_mensaje(ventana.pop(0))
         cortados += 1
     return ventana, cortados
+
+
+def _hojas_a_filas(hojas):
+    """Normaliza cada hoja libre con la misma conversion que la tabla suelta."""
+    if not isinstance(hojas, list):
+        return None
+    salida = []
+    for hoja in hojas:
+        if not isinstance(hoja, dict):
+            continue
+        try:
+            columnas, filas = _tabla_a_filas(hoja.get("columnas"), hoja.get("filas"))
+        except ValueError:
+            continue
+        salida.append({"nombre": hoja.get("nombre"), "columnas": columnas,
+                       "filas": filas, "grafica": hoja.get("grafica")})
+    return salida or None
 
 
 def _tabla_a_filas(columnas: list[Any], filas: list[Any]) -> tuple[list[str], list[dict[str, Any]]]:
@@ -2720,6 +2830,9 @@ def stream_message(public_id: str):
                             title=titulo, columns=columnas, rows=filas, language=language,
                             estilo=arguments.get("estilo") or None,
                             imagen=_bytes_de_artefacto(arguments.get("imagen_id")),
+                            **({"grafica": arguments.get("grafica") or None,
+                                "diapositivas": arguments.get("diapositivas") or None}
+                               if es_pptx else {"hojas": _hojas_a_filas(arguments.get("hojas"))}),
                         )
                     except RuntimeError as exc:  # falta python-pptx en el servidor
                         return {
