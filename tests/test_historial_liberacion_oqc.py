@@ -39,7 +39,11 @@ def test_oqc_where_clause_includes_supported_filters():
     assert "o.status = %s" in where_sql
     assert "o.source = %s" in where_sql
     assert "COALESCE(o.qc_passed, 0) = 1" in where_sql
-    assert "COALESCE(o.oqc_folio, '') LIKE %s" in where_sql
+    assert (
+        "CONVERT(COALESCE(o.oqc_folio, '') USING utf8mb4) "
+        "COLLATE utf8mb4_unicode_ci LIKE "
+        "CONVERT(%s USING utf8mb4) COLLATE utf8mb4_unicode_ci"
+    ) in where_sql
     assert params[:4] == [
         "2026-09-01 00:00:00",
         "2026-09-03 00:00:00",
