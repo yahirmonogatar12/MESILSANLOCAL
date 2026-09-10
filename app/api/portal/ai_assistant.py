@@ -784,6 +784,7 @@ _EXCEL_LEER_TOOL_NAME = "excel_leer_hoja"
 _PDF_BUSCAR_TOOL_NAME = "pdf_buscar"
 _PDF_LEER_TOOL_NAME = "pdf_leer_paginas"
 _EXCEL_CONTAR_TOOL_NAME = "excel_contar_en_rango"
+_EXCEL_AGRUPAR_TOOL_NAME = "excel_agrupar"
 
 
 def _excel_mapa(data: bytes) -> list[dict[str, Any]]:
@@ -923,6 +924,62 @@ def _excel_leer_tool_schema(hojas: list[str]) -> dict[str, Any]:
     }
 
 
+def _excel_agrupar_tool_schema(hojas: list[str]) -> dict[str, Any]:
+    return {
+        "type": "function",
+        "name": _EXCEL_AGRUPAR_TOOL_NAME,
+        "description": (
+            "Agrupa TODAS las filas de una hoja por una o dos columnas y cuenta o suma. Es la "
+            "forma correcta de responder 'defectos por línea', 'producción por semana' o "
+            "'defectos por semana y línea': una sola llamada recorre el archivo completo, aunque "
+            "tenga 50,000 filas. NO llames " + _EXCEL_CONTAR_TOOL_NAME + " una vez por cada "
+            "línea ni leas la hoja por trozos para sumar a mano: se acaba el presupuesto de "
+            "herramientas antes de terminar. Hojas: " + ", ".join(hojas)
+        ),
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "hoja": {"type": "string", "description": "Nombre exacto de la hoja."},
+                "columnas_grupo": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": (
+                        "Una o dos letras de columna por las que agrupar, por ejemplo ['H'] para "
+                        "semana o ['H','B'] para semana y línea."
+                    ),
+                },
+                "columna_valor": {
+                    "type": ["string", "null"],
+                    "description": (
+                        "Letra de la columna a sumar. Déjala en null para contar filas, que es lo "
+                        "normal cuando cada renglón es un defecto o un evento."
+                    ),
+                },
+                "desde_fila": {
+                    "type": ["integer", "null"],
+                    "description": "Primera fila de datos; null empieza tras el encabezado.",
+                },
+                "top": {"type": ["integer", "null"], "description": "Grupos a devolver, 50 por defecto."},
+                "orden": {
+                    "type": ["string", "null"],
+                    "enum": ["desc", "asc", None],
+                    "description": "desc por defecto (los grupos con más arriba).",
+                },
+                "filtro_columna": {
+                    "type": ["string", "null"],
+                    "description": "Letra de otra columna para acotar antes de agrupar, por ejemplo una fecha.",
+                },
+                "filtro_desde": {"type": ["string", "null"], "description": "Valor mínimo de esa columna (fecha ISO o número)."},
+                "filtro_hasta": {"type": ["string", "null"], "description": "Valor máximo de esa columna."},
+            },
+            "required": ["hoja", "columnas_grupo", "columna_valor", "desde_fila", "top",
+                         "orden", "filtro_columna", "filtro_desde", "filtro_hasta"],
+            "additionalProperties": False,
+        },
+    }
+
+
 def _excel_contar_tool_schema(hojas: list[str]) -> dict[str, Any]:
     return {
         "type": "function",
@@ -936,6 +993,9 @@ def _excel_contar_tool_schema(hojas: list[str]) -> dict[str, Any]:
             "Con orden='asc' responde 'quien tiene MENOS' (las filas con cero si cuentan) y con "
             "filtro_columna/filtro_hasta acota a un subconjunto, por ejemplo solo quienes ingresaron "
             "antes de cierta fecha. Prefiere UNA llamada con filtro y orden a muchas lecturas. "
+            "Si lo que necesitas es un total POR CADA valor de una columna (por linea, por "
+            "semana, por parte), usa " + _EXCEL_AGRUPAR_TOOL_NAME + " en vez de llamar esta una "
+            "vez por valor: se acaba el presupuesto de herramientas. "
             "Hojas: " + ", ".join(hojas)
         ),
         "strict": True,
@@ -1122,6 +1182,100 @@ def _excel_contar_rango(data: bytes, hoja: str, info: dict, args: dict) -> dict[
         "total_coincidencias": total,
         "empatados_en_el_primer_lugar": empatados,
         "ranking": [{"etiqueta": e, "conteo": n} for e, n in conteos[:tope]],
+    }
+
+
+def _excel_clave_grupo(celda) -> str:
+    """Texto estable para agrupar. Las fechas se normalizan a ISO."""
+    if isinstance(celda, datetime):
+        return celda.date().isoformat()
+    if isinstance(celda, date):
+        return celda.isoformat()
+    texto = str(celda).strip() if celda is not None else ""
+    return texto or "(vacio)"
+
+
+def _excel_agrupar(data: bytes, hoja: str, info: dict, args: dict) -> dict[str, Any]:
+    """Cuenta o suma filas agrupando por una o dos columnas, sobre TODA la hoja.
+
+    Recorre en streaming: 51,500 filas nunca viajan al modelo, solo el
+    resultado agrupado.
+    """
+    from openpyxl import load_workbook
+
+    letras = [str(x).strip() for x in (args.get("columnas_grupo") or []) if str(x).strip()]
+    if not letras:
+        raise ValueError("Indica al menos una columna por la cual agrupar")
+    if len(letras) > 2:
+        raise ValueError("Se puede agrupar por una o dos columnas, no mas")
+    cols_grupo = [_excel_col(x, 1) for x in letras]
+    col_valor = _excel_col(args.get("columna_valor"), 0) if args.get("columna_valor") else 0
+    primera = int(args.get("desde_fila") or (info["fila_encabezado"] + 1))
+    tope = max(1, min(int(args.get("top") or 50), 500))
+    ascendente = str(args.get("orden") or "desc").lower() == "asc"
+
+    col_filtro = args.get("filtro_columna")
+    col_filtro = _excel_col(col_filtro, 0) if col_filtro else 0
+    filtro_desde = _excel_valor_comparable(args.get("filtro_desde"))
+    filtro_hasta = _excel_valor_comparable(args.get("filtro_hasta"))
+    if col_filtro and filtro_desde is None and filtro_hasta is None:
+        raise ValueError("Con filtro_columna indica filtro_desde y/o filtro_hasta")
+
+    acumulado: dict[tuple, float] = {}
+    filas_leidas = 0
+    descartadas = 0
+    sin_valor = 0
+    ancho = max(*cols_grupo, col_valor, col_filtro, 1)
+    workbook = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    try:
+        h = workbook[hoja]
+        for fila in h.iter_rows(min_row=primera, max_col=ancho, values_only=True):
+            if not any(x is not None for x in fila):
+                continue
+            if col_filtro:
+                valor = _excel_valor_comparable(
+                    fila[col_filtro - 1] if len(fila) >= col_filtro else None)
+                if valor is None or type(valor) is not type(filtro_desde or filtro_hasta):
+                    descartadas += 1
+                    continue
+                if filtro_desde is not None and valor < filtro_desde:
+                    descartadas += 1
+                    continue
+                if filtro_hasta is not None and valor > filtro_hasta:
+                    descartadas += 1
+                    continue
+            clave = tuple(
+                _excel_clave_grupo(fila[c - 1] if len(fila) >= c else None) for c in cols_grupo
+            )
+            if col_valor:
+                try:
+                    numero = float(str(fila[col_valor - 1]).replace(",", ""))
+                except (TypeError, ValueError, IndexError):
+                    sin_valor += 1
+                    continue
+            else:
+                numero = 1.0
+            acumulado[clave] = acumulado.get(clave, 0.0) + numero
+            filas_leidas += 1
+    finally:
+        workbook.close()
+
+    orden = sorted(acumulado.items(), key=lambda par: (par[1] if ascendente else -par[1], par[0]))
+    def _limpio(x: float):
+        return int(x) if float(x).is_integer() else round(x, 4)
+
+    return {
+        "hoja": hoja,
+        "agrupado_por": letras,
+        "operacion": ("suma de " + str(args.get("columna_valor"))) if col_valor else "conteo de filas",
+        "filas_desde": primera,
+        "filas_contadas": filas_leidas,
+        "filas_descartadas_por_filtro": descartadas,
+        "filas_sin_valor_numerico": sin_valor,
+        "grupos_totales": len(acumulado),
+        "grupos": [
+            {"claves": list(clave), "valor": _limpio(valor)} for clave, valor in orden[:tope]
+        ],
     }
 
 
@@ -2167,6 +2321,7 @@ def stream_message(public_id: str):
     if hojas_indexadas:
         tools.append(_excel_leer_tool_schema(hojas_indexadas))
         tools.append(_excel_contar_tool_schema(hojas_indexadas))
+        tools.append(_excel_agrupar_tool_schema(hojas_indexadas))
     _ref_pdf, _ruta_pdf, _nombre_pdf = _pdf_vigente(int(conversation["id"]), last_file_ref)
     if _ruta_pdf is not None and _pdf_necesita_mapa(_ruta_pdf):
         tools.append(_pdf_buscar_tool_schema(_nombre_pdf))
@@ -2633,7 +2788,8 @@ def stream_message(public_id: str):
                         "public_summary": {"tool": name},
                     }
 
-                if name in (_EXCEL_LEER_TOOL_NAME, _EXCEL_CONTAR_TOOL_NAME):
+                if name in (_EXCEL_LEER_TOOL_NAME, _EXCEL_CONTAR_TOOL_NAME,
+                            _EXCEL_AGRUPAR_TOOL_NAME):
                     _ref, ruta, libro = _excel_vigente(int(conversation["id"]), last_file_ref)
                     if ruta is None:
                         return {
@@ -2655,6 +2811,8 @@ def stream_message(public_id: str):
                     try:
                         if name == _EXCEL_LEER_TOOL_NAME:
                             salida = _excel_leer_rango(datos, pedida, info_hoja, arguments)
+                        elif name == _EXCEL_AGRUPAR_TOOL_NAME:
+                            salida = _excel_agrupar(datos, pedida, info_hoja, arguments)
                         else:
                             salida = _excel_contar_rango(datos, pedida, info_hoja, arguments)
                     except ValueError as exc:

@@ -1175,6 +1175,7 @@ def _todos_los_schemas():
         ai_assistant._excel_edit_tool_schema(),
         ai_assistant._excel_leer_tool_schema(hojas),
         ai_assistant._excel_contar_tool_schema(hojas),
+        ai_assistant._excel_agrupar_tool_schema(hojas),
         ai_assistant._pdf_buscar_tool_schema("manual.pdf"),
         ai_assistant._pdf_leer_tool_schema("manual.pdf"),
         ai_assistant._imagen_tool_schema(),
@@ -1663,3 +1664,124 @@ def test_el_prompt_prohibe_dibujar_el_logo_de_memoria():
     assert "usar_logo=true" in prompt
     assert "Jamás describas el logo con palabras" in prompt
     assert "editar_imagen_id" in prompt
+
+
+# ---------------------------------------------------------------------------
+# excel_agrupar: un group by en una llamada.
+# ---------------------------------------------------------------------------
+def _hoja_defectos(ref="def001", conversacion=7, filas=300):
+    """A=fecha, B=linea, G=cantidad, H=semana. Misma forma que el archivo real."""
+    from datetime import date, timedelta
+
+    from openpyxl import Workbook
+
+    carpeta = ai_assistant._upload_root() / str(conversacion)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "defectos"
+    hoja.append(["fecha", "linea", "modelo", "parte", "turno", "defecto", "cantidad", "semana"])
+    lineas = ["M1", "M2", "D1"]
+    inicio = date(2026, 1, 5)
+    for i in range(filas):
+        f = inicio + timedelta(days=i % 14)
+        hoja.append([f, lineas[i % 3], "MOD", "P1", "Dia", "SOLD", (i % 4) + 1,
+                     f"W{(i % 14) // 7 + 1}"])
+    libro.save(carpeta / (ref + ".xlsx"))
+    (carpeta / (ref + ".name")).write_text("defectos.xlsx", "utf-8")
+    return carpeta / (ref + ".xlsx")
+
+
+def _agrupar(ruta, **args):
+    data = ruta.read_bytes()
+    info = next(h for h in ai_assistant._excel_mapa(data) if h["hoja"] == "defectos")
+    return ai_assistant._excel_agrupar(data, "defectos", info, args)
+
+
+def test_agrupar_por_una_columna_cuenta_filas(mundo):
+    r = _agrupar(_hoja_defectos(filas=300), columnas_grupo=["B"], top=10)
+
+    assert r["filas_contadas"] == 300
+    assert r["grupos_totales"] == 3, "tres lineas"
+    assert sum(g["valor"] for g in r["grupos"]) == 300
+    assert r["operacion"] == "conteo de filas"
+
+
+def test_agrupar_por_dos_columnas(mundo):
+    """"defectos por semana y linea" era lo que agotaba el presupuesto."""
+    r = _agrupar(_hoja_defectos(filas=300), columnas_grupo=["H", "B"], top=50)
+
+    assert r["grupos_totales"] == 6, "2 semanas x 3 lineas"
+    assert all(len(g["claves"]) == 2 for g in r["grupos"])
+    assert sum(g["valor"] for g in r["grupos"]) == 300
+
+
+def test_agrupar_puede_sumar_una_columna(mundo):
+    conteo = _agrupar(_hoja_defectos(filas=300), columnas_grupo=["B"], top=10)
+    suma = _agrupar(_hoja_defectos(filas=300), columnas_grupo=["B"], columna_valor="G", top=10)
+
+    assert "suma de G" in suma["operacion"]
+    total = sum(g["valor"] for g in suma["grupos"])
+    assert total > sum(g["valor"] for g in conteo["grupos"]), "sumar cantidades da mas que contar"
+
+
+def test_agrupar_normaliza_las_fechas(mundo):
+    """Una fecha como clave debe agrupar por dia, no por objeto datetime."""
+    r = _agrupar(_hoja_defectos(filas=300), columnas_grupo=["A"], top=20)
+    assert r["grupos_totales"] == 14
+    assert all(g["claves"][0].startswith("2026-01") for g in r["grupos"])
+
+
+def test_agrupar_respeta_el_filtro_por_fecha(mundo):
+    ruta = _hoja_defectos(filas=300)
+    todo = _agrupar(ruta, columnas_grupo=["B"], top=10)
+    acotado = _agrupar(ruta, columnas_grupo=["B"], top=10,
+                       filtro_columna="A", filtro_desde="2026-01-12")
+
+    assert acotado["filas_descartadas_por_filtro"] > 0
+    assert acotado["filas_contadas"] < todo["filas_contadas"]
+
+
+def test_agrupar_exige_columnas_y_limita_a_dos(mundo):
+    ruta = _hoja_defectos(filas=10)
+    for args, esperado in [
+        ({"columnas_grupo": []}, "al menos una columna"),
+        ({"columnas_grupo": ["A", "B", "C"]}, "una o dos columnas"),
+    ]:
+        try:
+            _agrupar(ruta, **args)
+            raise AssertionError(f"acepto {args}")
+        except ValueError as exc:
+            assert esperado in str(exc), str(exc)
+
+
+def test_la_herramienta_de_agrupar_desalienta_llamar_contar_por_valor():
+    schema = ai_assistant._excel_agrupar_tool_schema(["defectos"])
+    assert schema["name"] == "excel_agrupar"
+    assert "por semana y línea" in schema["description"]
+    assert "NO llames excel_contar_en_rango una vez por cada" in schema["description"]
+    # Y la de contar apunta a esta.
+    contar = ai_assistant._excel_contar_tool_schema(["defectos"])
+    assert "excel_agrupar" in contar["description"]
+
+
+def test_agrupar_esta_declarada_y_se_ejecuta_por_http(client, mundo):
+    """Probar solo la funcion no verifica que el modelo pueda llamarla."""
+    _hoja_defectos(ref="defhttp", filas=300)
+    # Una matriz ancha para que el libro viaje indexado y las tools se declaren.
+    ref = _matriz_asistencia(ref="defhttp", personas=40, dias=90)
+
+    mundo.guion = [[
+        {"tool": "excel_agrupar",
+         "args": {"hoja": "Activos", "columnas_grupo": ["C"], "columna_valor": None,
+                  "desde_fila": None, "top": 10, "orden": "desc",
+                  "filtro_columna": None, "filtro_desde": None, "filtro_hasta": None}},
+        "Agrupado por fecha de ingreso.",
+    ]]
+    cuerpo = _turno(client, "agrupa por fecha de ingreso", file_refs=[ref])
+
+    assert [e["tool_name"] for e in mundo.ejecuciones] == ["excel_agrupar"], mundo.ejecuciones
+    assert "herramienta no declarada" not in cuerpo
+    entregado = json.dumps(mundo.vistas_por_el_modelo[-1], ensure_ascii=False, default=str)
+    assert "agrupado_por" in entregado and "grupos" in entregado
+    assert "Agrupado por fecha" in cuerpo
