@@ -32,6 +32,10 @@ openai>=1.0.0,<3.0.0
 # pide que el archivo se suba como .zip.
 rarfile>=4.0
 
+# Leer PDF grandes en el chat: sin esto un manual de mas de 100 paginas
+# no se puede consultar (OpenAI solo acepta PDF nativo hasta ese tamano).
+pypdf>=4.0.0
+
 # Para web scraping y parsing
 beautifulsoup4>=4.12.0
 

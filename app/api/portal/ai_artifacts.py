@@ -49,8 +49,60 @@ def _safe_title(value: str, fallback: str) -> str:
     return cleaned[:120] or fallback
 
 
+# Estilo corporativo, extraido de la plantilla ISEMM y del formato de las
+# listas LG: es lo que sale por defecto sin que nadie lo pida.
+_ESTILO_CORPORATIVO = {
+    "fuente": "LG Smart UI Regular",
+    "color_titulo": "1F497D",        # dk2 del tema ISEMM
+    "color_texto": "2D2D2D",
+    "relleno_encabezado": "000000",  # encabezado negro
+    "tabla_estilo": "TableStyleLight1",  # blanco y negro, sin el azul de Excel
+    "color_encabezado": "000000",
+}
+
+
+def _hex_a_rgb(valor: str, respaldo=(31, 73, 125)) -> tuple:
+    texto = str(valor or "").strip().lstrip("#")
+    if len(texto) != 6:
+        return respaldo
+    try:
+        return tuple(int(texto[i:i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return respaldo
+
+
+def _texto_sobre(fondo: str) -> str:
+    """Blanco o negro segun que tan oscuro sea el relleno del encabezado."""
+    r, g, b = _hex_a_rgb(fondo, (31, 78, 121))
+    return "FFFFFF" if (r * 299 + g * 587 + b * 114) / 1000 < 140 else "000000"
+
+
+def resolver_estilo(estilo: dict[str, Any] | None = None, language: str = "es") -> dict[str, str]:
+    """Estilo corporativo por defecto; el usuario puede pedir otro y el modelo
+    lo manda en `estilo`. Solo se aceptan los campos conocidos: un color
+    inventado o una clave rara no puede romper el archivo generado."""
+    activo = dict(_ESTILO_CORPORATIVO)
+    if language == "ko":
+        activo["fuente"] = "Malgun Gothic"
+    tabla = (estilo or {}).get("tabla_estilo")
+    if tabla and str(tabla).replace(" ", "").isalnum():
+        activo["tabla_estilo"] = str(tabla)[:40]
+    for clave in ("fuente", "color_titulo", "color_texto",
+                  "relleno_encabezado", "color_encabezado"):
+        valor = (estilo or {}).get(clave)
+        if not valor:
+            continue
+        if clave == "fuente":
+            activo[clave] = str(valor)[:60]
+        else:
+            texto = str(valor).strip().lstrip("#").upper()
+            if len(texto) == 6 and all(c in "0123456789ABCDEF" for c in texto):
+                activo[clave] = texto
+    return activo
+
+
 def _preferred_font(language: str) -> str:
-    return "Malgun Gothic" if language == "ko" else "Calibri"
+    return resolver_estilo(None, language)["fuente"]
 
 
 def _numeric_columns(rows: list[dict[str, Any]], columns: list[str]) -> list[str]:
@@ -128,16 +180,21 @@ def _fill_excel_data_sheet(
     font_name: str,
     navy: str,
     table_name: str,
+    estilo_tabla: str | None = None,
 ) -> None:
     ws.freeze_panes = "A2"
     for col_index, column in enumerate(columns, 1):
         cell = ws.cell(1, col_index, column)
         cell.fill = PatternFill("solid", fgColor=navy)
-        cell.font = Font(name=font_name, bold=True, color="FFFFFF")
+        cell.font = Font(name=font_name, bold=True, color=_texto_sobre(navy))
         cell.alignment = Alignment(horizontal="center")
+    # La tipografia tambien en los datos: antes solo el encabezado la tomaba y
+    # el cuerpo salia en Calibri. Se comparte un Font para no crear uno por celda.
+    fuente_datos = Font(name=font_name)
     for row_index, row in enumerate(rows, 2):
         for col_index, column in enumerate(columns, 1):
-            ws.cell(row_index, col_index, _safe_cell(row.get(column)))
+            celda = ws.cell(row_index, col_index, _safe_cell(row.get(column)))
+            celda.font = fuente_datos
     for col_index, column in enumerate(columns, 1):
         sample = [len(str(row.get(column) or "")) for row in rows[:300]]
         ws.column_dimensions[ws.cell(1, col_index).column_letter].width = min(
@@ -146,7 +203,8 @@ def _fill_excel_data_sheet(
     if columns and rows:
         end = ws.cell(len(rows) + 1, len(columns)).coordinate
         table = Table(displayName=table_name, ref=f"A1:{end}")
-        table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
+        table.tableStyleInfo = TableStyleInfo(
+            name=estilo_tabla or _ESTILO_CORPORATIVO["tabla_estilo"], showRowStripes=True)
         ws.add_table(table)
         # La tabla ya incluye su propio autoFilter en tableN.xml. Agregar además
         # un autoFilter de worksheet sobre el mismo rango hace que Excel repare
@@ -174,7 +232,7 @@ def _add_lqc_excel_summary(
     for cell in ws[start]:
         if cell.column <= 4:
             cell.fill = PatternFill("solid", fgColor=navy)
-            cell.font = Font(name=font_name, bold=True, color="FFFFFF")
+            cell.font = Font(name=font_name, bold=True, color=_texto_sobre(navy))
     for offset, item in enumerate(shifts, 1):
         ws.cell(start + offset, 1, item.get("label"))
         ws.cell(
@@ -271,7 +329,7 @@ def _add_grouped_analysis_excel_summary(
     ws.cell(start, 3, "Cantidad total")
     for column in range(1, 4):
         ws.cell(start, column).fill = PatternFill("solid", fgColor=navy)
-        ws.cell(start, column).font = Font(name=font_name, bold=True, color="FFFFFF")
+        ws.cell(start, column).font = Font(name=font_name, bold=True, color=_texto_sobre(navy))
     for offset, item in enumerate(shift_rows, 1):
         ws.cell(start + offset, 1, item.get("label"))
         ws.cell(start + offset, 2, item.get("registros", 0))
@@ -1060,15 +1118,16 @@ def _build_excel(
         return
     if include_charts:
         include_summary = True
-    font_name = _preferred_font(language)
-    navy = "1F4E79"
+    estilo_xlsx = resolver_estilo(result.get("estilo"), language)
+    font_name = estilo_xlsx["fuente"]
+    navy = estilo_xlsx["relleno_encabezado"]
     light = "D9EAF7"
 
     wb = Workbook()
     ws_summary = wb.active
     ws_summary.title = "Resumen"
     ws_summary["A1"] = title
-    ws_summary["A1"].font = Font(name=font_name, bold=True, size=18, color="FFFFFF")
+    ws_summary["A1"].font = Font(name=font_name, bold=True, size=18, color=_texto_sobre(navy))
     ws_summary["A1"].fill = PatternFill("solid", fgColor=navy)
     ws_summary.merge_cells("A1:D1")
     ws_summary.append([])
@@ -1081,7 +1140,7 @@ def _build_excel(
     ws_summary.append(["Fuente", result.get("source") or "MES"])
     ws_summary.append(["Generado", now_local().strftime("%Y-%m-%d %H:%M:%S")])
     for cell in ws_summary[3]:
-        cell.font = Font(name=font_name, bold=True, color="FFFFFF")
+        cell.font = Font(name=font_name, bold=True, color=_texto_sobre(navy))
         cell.fill = PatternFill("solid", fgColor=navy)
     for key, values in list((summary.get("numeric_summary") or {}).items())[:8]:
         if report != "plan_proposal":
@@ -1100,7 +1159,7 @@ def _build_excel(
         ws_summary.append(["Línea", "Lotes", "Cantidad", "Horas"])
         summary_header = ws_summary.max_row
         for cell in ws_summary[summary_header]:
-            cell.font = Font(name=font_name, bold=True, color="FFFFFF")
+            cell.font = Font(name=font_name, bold=True, color=_texto_sobre(navy))
             cell.fill = PatternFill("solid", fgColor=navy)
         for item in plan_summary.get("by_line") or []:
             ws_summary.append([
@@ -1207,7 +1266,7 @@ def _build_excel(
     ws_criteria.append(["Registros", len(rows)])
     for cell in ws_criteria[1]:
         cell.fill = PatternFill("solid", fgColor=navy)
-        cell.font = Font(name=font_name, bold=True, color="FFFFFF")
+        cell.font = Font(name=font_name, bold=True, color=_texto_sobre(navy))
     ws_criteria.column_dimensions["A"].width = 28
     ws_criteria.column_dimensions["B"].width = 60
 
@@ -1253,6 +1312,61 @@ def _build_excel(
     wb.save(target)
 
 
+def plantilla_pptx() -> Path | None:
+    """Presentacion base cuyo tema, tipografias y tamano se heredan.
+
+    Sale de la plantilla ISEMM con sus diapositivas quitadas: asi el diseno se
+    edita en PowerPoint y no en el codigo. AI_PPTX_TEMPLATE la sustituye.
+    """
+    ruta = os.getenv("AI_PPTX_TEMPLATE") or (
+        Path(__file__).resolve().parents[2] / "static" / "plantillas" / "presentacion_base.pptx"
+    )
+    ruta = Path(ruta)
+    return ruta if ruta.is_file() else None
+
+
+def _pptx_base():
+    from pptx import Presentation
+    from pptx.util import Inches as _In
+
+    plantilla = plantilla_pptx()
+    if plantilla is None:  # sin plantilla se usa el tamano de siempre
+        prs = Presentation()
+        prs.slide_width = _In(13.333)
+        prs.slide_height = _In(7.5)
+        return prs
+    return Presentation(str(plantilla))
+
+
+def _pptx_layout_vacio(prs):
+    """La plantilla puede traer un solo layout; slide_layouts[6] no existiria."""
+    for layout in prs.slide_layouts:
+        if not len(layout.placeholders):
+            return layout
+    return prs.slide_layouts[min(6, len(prs.slide_layouts) - 1)]
+
+
+def _pptx_franja_util(prs, con_plantilla: bool):
+    """(inicio, fin, linea_superior) verticales para no pisar la plantilla.
+
+    Se leen las lineas horizontales del layout: la de arriba marca donde
+    termina el encabezado y la de abajo donde empieza el pie.
+    """
+    from pptx.util import Inches as _In
+
+    if not con_plantilla:
+        return _In(1.3), prs.slide_height - _In(.7), _In(.95)
+    lineas = sorted(
+        sh.top for sh in prs.slide_layouts[0].shapes
+        if sh.shape_type is not None and str(sh.shape_type).startswith("LINE")
+        and sh.height == 0
+    )
+    medio = prs.slide_height // 2
+    arriba = max([y for y in lineas if y < medio], default=_In(.6))
+    abajo = min([y for y in lineas if y >= medio], default=prs.slide_height - _In(.5))
+    return arriba + _In(.25), abajo - _In(.15), arriba
+
+
 def _add_ppt_text(slide, text: str, left, top, width, height, *, size=20, bold=False, color=(31, 78, 121), font="Calibri"):
     from pptx.dml.color import RGBColor
     from pptx.util import Pt
@@ -1281,30 +1395,54 @@ def _build_powerpoint(result: dict[str, Any], title: str, language: str, target:
 
     rows = list(result.get("rows") or [])
     columns = list(result.get("columns") or (list(rows[0].keys()) if rows else []))
+    # Los reportes del MES no mandan la bandera: para ellos sigue siendo True.
+    desde_mes = bool(result.get("desde_mes", True))
     compact = compact_report_result(result, sample_size=8)
-    font = _preferred_font(language)
-    prs = Presentation()
-    prs.slide_width = Inches(13.333)
-    prs.slide_height = Inches(7.5)
-    blank = prs.slide_layouts[6]
-    logo = Path(__file__).resolve().parents[2] / "static" / "images" / "ilsan-logo.png"
+    estilo = resolver_estilo(result.get("estilo"), language)
+    font = estilo["fuente"]
+    titulo_rgb = _hex_a_rgb(estilo["color_titulo"])
+    texto_rgb = _hex_a_rgb(estilo["color_texto"], (45, 45, 45))
+    prs = _pptx_base()
+    blank = _pptx_layout_vacio(prs)
+    con_plantilla = plantilla_pptx() is not None
+    # Las medidas salen del ancho real: la plantilla mide 10.83" y las
+    # posiciones fijas de 13.3" se salian de la hoja.
+    MARG = Inches(.6)
+    ANCHO = prs.slide_width - 2 * MARG
+    ALTO = prs.slide_height
+    # Franja util: la plantilla dibuja una linea arriba y otra abajo, y el
+    # contenido tiene que caber ENTRE las dos. Sin plantilla se usa la hoja
+    # completa como siempre.
+    TOPE, PIE, LINEA = _pptx_franja_util(prs, con_plantilla)
+    ALTO_CUERPO = PIE - TOPE
+    # La plantilla ya trae su propia marca; poner otra la duplicaba.
+    logo = (
+        None if con_plantilla
+        else Path(__file__).resolve().parents[2] / "static" / "images" / "ilsan-logo.png"
+    )
 
     def slide_title(slide, value: str):
-        _add_ppt_text(slide, value, Inches(.6), Inches(.3), Inches(11.8), Inches(.65), size=26, bold=True, font=font)
-        if logo.exists():
-            slide.shapes.add_picture(str(logo), Inches(11.9), Inches(.18), width=Inches(.9))
+        alto_titulo = LINEA - Inches(.14) if con_plantilla else Inches(.65)
+        _add_ppt_text(slide, value, MARG, Inches(.08), ANCHO, alto_titulo,
+                      size=20 if con_plantilla else 26, bold=True, color=titulo_rgb, font=font)
+        if logo is not None and logo.exists():
+            slide.shapes.add_picture(str(logo), prs.slide_width - Inches(1.05),
+                                     Inches(.18), width=Inches(.8))
 
     slide = prs.slides.add_slide(blank)
-    _add_ppt_text(slide, title, Inches(.8), Inches(2.2), Inches(11.7), Inches(1.2), size=32, bold=True, font=font)
-    _add_ppt_text(slide, f"{result.get('title')} · {now_local():%Y-%m-%d}", Inches(.85), Inches(3.5), Inches(11), Inches(.6), size=18, color=(90, 90, 90), font=font)
-    if logo.exists():
-        slide.shapes.add_picture(str(logo), Inches(10.8), Inches(5.8), width=Inches(1.5))
+    _add_ppt_text(slide, title, MARG, ALTO / 3, ANCHO, Inches(1.2),
+                  size=32, bold=True, color=titulo_rgb, font=font)
+    _add_ppt_text(slide, f"{result.get('title')} · {now_local():%Y-%m-%d}", MARG,
+                  ALTO / 3 + Inches(1.3), ANCHO, Inches(.6), size=18, color=(90, 90, 90), font=font)
+    if logo is not None and logo.exists():
+        slide.shapes.add_picture(str(logo), prs.slide_width - Inches(2.0),
+                                 PIE - Inches(1.4), width=Inches(1.4))
 
     slide = prs.slides.add_slide(blank)
     slide_title(slide, "Alcance / Scope / 범위")
     filters = [f"{key}: {value}" for key, value in (result.get("filters") or {}).items() if value not in (None, "")]
     scope_lines = [f"Reporte: {result.get('title')}", f"Registros: {len(rows)}", f"Fuente: {result.get('source')}"] + filters[:8]
-    _add_ppt_text(slide, "\n".join(f"• {line}" for line in scope_lines), Inches(.9), Inches(1.3), Inches(11.5), Inches(5.3), size=20, color=(45, 45, 45), font=font)
+    _add_ppt_text(slide, "\n".join(f"• {line}" for line in scope_lines), MARG, TOPE, ANCHO, ALTO_CUERPO, size=20, color=texto_rgb, font=font)
 
     slide = prs.slides.add_slide(blank)
     slide_title(slide, "Indicadores principales / Key KPIs / 주요 지표")
@@ -1312,7 +1450,7 @@ def _build_powerpoint(result: dict[str, Any], title: str, language: str, target:
     lines = [f"Registros consultados: {len(rows)}"]
     for key, values in list(metrics.items())[:8]:
         lines.append(f"{key}: total {values.get('sum')} · mín {values.get('min')} · máx {values.get('max')}")
-    _add_ppt_text(slide, "\n".join(f"• {line}" for line in lines), Inches(.9), Inches(1.3), Inches(11.4), Inches(5.2), size=20, color=(45, 45, 45), font=font)
+    _add_ppt_text(slide, "\n".join(f"• {line}" for line in lines), MARG, TOPE, ANCHO, ALTO_CUERPO, size=20, color=texto_rgb, font=font)
 
     numeric = _numeric_columns(rows, columns)
     categorical = _categorical_columns(rows, columns)
@@ -1332,10 +1470,10 @@ def _build_powerpoint(result: dict[str, Any], title: str, language: str, target:
             data = ChartData()
             data.categories = [label for label, _ in points]
             data.add_series(metric, [value for _, value in points])
-            slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(.8), Inches(1.25), Inches(11.8), Inches(5.5), data)
+            slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, MARG, TOPE, ANCHO, ALTO_CUERPO, data)
             chart_added = True
     if not chart_added:
-        _add_ppt_text(slide, "No hay una combinación categórica y numérica adecuada para una gráfica automática.", Inches(1), Inches(2.4), Inches(11), Inches(1.5), size=22, color=(80, 80, 80), font=font)
+        _add_ppt_text(slide, "No hay una combinación categórica y numérica adecuada para una gráfica automática.", MARG, TOPE, ANCHO, Inches(1.5), size=22, color=(80, 80, 80), font=font)
 
     slide = prs.slides.add_slide(blank)
     slide_title(slide, "Hallazgos verificables / Verified findings / 확인된 결과")
@@ -1344,22 +1482,40 @@ def _build_powerpoint(result: dict[str, Any], title: str, language: str, target:
         findings.append(f"{key}: rango {values.get('min')}–{values.get('max')}; total {values.get('sum')}.")
     if result.get("truncated"):
         findings.append("El resultado alcanzó el límite configurado; se requieren filtros para un análisis completo.")
-    _add_ppt_text(slide, "\n".join(f"• {line}" for line in findings), Inches(.9), Inches(1.3), Inches(11.5), Inches(5.2), size=20, color=(45, 45, 45), font=font)
+    _add_ppt_text(slide, "\n".join(f"• {line}" for line in findings), MARG, TOPE, ANCHO, ALTO_CUERPO, size=20, color=texto_rgb, font=font)
+
+    imagen_generada = result.get("imagen")
+    if imagen_generada:
+        slide = prs.slides.add_slide(blank)
+        slide_title(slide, "Imagen / Image / 이미지")
+        flujo = io.BytesIO(imagen_generada)
+        # Se escala al alto disponible y se centra; el ancho sale de la proporcion.
+        alto_disponible = ALTO_CUERPO
+        marco = slide.shapes.add_picture(flujo, MARG, TOPE, height=alto_disponible)
+        if marco.width > ANCHO:
+            factor = ANCHO / marco.width
+            marco.width, marco.height = ANCHO, int(marco.height * factor)
+        marco.left = int((prs.slide_width - marco.width) / 2)
 
     slide = prs.slides.add_slide(blank)
     slide_title(slide, "Conclusiones / Conclusions / 결론")
-    _add_ppt_text(slide, "• Resultados generados exclusivamente con datos consultados del MES.\n• Validar filtros y periodo antes de tomar decisiones operativas.\n• El archivo puede regenerarse para incorporar datos actuales.", Inches(.9), Inches(1.5), Inches(11.3), Inches(4.5), size=22, color=(45, 45, 45), font=font)
+    origen = (
+        "Resultados generados exclusivamente con datos consultados del MES."
+        if desde_mes
+        else "Resultados generados con los archivos adjuntos al chat; no provienen del MES."
+    )
+    _add_ppt_text(slide, "• " + origen + "\n• Validar filtros y periodo antes de tomar decisiones operativas.\n• El archivo puede regenerarse para incorporar datos actuales.", MARG, TOPE, ANCHO, ALTO_CUERPO, size=22, color=texto_rgb, font=font)
 
     slide = prs.slides.add_slide(blank)
     slide_title(slide, "Fuentes y método / Sources / 출처")
     source_text = (
-        f"Fuente MES: {result.get('source')}\n"
+        f"{'Fuente MES' if desde_mes else 'Fuente'}: {result.get('source')}\n"
         f"Reporte: {result.get('report')}\n"
         f"Filtros: {json.dumps(result.get('filters') or {}, ensure_ascii=False, default=str)}\n"
         f"Registros: {len(rows)}\n"
         f"Generado: {now_local():%Y-%m-%d %H:%M:%S}"
     )
-    _add_ppt_text(slide, source_text, Inches(.9), Inches(1.4), Inches(11.4), Inches(4.8), size=19, color=(45, 45, 45), font=font)
+    _add_ppt_text(slide, source_text, MARG, TOPE, ANCHO, ALTO_CUERPO, size=19, color=texto_rgb, font=font)
     prs.save(target)
 
 
@@ -1376,7 +1532,8 @@ def _artifact_record(public_id: str) -> dict[str, Any] | None:
 
 
 def build_table_excel(
-    *, title: str, columns: list[str], rows: list[dict[str, Any]], language: str = "es"
+    *, title: str, columns: list[str], rows: list[dict[str, Any]], language: str = "es",
+    estilo: dict[str, Any] | None = None, imagen: bytes | None = None,
 ) -> bytes:
     """Excel con formato a partir de una tabla suelta, sin pasar por run_report.
 
@@ -1384,16 +1541,69 @@ def build_table_excel(
     adjuntos: mismo encabezado, autoajuste y blindaje contra formulas que los
     Excel de reporte, pero sin trazabilidad de reporte MES.
     """
+    _activo = resolver_estilo(estilo, language)
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = _safe_title(title, "Datos")[:31]
     _fill_excel_data_sheet(
         sheet, rows, columns,
-        font_name=_preferred_font(language), navy="1F4E79", table_name="TablaDatos",
+        font_name=_activo["fuente"], navy=_activo["relleno_encabezado"],
+        table_name="TablaDatos", estilo_tabla=_activo["tabla_estilo"],
     )
+    if imagen:
+        _insertar_imagen_excel(workbook, imagen, len(columns))
     buffer = io.BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()
+
+
+def _insertar_imagen_excel(workbook, imagen: bytes, columnas: int) -> None:
+    """La imagen va en su propia hoja: sobre los datos taparia celdas."""
+    from openpyxl.drawing.image import Image as ImagenXL
+    from openpyxl.utils import get_column_letter
+
+    hoja = workbook.create_sheet("Imagen")
+    figura = ImagenXL(io.BytesIO(imagen))
+    ancho_max = 900
+    if figura.width > ancho_max:
+        proporcion = ancho_max / figura.width
+        figura.width, figura.height = ancho_max, int(figura.height * proporcion)
+    hoja.add_image(figura, "B2")
+    hoja.column_dimensions[get_column_letter(1)].width = 3
+    return None
+
+
+def build_table_powerpoint(
+    *, title: str, columns: list[str], rows: list[dict[str, Any]], language: str = "es",
+    estilo: dict[str, Any] | None = None, imagen: bytes | None = None,
+) -> bytes:
+    """Presentacion a partir de una tabla suelta, sin pasar por run_report.
+
+    Reutiliza el mismo _build_powerpoint de los reportes MES (portada, tabla y
+    graficas) sintetizando el result que espera; asi el diseno no se duplica.
+    """
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temporal:
+        destino = Path(temporal.name)
+    try:
+        _build_powerpoint(
+            {
+                "rows": rows, "columns": columns, "filters": {}, "truncated": False,
+                # Sin esto la portada y la hoja de fuentes decian "Fuente MES: None",
+                # que ademas seria falso: estos datos NO salieron del MES.
+                "title": title,
+                "source": "Archivos adjuntos al chat",
+                "desde_mes": False,
+                "report": "Tabla armada por el asistente desde los adjuntos",
+                "estilo": estilo,
+                "imagen": imagen,
+            },
+            title, language, destino,
+        )
+        return destino.read_bytes()
+    finally:
+        destino.unlink(missing_ok=True)
 
 
 def create_artifact(
@@ -1500,6 +1710,7 @@ def register_file_artifact(
     title: str,
     language: str = "es",
     source: dict[str, Any] | None = None,
+    row_count: int = 0,
 ) -> dict[str, Any]:
     """Publica un archivo ya construido (no viene de un reporte) como artefacto.
 
@@ -1533,7 +1744,7 @@ def register_file_artifact(
                 _safe_title(title, "Archivo editado"), safe_name, str(target), mime,
                 len(data), hashlib.sha256(data).hexdigest(),
                 json_dumps({"report": None}), json_dumps({}),
-                json_dumps(source or {}), 0, language,
+                json_dumps(source or {}), int(row_count or 0), language,
                 now_local(), retention_deadline(),
             ),
         )

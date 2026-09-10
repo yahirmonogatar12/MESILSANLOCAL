@@ -1147,7 +1147,14 @@ def test_powerpoint_profesional_sin_relaciones_externas(tmp_path):
 
     prs = Presentation(target)
     assert 6 <= len(prs.slides) <= 10
-    assert round(prs.slide_width / prs.slide_height, 2) == round(16 / 9, 2)
+    # El tamano lo define la plantilla corporativa, no un 16:9 fijo: la del
+    # ISEMM mide 10.83x7.5. Sin plantilla se conserva el 16:9 de antes.
+    plantilla = ai_artifacts.plantilla_pptx()
+    if plantilla is None:
+        assert round(prs.slide_width / prs.slide_height, 2) == round(16 / 9, 2)
+    else:
+        base = Presentation(str(plantilla))
+        assert (prs.slide_width, prs.slide_height) == (base.slide_width, base.slide_height)
     all_text = "\n".join(
         shape.text
         for slide in prs.slides

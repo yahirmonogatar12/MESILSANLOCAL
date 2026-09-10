@@ -2,24 +2,65 @@
     'use strict';
 
     const I18N = {
-        es: { assistant:'Asistente',title:'Asistente IA',chat:'Chat',history:'Historial',audit:'Auditoría',limits:'Cuotas',newChat:'Nuevo chat',archive:'Archivar',delete:'Eliminar',deleteConfirm:'¿Eliminar definitivamente este chat y todos sus archivos? Esta acción no se puede deshacer.',deleted:'Conversación eliminada',stopBeforeDelete:'Detén la respuesta antes de eliminar el chat.',message:'Mensaje',placeholder:'Pregunta sobre el MES o solicita un Excel/PowerPoint',stop:'Detener',retry:'Reintentar',send:'Enviar',expand:'Expandir panel',collapse:'Reducir panel',conversations:'Conversaciones',showArchived:'Mostrar archivadas',search:'Buscar',save:'Guardar',welcome:'¿En qué puedo ayudarte con el MES?',welcomeHint:'Puedo explicar módulos, consultar datos autorizados y crear Excel o PowerPoint.',thinking:'Pensando…',reasoning:'Razonando…',consulting:'Consultando datos autorizados…',generating:'Generando archivo…',error:'Ocurrió un error',download:'Descargar',expired:'Expirado',regenerate:'Regenerar',source:'Fuente',rows:'filas',notConfigured:'El administrador debe configurar OPENAI_API_KEY en el servidor.',archived:'Conversación archivada',empty:'No hay conversaciones.',lineProgressTitle:'Meta y avance por área',goal:'Meta',produced:'Producido',output:'Salida',activeLines:'líneas activas',noPlans:'Sin plan cargado',omittedAreas:'Áreas omitidas por permisos',qualityTitle:'Indicadores de calidad',qualityLqcResults:'Resultados LQC',qualityIct:'Historial ICT',qualityLqcRelease:'Liberación LQC',qualityVision:'Historial Vision',inspected:'Inspeccionados',defects:'Defectos',ppm:'PPM',target:'Objetivo',tests:'Pruebas',uniqueUnits:'Piezas únicas',passed:'OK',failed:'NG',passRate:'Rendimiento',scans:'Liberaciones',lots:'Lotes',duplicates:'Duplicados',onTarget:'En objetivo',offTarget:'Fuera de objetivo',noActivity:'Sin actividad',omittedSources:'Fuentes omitidas por permisos'},
-        en: { assistant:'Assistant',title:'AI Assistant',chat:'Chat',history:'History',audit:'Audit',limits:'Quotas',newChat:'New chat',archive:'Archive',delete:'Delete',deleteConfirm:'Permanently delete this chat and all its files? This action cannot be undone.',deleted:'Conversation deleted',stopBeforeDelete:'Stop the response before deleting this chat.',message:'Message',placeholder:'Ask about the MES or request an Excel/PowerPoint',stop:'Stop',retry:'Retry',send:'Send',expand:'Expand panel',collapse:'Reduce panel',conversations:'Conversations',showArchived:'Show archived',search:'Search',save:'Save',welcome:'How can I help you with the MES?',welcomeHint:'I can explain modules, query authorized data, and create Excel or PowerPoint files.',thinking:'Thinking…',reasoning:'Reasoning…',consulting:'Querying authorized data…',generating:'Generating file…',error:'An error occurred',download:'Download',expired:'Expired',regenerate:'Regenerate',source:'Source',rows:'rows',notConfigured:'An administrator must configure OPENAI_API_KEY on the server.',archived:'Conversation archived',empty:'No conversations.',lineProgressTitle:'Target and progress by area',goal:'Target',produced:'Produced',output:'Output',activeLines:'active lines',noPlans:'No plan loaded',omittedAreas:'Areas omitted due to permissions',qualityTitle:'Quality indicators',qualityLqcResults:'LQC Results',qualityIct:'ICT History',qualityLqcRelease:'LQC Release',qualityVision:'Vision History',inspected:'Inspected',defects:'Defects',ppm:'PPM',target:'Target',tests:'Tests',uniqueUnits:'Unique units',passed:'OK',failed:'NG',passRate:'Yield',scans:'Releases',lots:'Lots',duplicates:'Duplicates',onTarget:'On target',offTarget:'Off target',noActivity:'No activity',omittedSources:'Sources omitted due to permissions'},
-        ko: { assistant:'도우미',title:'AI 도우미',chat:'채팅',history:'기록',audit:'감사',limits:'사용량',newChat:'새 채팅',archive:'보관',delete:'삭제',deleteConfirm:'이 채팅과 모든 파일을 영구적으로 삭제할까요? 이 작업은 취소할 수 없습니다.',deleted:'대화가 삭제되었습니다',stopBeforeDelete:'채팅을 삭제하기 전에 응답을 중지하세요.',message:'메시지',placeholder:'MES 질문 또는 Excel/PowerPoint 생성을 요청하세요',stop:'중지',retry:'다시 시도',send:'전송',expand:'패널 확장',collapse:'패널 축소',conversations:'대화 기록',showArchived:'보관된 항목 표시',search:'검색',save:'저장',welcome:'MES 사용을 어떻게 도와드릴까요?',welcomeHint:'모듈 설명, 권한이 있는 데이터 조회, Excel 또는 PowerPoint 생성을 지원합니다.',thinking:'생각 중…',reasoning:'추론 중…',consulting:'권한이 있는 데이터를 조회 중…',generating:'파일 생성 중…',error:'오류가 발생했습니다',download:'다운로드',expired:'만료됨',regenerate:'다시 생성',source:'출처',rows:'행',notConfigured:'관리자가 서버에 OPENAI_API_KEY를 설정해야 합니다.',archived:'대화가 보관되었습니다',empty:'대화가 없습니다.',lineProgressTitle:'영역별 목표 및 진행률',goal:'목표',produced:'생산',output:'출력',activeLines:'가동 라인',noPlans:'등록된 계획 없음',omittedAreas:'권한으로 제외된 영역',qualityTitle:'품질 지표',qualityLqcResults:'LQC 결과',qualityIct:'ICT 이력',qualityLqcRelease:'LQC 출하 승인',qualityVision:'Vision 이력',inspected:'검사 수량',defects:'불량',ppm:'PPM',target:'목표',tests:'검사',uniqueUnits:'고유 제품',passed:'OK',failed:'NG',passRate:'수율',scans:'승인 수량',lots:'로트',duplicates:'중복',onTarget:'목표 이내',offTarget:'목표 초과',noActivity:'활동 없음',omittedSources:'권한으로 제외된 소스'}
+        es: { assistant:'Asistente',title:'Asistente IA',chat:'Chat',history:'Historial',audit:'Auditoría',limits:'Cuotas',newChat:'Nuevo chat',archive:'Archivar',delete:'Eliminar',deleteConfirm:'¿Eliminar definitivamente este chat y todos sus archivos? Esta acción no se puede deshacer.',deleted:'Conversación eliminada',stopBeforeDelete:'Detén la respuesta antes de eliminar el chat.',message:'Mensaje',placeholder:'Pregunta, o pega una captura o archivo con Ctrl+V',stop:'Detener',retry:'Reintentar',send:'Enviar',expand:'Expandir panel',collapse:'Reducir panel',conversations:'Conversaciones',showArchived:'Mostrar archivadas',search:'Buscar',save:'Guardar',welcome:'¿En qué puedo ayudarte con el MES?',welcomeHint:'Puedo explicar módulos, consultar datos autorizados y crear Excel o PowerPoint.',thinking:'Pensando…',reasoning:'Razonando…',consulting:'Consultando datos autorizados…',generating:'Generando archivo…',error:'Ocurrió un error',download:'Descargar',expired:'Expirado',regenerate:'Regenerar',source:'Fuente',rows:'filas',notConfigured:'El administrador debe configurar OPENAI_API_KEY en el servidor.',archived:'Conversación archivada',empty:'No hay conversaciones.',lineProgressTitle:'Meta y avance por área',goal:'Meta',produced:'Producido',output:'Salida',activeLines:'líneas activas',noPlans:'Sin plan cargado',omittedAreas:'Áreas omitidas por permisos',qualityTitle:'Indicadores de calidad',qualityLqcResults:'Resultados LQC',qualityIct:'Historial ICT',qualityLqcRelease:'Liberación LQC',qualityVision:'Historial Vision',inspected:'Inspeccionados',defects:'Defectos',ppm:'PPM',target:'Objetivo',tests:'Pruebas',uniqueUnits:'Piezas únicas',passed:'OK',failed:'NG',passRate:'Rendimiento',scans:'Liberaciones',lots:'Lotes',duplicates:'Duplicados',onTarget:'En objetivo',offTarget:'Fuera de objetivo',noActivity:'Sin actividad',omittedSources:'Fuentes omitidas por permisos'},
+        en: { assistant:'Assistant',title:'AI Assistant',chat:'Chat',history:'History',audit:'Audit',limits:'Quotas',newChat:'New chat',archive:'Archive',delete:'Delete',deleteConfirm:'Permanently delete this chat and all its files? This action cannot be undone.',deleted:'Conversation deleted',stopBeforeDelete:'Stop the response before deleting this chat.',message:'Message',placeholder:'Ask, or paste a screenshot or file with Ctrl+V',stop:'Stop',retry:'Retry',send:'Send',expand:'Expand panel',collapse:'Reduce panel',conversations:'Conversations',showArchived:'Show archived',search:'Search',save:'Save',welcome:'How can I help you with the MES?',welcomeHint:'I can explain modules, query authorized data, and create Excel or PowerPoint files.',thinking:'Thinking…',reasoning:'Reasoning…',consulting:'Querying authorized data…',generating:'Generating file…',error:'An error occurred',download:'Download',expired:'Expired',regenerate:'Regenerate',source:'Source',rows:'rows',notConfigured:'An administrator must configure OPENAI_API_KEY on the server.',archived:'Conversation archived',empty:'No conversations.',lineProgressTitle:'Target and progress by area',goal:'Target',produced:'Produced',output:'Output',activeLines:'active lines',noPlans:'No plan loaded',omittedAreas:'Areas omitted due to permissions',qualityTitle:'Quality indicators',qualityLqcResults:'LQC Results',qualityIct:'ICT History',qualityLqcRelease:'LQC Release',qualityVision:'Vision History',inspected:'Inspected',defects:'Defects',ppm:'PPM',target:'Target',tests:'Tests',uniqueUnits:'Unique units',passed:'OK',failed:'NG',passRate:'Yield',scans:'Releases',lots:'Lots',duplicates:'Duplicates',onTarget:'On target',offTarget:'Off target',noActivity:'No activity',omittedSources:'Sources omitted due to permissions'},
+        ko: { assistant:'도우미',title:'AI 도우미',chat:'채팅',history:'기록',audit:'감사',limits:'사용량',newChat:'새 채팅',archive:'보관',delete:'삭제',deleteConfirm:'이 채팅과 모든 파일을 영구적으로 삭제할까요? 이 작업은 취소할 수 없습니다.',deleted:'대화가 삭제되었습니다',stopBeforeDelete:'채팅을 삭제하기 전에 응답을 중지하세요.',message:'메시지',placeholder:'질문하거나 Ctrl+V로 캡처/파일을 붙여넣으세요',stop:'중지',retry:'다시 시도',send:'전송',expand:'패널 확장',collapse:'패널 축소',conversations:'대화 기록',showArchived:'보관된 항목 표시',search:'검색',save:'저장',welcome:'MES 사용을 어떻게 도와드릴까요?',welcomeHint:'모듈 설명, 권한이 있는 데이터 조회, Excel 또는 PowerPoint 생성을 지원합니다.',thinking:'생각 중…',reasoning:'추론 중…',consulting:'권한이 있는 데이터를 조회 중…',generating:'파일 생성 중…',error:'오류가 발생했습니다',download:'다운로드',expired:'만료됨',regenerate:'다시 생성',source:'출처',rows:'행',notConfigured:'관리자가 서버에 OPENAI_API_KEY를 설정해야 합니다.',archived:'대화가 보관되었습니다',empty:'대화가 없습니다.',lineProgressTitle:'영역별 목표 및 진행률',goal:'목표',produced:'생산',output:'출력',activeLines:'가동 라인',noPlans:'등록된 계획 없음',omittedAreas:'권한으로 제외된 영역',qualityTitle:'품질 지표',qualityLqcResults:'LQC 결과',qualityIct:'ICT 이력',qualityLqcRelease:'LQC 출하 승인',qualityVision:'Vision 이력',inspected:'검사 수량',defects:'불량',ppm:'PPM',target:'목표',tests:'검사',uniqueUnits:'고유 제품',passed:'OK',failed:'NG',passRate:'수율',scans:'승인 수량',lots:'로트',duplicates:'중복',onTarget:'목표 이내',offTarget:'목표 초과',noActivity:'활동 없음',omittedSources:'권한으로 제외된 소스'}
     };
 
     // Mismo catalogo que _ATTACH_KINDS en ai_assistant.py.
-    const ATTACH_EXTENSIONS = ['.xlsx','.xlsm','.pdf','.png','.jpg','.jpeg','.webp','.gif','.csv','.txt','.md','.json','.zip','.rar'];
+    const ATTACH_EXTENSIONS = ['.xlsx','.xlsm','.pptx','.pdf','.png','.jpg','.jpeg','.webp','.gif','.csv','.txt','.md','.json','.zip','.rar'];
     // Tope de archivos por mensaje. El backend reparte un presupuesto de texto
     // comun, asi que muchos archivos grandes se truncan antes de llegar todos.
     const MAX_ATTACH_FILES = 100;
     const attachKind = ext => (
         ['.xlsx','.xlsm'].includes(ext) ? 'excel'
+        : ext === '.pptx' ? 'pptx'
         : ext === '.pdf' ? 'pdf'    
         : ['.png','.jpg','.jpeg','.webp','.gif'].includes(ext) ? 'imagen'
         : ['.zip','.rar'].includes(ext) ? 'comprimido'
         : 'texto'
     );
     const attachLabel = filename => (String(filename).split('.').pop() || 'DOC').toUpperCase().slice(0, 4);
+
+    const MIME_A_EXTENSION = {
+        'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp',
+        'image/gif': '.gif',
+        'application/pdf': '.pdf',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+        'text/csv': '.csv', 'text/plain': '.txt', 'application/json': '.json',
+        'application/zip': '.zip'
+    };
+    // Una captura pegada llega como File sin nombre o como 'image.png'; se le
+    // pone uno con fecha para que se distinga en el chat y pase la validacion.
+    const nombrarPegado = (file, indice) => {
+        const actual = String(file.name || '');
+        const tieneExtension = ATTACH_EXTENSIONS.includes(
+            actual.toLowerCase().slice(actual.toLowerCase().lastIndexOf('.')));
+        if (tieneExtension && !/^image\.(png|jpe?g|webp|gif)$/i.test(actual)) return file;
+        const ext = MIME_A_EXTENSION[file.type] || '.png';
+        const t = new Date();
+        const sello = `${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, '0')}`
+            + `${String(t.getDate()).padStart(2, '0')}-${String(t.getHours()).padStart(2, '0')}`
+            + `${String(t.getMinutes()).padStart(2, '0')}${String(t.getSeconds()).padStart(2, '0')}`;
+        const sufijo = indice ? `-${indice + 1}` : '';
+        return new File([file], `captura-${sello}${sufijo}${ext}`, { type: file.type });
+    };
+    // Del portapapeles salen archivos por dos caminos segun navegador y origen.
+    const archivosDelPortapapeles = data => {
+        const encontrados = [];
+        for (const file of Array.from(data?.files || [])) {
+            if (file) encontrados.push(file);
+        }
+        if (!encontrados.length) {
+            for (const item of Array.from(data?.items || [])) {
+                if (item.kind !== 'file') continue;
+                const file = item.getAsFile();
+                if (file) encontrados.push(file);
+            }
+        }
+        return encontrados.map(nombrarPegado);
+    };
 
     class MESAI {
         constructor(root) {
@@ -120,6 +161,14 @@
                 this.panel.addEventListener('dragleave', event => {
                     // Solo al salir del panel; entre hijos relatedTarget sigue dentro.
                     if (!this.panel.contains(event.relatedTarget)) this.panel.classList.remove('ai-dragover');
+                });
+                // Ctrl+V: capturas y archivos del portapapeles entran igual que
+                // el drag & drop. Si no hay archivos no se toca el pegado normal.
+                this.panel.addEventListener('paste', event => {
+                    const archivos = archivosDelPortapapeles(event.clipboardData);
+                    if (!archivos.length) return;
+                    event.preventDefault();
+                    this.uploadPlanFiles(archivos);
                 });
                 this.panel.addEventListener('drop', event => {
                     event.preventDefault();
@@ -805,8 +854,23 @@
             const card = document.createElement('div'); card.className = 'ai-artifact';
             const title = document.createElement('div'); title.className = 'ai-artifact-title'; title.textContent = `${(artifact.type || '').toUpperCase()} · ${artifact.title || artifact.filename}`;
             const meta = document.createElement('div'); meta.className = 'ai-artifact-meta';
-            meta.textContent = `${artifact.row_count || 0} ${this.t('rows')} · ${this.fileSize(artifact.size_bytes)} · ${this.formatDate(artifact.expires_at)}`;
+            // "0 filas" no significa nada en una imagen.
+            const esImagen = ['png','jpg','jpeg','webp','gif'].includes(String(artifact.type || '').toLowerCase());
+            meta.textContent = esImagen
+                ? `${this.fileSize(artifact.size_bytes)} · ${this.formatDate(artifact.expires_at)}`
+                : `${artifact.row_count || 0} ${this.t('rows')} · ${this.fileSize(artifact.size_bytes)} · ${this.formatDate(artifact.expires_at)}`;
             card.append(title, meta);
+            // Vista previa: una imagen se juzga viendola, no descargandola.
+            if (esImagen && artifact.status === 'ready' && artifact.download_url) {
+                const figura = document.createElement('img');
+                figura.className = 'ai-artifact-preview';
+                // ?inline=1 muestra sin registrar una descarga en la auditoria.
+                figura.src = artifact.download_url + '?inline=1';
+                figura.alt = artifact.title || artifact.filename || 'imagen generada';
+                figura.loading = 'lazy';
+                figura.addEventListener('click', () => window.open(artifact.download_url + '?inline=1', '_blank', 'noopener'));
+                card.appendChild(figura);
+            }
             if (artifact.source) {
                 const source = document.createElement('div'); source.className = 'ai-artifact-meta';
                 source.textContent = `${this.t('source')}: ${artifact.source}`; card.appendChild(source);
@@ -1636,7 +1700,9 @@
             if (event === 'artifact_ready') this.appendArtifact(data, this.activeAssistantBubble?.parentElement);
             if (event === 'visualization') this.appendVisualization(data, this.activeAssistantBubble?.parentElement);
             if (event === 'artifact_error') { this.setStatus(''); this.notice(data.message || this.t('error')); }
-            if (event === 'usage') this.updateUsage(data, this.bootstrap?.limits);
+            // 'usage' trae solo esta respuesta; 'usage_diaria' el acumulado del dia,
+            // que es contra lo que se compara la cuota.
+            if (event === 'usage_diaria') this.updateUsage(data, data.limits || this.bootstrap?.limits);
             if (event === 'error') {
                 this.stopThinkingIndicator();
                 this.activeAssistantText += `${this.activeAssistantText ? '\n' : ''}${this.t('error')}: ${data.message || ''}`;
