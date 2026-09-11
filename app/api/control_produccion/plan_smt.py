@@ -86,26 +86,39 @@ def crear_tabla_plan_smt_v2():
         logger.error(f"Error creando tabla plan_smt: {e}")
 
 
-def _ensure_qr_required_count_column():
-    """Migracion idempotente: agrega qr_required_count a plan_smt si falta.
+# Rangos de las columnas que lee ESCANEO_INPUT (interlock SMT).
+# qr_required_count: QR distintos por planilla; 0 = el modelo no lleva QR.
+# array_size: PCBs por llegada (panel); ESCANEO trata 0 como 1.
+QR_RANGE = (0, 20)
+ARRAY_RANGE = (0, 100)
 
-    Numero de QR distintos requeridos por planilla para liberar el interlock en
-    SMT. Default 1 => planes existentes mantienen el comportamiento actual.
-    """
+
+def _int_en_rango(value, default, lo, hi):
+    """int acotado a [lo, hi]; vacio/invalido -> default. 0 es valido: no usar `or`."""
     try:
-        existing = execute_query(
-            "SHOW COLUMNS FROM plan_smt LIKE %s",
-            ("qr_required_count",),
-            fetch="one",
-        )
-        if not existing:
-            execute_query(
-                "ALTER TABLE plan_smt "
-                "ADD COLUMN qr_required_count INT NOT NULL DEFAULT 1"
+        n = int(float(value))
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return max(lo, min(n, hi))
+
+
+def _ensure_qr_required_count_column():
+    """Migracion idempotente: agrega qr_required_count y array_size si faltan.
+
+    Default 1 => planes existentes mantienen el comportamiento actual.
+    """
+    for col in ("qr_required_count", "array_size"):
+        try:
+            existing = execute_query(
+                "SHOW COLUMNS FROM plan_smt LIKE %s", (col,), fetch="one"
             )
-            logger.info("Columna plan_smt.qr_required_count agregada")
-    except Exception as e:
-        logger.error(f"Error asegurando columna qr_required_count: {e}")
+            if not existing:
+                execute_query(
+                    f"ALTER TABLE plan_smt ADD COLUMN {col} INT NOT NULL DEFAULT 1"
+                )
+                logger.info(f"Columna plan_smt.{col} agregada")
+        except Exception as e:
+            logger.error(f"Error asegurando columna {col}: {e}")
 
 
 # crear_tabla_plan_smt_v2 movido a app/startup_init.py
@@ -134,7 +147,8 @@ def api_plan_smt_list():
             "SELECT id, lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
             "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
             "COALESCE(produced_count,0) AS produced_count, COALESCE(output,0) AS output, COALESCE(entregadas_main,0) AS entregadas_main, "
-            "status, group_no, sequence, routing, COALESCE(qr_required_count,1) AS qr_required_count FROM plan_smt"
+            "status, group_no, sequence, routing, COALESCE(qr_required_count,1) AS qr_required_count, "
+            "COALESCE(array_size,1) AS array_size FROM plan_smt"
         )
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -173,8 +187,8 @@ def api_plan_smt_list():
                     "routing": r.get("routing") if isinstance(r, dict) else r[20],
                     "qr_required_count": (
                         r.get("qr_required_count") if isinstance(r, dict) else r[21]
-                    )
-                    or 1,
+                    ),
+                    "array_size": r.get("array_size") if isinstance(r, dict) else r[22],
                 }
             )
         return jsonify(data)
@@ -235,17 +249,13 @@ def api_plan_smt_create():
         sequence = data.get("sequence", 1)
         process = data.get("process") or "SMT"
 
-        # QR requeridos por planilla (multi-QR SMT). Default 1, acotado 1..20.
-        try:
-            qr_required_count = int(data.get("qr_required_count") or 1)
-        except (TypeError, ValueError):
-            qr_required_count = 1
-        qr_required_count = max(1, min(qr_required_count, 20))
+        qr_required_count = _int_en_rango(data.get("qr_required_count"), 1, *QR_RANGE)
+        array_size = _int_en_rango(data.get("array_size"), 1, *ARRAY_RANGE)
 
         sql = (
             "INSERT INTO plan_smt (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
-            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, created_at) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,%s,NOW())"
+            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, array_size, created_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,%s,%s,NOW())"
         )
         params = (
             lot_no,
@@ -264,6 +274,7 @@ def api_plan_smt_create():
             group_no,
             sequence,
             qr_required_count,
+            array_size,
         )
 
         execute_query(sql, params)
@@ -333,16 +344,15 @@ def api_plan_smt_update():
             "group_no",
             "sequence",
             "qr_required_count",
+            "array_size",
         ]
         for field in allowed_fields:
             if field in data:
                 value = data[field]
                 if field == "qr_required_count":
-                    try:
-                        value = int(value or 1)
-                    except (TypeError, ValueError):
-                        value = 1
-                    value = max(1, min(value, 20))
+                    value = _int_en_rango(value, 1, *QR_RANGE)
+                elif field == "array_size":
+                    value = _int_en_rango(value, 1, *ARRAY_RANGE)
                 sets.append(f"{field} = %s")
                 vals.append(value)
         if not sets:
@@ -475,7 +485,9 @@ def api_plan_smt_reschedule():
                 f"""
             SELECT lot_no, wo_code, po_code, working_date, line, model_code,
                    part_no, project, process, plan_count, produced_count, ct, uph,
-                   routing, status, group_no, sequence, shift
+                   routing, status, group_no, sequence, shift,
+                   COALESCE(qr_required_count, 1) AS qr_required_count,
+                   COALESCE(array_size, 1) AS array_size
             FROM plan_smt WHERE lot_no IN ({placeholders})
         """,
                 tuple(lot_nos),
@@ -518,8 +530,8 @@ def api_plan_smt_reschedule():
                 INSERT INTO plan_smt
                 (lot_no, wo_code, po_code, working_date, line, shift, model_code,
                  part_no, project, process, plan_count, ct, uph, routing, status,
-                 group_no, sequence, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PLAN', %s, %s, NOW())
+                 group_no, sequence, qr_required_count, array_size, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PLAN', %s, %s, %s, %s, NOW())
             """,
                 (
                     nuevo_lot,
@@ -538,6 +550,8 @@ def api_plan_smt_reschedule():
                     plan.get("routing"),
                     plan.get("group_no"),
                     plan.get("sequence"),
+                    plan.get("qr_required_count"),
+                    plan.get("array_size"),
                 ),
             )
 
@@ -594,6 +608,7 @@ def api_plan_smt_export_excel():
             "Output",
             "Status",
             "QR requeridos",
+            "Array",
         ]
         ws.append(headers)
         for c in ws[1]:
@@ -622,6 +637,7 @@ def api_plan_smt_export_excel():
                     p.get("output", ""),
                     p.get("status", ""),
                     p.get("qr_required_count", 1),
+                    p.get("array_size", 1),
                 ]
             )
         bio = io.BytesIO()
@@ -708,18 +724,10 @@ def api_plan_smt_import_excel():
                     )
                 except Exception:
                     plan_count = 0
-                try:
-                    qr_required_count = int(
-                        float(
-                            row.get(
-                                "qr_required_count",
-                                row.get("qr_requeridos", row.get("qr", 1)),
-                            )
-                            or 1
-                        )
-                    )
-                except Exception:
-                    qr_required_count = 1
+                qr_raw = row.get(
+                    "qr_required_count", row.get("qr_requeridos", row.get("qr"))
+                )
+                array_raw = row.get("array_size", row.get("array"))
             else:
                 line_raw = str(row.iloc[0]).strip() if len(row) > 0 else ""
                 part_no = str(row.iloc[1]).strip() if len(row) > 1 else ""
@@ -728,11 +736,9 @@ def api_plan_smt_import_excel():
                     plan_count = int(float(row.iloc[3])) if len(row) > 3 else 0
                 except Exception:
                     plan_count = 0
-                # Columna 4 opcional: QR requeridos (default 1 si no viene).
-                try:
-                    qr_required_count = int(float(row.iloc[4])) if len(row) > 4 else 1
-                except Exception:
-                    qr_required_count = 1
+                # Columnas 4 y 5 opcionales: QR requeridos y Array (default 1).
+                qr_raw = row.iloc[4] if len(row) > 4 else None
+                array_raw = row.iloc[5] if len(row) > 5 else None
 
             if (
                 not part_no
@@ -746,15 +752,14 @@ def api_plan_smt_import_excel():
             if shift == "NAN" or not shift:
                 shift = "DIA"
 
-            qr_required_count = max(1, min(qr_required_count, 20))
-
             parsed_rows.append(
                 {
                     "line": line,
                     "part_no": part_no,
                     "shift": shift,
                     "plan_count": plan_count,
-                    "qr_required_count": qr_required_count,
+                    "qr_required_count": _int_en_rango(qr_raw, 1, *QR_RANGE),
+                    "array_size": _int_en_rango(array_raw, 1, *ARRAY_RANGE),
                 }
             )
 
@@ -831,15 +836,16 @@ def api_plan_smt_import_excel():
                     "PLAN",  # status
                     1,  # group_no
                     idx,  # sequence
-                    item.get("qr_required_count", 1),  # qr_required_count
+                    item["qr_required_count"],  # qr_required_count
+                    item["array_size"],  # array_size
                 )
             )
 
         insert_prefix = (
             "INSERT INTO plan_smt (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
-            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, created_at) VALUES "
+            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, array_size, created_at) VALUES "
         )
-        row_placeholders = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())"
+        row_placeholders = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())"
         insert_batch_size = 200
         imported = 0
 
