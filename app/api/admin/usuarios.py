@@ -75,7 +75,11 @@ from flask import (
 )
 
 from app.api.shared import auth_system
-from app.auth_system import ECO_APPROVE_PERMISSION, ECO_CREATE_PERMISSION
+from app.auth_system import (
+    AI_DROPDOWN_PERMISSIONS,
+    ECO_APPROVE_PERMISSION,
+    ECO_CREATE_PERMISSION,
+)
 from app.db_mysql import get_db_connection
 from app.api.pda.shipping import (
     AVAILABLE_CARGOS,
@@ -114,6 +118,7 @@ DEFAULT_USER_CARGOS = [
 EXTRA_DROPDOWN_PERMISSIONS = [
     ECO_CREATE_PERMISSION,
     ECO_APPROVE_PERMISSION,
+    *AI_DROPDOWN_PERMISSIONS,
 ]
 
 

@@ -40,6 +40,35 @@ ECO_CREATE_PERMISSION = {
     'descripcion': 'Permite crear, importar, cancelar y borrar ECOs desde Control de BOM',
 }
 
+# Permisos del asistente IA. No salen de los archivos LISTAS: viven aqui para
+# que sincronizar_permisos_dropdowns no los marque obsoletos y los apague.
+AI_DROPDOWN_PERMISSIONS = [
+    {
+        'pagina': 'MAIN_TEMPLATE',
+        'seccion': 'Asistente IA',
+        'boton': 'Usar asistente IA',
+        'descripcion': 'Permite abrir el asistente IA y hacer consultas.',
+    },
+    {
+        'pagina': 'MAIN_TEMPLATE',
+        'seccion': 'Asistente IA',
+        'boton': 'Generar archivos IA',
+        'descripcion': 'Permite generar Excel, PowerPoint e imagenes desde el asistente.',
+    },
+    {
+        'pagina': 'MAIN_TEMPLATE',
+        'seccion': 'Asistente IA',
+        'boton': 'Auditar conversaciones IA',
+        'descripcion': 'Permite revisar conversaciones y auditoria del asistente.',
+    },
+    {
+        'pagina': 'MAIN_TEMPLATE',
+        'seccion': 'Asistente IA',
+        'boton': 'Administrar cuotas IA',
+        'descripcion': 'Permite administrar limites y cuotas de uso del asistente.',
+    },
+]
+
 ECO_APPROVE_PERMISSION = {
     'pagina': 'LISTA_INFORMACIONBASICA',
     'seccion': 'Control de produccion',

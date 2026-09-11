@@ -268,9 +268,10 @@ def init_ai_assistant_tables() -> None:
         ):
             cursor.execute(
                 """
-                INSERT IGNORE INTO permisos_botones
+                INSERT INTO permisos_botones
                     (pagina, seccion, boton, descripcion, activo, departamento)
                 VALUES (%s, %s, %s, %s, 1, NULL)
+                ON DUPLICATE KEY UPDATE activo = 1
                 """,
                 (AI_PAGE, AI_SECTION, button, description),
             )
