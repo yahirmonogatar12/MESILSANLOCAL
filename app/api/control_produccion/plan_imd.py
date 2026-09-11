@@ -33,6 +33,7 @@ from app.api.shared.bom_revisions import (
     _validate_plan_bom_assignment,
 )
 from app.api.shared.plan_lot_no import _fp_safe_date
+from app.api.control_produccion.plan_smt import ARRAY_RANGE, QR_RANGE, _int_en_rango
 
 
 # Decorador de auth centralizado (antes era un proxy duplicado en cada
@@ -100,7 +101,8 @@ def api_plan_imd_list():
             "SELECT id, lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
             "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
             "COALESCE(produced_count,0) AS produced_count, COALESCE(output,0) AS output, COALESCE(entregadas_main,0) AS entregadas_main, "
-            "status, group_no, sequence, routing, assigned_bom_rev, assigned_bom_rev_by, assigned_bom_rev_at FROM plan_imd"
+            "status, group_no, sequence, routing, assigned_bom_rev, assigned_bom_rev_by, assigned_bom_rev_at, "
+            "COALESCE(qr_required_count,1) AS qr_required_count, COALESCE(array_size,1) AS array_size FROM plan_imd"
         )
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -142,6 +144,8 @@ def api_plan_imd_list():
                     "assigned_bom_rev_at": str(
                         (r.get("assigned_bom_rev_at") if isinstance(r, dict) else r[23]) or ""
                     ),
+                    "qr_required_count": r.get("qr_required_count") if isinstance(r, dict) else r[24],
+                    "array_size": r.get("array_size") if isinstance(r, dict) else r[25],
                 }
             )
         return jsonify(data)
@@ -197,11 +201,13 @@ def api_plan_imd_create():
         group_no = data.get("group_no", 1)
         sequence = data.get("sequence", 1)
         process = data.get("process") or "IMD"
+        qr_required_count = _int_en_rango(data.get("qr_required_count"), 1, *QR_RANGE)
+        array_size = _int_en_rango(data.get("array_size"), 1, *ARRAY_RANGE)
 
         sql = (
             "INSERT INTO plan_imd (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
-            "plan_count, ct, uph, status, group_no, sequence, created_at) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,NOW())"
+            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, array_size, created_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,%s,%s,NOW())"
         )
         params = (
             lot_no,
@@ -219,6 +225,8 @@ def api_plan_imd_create():
             uph,
             group_no,
             sequence,
+            qr_required_count,
+            array_size,
         )
 
         execute_query(sql, params)
@@ -298,12 +306,19 @@ def api_plan_imd_update():
             "uph",
             "group_no",
             "sequence",
+            "qr_required_count",
+            "array_size",
         ]
 
         for field in allowed_fields:
             if field in data:
+                value = data[field]
+                if field == "qr_required_count":
+                    value = _int_en_rango(value, 1, *QR_RANGE)
+                elif field == "array_size":
+                    value = _int_en_rango(value, 1, *ARRAY_RANGE)
                 sets.append(f"{field} = %s")
-                vals.append(data[field])
+                vals.append(value)
         if "assigned_bom_rev" in data:
             assigned_bom_rev, assignment_error = _validate_plan_bom_assignment(
                 "plan_imd",
@@ -509,7 +524,9 @@ def api_plan_imd_reschedule():
                 f"""
             SELECT lot_no, wo_code, po_code, working_date, line, model_code,
                    part_no, project, process, plan_count, produced_count, ct, uph,
-                   routing, status, group_no, sequence, shift
+                   routing, status, group_no, sequence, shift,
+                   COALESCE(qr_required_count, 1) AS qr_required_count,
+                   COALESCE(array_size, 1) AS array_size
             FROM plan_imd WHERE lot_no IN ({placeholders})
         """,
                 tuple(lot_nos),
@@ -554,8 +571,8 @@ def api_plan_imd_reschedule():
                 INSERT INTO plan_imd
                 (lot_no, wo_code, po_code, working_date, line, shift, model_code,
                  part_no, project, process, plan_count, ct, uph, routing, status,
-                 group_no, sequence, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PLAN', %s, %s, NOW())
+                 group_no, sequence, qr_required_count, array_size, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PLAN', %s, %s, %s, %s, NOW())
             """,
                 (
                     nuevo_lot,
@@ -574,6 +591,8 @@ def api_plan_imd_reschedule():
                     plan.get("routing"),
                     plan.get("group_no"),
                     plan.get("sequence"),
+                    plan.get("qr_required_count"),
+                    plan.get("array_size"),
                 ),
             )
 
@@ -631,6 +650,8 @@ def api_plan_imd_export_excel():
             "Inicio",
             "Fin",
             "Grupo",
+            "QR requeridos",
+            "Array",
         ]
         ws.append(headers)
         for c in ws[1]:
@@ -662,6 +683,8 @@ def api_plan_imd_export_excel():
                     p.get("inicio", ""),
                     p.get("fin", ""),
                     p.get("grupo", ""),
+                    p.get("qr_required_count", 1),
+                    p.get("array_size", 1),
                 ]
             )
         bio = io.BytesIO()
@@ -746,6 +769,10 @@ def api_plan_imd_import_excel():
                     )
                 except Exception:
                     plan_count = 0
+                qr_raw = row.get(
+                    "qr_required_count", row.get("qr_requeridos", row.get("qr"))
+                )
+                array_raw = row.get("array_size", row.get("array"))
             else:
                 line_raw = str(row.iloc[0]).strip() if len(row) > 0 else ""
                 part_no = str(row.iloc[1]).strip() if len(row) > 1 else ""
@@ -754,6 +781,9 @@ def api_plan_imd_import_excel():
                     plan_count = int(float(row.iloc[3])) if len(row) > 3 else 0
                 except Exception:
                     plan_count = 0
+                # Columnas 4 y 5 opcionales: QR requeridos y Array (default 1).
+                qr_raw = row.iloc[4] if len(row) > 4 else None
+                array_raw = row.iloc[5] if len(row) > 5 else None
 
             if (
                 not part_no
@@ -773,6 +803,8 @@ def api_plan_imd_import_excel():
                     "part_no": part_no,
                     "shift": shift,
                     "plan_count": plan_count,
+                    "qr_required_count": _int_en_rango(qr_raw, 1, *QR_RANGE),
+                    "array_size": _int_en_rango(array_raw, 1, *ARRAY_RANGE),
                 }
             )
 
@@ -844,14 +876,16 @@ def api_plan_imd_import_excel():
                     "PLAN",
                     1,
                     idx,
+                    item["qr_required_count"],
+                    item["array_size"],
                 )
             )
 
         insert_prefix = (
             "INSERT INTO plan_imd (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
-            "plan_count, ct, uph, status, group_no, sequence, created_at) VALUES "
+            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, array_size, created_at) VALUES "
         )
-        row_placeholders = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())"
+        row_placeholders = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())"
         insert_batch_size = 200
         imported = 0
 

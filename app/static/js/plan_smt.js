@@ -663,7 +663,9 @@ async function exportarExcelSMT() {
       uph: p.uph,
       plan_count: p.plan_count,
       output: p.output,
-      status: p.status
+      status: p.status,
+      qr_required_count: p.qr_required_count,
+      array_size: p.array_size
     }));
     
     const response = await fetch('/api/plan-smt/export-excel', {

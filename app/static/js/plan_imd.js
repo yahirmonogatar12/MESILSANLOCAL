@@ -247,6 +247,8 @@ function renderTableIMD(plans) {
           <td>${plan.ct || 0}</td>
           <td>${plan.uph || 0}</td>
           <td>${plan.plan_count || 0}</td>
+          <td style="text-align:center; ${(plan.qr_required_count ?? 1) !== 1 ? 'color:#3498db; font-weight:bold;' : ''}">${plan.qr_required_count ?? 1}</td>
+          <td style="text-align:center; ${(plan.array_size ?? 1) !== 1 ? 'color:#3498db; font-weight:bold;' : ''}">${plan.array_size ?? 1}</td>
           <td>${plan.produced_count || 0}</td>
           <td><span class="status-badge ${statusClass}">${plan.status || 'PLAN'}</span></td>
           <td>${plan.shift || 'DIA'}</td>
@@ -396,6 +398,8 @@ async function openEditModalIMD(planId) {
             </div>
             <div><label style="color: #888; font-size: 12px;">Part No</label><input type="text" name="part_no" id="imd-edit-part_no" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
             <div><label style="color: #888; font-size: 12px;">Cantidad</label><input type="number" name="plan_count" id="imd-edit-plan_count" min="0" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
+            <div><label style="color: #888; font-size: 12px;">QR requeridos</label><input type="number" name="qr_required_count" id="imd-edit-qr_required_count" min="0" max="20" value="1" title="QR distintos por planilla para liberar la banda (0 = modelo sin QR)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
+            <div><label style="color: #888; font-size: 12px;">Array</label><input type="number" name="array_size" id="imd-edit-array_size" min="0" max="100" value="1" title="PCBs por panel (array)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
             <div style="grid-column: 1 / -1;"><label style="color: #888; font-size: 12px;">Revision BOM</label><select name="assigned_bom_rev" id="imd-edit-assigned_bom_rev" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"><option value="">Automatico - revision vigente</option></select></div>
           </div>
           <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
@@ -418,6 +422,8 @@ async function openEditModalIMD(planId) {
   document.getElementById('imd-edit-shift').value = plan.shift || 'DIA';
   document.getElementById('imd-edit-part_no').value = plan.part_no || '';
   document.getElementById('imd-edit-plan_count').value = plan.plan_count || 0;
+  document.getElementById('imd-edit-qr_required_count').value = plan.qr_required_count ?? 1;
+  document.getElementById('imd-edit-array_size').value = plan.array_size ?? 1;
   await loadBomRevisionOptionsIMD(
     plan.part_no,
     plan.assigned_bom_rev,
@@ -454,6 +460,8 @@ async function updatePlanIMD(formData) {
       shift: formData.get('shift'),
       part_no: partNo,
       plan_count: parseInt(formData.get('plan_count'), 10) || 0,
+      qr_required_count: intEnRangoIMD(formData.get('qr_required_count'), 1, 0, 20),
+      array_size: intEnRangoIMD(formData.get('array_size'), 1, 0, 100),
       assigned_bom_rev: formData.get('assigned_bom_rev') || ''
     };
 
@@ -617,6 +625,14 @@ function createModalsInBodyIMD() {
               <label style="color: #888; font-size: 12px;">Plan Count *</label>
               <input type="number" name="plan_count" value="0" required style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
             </div>
+            <div class="form-group">
+              <label style="color: #888; font-size: 12px;">QR requeridos</label>
+              <input type="number" name="qr_required_count" value="1" min="0" max="20" title="QR distintos por planilla para liberar la banda (0 = modelo sin QR)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
+            </div>
+            <div class="form-group">
+              <label style="color: #888; font-size: 12px;">Array</label>
+              <input type="number" name="array_size" value="1" min="0" max="100" title="PCBs por panel (array)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
+            </div>
           </div>
           <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
             <button type="submit" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Crear Plan</button>
@@ -628,6 +644,12 @@ function createModalsInBodyIMD() {
   `;
   
   document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// 0 es valido (modelo sin QR): no usar `|| 1`, convierte el 0 en 1.
+function intEnRangoIMD(value, def, lo, hi) {
+  const n = parseInt(value, 10);
+  return Number.isNaN(n) ? def : Math.max(lo, Math.min(n, hi));
 }
 
 // ====== Crear Nuevo Plan ======
@@ -650,6 +672,8 @@ async function createPlanIMD(formData) {
       project: formData.get('project') || '',
       process: formData.get('process') || 'Main',
       plan_count: parseInt(formData.get('plan_count')) || 0,
+      qr_required_count: intEnRangoIMD(formData.get('qr_required_count'), 1, 0, 20),
+      array_size: intEnRangoIMD(formData.get('array_size'), 1, 0, 100),
       uph: parseInt(formData.get('uph')) || 100,
       status: 'PLAN'
     };
@@ -691,7 +715,9 @@ async function exportarExcelIMD() {
       uph: p.uph,
       plan_count: p.plan_count,
       output: p.output,
-      status: p.status
+      status: p.status,
+      qr_required_count: p.qr_required_count,
+      array_size: p.array_size
     }));
     
     const response = await fetch('/api/plan-imd/export-excel', {
