@@ -5,6 +5,33 @@
   const text = (value) => value == null ? '' : String(value);
   const itemOf = (row, type) => (row.items || []).find((item) => item.labelType === type);
 
+  // WF_008: los modales activos deben ser hijos directos de body para no quedar
+  // atrapados por el stacking context del contenedor AJAX y su header fijo.
+  function ensureFpaModal(id) {
+    let modal = $(id);
+    if (modal) {
+      if (modal.parentElement !== document.body) document.body.appendChild(modal);
+      return modal;
+    }
+
+    const template = $('fpa-modals-template');
+    const definition = template?.content.querySelector(`#${id}`);
+    if (!definition) return null;
+
+    modal = definition.cloneNode(true);
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function ensureFpaModals(root) {
+    ensureFpaModal('fpa-modal');
+    if (root.dataset.canRequest === 'true') {
+      ensureFpaModal('fpa-request-modal');
+    } else {
+      $('fpa-request-modal')?.remove();
+    }
+  }
+
   function setBusy(busy) {
     $('fpa-table-loading')?.classList.toggle('active', busy);
     const submit = $('fpa-submit');
@@ -152,15 +179,35 @@
     table.appendChild(tbody); wrap.appendChild(table); return wrap;
   }
 
-  function openModal(id) { $(id).hidden = false; }
-  function closeModal(id) { $(id).hidden = true; }
+  function openModal(id) {
+    const modal = ensureFpaModal(id);
+    if (!modal) return;
+    modal.hidden = false;
+    modal.style.display = 'flex';
+    modal.style.position = 'fixed';
+    modal.style.inset = '0';
+    modal.style.zIndex = '15000';
+    modal.style.opacity = '1';
+    modal.style.visibility = 'visible';
+  }
+
+  function closeModal(id) {
+    const modal = $(id);
+    if (!modal) return;
+    modal.hidden = true;
+    modal.style.display = 'none';
+    modal.style.opacity = '0';
+    modal.style.visibility = 'hidden';
+  }
 
   // Cierra por boton X y por click en el fondo (patron de los modales WF).
   function wireModal(id) {
     const modal = $(id);
     if (!modal) return;
-    modal.querySelector('.fpa-close-btn').addEventListener('click', () => closeModal(id));
-    modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(id); });
+    // Asignar la propiedad evita listeners duplicados al volver al modulo por AJAX.
+    modal.onclick = (event) => {
+      if (event.target === modal || event.target.closest('.fpa-close-btn')) closeModal(id);
+    };
   }
 
   async function showDetail(id, focusAdjust) {
@@ -235,7 +282,9 @@
     const root = $('fpa-module');
     if (!root || root.dataset.initialized === 'true') return;
     root.dataset.initialized = 'true';
-    $('fpa-request-form')?.addEventListener('submit', createRequest);
+    ensureFpaModals(root);
+    const requestForm = $('fpa-request-form');
+    if (requestForm) requestForm.onsubmit = createRequest;
     $('fpa-search').addEventListener('click', () => { state.page = 1; load(); });
     $('fpa-clear').addEventListener('click', () => {
       ['fpa-filter-folio', 'fpa-filter-part', 'fpa-filter-requester', 'fpa-filter-from', 'fpa-filter-to'].forEach((id) => { $(id).value = ''; });
@@ -251,14 +300,15 @@
       openModal('fpa-request-modal');
       setTimeout(() => $('fpa-part-number').focus(), 0);
     });
-    $('fpa-request-cancel')?.addEventListener('click', () => closeModal('fpa-request-modal'));
+    const requestCancel = $('fpa-request-cancel');
+    if (requestCancel) requestCancel.onclick = () => closeModal('fpa-request-modal');
     // Escape cierra el modal abierto (un solo binding global, idempotente).
-    if (!document.body.dataset.fpaEscBound) {
-      document.body.dataset.fpaEscBound = 'true';
-      document.addEventListener('keydown', (event) => {
+    if (!window.__fpaEscapeHandler) {
+      window.__fpaEscapeHandler = (event) => {
         if (event.key !== 'Escape') return;
-        document.querySelectorAll('#fpa-module .fpa-modal:not([hidden])').forEach((m) => { m.hidden = true; });
-      });
+        document.querySelectorAll('body > .fpa-modal:not([hidden])').forEach((modal) => closeModal(modal.id));
+      };
+      document.addEventListener('keydown', window.__fpaEscapeHandler);
     }
     load();
   };

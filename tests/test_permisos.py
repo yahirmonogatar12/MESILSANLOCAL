@@ -38,6 +38,14 @@ def test_catalogo_extra_conserva_permisos_eco():
     assert ECO_APPROVE_PERMISSION in EXTRA_DROPDOWN_PERMISSIONS
 
 
+def test_catalogo_extra_conserva_permisos_de_accion_fpa():
+    from app.api.admin.usuarios import EXTRA_DROPDOWN_PERMISSIONS
+    from app.auth_system import FPA_ADJUST_PERMISSION, FPA_REQUEST_PERMISSION
+
+    assert FPA_REQUEST_PERMISSION in EXTRA_DROPDOWN_PERMISSIONS
+    assert FPA_ADJUST_PERMISSION in EXTRA_DROPDOWN_PERMISSIONS
+
+
 def test_blueprints_usan_el_decorador_centralizado():
     # Los 7 proxies se eliminaron; ahora importan el canonico.
     import app.api.control_produccion.plan_assy as pa

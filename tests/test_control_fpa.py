@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+from pathlib import Path
 
 from app.services import fpa_micom_client
 
@@ -33,6 +34,18 @@ def test_fpa_view_renders_for_superadmin(client, monkeypatch):
     assert response.status_code == 200
     assert b'id="fpa-module"' in response.data
     assert b"Solicitar a MICOM" in response.data
+
+
+def test_fpa_modals_follow_wf_008_body_pattern():
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "app/templates/INFORMACION BASICA/control_fpa.html").read_text(encoding="utf-8")
+    javascript = (project_root / "app/static/js/control_fpa.js").read_text(encoding="utf-8")
+
+    assert '<template id="fpa-modals-template">' in template
+    assert "function ensureFpaModal(id)" in javascript
+    assert "document.body.appendChild(modal)" in javascript
+    assert "body > .fpa-modal:not([hidden])" in javascript
+    assert "#fpa-module .fpa-modal:not([hidden])" not in javascript
 
 
 def test_micom_client_signs_the_exact_utf8_body(monkeypatch):

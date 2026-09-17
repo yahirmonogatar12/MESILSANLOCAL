@@ -171,6 +171,8 @@
     </div>
   </div>
 
+  <!-- WF_008: definiciones inertes; JavaScript clona los modales en document.body. -->
+  <template id="fpa-modals-template">
   {% if can_request %}
   <!-- Modal de nueva solicitud -->
   <div id="fpa-request-modal" class="fpa-modal" hidden>
@@ -284,5 +286,6 @@
       <div id="fpa-modal-body" class="fpa-modal-body"></div>
     </div>
   </div>
+  </template>
 </div>
-<script src="{{ url_for('static', filename='js/control_fpa.js', v='20260908b') }}"></script>
+<script src="{{ url_for('static', filename='js/control_fpa.js', v='20260917a') }}"></script>
