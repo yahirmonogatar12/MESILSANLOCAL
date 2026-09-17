@@ -348,8 +348,6 @@ def material():
         logger.warning(
             f"⚠️ Nombre completo no encontrado en sesión para {usuario}, obteniendo de BD..."
         )
-        from .auth_system import auth_system
-
         info_usuario = auth_system.obtener_informacion_usuario(usuario)
         if info_usuario and info_usuario["nombre_completo"]:
             nombre_completo = info_usuario["nombre_completo"]
@@ -370,10 +368,13 @@ def material():
 
     permisos = session.get("permisos", {})
 
-    # Verificar si tiene permisos de administración de usuarios
-    tiene_permisos_usuarios = False
-    if isinstance(permisos, dict) and "sistema" in permisos:
-        tiene_permisos_usuarios = "usuarios" in permisos["sistema"]
+    # Superadmin no depende de que el diccionario de permisos de la cookie
+    # este completo. Ese diccionario puede quedar desactualizado durante una
+    # sesion y no debe ocultarle el Panel de Administracion.
+    rol_principal = auth_system.obtener_rol_principal_usuario(usuario)
+    tiene_permisos_usuarios = rol_principal == "superadmin"
+    if not tiene_permisos_usuarios and isinstance(permisos, dict):
+        tiene_permisos_usuarios = "usuarios" in permisos.get("sistema", [])
 
     return render_template(
         "MainTemplate.html",
@@ -405,9 +406,10 @@ def dashboard():
         nombre_completo = usuario
 
     permisos = session.get("permisos", {})
-    tiene_permisos_usuarios = False
-    if isinstance(permisos, dict) and "sistema" in permisos:
-        tiene_permisos_usuarios = "usuarios" in permisos["sistema"]
+    rol_principal = auth_system.obtener_rol_principal_usuario(usuario)
+    tiene_permisos_usuarios = rol_principal == "superadmin"
+    if not tiene_permisos_usuarios and isinstance(permisos, dict):
+        tiene_permisos_usuarios = "usuarios" in permisos.get("sistema", [])
 
     return render_template(
         "MainTemplate.html",

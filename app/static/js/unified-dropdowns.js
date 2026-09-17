@@ -10,6 +10,11 @@
     let isInitialized = false;
     let dropdownInstances = new Map();
     let eventListeners = [];
+    let dropdownStateGuardInstalled = false;
+    let globalEventsInstalled = false;
+    let mutationObserverInstalled = false;
+    let initializedDeviceType = null;
+    let dropdownCounter = 0;
     
     // Configuración unificada
     const CONFIG = {
@@ -18,7 +23,9 @@
         CLICK_DELAY: 150,
         ANIMATION_DURATION: 300,
         MAX_RETRIES: 3,
-        PREVENT_AUTO_CLOSE: false
+        // Los grupos del sidebar conservan su estado al cambiar de modulo.
+        // Solo se cierran por una accion explicita del usuario.
+        PREVENT_AUTO_CLOSE: true
     };
     
     function log(...args) {
@@ -40,10 +47,20 @@
     // ===============================================
     // PERSISTENCIA EN LOCALSTORAGE
     // ===============================================
-    // Guarda el estado abierto/cerrado de cada dropdown del sidebar
-    // por ID. Asi, al recargar la pagina o cambiar de pestaña navbar y
-    // volver, el usuario encuentra el sidebar como lo dejo.
-    const STORAGE_KEY_DROPDOWNS = 'mes_sidebar_dropdowns_v1';
+    // Cada sidebar conserva solamente las secciones que el usuario abrio.
+    // La clave v3 separa este estado por panel y descarta los formatos
+    // anteriores que mezclaban IDs repetidos o permitian solo una seccion.
+    const STORAGE_KEY_DROPDOWNS = 'mes_sidebar_dropdowns_v3';
+
+    function getSidebarScope(button) {
+        const sidebar = button ? button.closest('.app-sidebar') : null;
+        let container = sidebar ? sidebar.parentElement : null;
+        while (container && container !== document.body) {
+            if (container.id) return container.id;
+            container = container.parentElement;
+        }
+        return 'sidebar-global';
+    }
 
     function readDropdownStates() {
         try {
@@ -54,21 +71,36 @@
         }
     }
 
-    function saveDropdownState(id, isOpen) {
-        if (!id) return;
+    function saveDropdownState(button, id, isOpen) {
+        if (!button || !id) return;
         try {
             const states = readDropdownStates();
-            states[id] = isOpen ? 1 : 0;
+            const scope = getSidebarScope(button);
+            const openIds = Array.isArray(states[scope]) ? states[scope] : [];
+            if (isOpen) {
+                if (!openIds.includes(id)) openIds.push(id);
+            } else {
+                const index = openIds.indexOf(id);
+                if (index !== -1) openIds.splice(index, 1);
+            }
+
+            if (openIds.length > 0) {
+                states[scope] = openIds;
+            } else {
+                delete states[scope];
+            }
             localStorage.setItem(STORAGE_KEY_DROPDOWNS, JSON.stringify(states));
         } catch (e) {
             // localStorage lleno o bloqueado: ignorar
         }
     }
 
-    function getSavedDropdownState(id) {
-        if (!id) return null;
+    function getSavedDropdownState(button, id) {
+        if (!button || !id) return null;
         const states = readDropdownStates();
-        return id in states ? !!states[id] : null;
+        const scope = getSidebarScope(button);
+        if (!Object.prototype.hasOwnProperty.call(states, scope)) return null;
+        return Array.isArray(states[scope]) ? states[scope].includes(id) : null;
     }
 
     // ===============================================
@@ -86,6 +118,16 @@
     // INICIALIZACIÓN PRINCIPAL
     // ===============================================
     function initUnifiedDropdowns() {
+        const deviceType = getDeviceType();
+
+        // Los modulos llaman init() despues de cada carga AJAX. Si el
+        // dispositivo no cambio, configurar solo botones nuevos; volver a
+        // clonar todo el sidebar interrumpe Collapse y pliega grupos abiertos.
+        if (isInitialized && initializedDeviceType === deviceType) {
+            setupUnifiedDropdowns();
+            return;
+        }
+
         if (isInitialized) {
             cleanup();
         }
@@ -99,6 +141,7 @@
         waitForBootstrap(() => {
             setupUnifiedDropdowns();
             isInitialized = true;
+            initializedDeviceType = deviceType;
             log(` Sistema unificado inicializado para ${getDeviceType()}`);
         });
     }
@@ -126,7 +169,7 @@
         }
         
         // Limpiar instancias de Bootstrap anteriores
-        document.querySelectorAll('.collapse').forEach(el => {
+        document.querySelectorAll('.sidebar-dropdown-list.collapse').forEach(el => {
             const instance = bootstrap.Collapse.getInstance(el);
             if (instance) {
                 instance.dispose();
@@ -140,44 +183,50 @@
     // CONFIGURACIÓN UNIFICADA
     // ===============================================
     function setupUnifiedDropdowns() {
-        // Configurar todos los dropdowns existentes
-        const dropdownButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
+        // Configurar solamente los botones laterales nuevos. Los ya listos
+        // conservan sus nodos, listeners, animacion y estado abierto.
+        const dropdownButtons = document.querySelectorAll(
+            '.sidebar-dropdown-btn[data-bs-toggle="collapse"]:not([data-unified-dropdown-ready="true"])'
+        );
         
         log(` Configurando ${dropdownButtons.length} dropdowns para ${getDeviceType()}`);
         
-        dropdownButtons.forEach((button, index) => {
-            setupDropdownButton(button, index);
+        dropdownButtons.forEach((button) => {
+            setupDropdownButton(button);
         });
         
-        // Configurar eventos globales
-        setupGlobalEvents();
+        // Configurar eventos globales una sola vez.
+        if (!globalEventsInstalled) {
+            setupGlobalEvents();
+            globalEventsInstalled = true;
+        }
         
-        // Configurar observador de mutaciones
-        setupMutationObserver();
+        // Configurar un solo observador de mutaciones. Cada carga AJAX llama
+        // setupUnifiedDropdowns(), pero no debe acumular observadores.
+        if (!mutationObserverInstalled) {
+            setupMutationObserver();
+            mutationObserverInstalled = true;
+        }
     }
     
-    function setupDropdownButton(button, index) {
+    function setupDropdownButton(button) {
         const targetSelector = button.getAttribute('data-bs-target');
         if (!targetSelector) return;
         
         const targetElement = findLocalTarget(button, targetSelector);
         if (!targetElement) return;
 
-        const dropdownId = `unified-dropdown-${index}`;
-        
-        // Limpiar listeners anteriores clonando el botón
-        const newButton = button.cloneNode(true);
-        button.parentNode.replaceChild(newButton, button);
-        
-        // Variables de control
-        let lastClickTime = 0;
-        let isProcessing = false;
+        const dropdownId = `unified-dropdown-${dropdownCounter++}`;
+
+        // No clonar el boton: otros sistemas (permisos, accesibilidad y tabs)
+        // pueden conservar referencias o listeners en el nodo original.
+        button.setAttribute('data-unified-dropdown-ready', 'true');
         
         // Configurar según el dispositivo
         if (isMobile()) {
-            setupMobileDropdown(newButton, targetElement, dropdownId);
+            setupMobileDropdown(button, targetElement, dropdownId);
         } else {
-            setupDesktopDropdown(newButton, targetElement, dropdownId, targetSelector);
+            setupDesktopDropdown(button, targetElement, dropdownId, targetSelector);
         }
     }
     
@@ -187,49 +236,15 @@
     function setupMobileDropdown(button, targetElement, dropdownId) {
         log(`📱 Configurando dropdown móvil: ${dropdownId}`);
         
-        let lastClickTime = 0;
         const mobileTargetId = targetElement && targetElement.id ? targetElement.id : null;
+        const savedState = getSavedDropdownState(button, mobileTargetId);
+        const shouldOpen = savedState === null ? false : savedState;
 
-        const clickHandler = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const now = Date.now();
-            if (now - lastClickTime < CONFIG.CLICK_DELAY) {
-                return false;
-            }
-            lastClickTime = now;
-
-            // Toggle simple para móvil
-            const isOpen = targetElement.classList.contains('show');
-
-            if (isOpen) {
-                // Cerrar
-                targetElement.classList.remove('show');
-                targetElement.style.display = 'none';
-                button.setAttribute('aria-expanded', 'false');
-                saveDropdownState(mobileTargetId, false);
-                log(`📱 Cerrado: ${dropdownId}`);
-            } else {
-                // Permitir multiples dropdowns abiertos (igual que desktop)
-                targetElement.classList.add('show');
-                targetElement.style.display = 'block';
-                button.setAttribute('aria-expanded', 'true');
-                saveDropdownState(mobileTargetId, true);
-                log(`📱 Abierto: ${dropdownId}`);
-            }
-
-            return false;
-        };
-        
-        button.addEventListener('click', clickHandler);
-        button.addEventListener('touchstart', clickHandler, { passive: false });
-        
-        // Guardar para cleanup
-        eventListeners.push(() => {
-            button.removeEventListener('click', clickHandler);
-            button.removeEventListener('touchstart', clickHandler);
-        });
+        targetElement.classList.remove('collapsing');
+        targetElement.classList.toggle('show', shouldOpen);
+        targetElement.classList.toggle('collapsed-by-user', !shouldOpen);
+        targetElement.style.display = shouldOpen ? 'block' : 'none';
+        button.setAttribute('aria-expanded', shouldOpen.toString());
     }
     
     // ===============================================
@@ -251,114 +266,32 @@
         
         // RESTAURAR ESTADO GUARDADO O CERRAR POR DEFECTO
         // Por defecto todos los dropdowns arrancan cerrados; solo los
-        // que el usuario abrio explicitamente (y se guardaron en
-        // localStorage como 1) se restauran abiertos.
+        // que el usuario abrio explicitamente se restauran abiertos.
         const targetId = targetSelector ? targetSelector.replace(/^#/, '') : null;
-        const savedState = getSavedDropdownState(targetId);
+        const savedState = getSavedDropdownState(button, targetId);
         const shouldOpen = savedState === null ? false : savedState;
-
-        setTimeout(() => {
-            if (!targetElement || !collapseInstance._element) return;
-            const isCurrentlyOpen = targetElement.classList.contains('show');
-            if (shouldOpen && !isCurrentlyOpen) {
-                targetElement.classList.remove('collapsed-by-user');
-                collapseInstance.show();
-                button.setAttribute('aria-expanded', 'true');
-            } else if (!shouldOpen && isCurrentlyOpen) {
-                targetElement.classList.add('collapsed-by-user');
-                collapseInstance.hide();
-                button.setAttribute('aria-expanded', 'false');
-            } else if (!shouldOpen) {
-                targetElement.classList.add('collapsed-by-user');
-                button.setAttribute('aria-expanded', 'false');
-            }
-        }, 100);
+        if (shouldOpen) {
+            targetElement.classList.remove('collapsed-by-user');
+            targetElement.classList.remove('collapsing');
+            targetElement.classList.add('show');
+            targetElement.style.display = 'block';
+            button.setAttribute('aria-expanded', 'true');
+        } else {
+            targetElement.classList.remove('show', 'collapsing');
+            targetElement.classList.add('collapsed-by-user');
+            targetElement.style.display = 'none';
+            button.setAttribute('aria-expanded', 'false');
+        }
         
-        let lastClickTime = 0;
-        let isProcessing = false;
-        
-        const clickHandler = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const now = Date.now();
-            if (isProcessing || now - lastClickTime < CONFIG.CLICK_DELAY) {
-                return false;
-            }
-
-            isProcessing = true;
-            lastClickTime = now;
-
-            // Resolver targetElement FRESCO (por si el sidebar se
-            // recargo via AJAX y el closure tiene un nodo huerfano).
-            const liveTarget = findLocalTarget(button, targetSelector);
-            const liveCollapse = liveTarget ? (bootstrap.Collapse.getInstance(liveTarget) || new bootstrap.Collapse(liveTarget, { toggle: false })) : collapseInstance;
-            const elementoActual = liveTarget || targetElement;
-
-            // Estado por boton (aria-expanded se setea sincrono en cada
-            // toggle), con el classList del elemento como respaldo. No
-            // usar estado global por ID: los IDs se repiten entre modulos.
-            const currentOpen = button.getAttribute('aria-expanded') === 'true'
-                || elementoActual.classList.contains('show');
-            const willOpen = !currentOpen;
-
-            log(`🖥️ Toggle: ${dropdownId} (${currentOpen ? 'cerrar' : 'abrir'})`);
-
-            try {
-                if (willOpen) {
-                    elementoActual.classList.remove('collapsed-by-user');
-                    liveCollapse.show();
-                } else {
-                    elementoActual.classList.add('collapsed-by-user');
-                    liveCollapse.hide();
-                }
-            } catch (err) {
-                // Bootstrap puede tirar si esta en medio de transicion
-                // o si la instancia esta huerfana. Caemos a manipular
-                // las clases directamente como fallback.
-                console.warn('[DROPDOWN] Bootstrap fallo, fallback manual:', err.message);
-                if (willOpen) {
-                    elementoActual.classList.add('show');
-                    elementoActual.classList.remove('collapsing');
-                } else {
-                    elementoActual.classList.remove('show');
-                    elementoActual.classList.remove('collapsing');
-                }
-            }
-            button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-            saveDropdownState(targetId, willOpen);
-            log(`🖥️ ${willOpen ? 'Abierto' : 'Cerrado'} por usuario: ${dropdownId}`);
-
-            // Actualizar aria-expanded después de la animación
-            setTimeout(() => {
-                const t = findLocalTarget(button, targetSelector) || elementoActual;
-                const newState = t.classList.contains('show');
-                button.setAttribute('aria-expanded', newState.toString());
-                isProcessing = false;
-            }, CONFIG.ANIMATION_DURATION + 50);
-            
-            return false;
-        };
-        
-        button.addEventListener('click', clickHandler);
-        
-        // Guardar para cleanup
-        eventListeners.push(() => {
-            button.removeEventListener('click', clickHandler);
-        });
     }
     
     // ===============================================
     // EVENTOS GLOBALES
     // ===============================================
     function setupGlobalEvents() {
-        // Cerrar dropdowns al hacer click fuera - MEJORADO
+        // Mantener los dropdowns al navegar entre botones superiores. Los
+        // clicks internos siguen actualizando la seleccion activa.
         const documentClickHandler = (e) => {
-            // Si el modo testing está activo, no cerrar automáticamente
-            if (CONFIG.PREVENT_AUTO_CLOSE) {
-                return;
-            }
-            
             // NO cerrar si el click es en:
             // 1. Un botón de toggle
             if (e.target.closest('[data-bs-toggle="collapse"]')) {
@@ -389,8 +322,12 @@
                 return;
             }
             
-            // Solo cerrar si el click es realmente fuera de todo el área de dropdowns
-            closeAllDropdowns();
+            // El modo normal del MES conserva los grupos abiertos al cambiar
+            // de modulo. Esta rama queda disponible solo para consumidores que
+            // habiliten expresamente el cierre automatico mediante la API.
+            if (!CONFIG.PREVENT_AUTO_CLOSE) {
+                closeAllDropdowns();
+            }
         };
         
         // Cerrar con Escape
@@ -539,65 +476,134 @@
     // ===============================================
     function closeAllDropdowns() {
         log('🔒 Cerrando todos los dropdowns...');
-        
-        if (isMobile()) {
-            // Móvil: cerrar usando clases
-            document.querySelectorAll('.collapse.show').forEach(el => {
-                el.classList.remove('show');
-                el.style.display = 'none';
-            });
-            
-            document.querySelectorAll('[aria-expanded="true"]').forEach(btn => {
-                btn.setAttribute('aria-expanded', 'false');
-            });
-        } else {
-            // Desktop: usar instancias de Bootstrap
-            dropdownInstances.forEach((instance, id) => {
-                const element = document.querySelector(`[data-bs-target="#${id.replace('unified-dropdown-', '')}"]`);
-                if (element) {
-                    const targetSelector = element.getAttribute('data-bs-target');
-                    const targetElement = document.querySelector(targetSelector);
-                    if (targetElement && targetElement.classList.contains('show')) {
-                        instance.hide();
-                    }
-                }
-            });
-        }
+
+        document.querySelectorAll('.sidebar-dropdown-list.collapse.show').forEach(element => {
+            const section = element.closest('.sidebar-section');
+            const button = section ? section.querySelector('[data-bs-toggle="collapse"]') : null;
+
+            if (!isMobile() && typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+                const instance = bootstrap.Collapse.getInstance(element)
+                    || new bootstrap.Collapse(element, { toggle: false });
+                instance.hide();
+            } else {
+                element.classList.remove('show', 'collapsing');
+                element.style.display = 'none';
+            }
+
+            element.classList.add('collapsed-by-user');
+            if (button) {
+                button.setAttribute('aria-expanded', 'false');
+                saveDropdownState(button, element.id, false);
+            }
+        });
     }
     
     function closeOtherDropdowns(exceptElement) {
         log('🔒 Cerrando otros dropdowns (excepto el actual)...');
-        
-        if (isMobile()) {
-            // Móvil: cerrar todos excepto el especificado
-            document.querySelectorAll('.collapse.show').forEach(el => {
-                if (el !== exceptElement) {
-                    el.classList.remove('show');
-                    el.style.display = 'none';
-                }
-            });
-            
-            // Actualizar aria-expanded solo en botones que no sean del elemento actual
-            document.querySelectorAll('[aria-expanded="true"]').forEach(btn => {
-                const targetSelector = btn.getAttribute('data-bs-target');
-                const targetElement = document.querySelector(targetSelector);
-                if (targetElement && targetElement !== exceptElement) {
-                    btn.setAttribute('aria-expanded', 'false');
-                }
-            });
-        } else {
-            // Desktop: usar instancias de Bootstrap
-            dropdownInstances.forEach((instance, id) => {
-                const element = document.querySelector(`[data-bs-target="#${id.replace('unified-dropdown-', '')}"]`);
-                if (element) {
-                    const targetSelector = element.getAttribute('data-bs-target');
-                    const targetElement = document.querySelector(targetSelector);
-                    if (targetElement && targetElement !== exceptElement && targetElement.classList.contains('show')) {
-                        instance.hide();
-                    }
-                }
-            });
-        }
+
+        // Limitar el cierre al sidebar actual. Los LISTA_* ocultos conviven
+        // en el DOM y varios reutilizan IDs, por lo que un query global
+        // puede plegar o asociar el boton de otra lista.
+        const sidebarMenu = exceptElement ? exceptElement.closest('.sidebar-menu') : null;
+        const scope = sidebarMenu || document;
+
+        scope.querySelectorAll('.sidebar-dropdown-list.collapse.show').forEach(element => {
+            if (element === exceptElement) return;
+
+            const section = element.closest('.sidebar-section');
+            const button = section ? section.querySelector('[data-bs-toggle="collapse"]') : null;
+
+            if (!isMobile() && typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+                const instance = bootstrap.Collapse.getInstance(element)
+                    || new bootstrap.Collapse(element, { toggle: false });
+                instance.hide();
+            } else {
+                element.classList.remove('show', 'collapsing');
+                element.style.display = 'none';
+            }
+
+            element.classList.add('collapsed-by-user');
+            if (button) {
+                button.setAttribute('aria-expanded', 'false');
+                saveDropdownState(button, element.id, false);
+            }
+        });
+    }
+
+    // Guardia delegada permanente. Los sidebars se reemplazan por AJAX, por
+    // eso el listener vive en el contenedor estable y no en cada boton. Al
+    // ejecutarse antes de llegar a document evita el segundo toggle de
+    // Bootstrap sin bloquear los listeners del sistema de permisos.
+    function installDropdownStateGuard() {
+        if (dropdownStateGuardInstalled) return;
+
+        const delegatedToggleHandler = function(event) {
+            const button = event.target.closest(
+                '.sidebar-dropdown-btn[data-bs-toggle="collapse"]'
+            );
+            if (!button) return;
+
+            const now = Date.now();
+            const lastTouch = Number(button.dataset.unifiedDropdownTouch || 0);
+            if (event.type === 'click' && now - lastTouch < 700) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            if (event.type === 'touchstart') {
+                button.dataset.unifiedDropdownTouch = String(now);
+            }
+
+            const lastToggle = Number(button.dataset.unifiedDropdownToggle || 0);
+            if (now - lastToggle < CONFIG.CLICK_DELAY) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            button.dataset.unifiedDropdownToggle = String(now);
+
+            const targetSelector = button.getAttribute('data-bs-target');
+            if (!targetSelector) return;
+
+            const targetElement = findLocalTarget(button, targetSelector);
+            if (!targetElement || !targetElement.id) return;
+
+            event.preventDefault();
+            // Bootstrap escucha el data-api en document. Este listener vive
+            // en body/material-container, asi que stopPropagation corta solo
+            // ese segundo toggle y permite otros listeners del mismo nodo.
+            event.stopPropagation();
+            // El sistema de permisos/Bootstrap puede dejar class="show" o
+            // aria-expanded desfasados. El display inline lo controla este
+            // manejador y representa el estado visual real.
+            const inlineDisplay = targetElement.style.display;
+            const currentOpen = inlineDisplay === 'none'
+                ? false
+                : inlineDisplay === 'block'
+                    ? true
+                    : targetElement.classList.contains('show');
+            const willOpen = !currentOpen;
+
+            // Aplicar el estado directamente. Bootstrap mantiene un listener
+            // delegado propio en document y, con IDs repetidos entre modulos,
+            // puede invertir aria-expanded aunque el panel quede visible.
+            targetElement.classList.remove('collapsing');
+            targetElement.classList.toggle('show', willOpen);
+            targetElement.style.display = willOpen ? 'block' : 'none';
+            targetElement.classList.toggle('collapsed-by-user', !willOpen);
+            button.setAttribute('aria-expanded', willOpen.toString());
+            saveDropdownState(button, targetElement.id, willOpen);
+        };
+
+        const eventRoot = document.getElementById('material-container')
+            || document.body
+            || document.documentElement;
+        eventRoot.addEventListener('click', delegatedToggleHandler);
+        eventRoot.addEventListener('touchstart', delegatedToggleHandler, {
+            passive: false
+        });
+
+        dropdownStateGuardInstalled = true;
     }
     
     function waitForBootstrap(callback, retries = 0) {
@@ -662,8 +668,17 @@
             } catch (e) { /* ignorar */ }
         });
         eventListeners = [];
+
+        document.querySelectorAll(
+            '.sidebar-dropdown-btn[data-unified-dropdown-ready="true"]'
+        ).forEach(button => {
+            button.removeAttribute('data-unified-dropdown-ready');
+        });
         
         isInitialized = false;
+        globalEventsInstalled = false;
+        mutationObserverInstalled = false;
+        initializedDeviceType = null;
     }
     
     // ===============================================
@@ -699,14 +714,14 @@
             listeners: eventListeners.length,
             openDropdowns: document.querySelectorAll('.collapse.show').length
         }),
-        // Función para testing - NO cerrar dropdowns en clicks específicos
+        // Control explicito del cierre automatico. Por defecto se conserva el
+        // estado de cada sidebar al navegar entre modulos.
         preventAutoClose: (enabled = true) => {
             if (enabled) {
-                log(' Modo testing: Auto-cierre deshabilitado');
-                // Remover el event listener de document click temporalmente
+                log(' Auto-cierre deshabilitado');
                 CONFIG.PREVENT_AUTO_CLOSE = true;
             } else {
-                log(' Modo normal: Auto-cierre habilitado');
+                log(' Auto-cierre habilitado');
                 CONFIG.PREVENT_AUTO_CLOSE = false;
             }
         },
@@ -746,6 +761,8 @@
     // ===============================================
     // INICIALIZACIÓN AUTOMÁTICA
     // ===============================================
+    installDropdownStateGuard();
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initUnifiedDropdowns);
     } else {

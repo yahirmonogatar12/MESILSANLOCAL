@@ -1270,9 +1270,14 @@ class AuthSystem:
                 
                 # Verificar si el usuario tiene el permiso requerido
                 # FORMATO ESPERADO: permisos = {'sistema': ['usuarios', 'auditoria'], 'material': ['ver', 'crear']}
-                tiene_permiso = False
+                # Superadmin es un bypass explicito y no depende de que el
+                # diccionario de permisos de la sesion este poblado. Las rutas
+                # administrativas ya validan ademas el rol cuando corresponde.
+                tiene_permiso = self.obtener_rol_principal_usuario(usuario) == 'superadmin'
                 
-                if isinstance(permisos, dict):
+                if tiene_permiso:
+                    logger.info(" Permiso concedido por rol superadmin")
+                elif isinstance(permisos, dict):
                     if modulo in permisos and accion in permisos[modulo]:
                         tiene_permiso = True
                         logger.info(f" Permiso encontrado: {modulo}.{accion}")

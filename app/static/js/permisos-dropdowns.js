@@ -14,6 +14,7 @@
     let usuarioActual = null;
     let rolUsuario = null;
     let isInitialized = false;
+    let permisosCargados = false;
     
     // Configuracion
     const CONFIG = {
@@ -98,27 +99,20 @@
                 permisosUsuario = (data && data.permisos) ? data.permisos : {};
                 usuarioActual = data && data.usuario ? data.usuario : null;
                 rolUsuario = ((data && (data.rol || data.role || data.rol_nombre)) || '').toString().toLowerCase().replace(/[\s_-]+/g, '');
-
-                // Cachear
-                localStorage.setItem('permisos_dropdowns', JSON.stringify({
-                    permisos: permisosUsuario,
-                    usuario: usuarioActual,
-                    rol: rolUsuario,
-                    timestamp: Date.now()
-                }));
+                permisosCargados = true;
 
             } catch (error) {
-                if (CONFIG.DEBUG) console.warn('Error cargando permisos del servidor, usando cache:', error);
-                // Intentar cargar desde cache
-                const cached = localStorage.getItem('permisos_dropdowns');
-                if (cached) {
-                    const data = JSON.parse(cached);
-                    if (Date.now() - data.timestamp < CONFIG.CACHE_DURATION) {
-                        permisosUsuario = data.permisos;
-                        usuarioActual = data.usuario;
-                        rolUsuario = (data.rol || '').toString().toLowerCase().replace(/[\s_-]+/g, '');
-                    }
-                }
+                if (CONFIG.DEBUG) console.warn('Error cargando permisos del servidor:', error);
+
+                // Nunca decidir permisos con el cache de localStorage. Ese cache
+                // sobrevive al logout y puede pertenecer al usuario anterior,
+                // dejando bloqueado incluso a un superadmin. Si la consulta
+                // falla, el frontend queda abierto y el backend sigue siendo la
+                // autoridad que protege cada operacion.
+                permisosUsuario = {};
+                usuarioActual = null;
+                rolUsuario = null;
+                permisosCargados = false;
             }
         },
         
@@ -150,6 +144,15 @@
          * Aplicar permisos a elementos existentes en la pagina
          */
         aplicarPermisosExistentes() {
+            // Un fallo temporal de red/sesion no debe inutilizar todo el menu.
+            // Las rutas del servidor conservan la validacion real de permisos.
+            if (!permisosCargados) {
+                document.querySelectorAll('[data-permiso-pagina]').forEach((elemento) => {
+                    this.mostrarElemento(elemento);
+                });
+                return;
+            }
+
             // Permitir a superadmin ver todo
             if (rolUsuario === 'superadmin') {
                 document.querySelectorAll('[data-permiso-pagina]').forEach((elemento) => {
@@ -195,22 +198,11 @@
             elemento.style.display = 'none';
             elemento.setAttribute('data-sin-permiso', 'true');
             elemento.title = 'Sin permisos para: ' + boton;
-            
-            // Deshabilitar clicks en elementos sin permiso
-            elemento.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                alert('No tienes permisos para acceder a: ' + boton);
-                return false;
-            });
-            
-            // Tambien bloquear eventos tactiles
-            elemento.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                alert('No tienes permisos para acceder a: ' + boton);
-                return false;
-            });
+
+            // No agregar listeners bloqueadores al nodo. Eran permanentes y
+            // seguian cancelando el click despues de cambiar de rol o recargar
+            // los permisos. display:none y pointer-events:none bastan para la
+            // presentacion; el servidor valida el permiso al ejecutar la ruta.
             
             // Agregar clase visual
             elemento.classList.add('sin-permisos');
@@ -275,6 +267,7 @@
         getStatus() {
             return {
                 initialized: isInitialized,
+                permisosCargados: permisosCargados,
                 usuario: usuarioActual,
                 rol: rolUsuario,
                 totalPermisos: Object.keys(permisosUsuario).reduce((total, pagina) => {

@@ -1,6 +1,6 @@
 <div class="app-container">
         <aside class="app-sidebar">
-        <ul class="sidebar-menu">
+        <ul class="sidebar-menu" id="sidebarMenuControlProceso">
             <li class="sidebar-section">
                 <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarProduccionSMT" aria-expanded="false">
                     <span class="sidebar-icon"></span>
@@ -242,7 +242,6 @@
         <main class="app-content"> 
         </main>
     </div>
-<script src="{{ url_for('static', filename='js/permisos-dropdowns.js') }}"></script>
 <script>
     // Inicializar el sistema de permisos cuando se carga el documento
     document.addEventListener('DOMContentLoaded', function() {
