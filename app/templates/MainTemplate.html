@@ -49,6 +49,7 @@
     <link id="ilsan-theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/ilsan-theme.css', v='20260522a') }}">
     <link id="ai-assistant-css" rel="stylesheet" href="{{ url_for('static', filename='css/ai-assistant.css', v='20260803c') }}">
     <link id="ict-css" rel="stylesheet" href="{{ url_for('static', filename='css/ict.css', v='20260630a') }}">
+    <link id="historial-produccion-ensamble-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_produccion_ensamble.css', v='20260918a') }}">
     <link id="fct-css" rel="stylesheet" href="{{ url_for('static', filename='css/fct.css', v='20260728a') }}">
     <link id="index-styles-css" rel="stylesheet" href="{{ url_for('static', filename='css/index-styles.css', v='20260522a') }}">
     <link id="styles-css" rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='20260522a') }}">
@@ -864,6 +865,11 @@
     <div class="control-resultados-content-area" id="control-resultados-content-area" style="display: none;">
         <!-- Placeholder default (oculto si hay tab activo) -->
         <div id="control-resultados-info-container" style="display: none;">
+        </div>
+
+        <!-- WF_002: Historial de produccion ensamble (input_main, solo lectura) -->
+        <div id="historial-produccion-ensamble-unique-container" style="display: none;">
+            <!-- El contenido se cargara dinamicamente con AJAX -->
         </div>
 
         <!-- Contenedor específico para Historial AOI -->
@@ -3233,6 +3239,19 @@ function hideAllMaterialContainers() {
                 cargarContenidoDinamico('historial-operadores-maquina-unique-container', '/control_resultados/historial_operadores_maquina', () => {
                     if (typeof window.inicializarHistorialOperadoresMaquina === 'function') {
                         window.inicializarHistorialOperadoresMaquina('#hopm-module');
+                    }
+                });
+            };
+
+            // WF_001-WF_004/WF_007: historial paginado de input_main.
+            window.mostrarHistorialProduccionEnsamble = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('historial-produccion-ensamble-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('historial-produccion-ensamble-unique-container', '/control_resultados/historial_produccion_ensamble', () => {
+                    if (typeof window.inicializarHistorialProduccionEnsamble === 'function') {
+                        window.inicializarHistorialProduccionEnsamble('#hpe-module');
                     }
                 });
             };

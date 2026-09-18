@@ -57,7 +57,8 @@
                     <li class="sidebar-link" tabindex="0"
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
                             data-permiso-seccion="Consultar resultados"
-                            data-permiso-boton="Consultar cantidad consumida de produccion SMT">Consultar cantidad consumida de produccion SMT</li>
+                            data-permiso-boton="Historial de produccion ensamble"
+                            onclick="window.parent.mostrarHistorialProduccionEnsamble ? window.parent.mostrarHistorialProduccionEnsamble() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-produccion-ensamble-unique-container', '/control_resultados/historial_produccion_ensamble') : window.location.href='/control_resultados/historial_produccion_ensamble')">Historial de produccion ensamble</li>
                 </ul>
             </li>
             <li class="sidebar-section">

@@ -1,0 +1,112 @@
+<!-- WF_002/WF_004: fragmento AJAX; CSS persistente en MainTemplate.html. -->
+<section id="hpe-module" class="hpe-module ict-page" aria-labelledby="hpe-title">
+  <div class="filters-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+      </svg>
+      <h3 id="hpe-title">Filtros de Búsqueda</h3>
+    </div>
+
+    <div id="hpe-filters" class="hpe-filters">
+      <div class="filter-group">
+        <label for="hpe-fecha-desde">Fecha desde</label>
+        <input type="date" id="hpe-fecha-desde" value="{{ hoy }}">
+      </div>
+      <div class="filter-group">
+        <label for="hpe-fecha-hasta">Fecha hasta</label>
+        <input type="date" id="hpe-fecha-hasta" value="{{ hoy }}">
+      </div>
+      <div class="filter-group">
+        <label for="hpe-hora-desde">Hora desde</label>
+        <input type="time" id="hpe-hora-desde" step="1">
+      </div>
+      <div class="filter-group">
+        <label for="hpe-hora-hasta">Hora hasta</label>
+        <input type="time" id="hpe-hora-hasta" step="1">
+      </div>
+      <div class="filter-group">
+        <label for="hpe-linea">Línea</label>
+        <input type="text" id="hpe-linea" maxlength="8" placeholder="M1, M2..." autocomplete="off">
+      </div>
+      <div class="filter-group">
+        <label for="hpe-qr">QR</label>
+        <input type="text" id="hpe-qr" maxlength="128" placeholder="Buscar QR..." autocomplete="off">
+      </div>
+      <div class="filter-group">
+        <label for="hpe-barcode">Barcode</label>
+        <input type="text" id="hpe-barcode" maxlength="128" placeholder="Buscar barcode..." autocomplete="off">
+      </div>
+      <div class="filter-group">
+        <label for="hpe-lote">Lote</label>
+        <input type="text" id="hpe-lote" maxlength="32" placeholder="Buscar lote..." autocomplete="off">
+      </div>
+      <button type="button" id="hpe-btn-consultar" class="btn-primary">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        Consultar
+      </button>
+    </div>
+  </div>
+
+  <div class="results-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <h3>Historial de producción ensamble</h3>
+      <span class="record-count" id="hpe-record-count">0 registros</span>
+    </div>
+
+    <div class="table-wrap hpe-table-wrap">
+      <div class="table-loading" id="hpe-table-loading" aria-live="polite">
+        <div class="spinner"></div>
+        <span>Cargando datos...</span>
+      </div>
+      <table id="hpe-table">
+        <thead>
+          <tr>
+            <th class="hpe-col-number">#</th>
+            <th data-hpe-filter-field="linea">Línea</th>
+            <th data-hpe-filter-field="fecha">Fecha</th>
+            <th data-hpe-filter-field="hora">Hora</th>
+            <th data-hpe-filter-field="qr">QR</th>
+            <th data-hpe-filter-field="barcode">Barcode</th>
+            <th data-hpe-filter-field="lote">Lote</th>
+          </tr>
+        </thead>
+        <tbody id="hpe-table-body"></tbody>
+      </table>
+    </div>
+
+    <div id="hpe-pagination" class="ict-pagination" hidden>
+      <div class="ict-pagination-info">
+        <span id="hpe-pagination-summary">0 - 0 de 0</span>
+      </div>
+      <div class="ict-pagination-controls">
+        <label class="ict-pagination-perpage" for="hpe-per-page">
+          Por página
+          <select id="hpe-per-page">
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+            <option value="1000" selected>1000</option>
+          </select>
+        </label>
+        <button id="hpe-page-first" type="button" class="btn-page" title="Primera" aria-label="Primera página">«</button>
+        <button id="hpe-page-prev" type="button" class="btn-page" title="Anterior" aria-label="Página anterior">‹</button>
+        <span class="ict-pagination-current">
+          <input type="number" id="hpe-page-input" min="1" value="1" step="1" aria-label="Página actual">
+          <span>/ <span id="hpe-page-total">1</span></span>
+        </span>
+        <button id="hpe-page-next" type="button" class="btn-page" title="Siguiente" aria-label="Página siguiente">›</button>
+        <button id="hpe-page-last" type="button" class="btn-page" title="Última" aria-label="Última página">»</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hpe-notification" class="hpe-notification" role="status" aria-live="polite" hidden></div>
+</section>
+
+<script src="{{ url_for('static', filename='js/historial_produccion_ensamble.js', v='20260918a') }}"></script>
