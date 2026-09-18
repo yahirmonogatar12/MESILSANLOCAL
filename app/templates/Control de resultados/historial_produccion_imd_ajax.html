@@ -1,0 +1,113 @@
+<!-- Historial de output_imd, mismo estilo que los historiales ASSY/SMT/ICT. -->
+<section id="hpi-module" class="hpe-module ict-page" aria-labelledby="hpi-title">
+  <div class="filters-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+      </svg>
+      <h3 id="hpi-title">Filtros de Búsqueda</h3>
+    </div>
+
+    <div id="hpi-filters" class="hpe-filters">
+      <div class="filter-group">
+        <label for="hpi-fecha-desde">Fecha desde</label>
+        <input type="date" id="hpi-fecha-desde" value="{{ hoy }}">
+      </div>
+      <div class="filter-group">
+        <label for="hpi-fecha-hasta">Fecha hasta</label>
+        <input type="date" id="hpi-fecha-hasta" value="{{ hoy }}">
+      </div>
+      <div class="filter-group">
+        <label for="hpi-hora-desde">Hora desde</label>
+        <input type="time" id="hpi-hora-desde" step="1">
+      </div>
+      <div class="filter-group">
+        <label for="hpi-hora-hasta">Hora hasta</label>
+        <input type="time" id="hpi-hora-hasta" step="1">
+      </div>
+      <div class="filter-group">
+        <label for="hpi-linea">Línea</label>
+        <input type="text" id="hpi-linea" maxlength="64" placeholder="Línea IMD..." autocomplete="off">
+      </div>
+      <div class="filter-group">
+        <label for="hpi-qr">QR</label>
+        <input type="text" id="hpi-qr" maxlength="128" placeholder="Buscar QR..." autocomplete="off">
+      </div>
+      <div class="filter-group">
+        <label for="hpi-lote">Lote</label>
+        <input type="text" id="hpi-lote" maxlength="64" placeholder="Buscar lote..." autocomplete="off">
+      </div>
+      <button type="button" id="hpi-btn-consultar" class="btn-primary">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        Consultar
+      </button>
+    </div>
+  </div>
+
+  <div class="results-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <h3>Historial de input IMD</h3>
+      <span class="record-count" id="hpi-record-count">0 registros</span>
+      <button id="hpi-btn-export-excel" class="btn-export" type="button" title="Exportar la página visible a Excel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Exportar Excel
+      </button>
+    </div>
+
+    <div class="table-wrap hpe-table-wrap">
+      <div class="table-loading" id="hpi-table-loading" aria-live="polite">
+        <div class="spinner"></div>
+        <span>Cargando datos...</span>
+      </div>
+      <table id="hpi-table">
+        <thead>
+          <tr>
+            <th class="hpe-col-number">#</th>
+            <th data-hpi-filter-field="linea">Línea</th>
+            <th data-hpi-filter-field="fecha">Fecha</th>
+            <th data-hpi-filter-field="hora">Hora</th>
+            <th data-hpi-filter-field="qr">QR</th>
+            <th data-hpi-filter-field="lote">Lote</th>
+          </tr>
+        </thead>
+        <tbody id="hpi-table-body"></tbody>
+      </table>
+    </div>
+
+    <div id="hpi-pagination" class="ict-pagination" hidden>
+      <div class="ict-pagination-info">
+        <span id="hpi-pagination-summary">0 - 0 de 0</span>
+      </div>
+      <div class="ict-pagination-controls">
+        <label class="ict-pagination-perpage" for="hpi-per-page">
+          Por página
+          <select id="hpi-per-page">
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+            <option value="1000" selected>1000</option>
+          </select>
+        </label>
+        <button id="hpi-page-first" type="button" class="btn-page" title="Primera" aria-label="Primera página">«</button>
+        <button id="hpi-page-prev" type="button" class="btn-page" title="Anterior" aria-label="Página anterior">‹</button>
+        <span class="ict-pagination-current">
+          <input type="number" id="hpi-page-input" min="1" value="1" step="1" aria-label="Página actual">
+          <span>/ <span id="hpi-page-total">1</span></span>
+        </span>
+        <button id="hpi-page-next" type="button" class="btn-page" title="Siguiente" aria-label="Página siguiente">›</button>
+        <button id="hpi-page-last" type="button" class="btn-page" title="Última" aria-label="Última página">»</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hpi-notification" class="hpe-notification" role="status" aria-live="polite" hidden></div>
+</section>
+
+<script src="{{ url_for('static', filename='js/historial_produccion_imd.js', v='20260918f') }}"></script>

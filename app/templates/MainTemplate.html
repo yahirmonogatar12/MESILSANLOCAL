@@ -49,7 +49,7 @@
     <link id="ilsan-theme-css" rel="stylesheet" href="{{ url_for('static', filename='css/ilsan-theme.css', v='20260522a') }}">
     <link id="ai-assistant-css" rel="stylesheet" href="{{ url_for('static', filename='css/ai-assistant.css', v='20260803c') }}">
     <link id="ict-css" rel="stylesheet" href="{{ url_for('static', filename='css/ict.css', v='20260630a') }}">
-    <link id="historial-produccion-ensamble-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_produccion_ensamble.css', v='20260918a') }}">
+    <link id="historial-produccion-ensamble-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_produccion_ensamble.css', v='20260918d') }}">
     <link id="fct-css" rel="stylesheet" href="{{ url_for('static', filename='css/fct.css', v='20260728a') }}">
     <link id="index-styles-css" rel="stylesheet" href="{{ url_for('static', filename='css/index-styles.css', v='20260522a') }}">
     <link id="styles-css" rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='20260522a') }}">
@@ -872,6 +872,21 @@
             <!-- El contenido se cargara dinamicamente con AJAX -->
         </div>
 
+        <!-- WF_002: Historial de produccion SMT (input_smt, solo lectura) -->
+        <div id="historial-produccion-smt-unique-container" style="display: none;">
+            <!-- El contenido se cargara dinamicamente con AJAX -->
+        </div>
+
+        <!-- WF_002: Historial de produccion IMD (output_imd, solo lectura) -->
+        <div id="historial-produccion-imd-unique-container" style="display: none;">
+            <!-- El contenido se cargara dinamicamente con AJAX -->
+        </div>
+
+        <!-- WF_002: Historial de verificacion display (ouput_main, solo lectura) -->
+        <div id="historial-verificacion-display-unique-container" style="display: none;">
+            <!-- El contenido se cargara dinamicamente con AJAX -->
+        </div>
+
         <!-- Contenedor específico para Historial AOI -->
         <div id="historial-aoi-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
@@ -909,6 +924,11 @@
 
         <!-- Contenedor especifico para Historial Vision % Pass/Fail -->
         <div id="historial-vision-pass-fail-unique-container" style="display: none;">
+            <!-- El contenido se cargara dinamicamente con AJAX -->
+        </div>
+
+        <!-- Historial de prueba electrica (history_prueba_electrica, solo lectura) -->
+        <div id="historial-prueba-electrica-unique-container" style="display: none;">
             <!-- El contenido se cargara dinamicamente con AJAX -->
         </div>
 
@@ -1201,7 +1221,7 @@
 
     <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
     <script src="../static/js/unified-dropdowns.js?v=20260917m"></script>
-    <script src="../static/js/sidebar-tabs.js?v=20260804a"></script>
+    <script src="../static/js/sidebar-tabs.js?v=20260918electrica"></script>
 
     <!-- MOBILE LISTS HAMBURGER MENU -->
     <script src="../static/js/mobile-lists-hamburger.js"></script>
@@ -3252,6 +3272,58 @@ function hideAllMaterialContainers() {
                 cargarContenidoDinamico('historial-produccion-ensamble-unique-container', '/control_resultados/historial_produccion_ensamble', () => {
                     if (typeof window.inicializarHistorialProduccionEnsamble === 'function') {
                         window.inicializarHistorialProduccionEnsamble('#hpe-module');
+                    }
+                });
+            };
+
+            // WF_001-WF_004/WF_007: historial paginado de input_smt, sin Barcode.
+            window.mostrarHistorialProduccionSmt = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('historial-produccion-smt-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('historial-produccion-smt-unique-container', '/control_resultados/historial_produccion_smt', () => {
+                    if (typeof window.inicializarHistorialProduccionSmt === 'function') {
+                        window.inicializarHistorialProduccionSmt('#hps-module');
+                    }
+                });
+            };
+
+            // WF_001-WF_004/WF_007: historial paginado de output_imd, sin Barcode.
+            window.mostrarHistorialProduccionImd = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('historial-produccion-imd-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('historial-produccion-imd-unique-container', '/control_resultados/historial_produccion_imd', () => {
+                    if (typeof window.inicializarHistorialProduccionImd === 'function') {
+                        window.inicializarHistorialProduccionImd('#hpi-module');
+                    }
+                });
+            };
+
+            // WF_001-WF_004/WF_007: historial paginado de ouput_main.
+            window.mostrarHistorialVerificacionDisplay = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('historial-verificacion-display-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('historial-verificacion-display-unique-container', '/control_resultados/historial_verificacion_display', () => {
+                    if (typeof window.inicializarHistorialVerificacionDisplay === 'function') {
+                        window.inicializarHistorialVerificacionDisplay('#hvd-module');
+                    }
+                });
+            };
+
+            // WF_001-WF_004/WF_007: historial paginado de prueba electrica.
+            window.mostrarHistorialPruebaElectrica = function() {
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('historial-prueba-electrica-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('historial-prueba-electrica-unique-container', '/control_resultados/historial_prueba_electrica', () => {
+                    if (typeof window.inicializarHistorialPruebaElectrica === 'function') {
+                        window.inicializarHistorialPruebaElectrica('#hpel-module');
                     }
                 });
             };

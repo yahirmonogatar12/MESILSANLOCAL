@@ -40,6 +40,11 @@
 
     const TAB_LABEL_OVERRIDES = {
         'almacen-embarques-oqc-pendientes-unique-container': 'Pendientes QA Embarques',
+        'historial-produccion-ensamble-unique-container': 'Historial de input ensamble',
+        'historial-produccion-smt-unique-container': 'Historial de input SMT',
+        'historial-produccion-imd-unique-container': 'Historial de input IMD',
+        'historial-verificacion-display-unique-container': 'Historial de verificacion display',
+        'historial-prueba-electrica-unique-container': 'Historial de prueba electrica',
     };
 
     function normalizarTabLabel(containerId, label) {

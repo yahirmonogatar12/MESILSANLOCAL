@@ -332,7 +332,22 @@ const allDropdowns = [
     {
         "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
         "seccion": "Consultar resultados",
-        "boton": "Consultar cantidad consumida de produccion SMT"
+        "boton": "Historial de produccion ensamble"
+    },
+    {
+        "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
+        "seccion": "Consultar resultados",
+        "boton": "Historial de produccion SMT"
+    },
+    {
+        "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
+        "seccion": "Consultar resultados",
+        "boton": "Historial de produccion IMD"
+    },
+    {
+        "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
+        "seccion": "Consultar resultados",
+        "boton": "Historial de verificacion display"
     },
     {
         "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
@@ -388,6 +403,11 @@ const allDropdowns = [
         "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
         "seccion": "Historial de maquinas calidad",
         "boton": "Historial de maquina Vision % Pass/Fail"
+    },
+    {
+        "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
+        "seccion": "Historial de maquinas calidad",
+        "boton": "Historial de prueba electrica"
     },
     {
         "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",

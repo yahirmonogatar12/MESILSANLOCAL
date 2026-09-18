@@ -1,10 +1,10 @@
-(function historialProduccionEnsambleModule() {
+(function historialPruebaElectricaModule() {
   "use strict";
 
-  const ROOT_SELECTOR = "#hpe-module";
-  const API_URL = "/api/control_resultados/historial_produccion_ensamble";
+  const ROOT_SELECTOR = "#hpel-module";
+  const API_URL = "/api/control_resultados/historial_prueba_electrica";
   const EXPORT_URL = `${API_URL}/export`;
-  const FILTER_STORAGE_KEY = "historialProduccionEnsambleColumnFilters";
+  const FILTER_STORAGE_KEY = "historialPruebaElectricaColumnFilters";
   const CSS_VERSION = "20260918d";
 
   function ensureStyles() {
@@ -43,7 +43,7 @@
       const value = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || "{}");
       return value && typeof value === "object" ? value : {};
     } catch (error) {
-      console.warn("No se pudieron leer los filtros del historial de ensamble", error);
+      console.warn("No se pudieron leer los filtros del historial de prueba electrica", error);
       return {};
     }
   }
@@ -52,7 +52,7 @@
     try {
       localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
     } catch (error) {
-      console.warn("No se pudieron guardar los filtros del historial de ensamble", error);
+      console.warn("No se pudieron guardar los filtros del historial de prueba electrica", error);
     }
   }
 
@@ -73,12 +73,12 @@
   }
 
   function renderColumnFilterHeaders(root, state) {
-    root.querySelectorAll("th[data-hpe-filter-field]").forEach((header) => {
-      if (header.dataset.hpeFilterReady === "true") return;
-      const field = header.dataset.hpeFilterField;
+    root.querySelectorAll("th[data-hpel-filter-field]").forEach((header) => {
+      if (header.dataset.hpelFilterReady === "true") return;
+      const field = header.dataset.hpelFilterField;
       const label = header.textContent.trim();
       const value = state.columnFilters[field] || "";
-      header.dataset.hpeFilterReady = "true";
+      header.dataset.hpelFilterReady = "true";
       header.innerHTML = `
         <div class="hpe-column-header">
           <span>${escapeHtml(label)}</span>
@@ -88,13 +88,13 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v5l-4 2v-7L3 5z"></path></svg>
           </button>
         </div>
-        <div class="hpe-column-filter-popover" data-hpe-field="${escapeHtml(field)}">
-          <input class="hpe-column-filter-input" data-hpe-field="${escapeHtml(field)}"
+        <div class="hpe-column-filter-popover" data-hpel-field="${escapeHtml(field)}">
+          <input class="hpe-column-filter-input" data-hpel-field="${escapeHtml(field)}"
                  value="${escapeHtml(value)}" placeholder="Buscar..."
                  aria-label="Buscar en ${escapeHtml(label)}" autocomplete="off">
           <div class="hpe-column-filter-actions">
-            <button type="button" data-hpe-action="clear-column">Limpiar</button>
-            <button type="button" data-hpe-action="clear-all-columns">Todos</button>
+            <button type="button" data-hpel-action="clear-column">Limpiar</button>
+            <button type="button" data-hpel-action="clear-all-columns">Todos</button>
           </div>
         </div>`;
     });
@@ -102,7 +102,7 @@
 
   function syncColumnFilterControls(root, state) {
     root.querySelectorAll(".hpe-column-filter-input").forEach((input) => {
-      const value = state.columnFilters[input.dataset.hpeField] || "";
+      const value = state.columnFilters[input.dataset.hpelField] || "";
       input.value = value;
       input.closest("th")?.querySelector(".hpe-column-filter-btn")
         ?.classList.toggle("active", Boolean(value));
@@ -110,39 +110,38 @@
   }
 
   function showNotification(root, message, type = "error") {
-    const notification = root.querySelector("#hpe-notification");
+    const notification = root.querySelector("#hpel-notification");
     if (!notification) return;
-    window.clearTimeout(root.__hpeNotificationTimer);
+    window.clearTimeout(root.__hpelNotificationTimer);
     notification.textContent = message;
     notification.className = `hpe-notification ${type}`;
     notification.hidden = false;
-    root.__hpeNotificationTimer = window.setTimeout(() => {
+    root.__hpelNotificationTimer = window.setTimeout(() => {
       notification.hidden = true;
     }, 4500);
   }
 
   function setLoading(root, loading) {
-    const loader = root.querySelector("#hpe-table-loading");
-    const table = root.querySelector("#hpe-table");
+    const loader = root.querySelector("#hpel-table-loading");
+    const table = root.querySelector("#hpel-table");
     const wrap = table?.closest(".hpe-table-wrap");
     const head = table?.querySelector("thead");
     if (wrap && head) wrap.style.setProperty("--thead-height", `${head.offsetHeight}px`);
     loader?.classList.toggle("active", loading);
-    root.querySelector("#hpe-btn-consultar")?.toggleAttribute("disabled", loading);
-    root.querySelector("#hpe-btn-export-excel")?.toggleAttribute("disabled", loading);
+    root.querySelector("#hpel-btn-consultar")?.toggleAttribute("disabled", loading);
+    root.querySelector("#hpel-btn-export-excel")?.toggleAttribute("disabled", loading);
   }
 
   function buildQuery(root, state) {
     const params = new URLSearchParams();
     const fields = {
-      fecha_desde: "#hpe-fecha-desde",
-      fecha_hasta: "#hpe-fecha-hasta",
-      hora_desde: "#hpe-hora-desde",
-      hora_hasta: "#hpe-hora-hasta",
-      linea: "#hpe-linea",
-      qr: "#hpe-qr",
-      barcode: "#hpe-barcode",
-      lote: "#hpe-lote",
+      fecha_desde: "#hpel-fecha-desde",
+      fecha_hasta: "#hpel-fecha-hasta",
+      hora_desde: "#hpel-hora-desde",
+      hora_hasta: "#hpel-hora-hasta",
+      linea: "#hpel-linea",
+      qr: "#hpel-qr",
+      lote: "#hpel-lote",
     };
 
     Object.entries(fields).forEach(([name, selector]) => {
@@ -185,12 +184,12 @@
   }
 
   async function exportExcel(root) {
-    const state = root.__hpeState;
+    const state = root.__hpelState;
     if (!state || state.total <= 0) {
       showNotification(root, "No hay registros visibles para exportar");
       return;
     }
-    const button = root.querySelector("#hpe-btn-export-excel");
+    const button = root.querySelector("#hpel-btn-export-excel");
     button?.setAttribute("disabled", "");
     try {
       const query = state.lastQuery || buildQuery(root, state).toString();
@@ -217,7 +216,7 @@
       anchor.href = downloadUrl;
       anchor.download = filenameFromDisposition(
         response.headers.get("content-disposition"),
-        `historial_input_ensamble_${Date.now()}.xlsx`,
+        `historial_prueba_electrica_${Date.now()}.xlsx`,
       );
       document.body.appendChild(anchor);
       anchor.click();
@@ -225,7 +224,7 @@
       window.URL.revokeObjectURL(downloadUrl);
       showNotification(root, "Excel de la página visible exportado", "success");
     } catch (error) {
-      console.error("Error exportando historial de produccion ensamble", error);
+      console.error("Error exportando historial de prueba electrica", error);
       showNotification(root, error.message || "No fue posible exportar a Excel");
     } finally {
       button?.removeAttribute("disabled");
@@ -233,7 +232,7 @@
   }
 
   function renderRows(root, rows) {
-    const tbody = root.querySelector("#hpe-table-body");
+    const tbody = root.querySelector("#hpel-table-body");
     if (!tbody) return;
     if (!rows.length) {
       tbody.innerHTML = '<tr class="hpe-empty-row"><td colspan="7">No se encontraron registros con los filtros seleccionados.</td></tr>';
@@ -246,34 +245,34 @@
         <td>${escapeHtml(row.fecha)}</td>
         <td>${escapeHtml(row.hora)}</td>
         <td title="${escapeHtml(row.qr)}">${escapeHtml(row.qr)}</td>
-        <td title="${escapeHtml(row.barcode)}">${escapeHtml(row.barcode)}</td>
         <td title="${escapeHtml(row.lote)}">${escapeHtml(row.lote)}</td>
+        <td>${escapeHtml(row.resultado)}</td>
       </tr>`).join("");
   }
 
   function renderPagination(root, state) {
-    const pagination = root.querySelector("#hpe-pagination");
+    const pagination = root.querySelector("#hpel-pagination");
     if (!pagination) return;
     pagination.hidden = state.total <= 0;
     if (state.total <= 0) return;
 
     const start = (state.page - 1) * state.perPage + 1;
     const end = Math.min(state.page * state.perPage, state.total);
-    root.querySelector("#hpe-pagination-summary").textContent = `${start} - ${end} de ${state.total}`;
-    const input = root.querySelector("#hpe-page-input");
+    root.querySelector("#hpel-pagination-summary").textContent = `${start} - ${end} de ${state.total}`;
+    const input = root.querySelector("#hpel-page-input");
     input.value = String(state.page);
     input.max = String(state.totalPages);
-    root.querySelector("#hpe-page-total").textContent = String(state.totalPages);
-    root.querySelector("#hpe-page-first").disabled = state.page <= 1;
-    root.querySelector("#hpe-page-prev").disabled = state.page <= 1;
-    root.querySelector("#hpe-page-next").disabled = state.page >= state.totalPages;
-    root.querySelector("#hpe-page-last").disabled = state.page >= state.totalPages;
+    root.querySelector("#hpel-page-total").textContent = String(state.totalPages);
+    root.querySelector("#hpel-page-first").disabled = state.page <= 1;
+    root.querySelector("#hpel-page-prev").disabled = state.page <= 1;
+    root.querySelector("#hpel-page-next").disabled = state.page >= state.totalPages;
+    root.querySelector("#hpel-page-last").disabled = state.page >= state.totalPages;
   }
 
   async function loadData(rootOrSelector = ROOT_SELECTOR, options = {}) {
     const root = getRoot(rootOrSelector);
-    if (!root || !root.__hpeState) return;
-    const state = root.__hpeState;
+    if (!root || !root.__hpelState) return;
+    const state = root.__hpelState;
     if (options.resetPage !== false) state.page = 1;
 
     state.controller?.abort();
@@ -293,11 +292,11 @@
       const rows = Array.isArray(payload.rows) ? payload.rows : [];
       renderRows(root, rows);
       renderPagination(root, state);
-      const count = root.querySelector("#hpe-record-count");
+      const count = root.querySelector("#hpel-record-count");
       if (count) count.textContent = `${state.total} registro${state.total === 1 ? "" : "s"}`;
     } catch (error) {
       if (error.name === "AbortError") return;
-      console.error("Error cargando historial de produccion ensamble", error);
+      console.error("Error cargando historial de prueba electrica", error);
       if (root.isConnected) {
         renderRows(root, []);
         showNotification(root, error.message || "No fue posible cargar el historial");
@@ -308,13 +307,13 @@
   }
 
   function scheduleColumnFilter(root) {
-    const state = root.__hpeState;
+    const state = root.__hpelState;
     window.clearTimeout(state.filterTimer);
     state.filterTimer = window.setTimeout(() => loadData(root), 300);
   }
 
   function goToPage(root, value) {
-    const state = root.__hpeState;
+    const state = root.__hpelState;
     const page = Math.max(1, Math.min(state.totalPages, Number.parseInt(value, 10) || 1));
     if (page === state.page) return;
     state.page = page;
@@ -337,50 +336,50 @@
         return;
       }
 
-      const action = event.target.closest("[data-hpe-action]")?.dataset.hpeAction;
+      const action = event.target.closest("[data-hpel-action]")?.dataset.hpelAction;
       if (action === "clear-column") {
         const input = event.target.closest("th")?.querySelector(".hpe-column-filter-input");
         if (input) {
-          delete root.__hpeState.columnFilters[input.dataset.hpeField];
-          saveColumnFilters(root.__hpeState.columnFilters);
-          syncColumnFilterControls(root, root.__hpeState);
+          delete root.__hpelState.columnFilters[input.dataset.hpelField];
+          saveColumnFilters(root.__hpelState.columnFilters);
+          syncColumnFilterControls(root, root.__hpelState);
           loadData(root);
         }
         return;
       }
       if (action === "clear-all-columns") {
-        root.__hpeState.columnFilters = {};
+        root.__hpelState.columnFilters = {};
         saveColumnFilters({});
-        syncColumnFilterControls(root, root.__hpeState);
+        syncColumnFilterControls(root, root.__hpelState);
         loadData(root);
         return;
       }
 
       const id = event.target.closest("button")?.id;
-      if (id === "hpe-btn-consultar") loadData(root);
-      else if (id === "hpe-btn-export-excel") exportExcel(root);
-      else if (id === "hpe-page-first") goToPage(root, 1);
-      else if (id === "hpe-page-prev") goToPage(root, root.__hpeState.page - 1);
-      else if (id === "hpe-page-next") goToPage(root, root.__hpeState.page + 1);
-      else if (id === "hpe-page-last") goToPage(root, root.__hpeState.totalPages);
+      if (id === "hpel-btn-consultar") loadData(root);
+      else if (id === "hpel-btn-export-excel") exportExcel(root);
+      else if (id === "hpel-page-first") goToPage(root, 1);
+      else if (id === "hpel-page-prev") goToPage(root, root.__hpelState.page - 1);
+      else if (id === "hpel-page-next") goToPage(root, root.__hpelState.page + 1);
+      else if (id === "hpel-page-last") goToPage(root, root.__hpelState.totalPages);
       else if (!event.target.closest(".hpe-column-filter-popover")) closeColumnFilters(root);
     });
 
     root.addEventListener("input", (event) => {
       if (!event.target.matches(".hpe-column-filter-input")) return;
-      const field = event.target.dataset.hpeField;
+      const field = event.target.dataset.hpelField;
       const value = event.target.value.trim();
-      if (value) root.__hpeState.columnFilters[field] = value;
-      else delete root.__hpeState.columnFilters[field];
-      saveColumnFilters(root.__hpeState.columnFilters);
+      if (value) root.__hpelState.columnFilters[field] = value;
+      else delete root.__hpelState.columnFilters[field];
+      saveColumnFilters(root.__hpelState.columnFilters);
       event.target.closest("th")?.querySelector(".hpe-column-filter-btn")
         ?.classList.toggle("active", Boolean(value));
       scheduleColumnFilter(root);
     });
 
     root.addEventListener("change", (event) => {
-      if (event.target.id !== "hpe-per-page") return;
-      root.__hpeState.perPage = Number.parseInt(event.target.value, 10) || 1000;
+      if (event.target.id !== "hpel-per-page") return;
+      root.__hpelState.perPage = Number.parseInt(event.target.value, 10) || 1000;
       loadData(root);
     });
 
@@ -390,14 +389,14 @@
         return;
       }
       if (event.key !== "Enter") return;
-      if (event.target.id === "hpe-page-input") {
+      if (event.target.id === "hpel-page-input") {
         event.preventDefault();
         goToPage(root, event.target.value);
       } else if (event.target.matches(".hpe-column-filter-input")) {
         event.preventDefault();
-        window.clearTimeout(root.__hpeState.filterTimer);
+        window.clearTimeout(root.__hpelState.filterTimer);
         loadData(root);
-      } else if (event.target.closest("#hpe-filters")) {
+      } else if (event.target.closest("#hpel-filters")) {
         event.preventDefault();
         loadData(root);
       }
@@ -406,12 +405,12 @@
 
   function initialize(rootOrSelector = ROOT_SELECTOR) {
     const root = getRoot(rootOrSelector);
-    if (!root || root.dataset.hpeInitialized === "true") return;
+    if (!root || root.dataset.hpelInitialized === "true") return;
     ensureStyles();
-    root.dataset.hpeInitialized = "true";
-    root.__hpeState = {
+    root.dataset.hpelInitialized = "true";
+    root.__hpelState = {
       page: 1,
-      perPage: Number.parseInt(root.querySelector("#hpe-per-page")?.value, 10) || 1000,
+      perPage: Number.parseInt(root.querySelector("#hpel-per-page")?.value, 10) || 1000,
       total: 0,
       totalPages: 1,
       columnFilters: readStoredColumnFilters(),
@@ -419,17 +418,17 @@
       filterTimer: null,
       lastQuery: "",
     };
-    renderColumnFilterHeaders(root, root.__hpeState);
+    renderColumnFilterHeaders(root, root.__hpelState);
     bindEvents(root);
     loadData(root);
   }
 
-  window.inicializarHistorialProduccionEnsamble = initialize;
-  window.cargarHistorialProduccionEnsamble = loadData;
-  window.limpiarHistorialProduccionEnsamble = function limpiarHistorialProduccionEnsamble() {
+  window.inicializarHistorialPruebaElectrica = initialize;
+  window.cargarHistorialPruebaElectrica = loadData;
+  window.limpiarHistorialPruebaElectrica = function limpiarHistorialPruebaElectrica() {
     const root = getRoot();
-    root?.__hpeState?.controller?.abort();
-    if (root?.__hpeState?.filterTimer) window.clearTimeout(root.__hpeState.filterTimer);
+    root?.__hpelState?.controller?.abort();
+    if (root?.__hpelState?.filterTimer) window.clearTimeout(root.__hpelState.filterTimer);
   };
 
   initialize();

@@ -1,0 +1,113 @@
+<!-- Historial de input_smt, gemelo visual del historial de ensamble. -->
+<section id="hps-module" class="hpe-module ict-page" aria-labelledby="hps-title">
+  <div class="filters-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+      </svg>
+      <h3 id="hps-title">Filtros de Búsqueda</h3>
+    </div>
+
+    <div id="hps-filters" class="hpe-filters">
+      <div class="filter-group">
+        <label for="hps-fecha-desde">Fecha desde</label>
+        <input type="date" id="hps-fecha-desde" value="{{ hoy }}">
+      </div>
+      <div class="filter-group">
+        <label for="hps-fecha-hasta">Fecha hasta</label>
+        <input type="date" id="hps-fecha-hasta" value="{{ hoy }}">
+      </div>
+      <div class="filter-group">
+        <label for="hps-hora-desde">Hora desde</label>
+        <input type="time" id="hps-hora-desde" step="1">
+      </div>
+      <div class="filter-group">
+        <label for="hps-hora-hasta">Hora hasta</label>
+        <input type="time" id="hps-hora-hasta" step="1">
+      </div>
+      <div class="filter-group">
+        <label for="hps-linea">Línea</label>
+        <input type="text" id="hps-linea" maxlength="64" placeholder="Línea SMT..." autocomplete="off">
+      </div>
+      <div class="filter-group">
+        <label for="hps-qr">QR</label>
+        <input type="text" id="hps-qr" maxlength="128" placeholder="Buscar QR..." autocomplete="off">
+      </div>
+      <div class="filter-group">
+        <label for="hps-lote">Lote</label>
+        <input type="text" id="hps-lote" maxlength="64" placeholder="Buscar lote..." autocomplete="off">
+      </div>
+      <button type="button" id="hps-btn-consultar" class="btn-primary">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        Consultar
+      </button>
+    </div>
+  </div>
+
+  <div class="results-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <h3>Historial de input SMT</h3>
+      <span class="record-count" id="hps-record-count">0 registros</span>
+      <button id="hps-btn-export-excel" class="btn-export" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Exportar Excel
+      </button>
+    </div>
+
+    <div class="table-wrap hpe-table-wrap">
+      <div class="table-loading" id="hps-table-loading" aria-live="polite">
+        <div class="spinner"></div>
+        <span>Cargando datos...</span>
+      </div>
+      <table id="hps-table">
+        <thead>
+          <tr>
+            <th class="hpe-col-number">#</th>
+            <th data-hps-filter-field="linea">Línea</th>
+            <th data-hps-filter-field="fecha">Fecha</th>
+            <th data-hps-filter-field="hora">Hora</th>
+            <th data-hps-filter-field="qr">QR</th>
+            <th data-hps-filter-field="lote">Lote</th>
+          </tr>
+        </thead>
+        <tbody id="hps-table-body"></tbody>
+      </table>
+    </div>
+
+    <div id="hps-pagination" class="ict-pagination" hidden>
+      <div class="ict-pagination-info">
+        <span id="hps-pagination-summary">0 - 0 de 0</span>
+      </div>
+      <div class="ict-pagination-controls">
+        <label class="ict-pagination-perpage" for="hps-per-page">
+          Por página
+          <select id="hps-per-page">
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+            <option value="1000" selected>1000</option>
+          </select>
+        </label>
+        <button id="hps-page-first" type="button" class="btn-page" title="Primera" aria-label="Primera página">«</button>
+        <button id="hps-page-prev" type="button" class="btn-page" title="Anterior" aria-label="Página anterior">‹</button>
+        <span class="ict-pagination-current">
+          <input type="number" id="hps-page-input" min="1" value="1" step="1" aria-label="Página actual">
+          <span>/ <span id="hps-page-total">1</span></span>
+        </span>
+        <button id="hps-page-next" type="button" class="btn-page" title="Siguiente" aria-label="Página siguiente">›</button>
+        <button id="hps-page-last" type="button" class="btn-page" title="Última" aria-label="Última página">»</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hps-notification" class="hpe-notification" role="status" aria-live="polite" hidden></div>
+</section>
+
+<script src="{{ url_for('static', filename='js/historial_produccion_smt.js', v='20260918f') }}"></script>

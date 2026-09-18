@@ -1,12 +1,7 @@
-"""Historial paginado de produccion de ensamble desde ``input_main``.
+"""Historial paginado de verificacion display desde ``ouput_main``.
 
-Modulo de solo lectura creado conforme a WF_001-WF_004, WF_007 y WF_009.
-El timestamp ``ts`` se presenta como columnas independientes de fecha y hora.
-
-Rutas:
-  GET /control_resultados/historial_produccion_ensamble
-  GET /api/control_resultados/historial_produccion_ensamble
-  GET /api/control_resultados/historial_produccion_ensamble/export
+Modulo de solo lectura conforme a WF_001-WF_004, WF_007 y WF_009.
+El nombre ``ouput_main`` conserva la ortografia real de la tabla MySQL.
 """
 
 from datetime import datetime
@@ -29,11 +24,11 @@ from app.api.shared import (
 
 logger = logging.getLogger(__name__)
 
-bp = Blueprint("control_resultados_historial_produccion_ensamble", __name__)
+bp = Blueprint("control_resultados_historial_verificacion_display", __name__)
 
 PERMISO_PAGINA = "LISTA_DE_CONTROL_DE_RESULTADOS"
 PERMISO_SECCION = "Consultar resultados"
-PERMISO_BOTON = "Historial de produccion ensamble"
+PERMISO_BOTON = "Historial de verificacion display"
 
 _requiere_permiso = requiere_permiso_dropdown(
     PERMISO_PAGINA,
@@ -109,7 +104,6 @@ def _build_filters():
     where = ["1 = 1"]
     params = []
 
-    # Rangos sobre ts conservan el uso del indice idx_ts para el filtro de fecha.
     if fecha_desde:
         where.append("ts >= %s")
         params.append(f"{fecha_desde} 00:00:00")
@@ -133,8 +127,6 @@ def _build_filters():
             where.append(f"COALESCE({column}, '') LIKE %s")
             params.append(f"%{value}%")
 
-    # Filtros del icono de cada encabezado. Los nombres SQL provienen
-    # exclusivamente de este mapa fijo; nunca se interpolan desde el request.
     for key, clause in _COLUMN_FILTER_SQL.items():
         value = sanitizar_texto(request.args.get(f"cf_{key}"), 128)
         if value:
@@ -156,31 +148,31 @@ def _serialize_row(row, numero):
     }
 
 
-@bp.route("/control_resultados/historial_produccion_ensamble")
+@bp.route("/control_resultados/historial_verificacion_display")
 @login_requerido
 @_requiere_permiso
-def historial_produccion_ensamble_ajax():
-    """Render AJAX del historial de produccion de ensamble."""
+def historial_verificacion_display_ajax():
+    """Render AJAX del historial de verificacion display."""
     try:
         return render_template(
-            "Control de resultados/historial_produccion_ensamble_ajax.html",
+            "Control de resultados/historial_verificacion_display_ajax.html",
             hoy=obtener_fecha_mexico(),
         )
     except Exception as exc:
-        logger.exception("Error cargando Historial de produccion ensamble: %s", exc)
+        logger.exception("Error cargando Historial de verificacion display: %s", exc)
         return "Error al cargar el contenido", 500
 
 
-@bp.route("/api/control_resultados/historial_produccion_ensamble", methods=["GET"])
+@bp.route("/api/control_resultados/historial_verificacion_display", methods=["GET"])
 @login_requerido
 @_requiere_permiso
-def api_historial_produccion_ensamble():
-    """Listar ``input_main`` con filtros seguros y paginacion de servidor."""
+def api_historial_verificacion_display():
+    """Listar ``ouput_main`` con filtros seguros y paginacion de servidor."""
     try:
         page, per_page = _pagination_args()
         where_sql, params = _build_filters()
 
-        count_sql = f"SELECT COUNT(*) AS n FROM input_main WHERE {where_sql}"
+        count_sql = f"SELECT COUNT(*) AS n FROM ouput_main WHERE {where_sql}"
         count_row = execute_query(
             count_sql,
             tuple(params) if params else None,
@@ -189,8 +181,6 @@ def api_historial_produccion_ensamble():
         total = int(count_row.get("n", 0) or 0)
         total_pages = (total + per_page - 1) // per_page if total else 0
 
-        # Si un filtro reduce el numero de paginas, regresar la ultima pagina
-        # valida en vez de una tabla vacia fuera de rango.
         if total_pages and page > total_pages:
             page = total_pages
         offset = (page - 1) * per_page
@@ -198,13 +188,16 @@ def api_historial_produccion_ensamble():
         data_sql = f"""
             SELECT id, DATE(ts) AS fecha, TIME(ts) AS hora,
                    linea, raw AS qr, raw_barcode AS barcode, lot_no AS lote
-            FROM input_main
+            FROM ouput_main
             WHERE {where_sql}
             ORDER BY ts DESC, id DESC
             LIMIT %s OFFSET %s
         """
-        data_params = tuple(params) + (per_page, offset)
-        rows = execute_query(data_sql, data_params, fetch="all") or []
+        rows = execute_query(
+            data_sql,
+            tuple(params) + (per_page, offset),
+            fetch="all",
+        ) or []
         items = [
             _serialize_row(row, offset + index)
             for index, row in enumerate(rows, start=1)
@@ -223,23 +216,23 @@ def api_historial_produccion_ensamble():
     except ValueError as exc:
         return jsonify({"success": False, "error": str(exc), "rows": []}), 400
     except Exception as exc:
-        logger.exception("Error consultando input_main: %s", exc)
+        logger.exception("Error consultando ouput_main: %s", exc)
         return jsonify(
             {
                 "success": False,
-                "error": "No fue posible consultar el historial de input ensamble",
+                "error": "No fue posible consultar el historial de verificacion display",
                 "rows": [],
             }
         ), 500
 
 
 @bp.route(
-    "/api/control_resultados/historial_produccion_ensamble/export",
+    "/api/control_resultados/historial_verificacion_display/export",
     methods=["GET"],
 )
 @login_requerido
 @_requiere_permiso
-def export_historial_produccion_ensamble():
+def export_historial_verificacion_display():
     """Exportar a Excel la pagina visible con los filtros activos."""
     try:
         page, per_page = _pagination_args()
@@ -248,7 +241,7 @@ def export_historial_produccion_ensamble():
         data_sql = f"""
             SELECT id, DATE(ts) AS fecha, TIME(ts) AS hora,
                    linea, raw AS qr, raw_barcode AS barcode, lot_no AS lote
-            FROM input_main
+            FROM ouput_main
             WHERE {where_sql}
             ORDER BY ts DESC, id DESC
             LIMIT %s OFFSET %s
@@ -263,7 +256,7 @@ def export_historial_produccion_ensamble():
             for index, row in enumerate(rows, start=1)
         ]
         filename = (
-            "historial_input_ensamble_"
+            "historial_verificacion_display_"
             f"{obtener_fecha_hora_mexico().strftime('%Y%m%d_%H%M%S')}"
         )
         return excel_response_ict(
@@ -271,17 +264,17 @@ def export_historial_produccion_ensamble():
             ["#", "Línea", "Fecha", "Hora", "QR", "Barcode", "Lote"],
             ["numero", "linea", "fecha", "hora", "qr", "barcode", "lote"],
             [10, 12, 13, 12, 38, 26, 18],
-            sheet="Input ensamble",
+            sheet="Verificacion display",
             filename=filename,
             freeze="A2",
         )
     except ValueError as exc:
         return jsonify({"success": False, "error": str(exc)}), 400
     except Exception as exc:
-        logger.exception("Error exportando input_main a Excel: %s", exc)
+        logger.exception("Error exportando ouput_main a Excel: %s", exc)
         return jsonify(
             {
                 "success": False,
-                "error": "No fue posible exportar el historial de input ensamble",
+                "error": "No fue posible exportar el historial de verificacion display",
             }
         ), 500

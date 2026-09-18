@@ -618,6 +618,7 @@ class AuthSystem:
             # WF_001 (2026-05-27): seed para los 2 modulos Vision en Historial de maquinas calidad.
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina vision', 'Acceso al historial de la maquina vision'),
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de maquina Vision % Pass/Fail', 'Acceso al historial Vision % Pass/Fail'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de prueba electrica', 'Acceso al historial de prueba electrica'),
             # WF_001 (2026-06-09): seed modulo Historial de Operadores por Maquina.
             ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Historial de maquinas calidad', 'Historial de Operadores por Maquina', 'Acceso al historial de operadores por maquina de calidad'),
             

@@ -55,8 +55,14 @@
       <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
       </svg>
-      <h3>Historial de producción ensamble</h3>
+      <h3>Historial de input ensamble</h3>
       <span class="record-count" id="hpe-record-count">0 registros</span>
+      <button id="hpe-btn-export-excel" class="btn-export" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Exportar Excel
+      </button>
     </div>
 
     <div class="table-wrap hpe-table-wrap">
@@ -109,4 +115,4 @@
   <div id="hpe-notification" class="hpe-notification" role="status" aria-live="polite" hidden></div>
 </section>
 
-<script src="{{ url_for('static', filename='js/historial_produccion_ensamble.js', v='20260918a') }}"></script>
+<script src="{{ url_for('static', filename='js/historial_produccion_ensamble.js', v='20260918f') }}"></script>

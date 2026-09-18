@@ -124,6 +124,14 @@ _MODULOS_REGISTRADOS = [
     # WF_001-WF_004/WF_007/WF_009 (2026-09-18): historial paginado de
     # produccion ensamble desde input_main (solo lectura).
     "control_resultados.historial_produccion_ensamble",
+    # Historial gemelo de produccion SMT desde input_smt, sin Barcode.
+    "control_resultados.historial_produccion_smt",
+    # Historial de produccion IMD desde output_imd, sin Barcode.
+    "control_resultados.historial_produccion_imd",
+    # Historial de verificacion display desde ouput_main (ortografia real DB).
+    "control_resultados.historial_verificacion_display",
+    # Historial de prueba electrica desde history_prueba_electrica.
+    "control_resultados.historial_prueba_electrica",
     # WF_001-WF_004 (2026-08-04): Production Tracking By Process. Historial de
     # etapas de una pieza (tabla Tracking, alimentada por triggers).
     "control_reporte.production_tracking",

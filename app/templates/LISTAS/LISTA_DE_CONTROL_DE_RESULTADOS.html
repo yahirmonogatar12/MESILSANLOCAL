@@ -57,8 +57,23 @@
                     <li class="sidebar-link" tabindex="0"
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
                             data-permiso-seccion="Consultar resultados"
+                            data-permiso-boton="Historial de produccion SMT"
+                            onclick="window.parent.mostrarHistorialProduccionSmt ? window.parent.mostrarHistorialProduccionSmt() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-produccion-smt-unique-container', '/control_resultados/historial_produccion_smt') : window.location.href='/control_resultados/historial_produccion_smt')">Historial de input SMT</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Consultar resultados"
+                            data-permiso-boton="Historial de produccion IMD"
+                            onclick="window.parent.mostrarHistorialProduccionImd ? window.parent.mostrarHistorialProduccionImd() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-produccion-imd-unique-container', '/control_resultados/historial_produccion_imd') : window.location.href='/control_resultados/historial_produccion_imd')">Historial de input IMD</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Consultar resultados"
                             data-permiso-boton="Historial de produccion ensamble"
-                            onclick="window.parent.mostrarHistorialProduccionEnsamble ? window.parent.mostrarHistorialProduccionEnsamble() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-produccion-ensamble-unique-container', '/control_resultados/historial_produccion_ensamble') : window.location.href='/control_resultados/historial_produccion_ensamble')">Historial de produccion ensamble</li>
+                            onclick="window.parent.mostrarHistorialProduccionEnsamble ? window.parent.mostrarHistorialProduccionEnsamble() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-produccion-ensamble-unique-container', '/control_resultados/historial_produccion_ensamble') : window.location.href='/control_resultados/historial_produccion_ensamble')">Historial de input ensamble</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Consultar resultados"
+                            data-permiso-boton="Historial de verificacion display"
+                            onclick="window.parent.mostrarHistorialVerificacionDisplay ? window.parent.mostrarHistorialVerificacionDisplay() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-verificacion-display-unique-container', '/control_resultados/historial_verificacion_display') : window.location.href='/control_resultados/historial_verificacion_display')">Historial de verificacion display</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -143,6 +158,11 @@
                             data-permiso-seccion="Historial de maquinas calidad"
                             data-permiso-boton="Historial de maquina Vision % Pass/Fail"
                             onclick="window.parent.mostrarHistorialVisionPassFail ? window.parent.mostrarHistorialVisionPassFail() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-vision-pass-fail-unique-container', '/historial_vision_pass_fail/ajax') : window.location.href='/historial_vision_pass_fail/ajax')">Historial de maquina Vision % Pass/Fail</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas calidad"
+                            data-permiso-boton="Historial de prueba electrica"
+                            onclick="window.parent.mostrarHistorialPruebaElectrica ? window.parent.mostrarHistorialPruebaElectrica() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-prueba-electrica-unique-container', '/control_resultados/historial_prueba_electrica') : window.location.href='/control_resultados/historial_prueba_electrica')">Historial de prueba electrica</li>
                 </ul>
             </li>
             <li class="sidebar-section">

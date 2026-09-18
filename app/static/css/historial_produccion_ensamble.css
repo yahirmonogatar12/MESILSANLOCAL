@@ -1,4 +1,4 @@
-/* Historial de produccion ensamble: apariencia homologada con Historial ICT. */
+/* Historiales de input y verificacion display: apariencia homologada con Historial ICT. */
 .hpe-module {
   width: 100%;
   display: flex;
@@ -184,7 +184,8 @@
   animation: hpe-spin 1s linear infinite;
 }
 
-#hpe-table {
+#hpe-table,
+#hvd-table {
   width: 100%;
   border-collapse: collapse;
   background: var(--ilsan-dark-secondary);
@@ -192,14 +193,17 @@
 }
 
 #hpe-table th,
-#hpe-table td {
+#hpe-table td,
+#hvd-table th,
+#hvd-table td {
   padding: 8px 6px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   text-align: center;
   font-size: 0.8rem;
 }
 
-#hpe-table thead th {
+#hpe-table thead th,
+#hvd-table thead th {
   position: sticky;
   z-index: 10;
   top: 0;
@@ -214,11 +218,13 @@
   white-space: nowrap;
 }
 
-#hpe-table th.hpe-filter-open {
+#hpe-table th.hpe-filter-open,
+#hvd-table th.hpe-filter-open {
   z-index: 35;
 }
 
-#hpe-table tbody td {
+#hpe-table tbody td,
+#hvd-table tbody td {
   overflow: hidden;
   max-width: 260px;
   background: var(--ilsan-dark-secondary);
@@ -227,30 +233,40 @@
   white-space: nowrap;
 }
 
-#hpe-table tbody tr:nth-child(even) td {
+#hpe-table tbody tr:nth-child(even) td,
+#hvd-table tbody tr:nth-child(even) td {
   background: #44475a;
 }
 
-#hpe-table tbody tr:hover td {
+#hpe-table tbody tr:hover td,
+#hvd-table tbody tr:hover td {
   background: var(--ilsan-hover);
 }
 
 #hpe-table .hpe-col-number,
-#hpe-table td:first-child {
+#hpe-table td:first-child,
+#hvd-table .hpe-col-number,
+#hvd-table td:first-child {
   width: 72px;
   color: var(--ilsan-text-gray);
   font-family: Consolas, "Courier New", monospace;
 }
 
 #hpe-table th:nth-child(2),
-#hpe-table td:nth-child(2) {
+#hpe-table td:nth-child(2),
+#hvd-table th:nth-child(2),
+#hvd-table td:nth-child(2) {
   width: 100px;
 }
 
 #hpe-table th:nth-child(3),
 #hpe-table td:nth-child(3),
 #hpe-table th:nth-child(4),
-#hpe-table td:nth-child(4) {
+#hpe-table td:nth-child(4),
+#hvd-table th:nth-child(3),
+#hvd-table td:nth-child(3),
+#hvd-table th:nth-child(4),
+#hvd-table td:nth-child(4) {
   width: 120px;
 }
 
@@ -317,7 +333,118 @@
   white-space: normal;
 }
 
-#hpe-table th:nth-last-child(-n + 2) .hpe-column-filter-popover {
+#hpe-table th:nth-last-child(-n + 2) .hpe-column-filter-popover,
+#hvd-table th:nth-last-child(-n + 2) .hpe-column-filter-popover {
+  right: 3px;
+  left: auto;
+}
+
+/* Variantes SMT/IMD/prueba electrica: mismo tema, sin Barcode. */
+#hps-table,
+#hpi-table,
+#hpel-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--ilsan-dark-secondary);
+  table-layout: fixed;
+}
+
+#hps-table th,
+#hps-table td,
+#hpi-table th,
+#hpi-table td,
+#hpel-table th,
+#hpel-table td {
+  padding: 8px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+#hps-table thead th,
+#hpi-table thead th,
+#hpel-table thead th {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  overflow: visible;
+  background: linear-gradient(135deg, var(--ilsan-dark-header), #2a2a3c);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: var(--ilsan-text-light);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#hps-table th.hpe-filter-open,
+#hpi-table th.hpe-filter-open,
+#hpel-table th.hpe-filter-open {
+  z-index: 35;
+}
+
+#hps-table tbody td,
+#hpi-table tbody td,
+#hpel-table tbody td {
+  overflow: hidden;
+  max-width: 300px;
+  background: var(--ilsan-dark-secondary);
+  color: var(--ilsan-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#hps-table tbody tr:nth-child(even) td,
+#hpi-table tbody tr:nth-child(even) td,
+#hpel-table tbody tr:nth-child(even) td {
+  background: #44475a;
+}
+
+#hps-table tbody tr:hover td,
+#hpi-table tbody tr:hover td,
+#hpel-table tbody tr:hover td {
+  background: var(--ilsan-hover);
+}
+
+#hps-table .hpe-col-number,
+#hps-table td:first-child,
+#hpi-table .hpe-col-number,
+#hpi-table td:first-child,
+#hpel-table .hpe-col-number,
+#hpel-table td:first-child {
+  width: 72px;
+  color: var(--ilsan-text-gray);
+  font-family: Consolas, "Courier New", monospace;
+}
+
+#hps-table th:nth-child(2),
+#hps-table td:nth-child(2),
+#hpi-table th:nth-child(2),
+#hpi-table td:nth-child(2),
+#hpel-table th:nth-child(2),
+#hpel-table td:nth-child(2) {
+  width: 130px;
+}
+
+#hps-table th:nth-child(3),
+#hps-table td:nth-child(3),
+#hps-table th:nth-child(4),
+#hps-table td:nth-child(4),
+#hpi-table th:nth-child(3),
+#hpi-table td:nth-child(3),
+#hpi-table th:nth-child(4),
+#hpi-table td:nth-child(4),
+#hpel-table th:nth-child(3),
+#hpel-table td:nth-child(3),
+#hpel-table th:nth-child(4),
+#hpel-table td:nth-child(4) {
+  width: 120px;
+}
+
+#hps-table th:nth-last-child(-n + 2) .hpe-column-filter-popover,
+#hpi-table th:nth-last-child(-n + 2) .hpe-column-filter-popover,
+#hpel-table th:nth-last-child(-n + 2) .hpe-column-filter-popover {
   right: 3px;
   left: auto;
 }
@@ -415,7 +542,15 @@
   }
 
   #hpe-table th,
-  #hpe-table td {
+  #hpe-table td,
+  #hvd-table th,
+  #hvd-table td,
+  #hps-table th,
+  #hps-table td,
+  #hpi-table th,
+  #hpi-table td,
+  #hpel-table th,
+  #hpel-table td {
     padding: 6px 4px;
     font-size: 0.75rem;
   }
