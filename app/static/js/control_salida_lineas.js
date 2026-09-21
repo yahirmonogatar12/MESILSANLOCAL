@@ -351,6 +351,8 @@
       const params = buildQueryParams();
       const response = await fetch(`/api/control-salida-lineas?${params.toString()}`, {
         credentials: "same-origin",
+        // Content-Type JSON: sin permiso el backend responde 403 en JSON (no HTML).
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
       });
       const payload = await response.json();
 

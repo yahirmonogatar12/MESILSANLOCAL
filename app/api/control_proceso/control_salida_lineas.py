@@ -24,7 +24,7 @@ from datetime import date, datetime, timedelta
 
 from flask import Blueprint, jsonify, render_template, request
 
-from app.api.shared import execute_query, login_requerido
+from app.api.shared import execute_query, login_requerido, requiere_permiso_dropdown
 from app.api.control_proceso.almacen_embarques import (
     _exportar_historial_embarques_excel,
     _normalizar_texto_embarques_historial,
@@ -34,6 +34,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("control_proceso_control_salida_lineas", __name__)
+
+# Mismo permiso que el boton del sidebar (LISTA_CONTROL_DE_PROCESO).
+_requiere_permiso = requiere_permiso_dropdown(
+    "LISTA_CONTROL_DE_PROCESO", "Control de produccion", "Control de salida de lineas"
+)
 
 
 def _parse_fecha_control_salida_lineas(value, fallback):
@@ -284,6 +289,7 @@ def _obtener_control_salida_lineas(limit=500):
 
 @bp.route("/control-salida-lineas-ajax")
 @login_requerido
+@_requiere_permiso
 def control_salida_lineas_ajax():
     """Ruta AJAX para consultar salida de lineas contra OQC y almacen de embarques."""
     try:
@@ -295,6 +301,7 @@ def control_salida_lineas_ajax():
 
 @bp.route("/api/control-salida-lineas")
 @login_requerido
+@_requiere_permiso
 def api_control_salida_lineas():
     """Obtener produccion, liberacion OQC y entradas de almacen por parte/fecha."""
     try:
@@ -308,6 +315,7 @@ def api_control_salida_lineas():
 
 @bp.route("/api/control-salida-lineas/export")
 @login_requerido
+@_requiere_permiso
 def export_control_salida_lineas():
     """Exportar Control de salida de lineas a Excel."""
     try:
