@@ -152,11 +152,6 @@ const allDropdowns = [
     {
         "pagina": "LISTA_CONTROL_DE_PROCESO",
         "seccion": "Control de produccion",
-        "boton": "BOM Management By Process"
-    },
-    {
-        "pagina": "LISTA_CONTROL_DE_PROCESO",
-        "seccion": "Control de produccion",
         "boton": "Control de salida de lineas"
     },
     {
