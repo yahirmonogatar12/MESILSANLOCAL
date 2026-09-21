@@ -38,6 +38,16 @@
       ['programacion', 'Programación'], ['part_no', 'Part No'], ['especificacion', 'Especificación'],
       ['stock', 'Stock total'], ['lotes', 'Lotes distintos'], ['lotes_con_stock', 'Lotes con stock'],
     ],
+    // IPM: inventario completo (IPM armados), solo stock. Detallado por lote completo.
+    inventario_completo: [
+      ['lote_completo', 'Lote completo'], ['programacion', 'Part No IPM'], ['especificacion', 'Especificación'],
+      ['stock', 'Stock'], ['fecha_recibo', 'Fecha creación'], ['usuario', 'Usuario'],
+    ],
+    // Completo general: suma por part no IPM.
+    inventario_completo_general: [
+      ['programacion', 'Part No IPM'], ['especificacion', 'Especificación'], ['stock', 'Stock total'],
+      ['lotes', 'Lotes distintos'], ['lotes_con_stock', 'Lotes con stock'],
+    ],
   };
 
   const estados = {}; // area -> { filtrosPorVista, filterTimer, controller, pag }
@@ -70,7 +80,7 @@
     try { localStorage.setItem(storageKey(area), JSON.stringify(estado(area).filtrosPorVista)); } catch (_) { /* sin storage */ }
   }
 
-  // "inventario" (virgen) o "inventario_chamber" (solo MICOM).
+  // "inventario" (virgen), "inventario_chamber" (MICOM) o "inventario_completo" (IPM).
   const esInventario = (area) => (el(area, 'vista')?.value || '').startsWith('inventario');
   // Vista efectiva (= clave de VISTAS en el backend): cada inventario tiene modo
   // general (<vista>_general) o detallado (<vista>).
@@ -197,6 +207,8 @@
       inventario_general: `${num(data.total)} números de parte · stock ${num(data.piezas)}`,
       inventario_chamber: `${num(data.total)} lotes chamber · stock ${num(data.piezas)}`,
       inventario_chamber_general: `${num(data.total)} programaciones · stock ${num(data.piezas)}`,
+      inventario_completo: `${num(data.total)} lotes completo · stock ${num(data.piezas)}`,
+      inventario_completo_general: `${num(data.total)} números de parte IPM · stock ${num(data.piezas)}`,
     };
     el(area, 'resumen').textContent = etiquetas[vista(area)] || `${num(data.total)} registros · ${num(data.piezas)} piezas`;
 

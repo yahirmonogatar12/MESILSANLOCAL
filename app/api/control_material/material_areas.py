@@ -7,13 +7,14 @@ Consulta de solo lectura sobre las tablas que escriben las apps de cada area
   - Inventario: inventario_lotes_<sfx>          (stock actual > 0) en dos modos:
       detallado (por lote) y general (suma por numero de parte)
   - MICOM ademas: inventario chamber (control_material_chamber_micom, micoms
-      programados), detallado por lote chamber y general por programacion
+      programados); IPM ademas: inventario completo (control_material_completo_ipm,
+      IPM armados). Solo stock, detallado por lote y general por llave.
 Misma logica que warehousing.search / outgoing.search / inventory.getLots /
-inventory.getSummary de Control_inventario_SMD y MICOM.
+inventory.getSummary de Control_inventario_SMD, MICOM e IPM_Control.
 
-Areas: smd (Control_inventario_SMD), micom (MICOM).
+Areas: smd (Control_inventario_SMD), micom (MICOM), ipm (IPM_Control).
 
-Rutas (<area> = smd | micom):
+Rutas (<area> = smd | micom | ipm):
   GET /material/<area>                  -> fragmento AJAX
   GET /api/material/<area>              -> vista, start, end, cf_<col>, page, per_page
   GET /api/material/<area>/export       -> Excel con los mismos filtros (sin paginar)
@@ -47,8 +48,12 @@ AREAS = {
         "inventarios": [("inventario", "Inventario")],
     },
     "micom": {
-        "sfx": "micom", "titulo": "MICOM", "boton": "Control de material Micom", "chamber": True,
+        "sfx": "micom", "titulo": "MICOM", "boton": "Control de material Micom",
         "inventarios": [("inventario", "Inventario virgen"), ("inventario_chamber", "Inventario chamber")],
+    },
+    "ipm": {
+        "sfx": "ipm", "titulo": "IPM", "boton": "Control de material IPM",
+        "inventarios": [("inventario", "Inventario virgen"), ("inventario_completo", "Inventario completo")],
     },
 }
 _AREA = "<any(" + ", ".join(AREAS) + "):area>"
@@ -178,58 +183,76 @@ def _vistas(sfx):
     }
 
 
-# MICOM tiene ademas inventario Chamber (micoms ya programados), agrupado por la
-# etiqueta de programacion. Misma logica que inventory.getChamberLots /
-# getChamberSummary de la app MICOM.
-_PROG_KEY = (
-    "COALESCE(NULLIF(REPLACE(TRIM(COALESCE(NULLIF(c.programming_qr_label_text, ''), "
-    "NULLIF(c.micom_label_text, ''))), ' ', '|'), ''), NULLIF(c.source_part_number, ''), 'UNKNOWN')"
-)
-# Chamber solo muestra stock (sin entrada/salida/ubicacion).
-VISTAS_CHAMBER = {
-    "inventario_chamber": {
-        "from": "control_material_chamber_micom c",
-        "base": ("COALESCE(c.qty_actual, 0) > %s", [0]),
-        "fecha": None,
-        "cols": [
-            ("lote_chamber", "c.chamber_lot", "Lote chamber", 34),
-            ("programacion", _PROG_KEY, "Programacion", 24),
-            ("part_no", "c.source_part_number", "Part No", 22),
-            ("especificacion", "c.source_specification", "Especificacion", 30),
-            ("stock", "COALESCE(c.qty_actual, 0)", "Stock", 10),
-            ("fecha_recibo", "DATE_FORMAT(c.created_at, '%%Y-%%m-%%d')", "Fecha creacion", 12),
-            ("usuario", "c.usuario_registro", "Usuario", 22),
-        ],
-        "orden": f"{_PROG_KEY}, c.created_at",
-        "suma": "COALESCE(c.qty_actual, 0)",
-    },
-    "inventario_chamber_general": {
-        "from": (
-            f"(SELECT {_PROG_KEY} AS programacion, MAX(c.source_part_number) AS part_no, "
-            "MAX(c.source_specification) AS especificacion, "
-            "SUM(COALESCE(c.qty_actual, 0)) AS stock, COUNT(DISTINCT c.chamber_lot) AS lotes, "
-            "SUM(COALESCE(c.qty_actual, 0) > 0) AS lotes_con_stock "
-            "FROM control_material_chamber_micom c GROUP BY programacion) g"
-        ),
-        "base": ("g.stock > %s", [0]),
-        "fecha": None,
-        "cols": [
-            ("programacion", "g.programacion", "Programacion", 24),
-            ("part_no", "g.part_no", "Part No", 22),
-            ("especificacion", "g.especificacion", "Especificacion", 30),
-            ("stock", "g.stock", "Stock total", 12),
-            ("lotes", "g.lotes", "Lotes distintos", 14),
-            ("lotes_con_stock", "g.lotes_con_stock", "Lotes con stock", 14),
-        ],
-        "orden": "g.programacion",
-        "suma": "g.stock",
-    },
+# Inventario de material ya procesado, solo stock (sin entrada/salida/ubicacion):
+#   MICOM chamber  -> micoms programados, llave = etiqueta de programacion
+#                     (inventory.getChamberLots / getChamberSummary de MICOM)
+#   IPM completo   -> IPM armados, llave = part no IPM
+#                     (inventory.getCompletoLots / getCompletoSummary de IPM_Control)
+def _vistas_procesado(sufijo, tabla, col_lote, clave_sql, lote_label, clave_label, part_no=True,
+                      espec_general="MAX(c.source_specification)"):
+    extra = [("part_no", "c.source_part_number", "Part No", 22)] if part_no else []
+    extra_g = [("part_no", "g.part_no", "Part No", 22)] if part_no else []
+    return {
+        f"inventario_{sufijo}": {
+            "from": f"{tabla} c",
+            "base": ("COALESCE(c.qty_actual, 0) > %s", [0]),
+            "fecha": None,
+            "cols": [
+                (f"lote_{sufijo}", f"c.{col_lote}", lote_label, 34),
+                ("programacion", clave_sql, clave_label, 24),
+                *extra,
+                ("especificacion", "c.source_specification", "Especificacion", 30),
+                ("stock", "COALESCE(c.qty_actual, 0)", "Stock", 10),
+                ("fecha_recibo", "DATE_FORMAT(c.created_at, '%%Y-%%m-%%d')", "Fecha creacion", 12),
+                ("usuario", "c.usuario_registro", "Usuario", 22),
+            ],
+            "orden": f"{clave_sql}, c.created_at",
+            "suma": "COALESCE(c.qty_actual, 0)",
+        },
+        f"inventario_{sufijo}_general": {
+            "from": (
+                f"(SELECT {clave_sql} AS programacion, MAX(c.source_part_number) AS part_no, "
+                f"{espec_general} AS especificacion, "
+                f"SUM(COALESCE(c.qty_actual, 0)) AS stock, COUNT(DISTINCT c.{col_lote}) AS lotes, "
+                "SUM(COALESCE(c.qty_actual, 0) > 0) AS lotes_con_stock "
+                f"FROM {tabla} c GROUP BY programacion) g"
+            ),
+            "base": ("g.stock > %s", [0]),
+            "fecha": None,
+            "cols": [
+                ("programacion", "g.programacion", clave_label, 24),
+                *extra_g,
+                ("especificacion", "g.especificacion", "Especificacion", 30),
+                ("stock", "g.stock", "Stock total", 12),
+                ("lotes", "g.lotes", "Lotes distintos", 14),
+                ("lotes_con_stock", "g.lotes_con_stock", "Lotes con stock", 14),
+            ],
+            "orden": "g.programacion",
+            "suma": "g.stock",
+        },
+    }
+
+
+_EXTRAS = {
+    "micom": _vistas_procesado(
+        "chamber", "control_material_chamber_micom", "chamber_lot",
+        "COALESCE(NULLIF(REPLACE(TRIM(COALESCE(NULLIF(c.programming_qr_label_text, ''), "
+        "NULLIF(c.micom_label_text, ''))), ' ', '|'), ''), NULLIF(c.source_part_number, ''), 'UNKNOWN')",
+        "Lote chamber", "Programacion",
+    ),
+    # En IPM source_part_number es la misma llave: no se repite como columna.
+    # Los lotes UNION guardan "UNION: lote + lote" como especificacion: en el
+    # general se prefiere la de un lote armado (origen IPM).
+    "ipm": _vistas_procesado(
+        "completo", "control_material_completo_ipm", "completo_lot",
+        "COALESCE(NULLIF(TRIM(c.ipm_numero_parte), ''), NULLIF(c.source_part_number, ''), 'UNKNOWN')",
+        "Lote completo", "Part No IPM", part_no=False,
+        espec_general="COALESCE(MAX(CASE WHEN c.origen <> 'UNION' THEN c.source_specification END), "
+                      "MAX(c.source_specification))",
+    ),
 }
 
-VISTAS = {
-    area: {**_vistas(cfg["sfx"]), **(VISTAS_CHAMBER if cfg.get("chamber") else {})}
-    for area, cfg in AREAS.items()
-}
+VISTAS = {area: {**_vistas(cfg["sfx"]), **_EXTRAS.get(area, {})} for area, cfg in AREAS.items()}
 
 
 def _vista(area):
@@ -338,8 +361,8 @@ def api_material_area_export(area):
     rows = _filas(vista, where, params, EXPORT_MAX)
     claves, _e, headers, widths = zip(*vista["cols"])
     titulo = AREAS[area]["titulo"]
-    # Hoja legible (<=31 chars): "MICOM chamber general", "SMD inventario general"...
-    hoja = nombre.replace("inventario_chamber", "chamber").replace("_", " ")
+    # Hoja legible (<=31 chars): "MICOM chamber general", "IPM completo", "SMD inventario general"...
+    hoja = nombre.replace("inventario_chamber", "chamber").replace("inventario_completo", "completo").replace("_", " ")
     return excel_response(
         rows, headers, claves, widths, f"{titulo} {hoja}",
         f"Material_{titulo}_{nombre}_{obtener_fecha_hora_mexico():%Y%m%d_%H%M}", freeze="A2",

@@ -1,5 +1,7 @@
+import re
 import time
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from flask import Flask
@@ -30,13 +32,27 @@ def test_cada_area_usa_sus_tablas():
             assert f"_{area}" in texto and not any(f"_{o}" in texto for o in otras)
 
 
-def test_solo_micom_tiene_inventario_chamber():
+def test_inventarios_procesados_solo_en_su_area():
     assert {"inventario_chamber", "inventario_chamber_general"} <= set(m.VISTAS["micom"])
-    assert "inventario_chamber" not in m.VISTAS["smd"]
+    assert {"inventario_completo", "inventario_completo_general"} <= set(m.VISTAS["ipm"])
+    assert "inventario_chamber" not in m.VISTAS["smd"] and "inventario_completo" not in m.VISTAS["micom"]
     with pytest.raises(ValueError):
         where("vista=inventario_chamber", "smd")
-    sql, params = where("vista=inventario_chamber_general&cf_programacion=SAA30025", "micom")
-    assert "g.stock > %s" in sql and params == [0, "%SAA30025%"]
+    sql, params = where("vista=inventario_completo_general&cf_programacion=92MS", "ipm")
+    assert "g.stock > %s" in sql and params == [0, "%92MS%"]
+
+
+def test_columnas_del_js_coinciden_con_el_backend():
+    js = Path("app/static/js/material_areas.js").read_text(encoding="utf-8")
+    for area in m.AREAS:
+        for nombre, vista in m.VISTAS[area].items():
+            bloque = re.search(rf"^    {nombre}: \[(.*?)^    \],", js, re.S | re.M)
+            assert bloque, f"falta {nombre} en COLUMNAS"
+            assert re.findall(r"\['(\w+)',", bloque.group(1)) == [c[0] for c in vista["cols"]], nombre
+    # Cada inventario del selector tiene sus dos modos en el backend.
+    for area, cfg in m.AREAS.items():
+        for valor, _etiqueta in cfg["inventarios"]:
+            assert {valor, f"{valor}_general"} <= set(m.VISTAS[area])
 
 
 def test_inventario_ignora_fechas_y_siempre_lleva_params():
@@ -74,7 +90,9 @@ class SinPermiso:
         return False
 
 
-@pytest.mark.parametrize("area,boton", [("smd", "Control de material SMD"), ("micom", "Control de material Micom")])
+@pytest.mark.parametrize("area,boton", [
+    ("smd", "Control de material SMD"), ("micom", "Control de material Micom"), ("ipm", "Control de material IPM"),
+])
 @pytest.mark.parametrize("ruta", ["/material/{}", "/api/material/{}", "/api/material/{}/export"])
 def test_sin_permiso_del_boton_de_su_area_responde_403(client, monkeypatch, ruta, area, boton):
     auth = SinPermiso()
@@ -88,4 +106,4 @@ def test_sin_permiso_del_boton_de_su_area_responde_403(client, monkeypatch, ruta
 
 
 def test_area_desconocida_no_existe(client):
-    assert client.get("/api/material/ipm").status_code == 404
+    assert client.get("/api/material/imd").status_code == 404

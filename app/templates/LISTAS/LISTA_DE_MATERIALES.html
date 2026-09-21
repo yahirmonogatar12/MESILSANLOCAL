@@ -70,7 +70,7 @@
                             data-permiso-pagina="LISTA_DE_MATERIALES"
                             data-permiso-seccion="Material por áreas"
                             data-permiso-boton="Control de material ASSY">Control de material ASSY</li>
-                        <li class="sidebar-link" tabindex="0"
+                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarControlMaterialIpm ? window.parent.mostrarControlMaterialIpm() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('material-ipm-unique-container', '/material/ipm') : window.location.href='/material/ipm')"
                             data-permiso-pagina="LISTA_DE_MATERIALES"
                             data-permiso-seccion="Material por áreas"
                             data-permiso-boton="Control de material IPM">Control de material IPM</li>
