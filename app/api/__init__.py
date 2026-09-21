@@ -171,6 +171,8 @@ _MODULOS_REGISTRADOS = [
     "control_proceso.control_salida_lineas",
     # WF_001-WF_005 (2026-09-21): Control de Scrap (scrap_records)
     "control_proceso.control_scrap",
+    # 2026-09-21: Historial de operacion por proceso (plan_smt + plan_imd + plan_main)
+    "control_proceso.historial_operacion_proceso",
     "shared.raw_modelos",
     "portal.tickets",
     # Asistente IA global: chat, reportes seguros y artefactos Excel/PowerPoint.

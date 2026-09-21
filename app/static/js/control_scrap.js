@@ -4,7 +4,6 @@
 (function () {
   const FILTER_STORAGE_KEY = 'controlScrapColumnFilters';
   let registros = [];
-  let motivos = [];
   let listenersListos = false;
   let columnFilters = leerFiltrosGuardados();
   let filterTimer = null;
@@ -127,7 +126,7 @@
   function render() {
     if (!registros.length) return mensaje('No se encontraron registros con los filtros seleccionados.');
     $('scrap-tbody').innerHTML = registros.map((r) => `
-      <tr class="scrap-row" data-id="${esc(r.id)}" title="Doble clic para editar">
+      <tr>
         <td title="${esc(r.cliente)}">${esc(r.cliente)}</td>
         <td>${esc(r.fecha)}</td>
         <td>${esc(r.hora)}</td>
@@ -156,90 +155,6 @@
       URL.revokeObjectURL(a.href);
     } catch (e) {
       alert('Error al exportar: ' + e.message);
-    }
-  }
-
-  const estiloCampo = 'width:100%; background:#1a1b26; border:1px solid #444; color:lightgray; padding:8px; border-radius:4px; box-sizing:border-box;';
-
-  function modalEdicion() {
-    let modal = $('scrap-edit-modal');
-    if (modal) return modal;
-    document.body.insertAdjacentHTML('beforeend', `
-      <div id="scrap-edit-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10001; align-items:center; justify-content:center;">
-        <div style="background:#32323E; border-radius:8px; padding:20px; max-width:520px; width:90%; max-height:85vh; overflow-y:auto;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #444; padding-bottom:10px;">
-            <h3 style="color:#ecf0f1; margin:0;">Editar Scrap</h3>
-            <button type="button" id="scrap-edit-close" style="background:none; border:none; color:#888; font-size:24px; cursor:pointer;">&times;</button>
-          </div>
-          <form id="scrap-edit-form">
-            <input type="hidden" name="id" id="scrap-edit-id">
-            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;">
-              <div style="grid-column:1 / -1;"><label style="color:#888; font-size:12px;">Código</label><input type="text" id="scrap-edit-codigo" disabled style="${estiloCampo} color:#888;"></div>
-              <div><label style="color:#888; font-size:12px;">Cantidad</label><input type="number" name="cantidad" id="scrap-edit-cantidad" min="0" step="1" required title="0 permitido" style="${estiloCampo}"></div>
-              <div><label style="color:#888; font-size:12px;">Ubicación</label><input type="text" name="ubicacion" id="scrap-edit-ubicacion" maxlength="100" style="${estiloCampo}"></div>
-              <div style="grid-column:1 / -1;"><label style="color:#888; font-size:12px;">Motivo</label><select name="motivo_scrap_id" id="scrap-edit-motivo" required style="${estiloCampo}"></select></div>
-              <div style="grid-column:1 / -1;"><label style="color:#888; font-size:12px;">Comentarios</label><textarea name="comentarios" id="scrap-edit-comentarios" rows="3" style="${estiloCampo}"></textarea></div>
-              <div style="grid-column:1 / -1;"><label style="color:#888; font-size:12px;">Motivo de la edición *</label><input type="text" name="edit_reason" id="scrap-edit-reason" required style="${estiloCampo}"></div>
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; margin-top:20px;">
-              <button type="submit" style="background:#e67e22; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">Guardar Cambios</button>
-              <button type="button" id="scrap-edit-cancel" style="background:#7f8c8d; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">Cerrar</button>
-            </div>
-          </form>
-        </div>
-      </div>`);
-    return $('scrap-edit-modal');
-  }
-
-  async function abrirEdicion(id) {
-    const r = registros.find((x) => String(x.id) === String(id));
-    if (!r) return;
-    if (!motivos.length) {
-      try {
-        motivos = (await pedir('/api/control-scrap/motivos')).data || [];
-      } catch (e) {
-        return alert('No se pudieron cargar los motivos: ' + e.message);
-      }
-    }
-    const modal = modalEdicion();
-    const opciones = motivos.map((m) => ({ id: m.id, texto: m.motivo }));
-    // El motivo actual puede estar inactivo (p.ej. motivos de sistema): se conserva.
-    if (r.motivo_scrap_id != null && !opciones.some((m) => String(m.id) === String(r.motivo_scrap_id))) {
-      opciones.unshift({ id: r.motivo_scrap_id, texto: `${r.motivo_scrap_texto || r.motivo_scrap_id} (inactivo)` });
-    }
-    $('scrap-edit-motivo').innerHTML = '<option value="">Selecciona motivo</option>' +
-      opciones.map((m) => `<option value="${esc(m.id)}">${esc(m.texto)}</option>`).join('');
-    $('scrap-edit-id').value = r.id;
-    $('scrap-edit-codigo').value = r.scanned_original || '';
-    $('scrap-edit-cantidad').value = r.cantidad ?? 0;
-    $('scrap-edit-ubicacion').value = r.ubicacion || '';
-    $('scrap-edit-motivo').value = r.motivo_scrap_id ?? '';
-    $('scrap-edit-comentarios').value = r.comentarios || '';
-    $('scrap-edit-reason').value = '';
-    modal.style.display = 'flex';
-  }
-
-  async function guardar(form) {
-    const fd = new FormData(form);
-    const cantidad = parseInt(fd.get('cantidad'), 10);
-    if (Number.isNaN(cantidad) || cantidad < 0) return alert('La cantidad debe ser 0 o mayor');
-    try {
-      await pedir('/api/control-scrap/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: fd.get('id'),
-          cantidad,
-          motivo_scrap_id: fd.get('motivo_scrap_id'),
-          ubicacion: fd.get('ubicacion'),
-          comentarios: fd.get('comentarios'),
-          edit_reason: fd.get('edit_reason'),
-        }),
-      });
-      $('scrap-edit-modal').style.display = 'none';
-      cargar();
-    } catch (e) {
-      alert('Error al guardar: ' + e.message);
     }
   }
 
@@ -280,7 +195,6 @@
       const id = e.target.closest('button')?.id;
       if (id === 'scrap-btn-filtrar') cargar();
       else if (id === 'scrap-btn-export') exportar();
-      else if (id === 'scrap-edit-close' || id === 'scrap-edit-cancel') $('scrap-edit-modal').style.display = 'none';
     });
     document.body.addEventListener('input', (e) => {
       if (!e.target.matches('#scrap-table .hpe-column-filter-input')) return;
@@ -302,15 +216,6 @@
         clearTimeout(filterTimer);
         cargar();
       }
-    });
-    document.body.addEventListener('dblclick', (e) => {
-      const row = e.target.closest('#scrap-root tr.scrap-row');
-      if (row) abrirEdicion(row.dataset.id);
-    });
-    document.body.addEventListener('submit', (e) => {
-      if (e.target.id !== 'scrap-edit-form') return;
-      e.preventDefault();
-      guardar(e.target);
     });
   }
 

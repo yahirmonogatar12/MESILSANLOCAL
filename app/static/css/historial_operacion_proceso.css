@@ -1,0 +1,78 @@
+/* historial_operacion_proceso.css - Historial de operacion por proceso (IDs hop-*).
+   Base visual: ict.css + historial_produccion_ensamble.css (hpe-*), igual que
+   Control de Scrap. Aqui solo lo atado a los IDs de este modulo. */
+
+#hop-filters .hop-acciones {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+}
+#hop-filters .filter-group select {
+  width: 160px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ilsan-text-light);
+  font-size: 0.8rem;
+}
+#hop-filters .filter-group select option {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Tabla: mismo estilo que #hps-table; cabe en pantalla sin scroll lateral. */
+#hop-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--ilsan-dark-secondary);
+  table-layout: fixed;
+}
+#hop-table th.hop-col-proceso { width: 80px; }
+#hop-table th[data-hop-filter-field="fecha"] { width: 104px; }
+#hop-table th[data-hop-filter-field="linea"] { width: 100px; }
+#hop-table th[data-hop-filter-field="wo"] { width: 150px; }
+#hop-table th[data-hop-filter-field="part_no"] { width: 130px; }
+#hop-table th[data-hop-filter-field="plan"],
+#hop-table th[data-hop-filter-field="input"],
+#hop-table th[data-hop-filter-field="output"] { width: 90px; }
+#hop-table th[data-hop-filter-field="status"] { width: 120px; }
+#hop-table th,
+#hop-table td {
+  padding: 8px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+  font-size: 0.8rem;
+}
+#hop-table thead th {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  overflow: visible;
+  background: linear-gradient(135deg, var(--ilsan-dark-header), #2a2a3c);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: var(--ilsan-text-light);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+#hop-table th.hpe-filter-open { z-index: 35; }
+#hop-table tbody td {
+  overflow: hidden;
+  background: var(--ilsan-dark-secondary);
+  color: var(--ilsan-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#hop-table tbody tr:nth-child(even) td { background: #44475a; }
+#hop-table tbody tr:hover td { background: var(--ilsan-hover); }
+#hop-table th:nth-last-child(-n + 2) .hpe-column-filter-popover {
+  right: 3px;
+  left: auto;
+}
+#hop-table td.hop-na { color: var(--ilsan-text-gray); font-style: italic; }
+#hop-table td.hop-proceso { font-weight: 600; color: var(--ilsan-text-light); }
