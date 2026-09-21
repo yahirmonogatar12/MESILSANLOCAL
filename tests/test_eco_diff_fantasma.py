@@ -2,6 +2,7 @@
 from app.api.informacion_basica.control_bom_data import (
     _eco_component_tuple,
     _eco_diff_field_value,
+    _eco_path_keys,
 )
 
 VALID_FROM_IDX = 16
@@ -45,5 +46,16 @@ def test_eco_diff_no_marca_cambios_fantasma():
     print('ok')
 
 
+def test_eco_path_keys_sobrevive_renumeracion_del_erp():
+    # MES: subensamble en 01-29; ERP lo movio a 01-31 -> mismas claves por ruta
+    mes = [('EBR37437074_I', '01-29'), ('0TR127309AD', '01-29-01'), ('491110014', '01-30')]
+    erp = [('491110014', '01-29'), ('EBR37437074_I', '01-31'), ('0TR127309AD', '01-31-01')]
+    assert set(_eco_path_keys(mes)) == set(_eco_path_keys(erp))
+    assert 'path:EBR37437074_I/0TR127309AD#1' in _eco_path_keys(erp)
+    # mismo item bajo otro padre -> clave distinta
+    assert _eco_path_keys([('A', '01-01'), ('X', '01-01-01')])[1] != _eco_path_keys([('B', '01-01'), ('X', '01-01-01')])[1]
+
+
 if __name__ == '__main__':
     test_eco_diff_no_marca_cambios_fantasma()
+    test_eco_path_keys_sobrevive_renumeracion_del_erp()

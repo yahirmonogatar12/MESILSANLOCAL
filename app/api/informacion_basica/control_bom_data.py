@@ -1132,6 +1132,24 @@ def _eco_single_row_keys(item):
     )
 
 
+def _eco_path_keys(pairs):
+    """Clave por ruta de numeros de parte (padre/hijo) para cada (item_no, bom_level).
+
+    El BOM del ERP puede renumerar el BOM level (reordena subensambles); la ruta
+    sobrevive a eso. El sufijo #n separa el mismo item repetido bajo el mismo padre.
+    """
+    item_by_level = {level: item_no for item_no, level in pairs}
+    seen = {}
+    keys = []
+    for item_no, level in pairs:
+        parts = level.split('-')
+        chain = [item_by_level.get('-'.join(parts[:i]), '') for i in range(2, len(parts))]
+        path = '/'.join(chain + [item_no])
+        seen[path] = seen.get(path, 0) + 1
+        keys.append(f"path:{path}#{seen[path]}")
+    return keys
+
+
 def _eco_excel_row_ref(item):
     """Referencia estable para la columna oculta __row_id del Excel de ECO.
 
@@ -1310,7 +1328,12 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
     current_entries = {}
     current_ref_by_id = {}
     current_ref_by_key = {}
-    for row in current_items:
+    current_path_keys = _eco_path_keys([
+        (_eco_normalize_upper(row.get('item_no') or row.get('material_code') or row.get('numero_parte')),
+         _eco_normalize_text(row.get('bom_level')))
+        for row in current_items
+    ])
+    for row, path_key in zip(current_items, current_path_keys):
         rid = row.get('id')
         keys = _eco_single_row_keys(row)
         base_ref = None
@@ -1326,9 +1349,14 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
         if not base_ref:
             continue
         current_entries[base_ref] = row
-        for key in keys:
+        for key in keys + [path_key]:
             current_ref_by_key.setdefault(key, base_ref)
 
+    excel_path_keys = _eco_path_keys([
+        (_eco_normalize_upper(raw.get('item_no')),
+         _eco_normalize_text(raw.get('bom_level')) or f"01-{idx:02d}")
+        for idx, raw in enumerate(excel_rows, start=1)
+    ])
     seen_levels = set()
     seen_refs = set()
     parsed_rows = []
@@ -1371,10 +1399,13 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
             if row_ref is None:
                 errors.append(f"Fila {idx} ({item_no}): __row_id '{row_ref_raw}' no existe en BOM actual")
         else:
-            for key in reversed(_eco_single_row_keys_from_values(item_no, bom_level, item_seq)):
+            # Primero por BOM level; si el ERP renumero, por ruta padre/hijo.
+            level_keys = list(reversed(_eco_single_row_keys_from_values(item_no, bom_level, item_seq)))
+            for key in level_keys + [excel_path_keys[idx - 1]]:
                 row_ref = current_ref_by_key.get(key)
-                if row_ref:
+                if row_ref and row_ref not in seen_refs:
                     break
+                row_ref = None
 
         if row_ref is not None:
             if row_ref in seen_refs:
