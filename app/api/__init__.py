@@ -90,8 +90,8 @@ _MODULOS_REGISTRADOS = [
     "control_material.inventory_valuation",
     # Lista de compras (registro de compras + costeo por transaccion en entrada)
     "control_material.material_compras",
-    # 2026-09-21: Material por areas > Control de material SMD (tablas de Control_inventario_SMD)
-    "control_material.material_smd",
+    # 2026-09-21: Material por areas > Control de material SMD / MICOM (tablas de sus apps)
+    "control_material.material_areas",
     # control_calidad.smt_historial_simple DEBE ir antes que smt_historial:
     # ambos definen /api/historial_smt_data y Flask deja responder al primero
     # registrado (preserva comportamiento legacy de smt_routes_date_fixed.py).

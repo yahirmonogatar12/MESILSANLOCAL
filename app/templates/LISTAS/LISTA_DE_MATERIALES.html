@@ -58,7 +58,7 @@
                             data-permiso-pagina="LISTA_DE_MATERIALES"
                             data-permiso-seccion="Material por áreas"
                             data-permiso-boton="Control de material SMD">Control de material SMD</li>
-                        <li class="sidebar-link" tabindex="0"
+                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarControlMaterialMicom ? window.parent.mostrarControlMaterialMicom() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('material-micom-unique-container', '/material/micom') : window.location.href='/material/micom')"
                             data-permiso-pagina="LISTA_DE_MATERIALES"
                             data-permiso-seccion="Material por áreas"
                             data-permiso-boton="Control de material Micom">Control de material Micom</li>

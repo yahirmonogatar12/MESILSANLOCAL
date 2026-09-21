@@ -1,10 +1,10 @@
-// Control de material SMD: entradas / salidas / inventario de Control_inventario_SMD.
-// Prefijo de IDs: msmd-. mostrarControlMaterialSmd() (MainTemplate) llama a
-// window.initControlMaterialSmd despues de cada carga AJAX; este archivo se carga
-// una sola vez. Mismo patron que control_scrap.js + paginacion del Historial de input.
+// Control de material por areas (SMD, MICOM...): entradas / salidas / inventario.
+// Un solo JS para todas las areas: cada fragmento trae data-mat-area="<area>" e
+// IDs "mat-<area>-*", y el estado se guarda por area (pueden estar abiertas a la vez).
+// mostrarMaterialArea(area) (MainTemplate) llama a window.initMaterialArea(area)
+// despues de cada carga AJAX; este archivo se carga una sola vez.
 (function () {
-  const FILTER_STORAGE_KEY = 'controlMaterialSmdColumnFilters';
-  // Mismas claves que VISTAS en app/api/control_material/material_smd.py.
+  // Mismas claves que _vistas() en app/api/control_material/material_areas.py.
   const COLUMNAS = {
     entradas: [
       ['fecha', 'Fecha'], ['hora', 'Hora'], ['codigo', 'Código'], ['part_no', 'Part No'],
@@ -29,56 +29,64 @@
     ],
   };
 
+  const estados = {}; // area -> { filtrosPorVista, filterTimer, controller, pag }
   let listenersListos = false;
-  let filtrosPorVista = leerFiltrosGuardados(); // { entradas: {campo: valor}, ... }
-  let filterTimer = null;
-  let controller = null;
-  const pag = { page: 1, perPage: 1000, totalPages: 1 };
 
-  const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
   ));
   const hoy = () => new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Monterrey', year: 'numeric', month: '2-digit', day: '2-digit'
   }).format(new Date());
-  const esInventario = () => $('msmd-vista')?.value === 'inventario';
-  // Vista efectiva (= clave de VISTAS en el backend): inventario tiene modo general/detallado.
-  const vista = () => {
-    if (esInventario()) return $('msmd-modo').value === 'general' ? 'inventario_general' : 'inventario';
-    return $('msmd-vista')?.value || 'entradas';
-  };
-  const filtrosVista = () => (filtrosPorVista[vista()] ||= {});
   const num = (v) => Number(v || 0).toLocaleString('es-MX');
+  const el = (area, id) => document.getElementById(`mat-${area}-${id}`);
+  const areaDe = (nodo) => nodo.closest?.('[data-mat-area]')?.dataset.matArea;
+  const storageKey = (area) => `materialArea_${area}_ColumnFilters`;
 
-  function leerFiltrosGuardados() {
-    try {
-      const v = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || '{}');
-      return v && typeof v === 'object' ? v : {};
-    } catch (_) {
-      return {};
+  function estado(area) {
+    if (!estados[area]) {
+      let filtros = {};
+      try {
+        const v = JSON.parse(localStorage.getItem(storageKey(area)) || '{}');
+        if (v && typeof v === 'object') filtros = v;
+      } catch (_) { /* sin storage */ }
+      estados[area] = { filtrosPorVista: filtros, filterTimer: null, controller: null, pag: { page: 1, perPage: 1000, totalPages: 1 } };
     }
+    return estados[area];
   }
 
-  function guardarFiltros() {
-    try { localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filtrosPorVista)); } catch (_) { /* sin storage */ }
+  function guardarFiltros(area) {
+    try { localStorage.setItem(storageKey(area), JSON.stringify(estado(area).filtrosPorVista)); } catch (_) { /* sin storage */ }
   }
 
-  async function pedir(url, opts) {
+  const esInventario = (area) => el(area, 'vista')?.value === 'inventario';
+  // Vista efectiva (= clave de _vistas en el backend): inventario tiene modo general/detallado.
+  function vista(area) {
+    if (esInventario(area)) return el(area, 'modo').value === 'general' ? 'inventario_general' : 'inventario';
+    return el(area, 'vista')?.value || 'entradas';
+  }
+  function filtrosVista(area) {
+    const f = estado(area).filtrosPorVista;
+    return (f[vista(area)] ||= {});
+  }
+
+  async function pedir(area, url, opts) {
     const resp = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts));
     let data = null;
     try { data = await resp.json(); } catch (_) { /* HTML de login u otro */ }
     if (!resp.ok || !data || data.success === false) {
-      const porStatus = { 401: 'Sesión expirada, vuelve a iniciar sesión', 403: 'Sin permiso para Control de material SMD', 404: 'Ruta no encontrada' };
+      const titulo = el(area, 'root')?.dataset.matTitulo || area;
+      const porStatus = { 401: 'Sesión expirada, vuelve a iniciar sesión', 403: `Sin permiso para Control de material ${titulo}`, 404: 'Ruta no encontrada' };
       throw new Error((data && data.error) || porStatus[resp.status] || (data ? `Error ${resp.status}` : 'Respuesta inválida (¿sesión expirada?)'));
     }
     return data;
   }
 
-  function filtros(conPagina) {
-    const p = new URLSearchParams({ vista: vista(), start: $('msmd-filter-start').value, end: $('msmd-filter-end').value });
-    Object.entries(filtrosVista()).forEach(([campo, valor]) => { if (valor) p.set(`cf_${campo}`, valor); });
+  function filtros(area, conPagina) {
+    const p = new URLSearchParams({ vista: vista(area), start: el(area, 'filter-start').value, end: el(area, 'filter-end').value });
+    Object.entries(filtrosVista(area)).forEach(([campo, valor]) => { if (valor) p.set(`cf_${campo}`, valor); });
     if (conPagina) {
+      const { pag } = estado(area);
       p.set('page', pag.page);
       p.set('per_page', pag.perPage);
     }
@@ -86,9 +94,9 @@
   }
 
   // ====== Encabezados (cambian con la vista) + filtros por columna ======
-  function renderEncabezados() {
-    const valores = filtrosVista();
-    $('msmd-thead-row').innerHTML = COLUMNAS[vista()].map(([clave, label]) => {
+  function renderEncabezados(area) {
+    const valores = filtrosVista(area);
+    el(area, 'thead-row').innerHTML = COLUMNAS[vista(area)].map(([clave, label]) => {
       const valor = valores[clave] || '';
       return `
         <th data-key="${clave}">
@@ -100,23 +108,23 @@
             </button>
           </div>
           <div class="hpe-column-filter-popover">
-            <input class="hpe-column-filter-input" data-msmd-field="${clave}" value="${esc(valor)}"
+            <input class="hpe-column-filter-input" data-mat-field="${clave}" value="${esc(valor)}"
                    placeholder="Buscar..." aria-label="Buscar en ${esc(label)}" autocomplete="off">
             <div class="hpe-column-filter-actions">
-              <button type="button" data-msmd-action="clear-column">Limpiar</button>
-              <button type="button" data-msmd-action="clear-all-columns">Todos</button>
+              <button type="button" data-mat-action="clear-column">Limpiar</button>
+              <button type="button" data-mat-action="clear-all-columns">Todos</button>
             </div>
           </div>
         </th>`;
     }).join('');
     // Inventario es el stock actual: el rango de fechas no aplica y se elige el modo.
-    $('msmd-filter-start').disabled = esInventario();
-    $('msmd-filter-end').disabled = esInventario();
-    $('msmd-modo-group').hidden = !esInventario();
+    el(area, 'filter-start').disabled = esInventario(area);
+    el(area, 'filter-end').disabled = esInventario(area);
+    el(area, 'modo-group').hidden = !esInventario(area);
   }
 
-  function cerrarPopovers(excepto = null) {
-    document.querySelectorAll('#msmd-table .hpe-column-filter-popover.open').forEach((pop) => {
+  function cerrarPopovers(root, excepto = null) {
+    root.querySelectorAll('.hpe-column-filter-popover.open').forEach((pop) => {
       if (pop === excepto) return;
       pop.classList.remove('open');
       const th = pop.closest('th');
@@ -126,46 +134,48 @@
   }
 
   // ====== Carga y render ======
-  function mensaje(texto, color) {
-    const cols = COLUMNAS[vista()].length;
-    $('msmd-tbody').innerHTML = `<tr class="hpe-empty-row"><td colspan="${cols}"${color ? ` style="color:${color} !important;"` : ''}>${esc(texto)}</td></tr>`;
-    $('msmd-resumen').textContent = '0 registros';
-    $('msmd-pagination').hidden = true;
+  function mensaje(area, texto, color) {
+    const cols = COLUMNAS[vista(area)].length;
+    el(area, 'tbody').innerHTML = `<tr class="hpe-empty-row"><td colspan="${cols}"${color ? ` style="color:${color} !important;"` : ''}>${esc(texto)}</td></tr>`;
+    el(area, 'resumen').textContent = '0 registros';
+    el(area, 'pagination').hidden = true;
   }
 
-  function setLoading(loading) {
-    const head = document.querySelector('#msmd-table thead');
-    const wrap = document.querySelector('#msmd-root .hpe-table-wrap');
+  function setLoading(area, loading) {
+    const root = el(area, 'root');
+    const head = root.querySelector('thead');
+    const wrap = root.querySelector('.hpe-table-wrap');
     if (wrap && head) wrap.style.setProperty('--thead-height', `${head.offsetHeight}px`);
-    $('msmd-table-loading')?.classList.toggle('active', loading);
-    $('msmd-btn-filtrar')?.toggleAttribute('disabled', loading);
+    el(area, 'table-loading')?.classList.toggle('active', loading);
+    root.querySelector('[data-mat-action="filtrar"]')?.toggleAttribute('disabled', loading);
   }
 
-  async function cargar({ resetPage = true } = {}) {
-    if (!$('msmd-tbody')) return;
-    if (resetPage) pag.page = 1;
-    controller?.abort(); // al teclear en filtros, gana la ultima consulta
-    const actual = controller = new AbortController();
-    setLoading(true);
+  async function cargar(area, { resetPage = true } = {}) {
+    if (!el(area, 'tbody')) return;
+    const st = estado(area);
+    if (resetPage) st.pag.page = 1;
+    st.controller?.abort(); // al teclear en filtros, gana la ultima consulta
+    const actual = st.controller = new AbortController();
+    setLoading(area, true);
     try {
-      const data = await pedir('/api/material/smd?' + filtros(true), { signal: actual.signal });
-      pag.page = data.page;
-      pag.totalPages = data.total_pages;
-      render(data);
+      const data = await pedir(area, `/api/material/${area}?` + filtros(area, true), { signal: actual.signal });
+      st.pag.page = data.page;
+      st.pag.totalPages = data.total_pages;
+      render(area, data);
     } catch (e) {
       if (e.name === 'AbortError') return;
-      mensaje('Error: ' + e.message, '#e74c3c');
+      mensaje(area, 'Error: ' + e.message, '#e74c3c');
     } finally {
-      if (controller === actual && $('msmd-tbody')) setLoading(false);
+      if (st.controller === actual && el(area, 'tbody')) setLoading(area, false);
     }
   }
 
-  function render(data) {
+  function render(area, data) {
     const rows = data.rows || [];
-    if (!rows.length) return mensaje('No se encontraron registros con los filtros seleccionados.');
-    const cols = COLUMNAS[vista()];
-    $('msmd-tbody').innerHTML = rows.map((r) => '<tr>' + cols.map(([clave]) => {
-      const clase = clave === 'stock' ? ' class="msmd-stock"' : '';
+    if (!rows.length) return mensaje(area, 'No se encontraron registros con los filtros seleccionados.');
+    const cols = COLUMNAS[vista(area)];
+    el(area, 'tbody').innerHTML = rows.map((r) => '<tr>' + cols.map(([clave]) => {
+      const clase = clave === 'stock' ? ' class="mat-area-stock"' : '';
       return `<td${clase} title="${esc(r[clave])}">${esc(r[clave])}</td>`;
     }).join('') + '</tr>').join('');
 
@@ -173,33 +183,34 @@
       inventario: `${num(data.total)} etiquetas · stock ${num(data.piezas)}`,
       inventario_general: `${num(data.total)} números de parte · stock ${num(data.piezas)}`,
     };
-    $('msmd-resumen').textContent = etiquetas[vista()] || `${num(data.total)} registros · ${num(data.piezas)} piezas`;
+    el(area, 'resumen').textContent = etiquetas[vista(area)] || `${num(data.total)} registros · ${num(data.piezas)} piezas`;
 
     const inicio = (data.page - 1) * data.per_page + 1;
     const fin = Math.min(data.page * data.per_page, data.total);
-    $('msmd-pagination').hidden = data.total <= 0;
-    $('msmd-pagination-summary').textContent = `${num(inicio)} - ${num(fin)} de ${num(data.total)}`;
-    $('msmd-page-input').value = data.page;
-    $('msmd-page-input').max = data.total_pages;
-    $('msmd-page-total').textContent = data.total_pages;
-    $('msmd-page-first').disabled = $('msmd-page-prev').disabled = data.page <= 1;
-    $('msmd-page-next').disabled = $('msmd-page-last').disabled = data.page >= data.total_pages;
+    el(area, 'pagination').hidden = data.total <= 0;
+    el(area, 'pagination-summary').textContent = `${num(inicio)} - ${num(fin)} de ${num(data.total)}`;
+    el(area, 'page-input').value = data.page;
+    el(area, 'page-input').max = data.total_pages;
+    el(area, 'page-total').textContent = data.total_pages;
+    el(area, 'page-first').disabled = el(area, 'page-prev').disabled = data.page <= 1;
+    el(area, 'page-next').disabled = el(area, 'page-last').disabled = data.page >= data.total_pages;
   }
 
-  function irAPagina(valor) {
+  function irAPagina(area, valor) {
+    const { pag } = estado(area);
     const page = Math.max(1, Math.min(pag.totalPages, parseInt(valor, 10) || 1));
     if (page === pag.page) return;
     pag.page = page;
-    cargar({ resetPage: false });
+    cargar(area, { resetPage: false });
   }
 
-  async function exportar() {
+  async function exportar(area) {
     try {
-      const resp = await fetch('/api/material/smd/export?' + filtros(false), { credentials: 'same-origin' });
+      const resp = await fetch(`/api/material/${area}/export?` + filtros(area, false), { credentials: 'same-origin' });
       if (!resp.ok) throw new Error(resp.status === 403 ? 'Sin permiso' : `Error ${resp.status}`);
       const a = document.createElement('a');
       a.href = URL.createObjectURL(await resp.blob());
-      a.download = `Material_SMD_${vista()}_${hoy()}.xlsx`;
+      a.download = `Material_${area.toUpperCase()}_${vista(area)}_${hoy()}.xlsx`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e) {
@@ -211,13 +222,17 @@
     if (listenersListos) return;
     listenersListos = true;
     document.body.addEventListener('click', (e) => {
-      const filterBtn = e.target.closest('#msmd-table .hpe-column-filter-btn');
+      const area = areaDe(e.target);
+      if (!area) return;
+      const root = el(area, 'root');
+
+      const filterBtn = e.target.closest('.hpe-column-filter-btn');
       if (filterBtn) {
         e.preventDefault();
         const th = filterBtn.closest('th');
         const pop = th.querySelector('.hpe-column-filter-popover');
         const abrir = !pop.classList.contains('open');
-        cerrarPopovers(pop);
+        cerrarPopovers(root, pop);
         pop.classList.toggle('open', abrir);
         filterBtn.classList.toggle('open', abrir);
         filterBtn.setAttribute('aria-expanded', String(abrir));
@@ -226,71 +241,73 @@
         return;
       }
 
-      const action = e.target.closest('#msmd-table [data-msmd-action]')?.dataset.msmdAction;
-      if (action === 'clear-column') {
-        delete filtrosVista()[e.target.closest('th').querySelector('.hpe-column-filter-input').dataset.msmdField];
-      } else if (action === 'clear-all-columns') {
-        filtrosPorVista[vista()] = {};
-      }
-      if (action) {
-        guardarFiltros();
-        renderEncabezados();
-        cargar();
-        return;
-      }
-      if (!e.target.closest('.hpe-column-filter-popover')) cerrarPopovers();
-
       // closest: los botones llevan <svg>, el click puede caer en el icono.
-      const id = e.target.closest('button')?.id;
-      if (id === 'msmd-btn-filtrar') cargar();
-      else if (id === 'msmd-btn-export') exportar();
-      else if (id === 'msmd-page-first') irAPagina(1);
-      else if (id === 'msmd-page-prev') irAPagina(pag.page - 1);
-      else if (id === 'msmd-page-next') irAPagina(pag.page + 1);
-      else if (id === 'msmd-page-last') irAPagina(pag.totalPages);
+      const action = e.target.closest('[data-mat-action]')?.dataset.matAction;
+      if (!e.target.closest('.hpe-column-filter-popover')) cerrarPopovers(root);
+      if (action === 'clear-column' || action === 'clear-all-columns') {
+        if (action === 'clear-column') {
+          delete filtrosVista(area)[e.target.closest('th').querySelector('.hpe-column-filter-input').dataset.matField];
+        } else {
+          estado(area).filtrosPorVista[vista(area)] = {};
+        }
+        guardarFiltros(area);
+        renderEncabezados(area);
+        cargar(area);
+      } else if (action === 'filtrar') cargar(area);
+      else if (action === 'export') exportar(area);
+      else if (action === 'first') irAPagina(area, 1);
+      else if (action === 'prev') irAPagina(area, estado(area).pag.page - 1);
+      else if (action === 'next') irAPagina(area, estado(area).pag.page + 1);
+      else if (action === 'last') irAPagina(area, estado(area).pag.totalPages);
     });
     document.body.addEventListener('input', (e) => {
-      if (!e.target.matches('#msmd-table .hpe-column-filter-input')) return;
-      const campo = e.target.dataset.msmdField;
+      if (!e.target.matches('.mat-area .hpe-column-filter-input')) return;
+      const area = areaDe(e.target);
+      const campo = e.target.dataset.matField;
       const valor = e.target.value.trim();
-      if (valor) filtrosVista()[campo] = valor;
-      else delete filtrosVista()[campo];
-      guardarFiltros();
+      if (valor) filtrosVista(area)[campo] = valor;
+      else delete filtrosVista(area)[campo];
+      guardarFiltros(area);
       e.target.closest('th')?.querySelector('.hpe-column-filter-btn')?.classList.toggle('active', Boolean(valor));
-      clearTimeout(filterTimer);
-      filterTimer = setTimeout(cargar, 300);
+      const st = estado(area);
+      clearTimeout(st.filterTimer);
+      st.filterTimer = setTimeout(() => cargar(area), 300);
     });
     document.body.addEventListener('change', (e) => {
-      if (e.target.id === 'msmd-vista' || e.target.id === 'msmd-modo') {
-        renderEncabezados();
-        cargar();
-      } else if (e.target.id === 'msmd-per-page') {
-        pag.perPage = parseInt(e.target.value, 10) || 1000;
-        cargar();
+      const area = areaDe(e.target);
+      const campo = e.target.dataset?.matEl;
+      if (!area || !campo) return;
+      if (campo === 'vista' || campo === 'modo') {
+        renderEncabezados(area);
+        cargar(area);
+      } else if (campo === 'per-page') {
+        estado(area).pag.perPage = parseInt(e.target.value, 10) || 1000;
+        cargar(area);
       }
     });
     document.body.addEventListener('keydown', (e) => {
-      if (!e.target.closest('#msmd-root')) return;
-      if (e.key === 'Escape') return cerrarPopovers();
+      const area = areaDe(e.target);
+      if (!area) return;
+      if (e.key === 'Escape') return cerrarPopovers(el(area, 'root'));
       if (e.key !== 'Enter') return;
-      if (e.target.id === 'msmd-page-input') {
+      if (e.target.dataset?.matEl === 'page-input') {
         e.preventDefault();
-        irAPagina(e.target.value);
-      } else if (e.target.matches('.hpe-column-filter-input') || e.target.closest('#msmd-filters')) {
+        irAPagina(area, e.target.value);
+      } else if (e.target.matches('.hpe-column-filter-input') || e.target.closest('.mat-area-filters')) {
         e.preventDefault();
-        clearTimeout(filterTimer);
-        cargar();
+        clearTimeout(estado(area).filterTimer);
+        cargar(area);
       }
     });
   }
 
-  window.initControlMaterialSmd = function () {
+  window.initMaterialArea = function (area) {
     initListeners();
-    if (!$('msmd-root')) return;
-    if (!$('msmd-filter-start').value) $('msmd-filter-start').value = hoy();
-    if (!$('msmd-filter-end').value) $('msmd-filter-end').value = hoy();
-    pag.perPage = parseInt($('msmd-per-page').value, 10) || 1000;
-    renderEncabezados();
-    cargar();
+    if (!el(area, 'root')) return;
+    if (!el(area, 'filter-start').value) el(area, 'filter-start').value = hoy();
+    if (!el(area, 'filter-end').value) el(area, 'filter-end').value = hoy();
+    estado(area).pag.perPage = parseInt(el(area, 'per-page').value, 10) || 1000;
+    renderEncabezados(area);
+    cargar(area);
   };
 })();

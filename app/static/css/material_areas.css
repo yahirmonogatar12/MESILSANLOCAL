@@ -1,15 +1,15 @@
-/* material_smd.css - Control de material SMD (IDs msmd-*).
+/* material_areas.css - Control de material por areas (SMD, MICOM...).
    Base visual: ict.css + historial_produccion_ensamble.css (hpe-*), como
-   Control de Scrap. Aqui solo lo atado a los IDs de este modulo. */
+   Control de Scrap. Selectores por clase: el mismo template sirve a todas las areas. */
 
-#msmd-filters .msmd-acciones {
+.mat-area-filters .mat-area-acciones {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
   align-self: center;
 }
-#msmd-filters .filter-group select {
+.mat-area-filters .filter-group select {
   width: 160px;
   padding: 6px 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -18,46 +18,46 @@
   color: var(--ilsan-text-light);
   font-size: 0.8rem;
 }
-#msmd-filters .filter-group select option { background: #ffffff; color: #000000; }
-#msmd-filters .filter-group input:disabled { opacity: 0.4; cursor: not-allowed; }
-#msmd-root .ict-pagination[hidden] { display: none !important; }
+.mat-area-filters .filter-group select option { background: #ffffff; color: #000000; }
+.mat-area-filters .filter-group input:disabled { opacity: 0.4; cursor: not-allowed; }
+.mat-area .filter-group[hidden],
+.mat-area .ict-pagination[hidden] { display: none !important; }
 
 /* Tabla: mismo estilo que #hps-table; cabe en pantalla sin scroll lateral.
    Codigo y Especificacion (sin ancho) se reparten el espacio que sobra. */
-#msmd-table {
+.mat-area-table {
   width: 100%;
   border-collapse: collapse;
   background: var(--ilsan-dark-secondary);
   table-layout: fixed;
 }
-#msmd-table th[data-key="fecha"] { width: 96px; }
-#msmd-table th[data-key="hora"] { width: 80px; }
-#msmd-table th[data-key="fecha_recibo"] { width: 110px; }
-#msmd-table th[data-key="part_no"] { width: 130px; }
-#msmd-table th[data-key="lote"] { width: 110px; }
-#msmd-table th[data-key="cantidad"],
-#msmd-table th[data-key="entrada"],
-#msmd-table th[data-key="salida"],
-#msmd-table th[data-key="stock"] { width: 92px; }
-#msmd-table th[data-key="unidad"] { width: 78px; }
-#msmd-table th[data-key="ubicacion"] { width: 100px; }
-#msmd-table th[data-key="cliente"] { width: 96px; }
-#msmd-table th[data-key="modelo"] { width: 100px; }
-#msmd-table th[data-key="depto"] { width: 92px; }
-#msmd-table th[data-key="proceso"] { width: 120px; }
-#msmd-table th[data-key="linea"] { width: 90px; }
-#msmd-table th[data-key="usuario"] { width: 110px; }
-#msmd-table th[data-key="lotes"],
-#msmd-table th[data-key="lotes_con_stock"] { width: 150px; }
-#msmd-root .filter-group[hidden] { display: none !important; }
-#msmd-table th,
-#msmd-table td {
+.mat-area-table th[data-key="fecha"] { width: 96px; }
+.mat-area-table th[data-key="hora"] { width: 80px; }
+.mat-area-table th[data-key="fecha_recibo"] { width: 110px; }
+.mat-area-table th[data-key="part_no"] { width: 130px; }
+.mat-area-table th[data-key="lote"] { width: 110px; }
+.mat-area-table th[data-key="cantidad"],
+.mat-area-table th[data-key="entrada"],
+.mat-area-table th[data-key="salida"],
+.mat-area-table th[data-key="stock"] { width: 92px; }
+.mat-area-table th[data-key="unidad"] { width: 78px; }
+.mat-area-table th[data-key="ubicacion"] { width: 100px; }
+.mat-area-table th[data-key="cliente"] { width: 96px; }
+.mat-area-table th[data-key="modelo"] { width: 100px; }
+.mat-area-table th[data-key="depto"] { width: 92px; }
+.mat-area-table th[data-key="proceso"] { width: 120px; }
+.mat-area-table th[data-key="linea"] { width: 90px; }
+.mat-area-table th[data-key="usuario"] { width: 110px; }
+.mat-area-table th[data-key="lotes"],
+.mat-area-table th[data-key="lotes_con_stock"] { width: 150px; }
+.mat-area-table th,
+.mat-area-table td {
   padding: 8px 6px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   text-align: center;
   font-size: 0.8rem;
 }
-#msmd-table thead th {
+.mat-area-table thead th {
   position: sticky;
   z-index: 10;
   top: 0;
@@ -71,18 +71,18 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
-#msmd-table th.hpe-filter-open { z-index: 35; }
-#msmd-table tbody td {
+.mat-area-table th.hpe-filter-open { z-index: 35; }
+.mat-area-table tbody td {
   overflow: hidden;
   background: var(--ilsan-dark-secondary);
   color: var(--ilsan-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#msmd-table tbody tr:nth-child(even) td { background: #44475a; }
-#msmd-table tbody tr:hover td { background: var(--ilsan-hover); }
-#msmd-table th:nth-last-child(-n + 2) .hpe-column-filter-popover {
+.mat-area-table tbody tr:nth-child(even) td { background: #44475a; }
+.mat-area-table tbody tr:hover td { background: var(--ilsan-hover); }
+.mat-area-table th:nth-last-child(-n + 2) .hpe-column-filter-popover {
   right: 3px;
   left: auto;
 }
-#msmd-table td.msmd-stock { font-weight: 600; color: var(--ilsan-text-light); }
+.mat-area-table td.mat-area-stock { font-weight: 600; color: var(--ilsan-text-light); }

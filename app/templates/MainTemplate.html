@@ -67,7 +67,7 @@
     <link id="control-plan-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_smt.css', v='20260526a') }}">
     <link id="control-scrap-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_scrap.css', v='20260921g') }}">
     <link id="historial-operacion-proceso-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_operacion_proceso.css', v='20260921a') }}">
-    <link id="material-smd-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_smd.css', v='20260921b') }}">
+    <link id="material-areas-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_areas.css', v='20260921a') }}">
     <!-- WF_004: CSS persistente Inventario IMD-SMD Terminado (Control de resultados) -->
     <link id="inventario-imd-terminado-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_imd_terminado.css', v='20260527a') }}">
     <!-- WF_004: CSS persistente Inventario reparacion SMD (Control de resultados / Control de inventario) -->
@@ -639,9 +639,9 @@
         <div id="inventory-valuation-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
-        <div id="material-smd-unique-container" style="display: none;">
-            <!-- Material por areas > Control de material SMD (material_smd.js) -->
-        </div>
+        <!-- Material por areas: un contenedor por area (material_areas.js) -->
+        <div id="material-smd-unique-container" style="display: none;"></div>
+        <div id="material-micom-unique-container" style="display: none;"></div>
         <div id="registro-material-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
@@ -2647,8 +2647,10 @@ function hideAllMaterialContainers() {
     if (materialInvoicesContainer) materialInvoicesContainer.style.display = 'none';
     if (materialComprasContainer) materialComprasContainer.style.display = 'none';
     if (inventoryValuationContainer) inventoryValuationContainer.style.display = 'none';
-    const materialSmdContainer = document.getElementById('material-smd-unique-container');
-    if (materialSmdContainer) materialSmdContainer.style.display = 'none';
+    ['smd', 'micom'].forEach((area) => {
+        const materialAreaContainer = document.getElementById(`material-${area}-unique-container`);
+        if (materialAreaContainer) materialAreaContainer.style.display = 'none';
+    });
     if (registroMaterialContainer) registroMaterialContainer.style.display = 'none';
     if (historialInventarioContainer) historialInventarioContainer.style.display = 'none';
     if (inventarioRollosSMDContainer) inventarioRollosSMDContainer.style.display = 'none';
@@ -3471,18 +3473,22 @@ function hideAllMaterialContainers() {
                 });
             };
 
-            // Material por areas > Control de material SMD (entradas/salidas/inventario de Control_inventario_SMD)
-            window.mostrarControlMaterialSmd = function() {
+            // Material por areas: entradas/salidas/inventario de la app de cada area
+            // (smd = Control_inventario_SMD, micom = MICOM). Backend: material_areas.py
+            window.mostrarMaterialArea = function(area) {
                 prepararPanelSeccion('material');
-                const container = document.getElementById('material-smd-unique-container');
+                const containerId = `material-${area}-unique-container`;
+                const container = document.getElementById(containerId);
                 if (container) container.style.display = 'block';
 
-                cargarContenidoDinamico('material-smd-unique-container', '/material/smd', () => {
-                    if (typeof window.initControlMaterialSmd === 'function') {
-                        window.initControlMaterialSmd();
+                cargarContenidoDinamico(containerId, `/material/${area}`, () => {
+                    if (typeof window.initMaterialArea === 'function') {
+                        window.initMaterialArea(area);
                     }
                 });
             };
+            window.mostrarControlMaterialSmd = () => window.mostrarMaterialArea('smd');
+            window.mostrarControlMaterialMicom = () => window.mostrarMaterialArea('micom');
 
             // Funcion global para mostrar Historial de cambio de material SMT.
             // WF_002: usa prepararPanelSeccion('calidad') + container -unique-container

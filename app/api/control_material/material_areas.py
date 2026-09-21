@@ -1,23 +1,26 @@
-"""Control de material SMD (Control de material > Material por areas).
+"""Control de material por areas (Control de material > Material por areas).
 
-Consulta de solo lectura sobre las tablas que escribe la app
-Control_inventario_SMD (misma BD mes_production):
-  - Entradas:   control_material_almacen_smd  (fecha_recibo, sin cancelados)
-  - Salidas:    control_material_salida_smd   (fecha_salida, sin cancelados)
-  - Inventario: inventario_lotes_smd          (stock actual > 0) en dos modos:
+Consulta de solo lectura sobre las tablas que escriben las apps de cada area
+(misma BD mes_production). Cada area usa el mismo esquema con otro sufijo:
+  - Entradas:   control_material_almacen_<sfx>  (fecha_recibo, sin cancelados)
+  - Salidas:    control_material_salida_<sfx>   (fecha_salida, sin cancelados)
+  - Inventario: inventario_lotes_<sfx>          (stock actual > 0) en dos modos:
       detallado (por lote) y general (suma por numero de parte)
 Misma logica que warehousing.search / outgoing.search / inventory.getLots /
-inventory.getSummary de esa app.
+inventory.getSummary de Control_inventario_SMD y MICOM.
 
-Rutas:
-  GET /material/smd                  -> fragmento AJAX
-  GET /api/material/smd              -> vista, start, end, cf_<col>, page, per_page
-  GET /api/material/smd/export       -> Excel con los mismos filtros (sin paginar)
+Areas: smd (Control_inventario_SMD), micom (MICOM).
+
+Rutas (<area> = smd | micom):
+  GET /material/<area>                  -> fragmento AJAX
+  GET /api/material/<area>              -> vista, start, end, cf_<col>, page, per_page
+  GET /api/material/<area>/export       -> Excel con los mismos filtros (sin paginar)
 """
 
 import logging
 from datetime import datetime
 from decimal import Decimal
+from functools import wraps
 
 from flask import Blueprint, jsonify, render_template, request
 
@@ -32,126 +35,148 @@ from app.api.shared import (
 
 logger = logging.getLogger(__name__)
 
-bp = Blueprint("control_material_material_smd", __name__)
+bp = Blueprint("control_material_material_areas", __name__)
 
-_requiere_permiso = requiere_permiso_dropdown(
-    "LISTA_DE_MATERIALES", "Material por áreas", "Control de material SMD"
-)
+# area -> sufijo de tablas, titulo y boton de permiso (LISTA_DE_MATERIALES).
+AREAS = {
+    "smd": {"sfx": "smd", "titulo": "SMD", "boton": "Control de material SMD"},
+    "micom": {"sfx": "micom", "titulo": "MICOM", "boton": "Control de material Micom"},
+}
+_AREA = "<any(" + ", ".join(AREAS) + "):area>"
+
+_PERMISOS = {
+    area: requiere_permiso_dropdown("LISTA_DE_MATERIALES", "Material por áreas", cfg["boton"])
+    for area, cfg in AREAS.items()
+}
+
+
+def _con_permiso(fn):
+    """Aplica el permiso del boton del area que viene en la URL."""
+    @wraps(fn)
+    def wrapper(area):
+        return _PERMISOS[area](fn)(area)
+    return wrapper
+
 
 PER_PAGE_OPTIONS = {100, 200, 500, 1000}
 EXPORT_MAX = 50000
 
-# Ultima fila de almacen por etiqueta (la tabla tiene historicos repetidos).
-_ULTIMA_ALMACEN = (
-    "(SELECT {expr} FROM control_material_almacen_smd cma "
-    "WHERE cma.codigo_material_recibido = il.codigo_material_recibido "
-    "ORDER BY cma.id DESC LIMIT 1)"
-)
 
-# vista -> tabla, condiciones fijas (+params), columna de fecha, columnas
-# (clave, expresion SQL, encabezado Excel, ancho), orden y columna a sumar.
-VISTAS = {
-    "entradas": {
-        "from": "control_material_almacen_smd",
-        "base": ("COALESCE(cancelado, 0) = %s", [0]),
-        "fecha": "fecha_recibo",
-        "cols": [
-            ("fecha", "DATE_FORMAT(fecha_recibo, '%%Y-%%m-%%d')", "Fecha", 12),
-            ("hora", "DATE_FORMAT(fecha_recibo, '%%H:%%i:%%s')", "Hora", 10),
-            ("codigo", "codigo_material_recibido", "Codigo", 30),
-            ("part_no", "numero_parte", "Part No", 18),
-            ("lote", "numero_lote_material", "Lote", 20),
-            ("cantidad", "cantidad_actual", "Cantidad", 10),
-            ("unidad", "COALESCE(unidad_medida, 'EA')", "Unidad", 8),
-            ("ubicacion", "COALESCE(ubicacion_destino, ubicacion_salida)", "Ubicacion", 14),
-            ("cliente", "cliente", "Cliente", 12),
-            ("especificacion", "especificacion", "Especificacion", 34),
-            ("usuario", "usuario_registro", "Usuario", 22),
-        ],
-        "orden": "fecha_recibo DESC, id DESC",
-        "suma": "cantidad_actual",
-    },
-    "salidas": {
-        "from": "control_material_salida_smd cms",
-        "base": ("COALESCE(cms.cancelado, 0) = %s", [0]),
-        "fecha": "cms.fecha_salida",
-        "cols": [
-            ("fecha", "DATE_FORMAT(cms.fecha_salida, '%%Y-%%m-%%d')", "Fecha", 12),
-            ("hora", "DATE_FORMAT(cms.fecha_salida, '%%H:%%i:%%s')", "Hora", 10),
-            ("codigo", "cms.codigo_material_recibido", "Codigo", 30),
-            ("part_no", "cms.numero_parte", "Part No", 18),
-            ("lote", "cms.numero_lote", "Lote", 20),
-            ("cantidad", "cms.cantidad_salida", "Cantidad", 10),
-            ("unidad", "COALESCE((SELECT cma.unidad_medida FROM control_material_almacen_smd cma "
-                       "WHERE cma.codigo_material_recibido = cms.codigo_material_recibido "
-                       "ORDER BY cma.id DESC LIMIT 1), 'EA')", "Unidad", 8),
-            ("modelo", "cms.modelo", "Modelo", 14),
-            ("depto", "cms.depto_salida", "Depto", 12),
-            ("proceso", "cms.proceso_salida", "Proceso", 16),
-            ("linea", "cms.linea_proceso", "Linea", 10),
-            ("usuario", "cms.usuario_registro", "Usuario", 22),
-        ],
-        "orden": "cms.fecha_salida DESC, cms.id DESC",
-        "suma": "cms.cantidad_salida",
-    },
-    # Inventario detallado: un renglon por lote (inventory.getLots sin fechas).
-    "inventario": {
-        "from": "inventario_lotes_smd il LEFT JOIN materiales m ON m.numero_parte = il.numero_parte",
-        "base": ("il.stock_actual > %s", [0]),
-        "fecha": None,  # stock actual: no depende del rango de fechas
-        "cols": [
-            ("part_no", "il.numero_parte", "Part No", 18),
-            ("lote", "il.numero_lote", "Lote", 20),
-            ("codigo", "il.codigo_material_recibido", "Codigo", 30),
-            ("entrada", "il.total_entrada", "Entrada", 10),
-            ("salida", "il.total_salida", "Salida", 10),
-            ("stock", "il.stock_actual", "Stock", 10),
-            ("unidad", "IFNULL(m.unidad_medida, 'EA')", "Unidad", 8),
-            ("ubicacion", _ULTIMA_ALMACEN.format(expr="COALESCE(cma.ubicacion_destino, cma.ubicacion_salida)"), "Ubicacion", 14),
-            ("fecha_recibo", "DATE_FORMAT(il.primer_recibo, '%%Y-%%m-%%d')", "Fecha recibo", 12),
-            ("especificacion", "COALESCE(m.especificacion_material, "
-                               + _ULTIMA_ALMACEN.format(expr="cma.especificacion") + ")", "Especificacion", 34),
-        ],
-        "orden": "il.numero_parte, il.numero_lote",
-        "suma": "il.stock_actual",
-    },
-    # Inventario general: suma por numero de parte (inventory.getSummary sin fechas).
-    # Tabla derivada para que los filtros de columna apliquen sobre los totales.
-    "inventario_general": {
-        "from": (
-            "(SELECT il.numero_parte, MAX(IFNULL(m.unidad_medida, 'EA')) AS unidad, "
-            "MAX(m.especificacion_material) AS especificacion, SUM(il.stock_actual) AS stock, "
-            "COUNT(DISTINCT il.numero_lote) AS lotes, SUM(il.stock_actual > 0) AS lotes_con_stock "
-            "FROM inventario_lotes_smd il LEFT JOIN materiales m ON m.numero_parte = il.numero_parte "
-            "GROUP BY il.numero_parte) g"
-        ),
-        "base": ("g.stock > %s", [0]),
-        "fecha": None,
-        "cols": [
-            ("part_no", "g.numero_parte", "Part No", 18),
-            # Sin registro en materiales: especificacion de la ultima entrada de almacen.
-            ("especificacion", "COALESCE(g.especificacion, (SELECT cma.especificacion "
-                               "FROM inventario_lotes_smd il2 JOIN control_material_almacen_smd cma "
-                               "ON cma.codigo_material_recibido = il2.codigo_material_recibido "
-                               "WHERE il2.numero_parte = g.numero_parte ORDER BY cma.id DESC LIMIT 1))",
-             "Especificacion", 40),
-            ("unidad", "g.unidad", "Unidad", 8),
-            ("stock", "g.stock", "Stock total", 12),
-            ("lotes", "g.lotes", "Lotes distintos", 14),
-            # Como la app SMD: cuenta etiquetas (codigo recibido) con stock, no lotes.
-            ("lotes_con_stock", "g.lotes_con_stock", "Etiquetas con stock", 16),
-        ],
-        "orden": "g.numero_parte",
-        "suma": "g.stock",
-    },
-}
+def _vistas(sfx):
+    """Vistas de un area: tabla, condiciones fijas (+params), columna de fecha,
+    columnas (clave, expresion SQL, encabezado Excel, ancho), orden y suma."""
+    almacen = f"control_material_almacen_{sfx}"
+    # Ultima fila de almacen por etiqueta (la tabla puede tener historicos repetidos).
+    ultima_almacen = (
+        f"(SELECT {{expr}} FROM {almacen} cma "
+        "WHERE cma.codigo_material_recibido = il.codigo_material_recibido "
+        "ORDER BY cma.id DESC LIMIT 1)"
+    )
+    return {
+        "entradas": {
+            "from": almacen,
+            "base": ("COALESCE(cancelado, 0) = %s", [0]),
+            "fecha": "fecha_recibo",
+            "cols": [
+                ("fecha", "DATE_FORMAT(fecha_recibo, '%%Y-%%m-%%d')", "Fecha", 12),
+                ("hora", "DATE_FORMAT(fecha_recibo, '%%H:%%i:%%s')", "Hora", 10),
+                ("codigo", "codigo_material_recibido", "Codigo", 30),
+                ("part_no", "numero_parte", "Part No", 18),
+                ("lote", "numero_lote_material", "Lote", 20),
+                ("cantidad", "cantidad_actual", "Cantidad", 10),
+                ("unidad", "COALESCE(unidad_medida, 'EA')", "Unidad", 8),
+                ("ubicacion", "COALESCE(ubicacion_destino, ubicacion_salida)", "Ubicacion", 14),
+                ("cliente", "cliente", "Cliente", 12),
+                ("especificacion", "especificacion", "Especificacion", 34),
+                ("usuario", "usuario_registro", "Usuario", 22),
+            ],
+            "orden": "fecha_recibo DESC, id DESC",
+            "suma": "cantidad_actual",
+        },
+        "salidas": {
+            "from": f"control_material_salida_{sfx} cms",
+            "base": ("COALESCE(cms.cancelado, 0) = %s", [0]),
+            "fecha": "cms.fecha_salida",
+            "cols": [
+                ("fecha", "DATE_FORMAT(cms.fecha_salida, '%%Y-%%m-%%d')", "Fecha", 12),
+                ("hora", "DATE_FORMAT(cms.fecha_salida, '%%H:%%i:%%s')", "Hora", 10),
+                ("codigo", "cms.codigo_material_recibido", "Codigo", 30),
+                ("part_no", "cms.numero_parte", "Part No", 18),
+                ("lote", "cms.numero_lote", "Lote", 20),
+                ("cantidad", "cms.cantidad_salida", "Cantidad", 10),
+                ("unidad", f"COALESCE((SELECT cma.unidad_medida FROM {almacen} cma "
+                           "WHERE cma.codigo_material_recibido = cms.codigo_material_recibido "
+                           "ORDER BY cma.id DESC LIMIT 1), 'EA')", "Unidad", 8),
+                ("modelo", "cms.modelo", "Modelo", 14),
+                ("depto", "cms.depto_salida", "Depto", 12),
+                ("proceso", "cms.proceso_salida", "Proceso", 16),
+                ("linea", "cms.linea_proceso", "Linea", 10),
+                ("usuario", "cms.usuario_registro", "Usuario", 22),
+            ],
+            "orden": "cms.fecha_salida DESC, cms.id DESC",
+            "suma": "cms.cantidad_salida",
+        },
+        # Inventario detallado: un renglon por lote (inventory.getLots sin fechas).
+        "inventario": {
+            "from": f"inventario_lotes_{sfx} il LEFT JOIN materiales m ON m.numero_parte = il.numero_parte",
+            "base": ("il.stock_actual > %s", [0]),
+            "fecha": None,  # stock actual: no depende del rango de fechas
+            "cols": [
+                ("part_no", "il.numero_parte", "Part No", 18),
+                ("lote", "il.numero_lote", "Lote", 20),
+                ("codigo", "il.codigo_material_recibido", "Codigo", 30),
+                ("entrada", "il.total_entrada", "Entrada", 10),
+                ("salida", "il.total_salida", "Salida", 10),
+                ("stock", "il.stock_actual", "Stock", 10),
+                ("unidad", "IFNULL(m.unidad_medida, 'EA')", "Unidad", 8),
+                ("ubicacion", ultima_almacen.format(expr="COALESCE(cma.ubicacion_destino, cma.ubicacion_salida)"), "Ubicacion", 14),
+                ("fecha_recibo", "DATE_FORMAT(il.primer_recibo, '%%Y-%%m-%%d')", "Fecha recibo", 12),
+                ("especificacion", "COALESCE(m.especificacion_material, "
+                                   + ultima_almacen.format(expr="cma.especificacion") + ")", "Especificacion", 34),
+            ],
+            "orden": "il.numero_parte, il.numero_lote",
+            "suma": "il.stock_actual",
+        },
+        # Inventario general: suma por numero de parte (inventory.getSummary sin fechas).
+        # Tabla derivada para que los filtros de columna apliquen sobre los totales.
+        "inventario_general": {
+            "from": (
+                "(SELECT il.numero_parte, MAX(IFNULL(m.unidad_medida, 'EA')) AS unidad, "
+                "MAX(m.especificacion_material) AS especificacion, SUM(il.stock_actual) AS stock, "
+                "COUNT(DISTINCT il.numero_lote) AS lotes, SUM(il.stock_actual > 0) AS lotes_con_stock "
+                f"FROM inventario_lotes_{sfx} il LEFT JOIN materiales m ON m.numero_parte = il.numero_parte "
+                "GROUP BY il.numero_parte) g"
+            ),
+            "base": ("g.stock > %s", [0]),
+            "fecha": None,
+            "cols": [
+                ("part_no", "g.numero_parte", "Part No", 18),
+                # Sin registro en materiales: especificacion de la ultima entrada de almacen.
+                ("especificacion", f"COALESCE(g.especificacion, (SELECT cma.especificacion "
+                                   f"FROM inventario_lotes_{sfx} il2 JOIN {almacen} cma "
+                                   "ON cma.codigo_material_recibido = il2.codigo_material_recibido "
+                                   "WHERE il2.numero_parte = g.numero_parte ORDER BY cma.id DESC LIMIT 1))",
+                 "Especificacion", 40),
+                ("unidad", "g.unidad", "Unidad", 8),
+                ("stock", "g.stock", "Stock total", 12),
+                ("lotes", "g.lotes", "Lotes distintos", 14),
+                # Como las apps: cuenta etiquetas (codigo recibido) con stock, no lotes.
+                ("lotes_con_stock", "g.lotes_con_stock", "Etiquetas con stock", 16),
+            ],
+            "orden": "g.numero_parte",
+            "suma": "g.stock",
+        },
+    }
 
 
-def _vista():
+VISTAS = {area: _vistas(cfg["sfx"]) for area, cfg in AREAS.items()}
+
+
+def _vista(area):
     nombre = (request.args.get("vista") or "entradas").strip().lower()
-    if nombre not in VISTAS:
+    if nombre not in VISTAS[area]:
         raise ValueError("Vista invalida (entradas, salidas, inventario o inventario_general)")
-    return VISTAS[nombre]
+    return nombre, VISTAS[area][nombre]
 
 
 def _where(vista):
@@ -188,23 +213,26 @@ def _filas(vista, where, params, limit, offset=0):
     return [{k: _numero(v) for k, v in r.items()} for r in rows]
 
 
-@bp.route("/material/smd")
+@bp.route(f"/material/{_AREA}")
 @login_requerido
-@_requiere_permiso
-def material_smd_ajax():
+@_con_permiso
+def material_area_ajax(area):
     try:
-        return render_template("Control de material/material_smd_ajax.html")
+        return render_template(
+            "Control de material/material_area_ajax.html",
+            area=area, titulo=AREAS[area]["titulo"],
+        )
     except Exception as e:
-        logger.error(f"Error al cargar Control de material SMD: {e}")
+        logger.error(f"Error al cargar Control de material {area}: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@bp.route("/api/material/smd", methods=["GET"])
+@bp.route(f"/api/material/{_AREA}", methods=["GET"])
 @login_requerido
-@_requiere_permiso
-def api_material_smd():
+@_con_permiso
+def api_material_area(area):
     try:
-        vista = _vista()
+        _nombre, vista = _vista(area)
         where, params = _where(vista)
         try:
             page = max(1, int(request.args.get("page", 1)))
@@ -234,23 +262,23 @@ def api_material_smd():
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
-        logger.error(f"Error en Control de material SMD: {e}")
+        logger.error(f"Error en Control de material {area}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@bp.route("/api/material/smd/export", methods=["GET"])
+@bp.route(f"/api/material/{_AREA}/export", methods=["GET"])
 @login_requerido
-@_requiere_permiso
-def api_material_smd_export():
+@_con_permiso
+def api_material_area_export(area):
     try:
-        vista = _vista()
+        nombre, vista = _vista(area)
         where, params = _where(vista)
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     rows = _filas(vista, where, params, EXPORT_MAX)
     claves, _e, headers, widths = zip(*vista["cols"])
-    nombre = (request.args.get("vista") or "entradas").strip().lower()
+    titulo = AREAS[area]["titulo"]
     return excel_response(
-        rows, headers, claves, widths, f"SMD {nombre}",
-        f"Material_SMD_{nombre}_{obtener_fecha_hora_mexico():%Y%m%d_%H%M}", freeze="A2",
+        rows, headers, claves, widths, f"{titulo} {nombre}",
+        f"Material_{titulo}_{nombre}_{obtener_fecha_hora_mexico():%Y%m%d_%H%M}", freeze="A2",
     )

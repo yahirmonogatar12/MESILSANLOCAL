@@ -1,44 +1,45 @@
-<!-- TEMPLATE AJAX: Control de material SMD (Material por areas) -->
-<!-- PREFIJO IDs: msmd- | CONTENEDOR: material-smd-unique-container -->
-<!-- Datos de Control_inventario_SMD: entradas, salidas e inventario de lotes.
+<!-- TEMPLATE AJAX: Control de material {{ titulo }} (Material por areas) -->
+<!-- PREFIJO IDs: mat-{{ area }}- (unico por area: SMD y MICOM pueden estar abiertos a la vez)
+     CONTENEDOR: material-{{ area }}-unique-container
      Estilo de Historial de input: ict.css + historial_produccion_ensamble.css +
-     material_smd.css (persistentes en MainTemplate, WF_004). -->
-<section id="msmd-root" class="hpe-module ict-page">
+     material_areas.css (persistentes en MainTemplate, WF_004). JS: material_areas.js -->
+{% set p = 'mat-' ~ area ~ '-' %}
+<section id="{{ p }}root" class="hpe-module ict-page mat-area" data-mat-area="{{ area }}" data-mat-titulo="{{ titulo }}">
   <div class="filters-card">
-    <div id="msmd-filters" class="hpe-filters">
+    <div id="{{ p }}filters" class="hpe-filters mat-area-filters">
       <div class="filter-group">
-        <label for="msmd-vista">Consulta</label>
-        <select id="msmd-vista">
+        <label for="{{ p }}vista">Consulta</label>
+        <select id="{{ p }}vista" data-mat-el="vista">
           <option value="entradas">Entradas</option>
           <option value="salidas">Salidas</option>
           <option value="inventario">Inventario</option>
         </select>
       </div>
-      <div class="filter-group" id="msmd-modo-group" hidden>
-        <label for="msmd-modo">Modo</label>
-        <select id="msmd-modo">
+      <div class="filter-group" id="{{ p }}modo-group" hidden>
+        <label for="{{ p }}modo">Modo</label>
+        <select id="{{ p }}modo" data-mat-el="modo">
           <option value="general">General</option>
           <option value="detallado">Detallado</option>
         </select>
       </div>
       <div class="filter-group">
-        <label for="msmd-filter-start">Fecha desde</label>
-        <input type="date" id="msmd-filter-start">
+        <label for="{{ p }}filter-start">Fecha desde</label>
+        <input type="date" id="{{ p }}filter-start">
       </div>
       <div class="filter-group">
-        <label for="msmd-filter-end">Fecha hasta</label>
-        <input type="date" id="msmd-filter-end">
+        <label for="{{ p }}filter-end">Fecha hasta</label>
+        <input type="date" id="{{ p }}filter-end">
       </div>
-      <button type="button" id="msmd-btn-filtrar" class="btn-primary">
+      <button type="button" class="btn-primary" data-mat-action="filtrar">
         <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
         </svg>
         Consultar
       </button>
 
-      <div class="msmd-acciones">
-        <span class="record-count" id="msmd-resumen">0 registros</span>
-        <button type="button" id="msmd-btn-export" class="btn-export">
+      <div class="mat-area-acciones">
+        <span class="record-count" id="{{ p }}resumen">0 registros</span>
+        <button type="button" class="btn-export" data-mat-action="export">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
           </svg>
@@ -50,41 +51,41 @@
 
   <div class="results-card">
     <div class="table-wrap hpe-table-wrap">
-      <div class="table-loading" id="msmd-table-loading" aria-live="polite">
+      <div class="table-loading" id="{{ p }}table-loading" aria-live="polite">
         <div class="spinner"></div>
         <span>Cargando datos...</span>
       </div>
-      <table id="msmd-table">
-        <thead><tr id="msmd-thead-row"></tr></thead>
-        <tbody id="msmd-tbody"></tbody>
+      <table id="{{ p }}table" class="mat-area-table">
+        <thead><tr id="{{ p }}thead-row"></tr></thead>
+        <tbody id="{{ p }}tbody"></tbody>
       </table>
     </div>
 
-    <div id="msmd-pagination" class="ict-pagination" hidden>
+    <div id="{{ p }}pagination" class="ict-pagination" hidden>
       <div class="ict-pagination-info">
-        <span id="msmd-pagination-summary">0 - 0 de 0</span>
+        <span id="{{ p }}pagination-summary">0 - 0 de 0</span>
       </div>
       <div class="ict-pagination-controls">
-        <label class="ict-pagination-perpage" for="msmd-per-page">
+        <label class="ict-pagination-perpage" for="{{ p }}per-page">
           Por página
-          <select id="msmd-per-page">
+          <select id="{{ p }}per-page" data-mat-el="per-page">
             <option value="100">100</option>
             <option value="200">200</option>
             <option value="500">500</option>
             <option value="1000" selected>1000</option>
           </select>
         </label>
-        <button id="msmd-page-first" type="button" class="btn-page" title="Primera" aria-label="Primera página">«</button>
-        <button id="msmd-page-prev" type="button" class="btn-page" title="Anterior" aria-label="Página anterior">‹</button>
+        <button id="{{ p }}page-first" type="button" class="btn-page" data-mat-action="first" title="Primera" aria-label="Primera página">«</button>
+        <button id="{{ p }}page-prev" type="button" class="btn-page" data-mat-action="prev" title="Anterior" aria-label="Página anterior">‹</button>
         <span class="ict-pagination-current">
-          <input type="number" id="msmd-page-input" min="1" value="1" step="1" aria-label="Página actual">
-          <span>/ <span id="msmd-page-total">1</span></span>
+          <input type="number" id="{{ p }}page-input" data-mat-el="page-input" min="1" value="1" step="1" aria-label="Página actual">
+          <span>/ <span id="{{ p }}page-total">1</span></span>
         </span>
-        <button id="msmd-page-next" type="button" class="btn-page" title="Siguiente" aria-label="Página siguiente">›</button>
-        <button id="msmd-page-last" type="button" class="btn-page" title="Última" aria-label="Última página">»</button>
+        <button id="{{ p }}page-next" type="button" class="btn-page" data-mat-action="next" title="Siguiente" aria-label="Página siguiente">›</button>
+        <button id="{{ p }}page-last" type="button" class="btn-page" data-mat-action="last" title="Última" aria-label="Última página">»</button>
       </div>
     </div>
   </div>
 </section>
 
-<script src="{{ url_for('static', filename='js/material_smd.js', v='20260921b') }}"></script>
+<script src="{{ url_for('static', filename='js/material_areas.js', v='20260921a') }}"></script>
