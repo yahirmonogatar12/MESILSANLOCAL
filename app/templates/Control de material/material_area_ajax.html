@@ -12,8 +12,9 @@
         <select id="{{ p }}vista" data-mat-el="vista">
           <option value="entradas">Entradas</option>
           <option value="salidas">Salidas</option>
+          {# Al entrar se ve el inventario actual (virgen, modo General). #}
           {% for valor, etiqueta in inventarios %}
-          <option value="{{ valor }}">{{ etiqueta }}</option>
+          <option value="{{ valor }}"{% if loop.first %} selected{% endif %}>{{ etiqueta }}</option>
           {% endfor %}
         </select>
       </div>

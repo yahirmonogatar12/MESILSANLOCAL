@@ -106,5 +106,22 @@ def test_sin_permiso_del_boton_de_su_area_responde_403(client, monkeypatch, ruta
     assert auth.botones == [boton]
 
 
+@pytest.mark.parametrize("area", ["smd", "micom", "imd", "ipm"])
+def test_al_entrar_se_ve_el_inventario_general(client, monkeypatch, area):
+    class Superadmin:
+        def obtener_rol_principal_usuario(self, _username):
+            return "superadmin"
+
+    monkeypatch.setattr(permisos, "_auth", lambda: Superadmin())
+    with client.session_transaction() as sess:
+        sess["usuario"] = "admin"
+        sess["_last_activity_touch_ts"] = int(time.time())
+    html = client.get(f"/material/{area}").get_data(as_text=True)
+    consulta = html.split('data-mat-el="vista"')[1].split("</select>")[0]
+    assert re.findall(r'<option value="(\w+)" selected>', consulta) == ["inventario"]
+    modo = html.split('data-mat-el="modo"')[1].split("</select>")[0]
+    assert re.findall(r'<option value="(\w+)"', modo)[0] == "general"
+
+
 def test_area_desconocida_no_existe(client):
     assert client.get("/api/material/assy").status_code == 404
