@@ -1,0 +1,89 @@
+/* control_scrap.css - Control de Scrap (IDs scrap-*).
+   Base visual: ict.css + historial_produccion_ensamble.css (clases hpe-*), como
+   Historial de input. Aqui solo lo que en esos archivos esta atado a un ID. */
+
+/* Contador + Exportar a la derecha, en la misma linea que los filtros. */
+#scrap-filters .scrap-acciones {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+}
+
+/* hpe solo estiliza input; el select de Area se iguala. */
+#scrap-filters .filter-group select {
+  width: 160px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ilsan-text-light);
+  font-size: 0.8rem;
+}
+#scrap-filters .filter-group select option {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Tabla: copia de #hps-table (historial_produccion_ensamble.css). */
+#scrap-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--ilsan-dark-secondary);
+  /* Cabe en pantalla sin scroll lateral: columnas cortas con ancho fijo,
+     Codigo/Motivo/Comentarios se reparten el resto y cortan con "..." */
+  table-layout: fixed;
+}
+#scrap-table th[data-scrap-filter-field="cliente"] { width: 100px; }
+#scrap-table th[data-scrap-filter-field="fecha"] { width: 96px; }
+#scrap-table th[data-scrap-filter-field="hora"] { width: 80px; }
+#scrap-table th[data-scrap-filter-field="part_no"] { width: 120px; }
+#scrap-table th[data-scrap-filter-field="modelo"] { width: 88px; }
+#scrap-table th[data-scrap-filter-field="area"] { width: 100px; }
+#scrap-table th[data-scrap-filter-field="proceso"] { width: 92px; }
+#scrap-table th[data-scrap-filter-field="cantidad"] { width: 92px; }
+#scrap-table th[data-scrap-filter-field="usuario"] { width: 120px; }
+#scrap-table th,
+#scrap-table td {
+  padding: 8px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+  font-size: 0.8rem;
+}
+#scrap-table thead th {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  overflow: visible;
+  background: linear-gradient(135deg, var(--ilsan-dark-header), #2a2a3c);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: var(--ilsan-text-light);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+#scrap-table th.hpe-filter-open {
+  z-index: 35;
+}
+#scrap-table tbody td {
+  overflow: hidden;
+  background: var(--ilsan-dark-secondary);
+  color: var(--ilsan-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#scrap-table tbody tr:nth-child(even) td {
+  background: #44475a;
+}
+#scrap-table tbody tr:hover td {
+  background: var(--ilsan-hover);
+}
+#scrap-table th:nth-last-child(-n + 2) .hpe-column-filter-popover {
+  right: 3px;
+  left: auto;
+}
+#scrap-table tr.scrap-row { cursor: pointer; }
+#scrap-table td.scrap-cero { color: #e67e22; font-weight: bold; }

@@ -169,6 +169,8 @@ _MODULOS_REGISTRADOS = [
     # Fase 3.1 (2026-05-28): renders cortos + Control de salida de lineas
     "control_proceso.renders",
     "control_proceso.control_salida_lineas",
+    # WF_001-WF_005 (2026-09-21): Control de Scrap (scrap_records)
+    "control_proceso.control_scrap",
     "shared.raw_modelos",
     "portal.tickets",
     # Asistente IA global: chat, reportes seguros y artefactos Excel/PowerPoint.

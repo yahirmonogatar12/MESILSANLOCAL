@@ -1,45 +1,74 @@
-<!-- TEMPLATE AJAX: Control Scrap -->
-<!-- SUFIJO ÚNICO: -control-scrap -->
-<!-- CONTENEDOR: control-scrap-unique-container -->
+<!-- TEMPLATE AJAX: Control Scrap (tabla scrap_records) -->
+<!-- PREFIJO IDs: scrap- | CONTENEDOR: control-scrap-unique-container -->
+<!-- Misma apariencia que Historial de input: ict.css + historial_produccion_ensamble.css
+     (persistentes en MainTemplate, WF_004) + control_scrap.css. Modal de edicion en body (WF_008). -->
+<section id="scrap-root" class="hpe-module ict-page">
+  <div class="filters-card">
+    <div id="scrap-filters" class="hpe-filters">
+      <div class="filter-group">
+        <label for="scrap-filter-start">Fecha desde</label>
+        <input type="date" id="scrap-filter-start">
+      </div>
+      <div class="filter-group">
+        <label for="scrap-filter-end">Fecha hasta</label>
+        <input type="date" id="scrap-filter-end">
+      </div>
+      <div class="filter-group">
+        <label for="scrap-filter-area">Área</label>
+        <select id="scrap-filter-area">
+          <option value="">Todas</option>
+          <option>M1</option><option>M2</option><option>M3</option><option>M4</option>
+          <option>D1</option><option>D2</option><option>D3</option>
+          <option>SMD</option><option>IMD</option><option>IPM</option><option>COATING</option>
+          <option>CALIDAD</option><option>MANTENIMIENTO</option><option>COMPONENTE</option><option>PROVEEDOR</option>
+        </select>
+      </div>
+      <button type="button" id="scrap-btn-filtrar" class="btn-primary">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        Consultar
+      </button>
 
-<div id="control-scrap-main-container-unique-control-scrap" class="control-scrap-container">
-    <!-- Contenido del módulo con IDs únicos usando sufijo -->
-    <h2>Control Scrap</h2>
-    
-    <div class="control-scrap-content">
-        <p>Contenido del módulo Control Scrap</p>
-        <!-- Aquí irá el contenido específico del módulo -->
+      <div class="scrap-acciones">
+        <span class="record-count" id="scrap-resumen">0 registros</span>
+        <button type="button" id="scrap-btn-export" class="btn-export">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Exportar Excel
+        </button>
+      </div>
     </div>
-</div>
+  </div>
 
-<style>
-/* Estilos específicos del módulo */
-.control-scrap-container {
-    padding: 20px;
-    background-color: #2B2D3E;
-    color: #E0E0E0;
-}
+  <div class="results-card">
+    <div class="table-wrap hpe-table-wrap">
+      <div class="table-loading" id="scrap-table-loading" aria-live="polite">
+        <div class="spinner"></div>
+        <span>Cargando datos...</span>
+      </div>
+      <table id="scrap-table">
+        <thead>
+          <tr>
+            <th data-scrap-filter-field="cliente">Cliente</th>
+            <th data-scrap-filter-field="fecha">Fecha</th>
+            <th data-scrap-filter-field="hora">Hora</th>
+            <th data-scrap-filter-field="codigo">Código</th>
+            <th data-scrap-filter-field="part_no">Part No</th>
+            <th data-scrap-filter-field="modelo">Modelo</th>
+            <th data-scrap-filter-field="area">Área</th>
+            <th data-scrap-filter-field="proceso">Proceso</th>
+            <th data-scrap-filter-field="motivo">Motivo</th>
+            <th data-scrap-filter-field="cantidad">Cantidad</th>
+            <th data-scrap-filter-field="comentarios">Comentarios</th>
+            <th data-scrap-filter-field="usuario">Usuario</th>
+          </tr>
+        </thead>
+        <tbody id="scrap-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
 
-.control-scrap-content {
-    margin-top: 20px;
-}
-</style>
-
-<script>
-// Auto-inicialización del módulo
-(function() {
-    console.log('Inicializando Control Scrap AJAX...');
-    
-    window.inicializarControlScrapAjax = function() {
-        // Lógica de inicialización del módulo
-        console.log('Control Scrap AJAX inicializado');
-    };
-    
-    // Ejecutar inmediatamente si el DOM está listo
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', window.inicializarControlScrapAjax);
-    } else {
-        window.inicializarControlScrapAjax();
-    }
-})();
-</script>
+<script src="{{ url_for('static', filename='js/control_scrap.js', v='20260921g') }}"></script>
