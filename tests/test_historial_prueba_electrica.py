@@ -47,10 +47,10 @@ def test_template_tiene_columnas_sin_barcode_paginacion_y_excel(app):
             hoy="2026-09-18",
         )
 
-    for heading in ("Línea", "Fecha", "Hora", "QR", "Lote", "Resultado"):
+    for heading in ("Línea", "Fecha", "Hora", "QR", "Lote", "Resultado", "Operador"):
         assert f">{heading}<" in html
     assert ">Barcode<" not in html
-    assert html.count("data-hpel-filter-field=") == 6
+    assert html.count("data-hpel-filter-field=") == 7
     assert 'id="hpel-pagination"' in html
     assert 'id="hpel-btn-export-excel"' in html
     assert "Exportar Excel" in html
@@ -75,6 +75,8 @@ def test_api_filtra_ts_history_prueba_electrica_y_numera_pagina(client, monkeypa
                 "qr": "QR-PRUEBA-ELECTRICA",
                 "lote": "ASSYLINE-260918-001",
                 "resultado": "OK",
+                "operador": "SANCHEZ PINEDA ABIGAIL",
+                "num_empleado": "725",
             }
         ]
 
@@ -89,6 +91,7 @@ def test_api_filtra_ts_history_prueba_electrica_y_numera_pagina(client, monkeypa
         "&linea=D2&qr=PRUEBA&lote=ASSYLINE"
         "&cf_fecha=2026-09-18&cf_hora=08%3A05"
         "&cf_linea=D2&cf_qr=ELECTRICA&cf_lote=260918&cf_resultado=OK"
+        "&cf_operador=725"
     )
 
     assert response.status_code == 200
@@ -104,6 +107,7 @@ def test_api_filtra_ts_history_prueba_electrica_y_numera_pagina(client, monkeypa
                 "qr": "QR-PRUEBA-ELECTRICA",
                 "lote": "ASSYLINE-260918-001",
                 "resultado": "OK",
+                "operador": "SANCHEZ PINEDA ABIGAIL (725)",
             }
         ],
         "total": 450,
@@ -125,6 +129,9 @@ def test_api_filtra_ts_history_prueba_electrica_y_numera_pagina(client, monkeypa
     assert "CAST(DATE(ts) AS CHAR) LIKE %s" in count_sql
     assert "CAST(TIME(ts) AS CHAR) LIKE %s" in count_sql
     assert "resultado LIKE %s" in count_sql
+    assert "COALESCE(num_empleado, '')) LIKE %s" in count_sql
+    assert count_params[-1] == "%725%"
+    assert "operador, num_empleado" in data_sql
     assert "linea, raw AS qr" in data_sql
     assert "lot_no AS lote, resultado" in data_sql
     assert "raw_barcode" not in data_sql
@@ -171,6 +178,8 @@ def test_export_excel_descarga_pagina_visible_sin_barcode(client, monkeypatch):
                 "qr": "QR-PRUEBA-ELECTRICA",
                 "lote": "ASSYLINE-260918-001",
                 "resultado": "NG",
+                "operador": "SALINAS ALVARADO JOHANNA",
+                "num_empleado": "903",
             }
         ]
 
@@ -191,7 +200,7 @@ def test_export_excel_descarga_pagina_visible_sin_barcode(client, monkeypatch):
     assert sheet.title == "Prueba electrica"
     assert sheet.freeze_panes == "A2"
     assert [cell.value for cell in sheet[1]] == [
-        "#", "Línea", "Fecha", "Hora", "QR", "Lote", "Resultado",
+        "#", "Línea", "Fecha", "Hora", "QR", "Lote", "Resultado", "Operador",
     ]
     assert [cell.value for cell in sheet[2]] == [
         101,
@@ -201,6 +210,7 @@ def test_export_excel_descarga_pagina_visible_sin_barcode(client, monkeypatch):
         "QR-PRUEBA-ELECTRICA",
         "ASSYLINE-260918-001",
         "NG",
+        "SALINAS ALVARADO JOHANNA (903)",
     ]
     assert "Barcode" not in [cell.value for cell in sheet[1]]
     sql, params, fetch = captured[0]

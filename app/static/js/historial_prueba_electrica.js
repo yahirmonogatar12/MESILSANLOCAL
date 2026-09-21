@@ -235,7 +235,7 @@
     const tbody = root.querySelector("#hpel-table-body");
     if (!tbody) return;
     if (!rows.length) {
-      tbody.innerHTML = '<tr class="hpe-empty-row"><td colspan="7">No se encontraron registros con los filtros seleccionados.</td></tr>';
+      tbody.innerHTML = '<tr class="hpe-empty-row"><td colspan="8">No se encontraron registros con los filtros seleccionados.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map((row) => `
@@ -247,6 +247,7 @@
         <td title="${escapeHtml(row.qr)}">${escapeHtml(row.qr)}</td>
         <td title="${escapeHtml(row.lote)}">${escapeHtml(row.lote)}</td>
         <td>${escapeHtml(row.resultado)}</td>
+        <td title="${escapeHtml(row.operador)}">${escapeHtml(row.operador)}</td>
       </tr>`).join("");
   }
 

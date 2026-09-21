@@ -47,6 +47,8 @@ _COLUMN_FILTER_SQL = {
     "qr": "raw LIKE %s",
     "lote": "COALESCE(lot_no, '') LIKE %s",
     "resultado": "resultado LIKE %s",
+    # Busca por nombre o por numero de empleado.
+    "operador": "CONCAT(COALESCE(operador, ''), ' ', COALESCE(num_empleado, '')) LIKE %s",
 }
 
 
@@ -125,6 +127,13 @@ def _build_filters():
     return " AND ".join(where), params
 
 
+def _formatear_operador(row):
+    """Quien hizo la prueba: "NOMBRE (num_empleado)"."""
+    nombre = (row.get("operador") or "").strip()
+    numero = (row.get("num_empleado") or "").strip()
+    return f"{nombre} ({numero})" if nombre and numero else nombre or numero
+
+
 def _serialize_row(row, numero):
     return {
         "numero": numero,
@@ -134,6 +143,7 @@ def _serialize_row(row, numero):
         "qr": row.get("qr") or "",
         "lote": row.get("lote") or "",
         "resultado": row.get("resultado") or "",
+        "operador": _formatear_operador(row),
     }
 
 
@@ -173,7 +183,7 @@ def api_historial_prueba_electrica():
 
         data_sql = f"""
             SELECT id, DATE(ts) AS fecha, TIME(ts) AS hora,
-                   linea, raw AS qr, lot_no AS lote, resultado
+                   linea, raw AS qr, lot_no AS lote, resultado, operador, num_empleado
             FROM history_prueba_electrica
             WHERE {where_sql}
             ORDER BY ts DESC, id DESC
@@ -225,7 +235,7 @@ def export_historial_prueba_electrica():
         offset = (page - 1) * per_page
         data_sql = f"""
             SELECT id, DATE(ts) AS fecha, TIME(ts) AS hora,
-                   linea, raw AS qr, lot_no AS lote, resultado
+                   linea, raw AS qr, lot_no AS lote, resultado, operador, num_empleado
             FROM history_prueba_electrica
             WHERE {where_sql}
             ORDER BY ts DESC, id DESC
@@ -246,9 +256,9 @@ def export_historial_prueba_electrica():
         )
         return excel_response_ict(
             items,
-            ["#", "Línea", "Fecha", "Hora", "QR", "Lote", "Resultado"],
-            ["numero", "linea", "fecha", "hora", "qr", "lote", "resultado"],
-            [10, 14, 13, 12, 38, 18, 12],
+            ["#", "Línea", "Fecha", "Hora", "QR", "Lote", "Resultado", "Operador"],
+            ["numero", "linea", "fecha", "hora", "qr", "lote", "resultado", "operador"],
+            [10, 14, 13, 12, 38, 18, 12, 38],
             sheet="Prueba electrica",
             filename=filename,
             freeze="A2",
