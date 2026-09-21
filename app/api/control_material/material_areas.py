@@ -6,6 +6,8 @@ Consulta de solo lectura sobre las tablas que escriben las apps de cada area
   - Salidas:    control_material_salida_<sfx>   (fecha_salida, sin cancelados)
   - Inventario: inventario_lotes_<sfx>          (stock actual > 0) en dos modos:
       detallado (por lote) y general (suma por numero de parte)
+  - MICOM ademas: inventario chamber (control_material_chamber_micom, micoms
+      programados), detallado por lote chamber y general por programacion
 Misma logica que warehousing.search / outgoing.search / inventory.getLots /
 inventory.getSummary de Control_inventario_SMD y MICOM.
 
@@ -37,10 +39,17 @@ logger = logging.getLogger(__name__)
 
 bp = Blueprint("control_material_material_areas", __name__)
 
-# area -> sufijo de tablas, titulo y boton de permiso (LISTA_DE_MATERIALES).
+# area -> sufijo de tablas, titulo, boton de permiso (LISTA_DE_MATERIALES) y
+# tipos de inventario que ofrece el selector "Consulta" (valor, etiqueta).
 AREAS = {
-    "smd": {"sfx": "smd", "titulo": "SMD", "boton": "Control de material SMD"},
-    "micom": {"sfx": "micom", "titulo": "MICOM", "boton": "Control de material Micom"},
+    "smd": {
+        "sfx": "smd", "titulo": "SMD", "boton": "Control de material SMD",
+        "inventarios": [("inventario", "Inventario")],
+    },
+    "micom": {
+        "sfx": "micom", "titulo": "MICOM", "boton": "Control de material Micom", "chamber": True,
+        "inventarios": [("inventario", "Inventario virgen"), ("inventario_chamber", "Inventario chamber")],
+    },
 }
 _AREA = "<any(" + ", ".join(AREAS) + "):area>"
 
@@ -169,13 +178,64 @@ def _vistas(sfx):
     }
 
 
-VISTAS = {area: _vistas(cfg["sfx"]) for area, cfg in AREAS.items()}
+# MICOM tiene ademas inventario Chamber (micoms ya programados), agrupado por la
+# etiqueta de programacion. Misma logica que inventory.getChamberLots /
+# getChamberSummary de la app MICOM.
+_PROG_KEY = (
+    "COALESCE(NULLIF(REPLACE(TRIM(COALESCE(NULLIF(c.programming_qr_label_text, ''), "
+    "NULLIF(c.micom_label_text, ''))), ' ', '|'), ''), NULLIF(c.source_part_number, ''), 'UNKNOWN')"
+)
+# Chamber solo muestra stock (sin entrada/salida/ubicacion).
+VISTAS_CHAMBER = {
+    "inventario_chamber": {
+        "from": "control_material_chamber_micom c",
+        "base": ("COALESCE(c.qty_actual, 0) > %s", [0]),
+        "fecha": None,
+        "cols": [
+            ("lote_chamber", "c.chamber_lot", "Lote chamber", 34),
+            ("programacion", _PROG_KEY, "Programacion", 24),
+            ("part_no", "c.source_part_number", "Part No", 22),
+            ("especificacion", "c.source_specification", "Especificacion", 30),
+            ("stock", "COALESCE(c.qty_actual, 0)", "Stock", 10),
+            ("fecha_recibo", "DATE_FORMAT(c.created_at, '%%Y-%%m-%%d')", "Fecha creacion", 12),
+            ("usuario", "c.usuario_registro", "Usuario", 22),
+        ],
+        "orden": f"{_PROG_KEY}, c.created_at",
+        "suma": "COALESCE(c.qty_actual, 0)",
+    },
+    "inventario_chamber_general": {
+        "from": (
+            f"(SELECT {_PROG_KEY} AS programacion, MAX(c.source_part_number) AS part_no, "
+            "MAX(c.source_specification) AS especificacion, "
+            "SUM(COALESCE(c.qty_actual, 0)) AS stock, COUNT(DISTINCT c.chamber_lot) AS lotes, "
+            "SUM(COALESCE(c.qty_actual, 0) > 0) AS lotes_con_stock "
+            "FROM control_material_chamber_micom c GROUP BY programacion) g"
+        ),
+        "base": ("g.stock > %s", [0]),
+        "fecha": None,
+        "cols": [
+            ("programacion", "g.programacion", "Programacion", 24),
+            ("part_no", "g.part_no", "Part No", 22),
+            ("especificacion", "g.especificacion", "Especificacion", 30),
+            ("stock", "g.stock", "Stock total", 12),
+            ("lotes", "g.lotes", "Lotes distintos", 14),
+            ("lotes_con_stock", "g.lotes_con_stock", "Lotes con stock", 14),
+        ],
+        "orden": "g.programacion",
+        "suma": "g.stock",
+    },
+}
+
+VISTAS = {
+    area: {**_vistas(cfg["sfx"]), **(VISTAS_CHAMBER if cfg.get("chamber") else {})}
+    for area, cfg in AREAS.items()
+}
 
 
 def _vista(area):
     nombre = (request.args.get("vista") or "entradas").strip().lower()
     if nombre not in VISTAS[area]:
-        raise ValueError("Vista invalida (entradas, salidas, inventario o inventario_general)")
+        raise ValueError("Vista invalida: " + ", ".join(VISTAS[area]))
     return nombre, VISTAS[area][nombre]
 
 
@@ -220,7 +280,7 @@ def material_area_ajax(area):
     try:
         return render_template(
             "Control de material/material_area_ajax.html",
-            area=area, titulo=AREAS[area]["titulo"],
+            area=area, titulo=AREAS[area]["titulo"], inventarios=AREAS[area]["inventarios"],
         )
     except Exception as e:
         logger.error(f"Error al cargar Control de material {area}: {e}")
@@ -278,7 +338,9 @@ def api_material_area_export(area):
     rows = _filas(vista, where, params, EXPORT_MAX)
     claves, _e, headers, widths = zip(*vista["cols"])
     titulo = AREAS[area]["titulo"]
+    # Hoja legible (<=31 chars): "MICOM chamber general", "SMD inventario general"...
+    hoja = nombre.replace("inventario_chamber", "chamber").replace("_", " ")
     return excel_response(
-        rows, headers, claves, widths, f"{titulo} {nombre}",
+        rows, headers, claves, widths, f"{titulo} {hoja}",
         f"Material_{titulo}_{nombre}_{obtener_fecha_hora_mexico():%Y%m%d_%H%M}", freeze="A2",
     )

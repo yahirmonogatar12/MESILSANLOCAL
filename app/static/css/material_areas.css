@@ -50,6 +50,7 @@
 .mat-area-table th[data-key="usuario"] { width: 110px; }
 .mat-area-table th[data-key="lotes"],
 .mat-area-table th[data-key="lotes_con_stock"] { width: 150px; }
+.mat-area-table th[data-key="programacion"] { width: 170px; }
 .mat-area-table th,
 .mat-area-table td {
   padding: 8px 6px;

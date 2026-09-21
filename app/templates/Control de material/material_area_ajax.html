@@ -12,7 +12,9 @@
         <select id="{{ p }}vista" data-mat-el="vista">
           <option value="entradas">Entradas</option>
           <option value="salidas">Salidas</option>
-          <option value="inventario">Inventario</option>
+          {% for valor, etiqueta in inventarios %}
+          <option value="{{ valor }}">{{ etiqueta }}</option>
+          {% endfor %}
         </select>
       </div>
       <div class="filter-group" id="{{ p }}modo-group" hidden>
@@ -88,4 +90,4 @@
   </div>
 </section>
 
-<script src="{{ url_for('static', filename='js/material_areas.js', v='20260921a') }}"></script>
+<script src="{{ url_for('static', filename='js/material_areas.js', v='20260921c') }}"></script>

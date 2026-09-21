@@ -30,6 +30,15 @@ def test_cada_area_usa_sus_tablas():
             assert f"_{area}" in texto and not any(f"_{o}" in texto for o in otras)
 
 
+def test_solo_micom_tiene_inventario_chamber():
+    assert {"inventario_chamber", "inventario_chamber_general"} <= set(m.VISTAS["micom"])
+    assert "inventario_chamber" not in m.VISTAS["smd"]
+    with pytest.raises(ValueError):
+        where("vista=inventario_chamber", "smd")
+    sql, params = where("vista=inventario_chamber_general&cf_programacion=SAA30025", "micom")
+    assert "g.stock > %s" in sql and params == [0, "%SAA30025%"]
+
+
 def test_inventario_ignora_fechas_y_siempre_lleva_params():
     # Sin params execute_query no formatea y los %% de DATE_FORMAT quedarian dobles.
     sql, params = where("vista=inventario&start=2026-09-01", "micom")

@@ -27,6 +27,17 @@
       ['part_no', 'Part No'], ['especificacion', 'Especificación'], ['unidad', 'Unidad'],
       ['stock', 'Stock total'], ['lotes', 'Lotes distintos'], ['lotes_con_stock', 'Etiquetas con stock'],
     ],
+    // MICOM: inventario chamber (micoms programados), solo stock. Detallado por lote chamber.
+    inventario_chamber: [
+      ['lote_chamber', 'Lote chamber'], ['programacion', 'Programación'], ['part_no', 'Part No'],
+      ['especificacion', 'Especificación'], ['stock', 'Stock'], ['fecha_recibo', 'Fecha creación'],
+      ['usuario', 'Usuario'],
+    ],
+    // Chamber general: suma por etiqueta de programacion.
+    inventario_chamber_general: [
+      ['programacion', 'Programación'], ['part_no', 'Part No'], ['especificacion', 'Especificación'],
+      ['stock', 'Stock total'], ['lotes', 'Lotes distintos'], ['lotes_con_stock', 'Lotes con stock'],
+    ],
   };
 
   const estados = {}; // area -> { filtrosPorVista, filterTimer, controller, pag }
@@ -59,11 +70,13 @@
     try { localStorage.setItem(storageKey(area), JSON.stringify(estado(area).filtrosPorVista)); } catch (_) { /* sin storage */ }
   }
 
-  const esInventario = (area) => el(area, 'vista')?.value === 'inventario';
-  // Vista efectiva (= clave de _vistas en el backend): inventario tiene modo general/detallado.
+  // "inventario" (virgen) o "inventario_chamber" (solo MICOM).
+  const esInventario = (area) => (el(area, 'vista')?.value || '').startsWith('inventario');
+  // Vista efectiva (= clave de VISTAS en el backend): cada inventario tiene modo
+  // general (<vista>_general) o detallado (<vista>).
   function vista(area) {
-    if (esInventario(area)) return el(area, 'modo').value === 'general' ? 'inventario_general' : 'inventario';
-    return el(area, 'vista')?.value || 'entradas';
+    const v = el(area, 'vista')?.value || 'entradas';
+    return esInventario(area) && el(area, 'modo').value === 'general' ? `${v}_general` : v;
   }
   function filtrosVista(area) {
     const f = estado(area).filtrosPorVista;
@@ -182,6 +195,8 @@
     const etiquetas = {
       inventario: `${num(data.total)} etiquetas · stock ${num(data.piezas)}`,
       inventario_general: `${num(data.total)} números de parte · stock ${num(data.piezas)}`,
+      inventario_chamber: `${num(data.total)} lotes chamber · stock ${num(data.piezas)}`,
+      inventario_chamber_general: `${num(data.total)} programaciones · stock ${num(data.piezas)}`,
     };
     el(area, 'resumen').textContent = etiquetas[vista(area)] || `${num(data.total)} registros · ${num(data.piezas)} piezas`;
 
