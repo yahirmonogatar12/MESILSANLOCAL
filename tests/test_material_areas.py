@@ -91,7 +91,8 @@ class SinPermiso:
 
 
 @pytest.mark.parametrize("area,boton", [
-    ("smd", "Control de material SMD"), ("micom", "Control de material Micom"), ("ipm", "Control de material IPM"),
+    ("smd", "Control de material SMD"), ("micom", "Control de material Micom"),
+    ("imd", "Control de material IMD"), ("ipm", "Control de material IPM"),
 ])
 @pytest.mark.parametrize("ruta", ["/material/{}", "/api/material/{}", "/api/material/{}/export"])
 def test_sin_permiso_del_boton_de_su_area_responde_403(client, monkeypatch, ruta, area, boton):
@@ -106,4 +107,4 @@ def test_sin_permiso_del_boton_de_su_area_responde_403(client, monkeypatch, ruta
 
 
 def test_area_desconocida_no_existe(client):
-    assert client.get("/api/material/imd").status_code == 404
+    assert client.get("/api/material/assy").status_code == 404

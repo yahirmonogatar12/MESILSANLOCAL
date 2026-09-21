@@ -62,7 +62,7 @@
                             data-permiso-pagina="LISTA_DE_MATERIALES"
                             data-permiso-seccion="Material por áreas"
                             data-permiso-boton="Control de material Micom">Control de material Micom</li>
-                        <li class="sidebar-link" tabindex="0"
+                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarControlMaterialImd ? window.parent.mostrarControlMaterialImd() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('material-imd-unique-container', '/material/imd') : window.location.href='/material/imd')"
                             data-permiso-pagina="LISTA_DE_MATERIALES"
                             data-permiso-seccion="Material por áreas"
                             data-permiso-boton="Control de material IMD">Control de material IMD</li>

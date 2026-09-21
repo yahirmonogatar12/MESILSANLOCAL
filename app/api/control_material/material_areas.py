@@ -12,9 +12,9 @@ Consulta de solo lectura sobre las tablas que escriben las apps de cada area
 Misma logica que warehousing.search / outgoing.search / inventory.getLots /
 inventory.getSummary de Control_inventario_SMD, MICOM e IPM_Control.
 
-Areas: smd (Control_inventario_SMD), micom (MICOM), ipm (IPM_Control).
+Areas: smd (Control_inventario_SMD), micom (MICOM), imd (ControlIMD), ipm (IPM_Control).
 
-Rutas (<area> = smd | micom | ipm):
+Rutas (<area> = smd | micom | imd | ipm):
   GET /material/<area>                  -> fragmento AJAX
   GET /api/material/<area>              -> vista, start, end, cf_<col>, page, per_page
   GET /api/material/<area>/export       -> Excel con los mismos filtros (sin paginar)
@@ -50,6 +50,10 @@ AREAS = {
     "micom": {
         "sfx": "micom", "titulo": "MICOM", "boton": "Control de material Micom",
         "inventarios": [("inventario", "Inventario virgen"), ("inventario_chamber", "Inventario chamber")],
+    },
+    "imd": {
+        "sfx": "imd", "titulo": "IMD", "boton": "Control de material IMD",
+        "inventarios": [("inventario", "Inventario")],
     },
     "ipm": {
         "sfx": "ipm", "titulo": "IPM", "boton": "Control de material IPM",
