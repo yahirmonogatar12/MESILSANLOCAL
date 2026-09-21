@@ -1,0 +1,88 @@
+/* material_smd.css - Control de material SMD (IDs msmd-*).
+   Base visual: ict.css + historial_produccion_ensamble.css (hpe-*), como
+   Control de Scrap. Aqui solo lo atado a los IDs de este modulo. */
+
+#msmd-filters .msmd-acciones {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+}
+#msmd-filters .filter-group select {
+  width: 160px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ilsan-text-light);
+  font-size: 0.8rem;
+}
+#msmd-filters .filter-group select option { background: #ffffff; color: #000000; }
+#msmd-filters .filter-group input:disabled { opacity: 0.4; cursor: not-allowed; }
+#msmd-root .ict-pagination[hidden] { display: none !important; }
+
+/* Tabla: mismo estilo que #hps-table; cabe en pantalla sin scroll lateral.
+   Codigo y Especificacion (sin ancho) se reparten el espacio que sobra. */
+#msmd-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--ilsan-dark-secondary);
+  table-layout: fixed;
+}
+#msmd-table th[data-key="fecha"] { width: 96px; }
+#msmd-table th[data-key="hora"] { width: 80px; }
+#msmd-table th[data-key="fecha_recibo"] { width: 110px; }
+#msmd-table th[data-key="part_no"] { width: 130px; }
+#msmd-table th[data-key="lote"] { width: 110px; }
+#msmd-table th[data-key="cantidad"],
+#msmd-table th[data-key="entrada"],
+#msmd-table th[data-key="salida"],
+#msmd-table th[data-key="stock"] { width: 92px; }
+#msmd-table th[data-key="unidad"] { width: 78px; }
+#msmd-table th[data-key="ubicacion"] { width: 100px; }
+#msmd-table th[data-key="cliente"] { width: 96px; }
+#msmd-table th[data-key="modelo"] { width: 100px; }
+#msmd-table th[data-key="depto"] { width: 92px; }
+#msmd-table th[data-key="proceso"] { width: 120px; }
+#msmd-table th[data-key="linea"] { width: 90px; }
+#msmd-table th[data-key="usuario"] { width: 110px; }
+#msmd-table th[data-key="lotes"],
+#msmd-table th[data-key="lotes_con_stock"] { width: 150px; }
+#msmd-root .filter-group[hidden] { display: none !important; }
+#msmd-table th,
+#msmd-table td {
+  padding: 8px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+  font-size: 0.8rem;
+}
+#msmd-table thead th {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  overflow: visible;
+  background: linear-gradient(135deg, var(--ilsan-dark-header), #2a2a3c);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  color: var(--ilsan-text-light);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+#msmd-table th.hpe-filter-open { z-index: 35; }
+#msmd-table tbody td {
+  overflow: hidden;
+  background: var(--ilsan-dark-secondary);
+  color: var(--ilsan-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#msmd-table tbody tr:nth-child(even) td { background: #44475a; }
+#msmd-table tbody tr:hover td { background: var(--ilsan-hover); }
+#msmd-table th:nth-last-child(-n + 2) .hpe-column-filter-popover {
+  right: 3px;
+  left: auto;
+}
+#msmd-table td.msmd-stock { font-weight: 600; color: var(--ilsan-text-light); }

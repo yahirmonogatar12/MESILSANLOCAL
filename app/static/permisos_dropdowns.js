@@ -446,6 +446,31 @@ const allDropdowns = [
     },
     {
         "pagina": "LISTA_DE_MATERIALES",
+        "seccion": "Material por áreas",
+        "boton": "Control de material SMD"
+    },
+    {
+        "pagina": "LISTA_DE_MATERIALES",
+        "seccion": "Material por áreas",
+        "boton": "Control de material Micom"
+    },
+    {
+        "pagina": "LISTA_DE_MATERIALES",
+        "seccion": "Material por áreas",
+        "boton": "Control de material IMD"
+    },
+    {
+        "pagina": "LISTA_DE_MATERIALES",
+        "seccion": "Material por áreas",
+        "boton": "Control de material ASSY"
+    },
+    {
+        "pagina": "LISTA_DE_MATERIALES",
+        "seccion": "Material por áreas",
+        "boton": "Control de material IPM"
+    },
+    {
+        "pagina": "LISTA_DE_MATERIALES",
         "seccion": "Control de refacciones",
         "boton": "Estándares sobre refacciones"
     },

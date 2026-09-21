@@ -48,6 +48,35 @@
                     </ul>
                 </li>
                 <li class="sidebar-section">
+                    <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterialAreas" aria-expanded="false">
+                        <span class="sidebar-icon"></span>
+                        Material por áreas
+                        <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                    </button>
+                    <ul class="collapse sidebar-dropdown-list" id="sidebarMaterialAreas">
+                        <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarControlMaterialSmd ? window.parent.mostrarControlMaterialSmd() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('material-smd-unique-container', '/material/smd') : window.location.href='/material/smd')"
+                            data-permiso-pagina="LISTA_DE_MATERIALES"
+                            data-permiso-seccion="Material por áreas"
+                            data-permiso-boton="Control de material SMD">Control de material SMD</li>
+                        <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_MATERIALES"
+                            data-permiso-seccion="Material por áreas"
+                            data-permiso-boton="Control de material Micom">Control de material Micom</li>
+                        <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_MATERIALES"
+                            data-permiso-seccion="Material por áreas"
+                            data-permiso-boton="Control de material IMD">Control de material IMD</li>
+                        <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_MATERIALES"
+                            data-permiso-seccion="Material por áreas"
+                            data-permiso-boton="Control de material ASSY">Control de material ASSY</li>
+                        <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_MATERIALES"
+                            data-permiso-seccion="Material por áreas"
+                            data-permiso-boton="Control de material IPM">Control de material IPM</li>
+                    </ul>
+                </li>
+                <li class="sidebar-section">
                     <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarRefacciones" aria-expanded="false">
                         <span class="sidebar-icon"></span>
                         Control de refacciones

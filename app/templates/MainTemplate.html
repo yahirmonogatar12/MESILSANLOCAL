@@ -67,6 +67,7 @@
     <link id="control-plan-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_smt.css', v='20260526a') }}">
     <link id="control-scrap-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_scrap.css', v='20260921g') }}">
     <link id="historial-operacion-proceso-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_operacion_proceso.css', v='20260921a') }}">
+    <link id="material-smd-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_smd.css', v='20260921b') }}">
     <!-- WF_004: CSS persistente Inventario IMD-SMD Terminado (Control de resultados) -->
     <link id="inventario-imd-terminado-css" rel="stylesheet" href="{{ url_for('static', filename='css/inventario_imd_terminado.css', v='20260527a') }}">
     <!-- WF_004: CSS persistente Inventario reparacion SMD (Control de resultados / Control de inventario) -->
@@ -637,6 +638,9 @@
         </div>
         <div id="inventory-valuation-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
+        <div id="material-smd-unique-container" style="display: none;">
+            <!-- Material por areas > Control de material SMD (material_smd.js) -->
         </div>
         <div id="registro-material-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
@@ -2643,6 +2647,8 @@ function hideAllMaterialContainers() {
     if (materialInvoicesContainer) materialInvoicesContainer.style.display = 'none';
     if (materialComprasContainer) materialComprasContainer.style.display = 'none';
     if (inventoryValuationContainer) inventoryValuationContainer.style.display = 'none';
+    const materialSmdContainer = document.getElementById('material-smd-unique-container');
+    if (materialSmdContainer) materialSmdContainer.style.display = 'none';
     if (registroMaterialContainer) registroMaterialContainer.style.display = 'none';
     if (historialInventarioContainer) historialInventarioContainer.style.display = 'none';
     if (inventarioRollosSMDContainer) inventarioRollosSMDContainer.style.display = 'none';
@@ -3461,6 +3467,19 @@ function hideAllMaterialContainers() {
                 cargarContenidoDinamico('inventory-valuation-unique-container', '/material/inventory_valuation', () => {
                     if (typeof window.initInventoryValuation === 'function') {
                         window.initInventoryValuation();
+                    }
+                });
+            };
+
+            // Material por areas > Control de material SMD (entradas/salidas/inventario de Control_inventario_SMD)
+            window.mostrarControlMaterialSmd = function() {
+                prepararPanelSeccion('material');
+                const container = document.getElementById('material-smd-unique-container');
+                if (container) container.style.display = 'block';
+
+                cargarContenidoDinamico('material-smd-unique-container', '/material/smd', () => {
+                    if (typeof window.initControlMaterialSmd === 'function') {
+                        window.initControlMaterialSmd();
                     }
                 });
             };

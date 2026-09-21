@@ -490,6 +490,13 @@ class AuthSystem:
             ('LISTA_DE_MATERIALES', 'Control de material', 'Valorización de inventario', 'Acceso a valorización de inventario de material'),
             ('LISTA_DE_MATERIALES', 'Control de material', 'Lista de compras', 'Acceso a lista de compras y costeo por transaccion'),
 
+            # LISTA DE MATERIALES - Material por áreas (2026-09-21, botones sin modulo aun)
+            ('LISTA_DE_MATERIALES', 'Material por áreas', 'Control de material SMD', 'Acceso al control de material SMD'),
+            ('LISTA_DE_MATERIALES', 'Material por áreas', 'Control de material Micom', 'Acceso al control de material Micom'),
+            ('LISTA_DE_MATERIALES', 'Material por áreas', 'Control de material IMD', 'Acceso al control de material IMD'),
+            ('LISTA_DE_MATERIALES', 'Material por áreas', 'Control de material ASSY', 'Acceso al control de material ASSY'),
+            ('LISTA_DE_MATERIALES', 'Material por áreas', 'Control de material IPM', 'Acceso al control de material IPM'),
+
             # LISTA DE MATERIALES - Control de material MSL
             ('LISTA_DE_MATERIALES', 'Control de material MSL', 'Control total de material', 'Acceso al control total de material MSL'),
             ('LISTA_DE_MATERIALES', 'Control de material MSL', 'Control de entrada y salida de material', 'Control de entrada y salida de material MSL'),
