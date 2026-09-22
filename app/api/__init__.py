@@ -101,6 +101,10 @@ _MODULOS_REGISTRADOS = [
     # 2026-09-22: Process interlock History (tabla interlock_stop_smd que
     # escribe el proyecto ESCANEO_INPUT). Antes era un placeholder en renders.py.
     "control_calidad.process_interlock_history",
+    # 2026-09-22: Historial de Sub Material (pasta / mask / squeegee).
+    # Debe ir ANTES que control_produccion.metal_mask y .squeegee: se quedo
+    # con sus renders /historial-uso-*-ajax.
+    "control_calidad.historial_sub_material",
     # Migracion 2026-05-28: Historial de liberacion LQC
     "control_calidad.historial_liberacion_lqc",
     # WF_001-WF_004 (2026-09-02): Historial de liberacion OQC

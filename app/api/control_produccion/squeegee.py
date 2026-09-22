@@ -54,8 +54,5 @@ def control_squeegee_ajax():
 # ---------------------------------------------------------------------------
 
 
-@bp.route("/historial-uso-squeegee-ajax")
-@login_requerido
-def historial_uso_squeegee_ajax():
-    """Template para Historial de uso de squeegee"""
-    return render_template("Control de calidad/historial_uso_squeegee_ajax.html")
+# 2026-09-22: /historial-uso-squeegee-ajax se movio a
+# app/api/control_calidad/historial_sub_material.py (tooling_plan_assignment_smd).

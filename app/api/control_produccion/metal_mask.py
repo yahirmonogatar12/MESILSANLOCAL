@@ -251,11 +251,9 @@ def historial_tension_mask_metal_ajax():
 # ---------------------------------------------------------------------------
 
 
-@bp.route("/historial-uso-mask-metal-ajax")
-@login_requerido
-def historial_uso_mask_metal_ajax():
-    """Template para Historial de uso de mask de metal"""
-    return render_template("Control de calidad/historial_uso_mask_metal_ajax.html")
+# 2026-09-22: /historial-uso-mask-metal-ajax se movio a
+# app/api/control_calidad/historial_sub_material.py. El historial de uso real
+# vive en tooling_plan_assignment_smd, no en metal_mask_history.
 
 
 # ---------------------------------------------------------------------------

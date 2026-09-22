@@ -2884,6 +2884,11 @@ window.mostrarHistorialUsoPegamentoSoldadura = function () {
   _mostrarModuloCalidad(
     "historial-uso-pegamento-soldadura-unique-container",
     "/historial-uso-pegamento-soldadura-ajax",
+    () => {
+      if (typeof window.initHistorialTabla === "function") {
+        window.initHistorialTabla("submat-pasta");
+      }
+    },
   );
 };
 
@@ -2891,6 +2896,11 @@ window.mostrarHistorialUsoMaskMetal = function () {
   _mostrarModuloCalidad(
     "historial-uso-mask-metal-unique-container",
     "/historial-uso-mask-metal-ajax",
+    () => {
+      if (typeof window.initHistorialTabla === "function") {
+        window.initHistorialTabla("submat-mask");
+      }
+    },
   );
 };
 
@@ -2898,6 +2908,11 @@ window.mostrarHistorialUsoSqueegee = function () {
   _mostrarModuloCalidad(
     "historial-uso-squeegee-unique-container",
     "/historial-uso-squeegee-ajax",
+    () => {
+      if (typeof window.initHistorialTabla === "function") {
+        window.initHistorialTabla("submat-squeegee");
+      }
+    },
   );
 };
 
