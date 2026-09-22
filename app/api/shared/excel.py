@@ -29,6 +29,20 @@ from flask import Response
 _XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
+def _valor_celda(row, key):
+    """Valor listo para openpyxl.
+
+    Los barcodes 2D del piso (ISO/IEC 15434) traen caracteres de control
+    (RS/GS/EOT) que openpyxl rechaza con IllegalCharacterError y tumban la
+    exportacion entera. Se quitan solo al escribir la celda: en pantalla el
+    valor se sigue mostrando completo.
+    """
+    from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+
+    valor = row.get(key, "")
+    return ILLEGAL_CHARACTERS_RE.sub("", valor) if isinstance(valor, str) else valor
+
+
 def _workbook_response(wb, filename):
     """Serializa el Workbook y lo devuelve como descarga adjunta."""
     output = BytesIO()
@@ -70,7 +84,7 @@ def excel_response(rows, headers, keys, widths, sheet, filename, freeze=None):
 
     for row_idx, row in enumerate(rows, 2):
         for col_idx, key in enumerate(keys, 1):
-            ws.cell(row=row_idx, column=col_idx, value=row.get(key, ""))
+            ws.cell(row=row_idx, column=col_idx, value=_valor_celda(row, key))
 
     for col_idx, width in enumerate(widths, 1):
         ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = width
@@ -111,7 +125,7 @@ def excel_response_ict(rows, headers, keys, widths, sheet, filename, freeze=None
 
     for row_idx, row in enumerate(rows, 2):
         for col_idx, key in enumerate(keys, 1):
-            cell = ws.cell(row=row_idx, column=col_idx, value=row.get(key, ""))
+            cell = ws.cell(row=row_idx, column=col_idx, value=_valor_celda(row, key))
             cell.fill = cell_fill
             cell.alignment = center
             cell.border = border

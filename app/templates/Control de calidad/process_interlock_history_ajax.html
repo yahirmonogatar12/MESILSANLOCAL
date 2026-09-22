@@ -1,38 +1,198 @@
-<!-- CONTENEDOR DESTINO (COMPARTIDO): calidad-content-area -->
-<div id="process-interlock-history-unique-container" class="ajax-module-container">
-    <div class="module-header">
-        <h2>Process interlock History</h2>
+<!-- Process interlock History - Fragmento AJAX (WF_002).
+     Paros de banda registrados por el interlock del proyecto ESCANEO_INPUT.
+     La logica vive en el JS generico historial_tabla.js; los data-* del
+     contenedor raiz son su contrato.
+     WF_004: ict.css + historial_tablas.css declarados en MainTemplate.html
+     con cache-busting; el JS los reasegura en <head>. -->
+<div id="pih-container" class="hist-tbl-area-container"
+     data-modulo="interlock"
+     data-prefijo="pih"
+     data-api-base="/api/process-interlock"
+     data-archivo="process_interlock_history"
+     data-filtros="fecha-desde:fecha_desde,fecha-hasta:fecha_hasta,linea:linea,turno:turno,modo:modo,motivo:motivo,min-seg:min_seg,busqueda:busqueda,incluir-cortos:incluir_cortos">
+<div class="ict-page">
+
+  <!-- Tarjeta de filtros -->
+  <div class="filters-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+      </svg>
+      <h3>Filtros de Búsqueda</h3>
     </div>
-    
-    <div class="module-content">
-        <!-- Contenido del módulo se cargará aquí -->
-        <p>Módulo de Process interlock History</p>
+    <div id="pih-filters" class="hist-tbl-filters">
+      <div class="filter-group">
+        <label for="pih-fecha-desde">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Fecha desde
+        </label>
+        <input type="date" id="pih-fecha-desde">
+      </div>
+
+      <div class="filter-group">
+        <label for="pih-fecha-hasta">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Fecha hasta
+        </label>
+        <input type="date" id="pih-fecha-hasta">
+      </div>
+
+      <div class="filter-group">
+        <label for="pih-linea">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+          </svg>
+          Línea
+        </label>
+        <select id="pih-linea">
+          <option value="">Todas</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="pih-turno">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7v5l3 2"></path>
+          </svg>
+          Turno
+        </label>
+        <select id="pih-turno">
+          <option value="">Todos</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="pih-modo">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+            <path d="M7 8v8M11 8v8M15 8v8M19 8v8"></path>
+          </svg>
+          Modo
+        </label>
+        <select id="pih-modo">
+          <option value="">Todos</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="pih-motivo">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
+          </svg>
+          Motivo
+        </label>
+        <select id="pih-motivo">
+          <option value="">Todos</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="pih-min-seg">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="13" r="8"></circle>
+            <path d="M12 9v4l2 2M9 2h6"></path>
+          </svg>
+          Duración mín. (s)
+        </label>
+        <input type="number" id="pih-min-seg" min="0" step="1" placeholder="Ej. 30">
+      </div>
+
+      <div class="filter-group">
+        <label for="pih-busqueda">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          Detalle / Lote / Parte
+        </label>
+        <input type="text" id="pih-busqueda" placeholder="Buscar en texto...">
+      </div>
+
+      <div class="filter-group">
+        <label for="pih-incluir-cortos" class="compare-toggle" style="margin-top:14px;">
+          <input type="checkbox" id="pih-incluir-cortos">
+          <span title="Detecciones de fraccion de segundo: el tiempo que tarda en escanear, no un paro real">Incluir detecciones &lt; 3s</span>
+        </label>
+      </div>
+
+      <button id="pih-btn-consultar" class="btn-primary">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        Consultar
+      </button>
     </div>
+  </div>
+
+  <!-- Tarjeta de resultados -->
+  <div class="results-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <h3>Paros de Banda</h3>
+      <span class="record-count" id="pih-record-count">0 registros</span>
+      <span class="record-count" id="pih-total-detenido" title="Tiempo detenido que suman todos los registros filtrados">0s detenidos</span>
+      <button id="pih-btn-export" class="btn-export">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Exportar Excel
+      </button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-loading" id="pih-table-loading">
+        <div class="spinner"></div>
+        <span>Cargando datos...</span>
+      </div>
+      <table id="pih-table" class="hist-tbl-table">
+        <thead>
+          <tr>
+            {% for clave, etiqueta in columnas %}
+            <th data-hist-filter-field="{{ clave }}">{{ etiqueta }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody id="pih-body"></tbody>
+      </table>
+    </div>
+    <div id="pih-pagination" class="ict-pagination" style="display:none;">
+      <div class="ict-pagination-info">
+        <span id="pih-pagination-summary">0 - 0 de 0</span>
+      </div>
+      <div class="ict-pagination-controls">
+        <label class="ict-pagination-perpage">
+          Por pagina
+          <select id="pih-per-page">
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+            <option value="1000" selected>1000</option>
+          </select>
+        </label>
+        <button id="pih-page-first" type="button" class="btn-page" title="Primera">«</button>
+        <button id="pih-page-prev"  type="button" class="btn-page" title="Anterior">‹</button>
+        <span class="ict-pagination-current">
+          <input type="number" id="pih-page-input" min="1" value="1" step="1">
+          <span> / <span id="pih-page-total">1</span></span>
+        </span>
+        <button id="pih-page-next"  type="button" class="btn-page" title="Siguiente">›</button>
+        <button id="pih-page-last"  type="button" class="btn-page" title="Ultima">»</button>
+      </div>
+    </div>
+  </div>
+
+</div>
 </div>
 
-<style>
-.ajax-module-container {
-    padding: 20px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.module-header h2 {
-    margin: 0 0 20px 0;
-    color: #333;
-    font-size: 24px;
-}
-
-.module-content {
-    min-height: 200px;
-}
-</style>
-
-<script>
-// Auto-inicialización del módulo
-document.addEventListener('DOMContentLoaded', function() {
-    // Módulo inicializado
-});
-</script>
-
+<script src="{{ url_for('static', filename='js/historial_tabla.js', v='20260922f') }}"></script>

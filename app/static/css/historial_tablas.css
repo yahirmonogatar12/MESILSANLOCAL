@@ -1,7 +1,8 @@
-/* Historiales de cambio de material (SMT / IMD / ASSY) - Tema ILSAN.
+/* Tablas de historial de Control de calidad - Tema ILSAN.
  *
- * Los tres modulos comparten este archivo: los estilos van por clase
- * (.mat-hist-*) y los IDs siguen siendo propios de cada modulo (WF_002).
+ * Lo comparten los historiales de cambio de material (SMT / IMD / ASSY) y el
+ * de Process interlock: los estilos van por clase (.hist-tbl-*) y los IDs
+ * siguen siendo propios de cada modulo (WF_002).
  *
  * ponytail: este archivo solo trae lo especifico de estos modulos. Todo el chrome
  * (tarjetas, filtros, botones, paginacion, popovers de encabezado, scrollbars)
@@ -60,7 +61,7 @@
 }
 
 /* Grid de filtros: mismo layout que #ict-filters. */
-.mat-hist-filters {
+.hist-tbl-filters {
     display: flex;
     flex-wrap: wrap;
     column-gap: 10px;
@@ -71,7 +72,7 @@
     justify-content: flex-start;
 }
 
-.mat-hist-filters .btn-primary {
+.hist-tbl-filters .btn-primary {
     width: auto;
     min-width: 110px;
     align-self: center;
@@ -80,21 +81,21 @@
 }
 
 /* Tabla */
-.mat-hist-table {
+.hist-tbl-table {
     width: 100%;
     border-collapse: collapse;
     background-color: var(--ilsan-dark-secondary);
 }
 
-.mat-hist-table th,
-.mat-hist-table td {
+.hist-tbl-table th,
+.hist-tbl-table td {
     border: 1px solid rgba(255, 255, 255, 0.05);
     padding: 8px 6px;
     text-align: center;
     font-size: 0.8rem;
 }
 
-.mat-hist-table thead th {
+.hist-tbl-table thead th {
     background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
     color: var(--ilsan-text-light);
     position: sticky;
@@ -108,7 +109,7 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.mat-hist-table tbody td {
+.hist-tbl-table tbody td {
     color: var(--ilsan-text-secondary);
     background-color: var(--ilsan-dark-secondary);
     transition: background-color 0.2s ease;
@@ -118,27 +119,27 @@
     white-space: nowrap;
 }
 
-.mat-hist-table tbody tr:nth-child(even) td {
+.hist-tbl-table tbody tr:nth-child(even) td {
     background-color: #44475A;
 }
 
-.mat-hist-table tbody tr:hover td {
+.hist-tbl-table tbody tr:hover td {
     background-color: var(--ilsan-hover);
 }
 
 /* Fila NG resaltada, igual que en el historial de ICT. */
-.mat-hist-table tbody tr.mat-hist-row-ng td {
+.hist-tbl-table tbody tr.hist-tbl-row-ng td {
     background-color: var(--ict-ng-row) !important;
     color: #fff !important;
     font-weight: 500;
 }
 
-.mat-hist-table tbody tr.mat-hist-row-ng:hover td {
+.hist-tbl-table tbody tr.hist-tbl-row-ng:hover td {
     background-color: var(--ict-ng-hover) !important;
 }
 
 /* Estado vacio */
-.mat-hist-table tbody td.mat-hist-empty {
+.hist-tbl-table tbody td.hist-tbl-empty {
     color: var(--ilsan-text-gray);
     padding: 28px 8px;
     font-style: italic;
@@ -149,28 +150,28 @@
 /* Filtros por encabezado. Mismo aspecto que los de ICT pero con clases
  * propias: ict.js deja un listener permanente en document que reacciona a
  * .ict-column-filter-btn y abriria/cerraria estos popovers dos veces. */
-th.mat-hist-column-filterable {
+th.hist-tbl-column-filterable {
     overflow: visible;
 }
 
-th.mat-hist-column-filterable.filter-open {
+th.hist-tbl-column-filterable.filter-open {
     z-index: 35 !important;
 }
 
-.mat-hist-column-header {
+.hist-tbl-column-header {
     display: flex;
     min-height: 20px;
     align-items: center;
     gap: 5px;
 }
 
-.mat-hist-column-header > span {
+.hist-tbl-column-header > span {
     flex: 1 1 auto;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.mat-hist-column-filter-btn {
+.hist-tbl-column-filter-btn {
     display: inline-flex;
     flex: 0 0 20px;
     width: 20px;
@@ -185,29 +186,29 @@ th.mat-hist-column-filterable.filter-open {
     cursor: pointer;
 }
 
-.mat-hist-column-filter-btn svg {
+.hist-tbl-column-filter-btn svg {
     width: 11px;
     height: 11px;
     fill: currentColor;
     stroke: none;
 }
 
-.mat-hist-column-filter-btn:hover,
-.mat-hist-column-filter-btn:focus-visible,
-.mat-hist-column-filter-btn.open {
+.hist-tbl-column-filter-btn:hover,
+.hist-tbl-column-filter-btn:focus-visible,
+.hist-tbl-column-filter-btn.open {
     border-color: #71b9ff;
     background: #20688c;
     color: #ffffff;
     outline: none;
 }
 
-.mat-hist-column-filter-btn.active {
+.hist-tbl-column-filter-btn.active {
     border-color: #71b9ff;
     background: #2f80d8;
     color: #ffffff;
 }
 
-.mat-hist-column-filter-popover {
+.hist-tbl-column-filter-popover {
     position: absolute;
     top: calc(100% - 1px);
     left: 3px;
@@ -223,16 +224,16 @@ th.mat-hist-column-filterable.filter-open {
     white-space: normal;
 }
 
-.mat-hist-table th:nth-last-child(-n+4) .mat-hist-column-filter-popover {
+.hist-tbl-table th:nth-last-child(-n+4) .hist-tbl-column-filter-popover {
     right: 3px;
     left: auto;
 }
 
-.mat-hist-column-filter-popover.open {
+.hist-tbl-column-filter-popover.open {
     display: block;
 }
 
-.mat-hist-column-filter-input {
+.hist-tbl-column-filter-input {
     width: 100%;
     height: 26px;
     padding: 4px 6px;
@@ -245,19 +246,19 @@ th.mat-hist-column-filterable.filter-open {
     text-transform: none;
 }
 
-.mat-hist-column-filter-input:focus {
+.hist-tbl-column-filter-input:focus {
     border-color: #71b9ff;
     box-shadow: 0 0 0 2px rgba(113, 185, 255, 0.18);
     outline: none;
 }
 
-.mat-hist-column-filter-actions {
+.hist-tbl-column-filter-actions {
     display: flex;
     gap: 5px;
     margin-top: 6px;
 }
 
-.mat-hist-column-filter-actions button {
+.hist-tbl-column-filter-actions button {
     flex: 1;
     height: 22px;
     padding: 0 6px;
@@ -268,8 +269,8 @@ th.mat-hist-column-filterable.filter-open {
     font-size: 10px;
 }
 
-.mat-hist-column-filter-actions button:hover,
-.mat-hist-column-filter-actions button:focus-visible {
+.hist-tbl-column-filter-actions button:hover,
+.hist-tbl-column-filter-actions button:focus-visible {
     background: #4f78aa;
     outline: none;
 }

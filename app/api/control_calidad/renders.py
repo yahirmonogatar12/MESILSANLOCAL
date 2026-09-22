@@ -4,11 +4,11 @@ modulo con logica propia).
 Migrado desde `app/routes.py` el 2026-05-28 (Fase 3.3). Copia 1:1 sin cambios
 funcionales.
 
-Cubre 6 renders:
+Cubre 6 renders (2026-09-22: Process interlock History se fue a su propio
+modulo, `process_interlock_history.py`, al dejar de ser un placeholder):
   Control de resultado de reparacion       /control-resultado-reparacion-ajax
   Control de item reparado                 /control-item-reparado-ajax
   Historial de uso de pegamento soldadura  /historial-uso-pegamento-soldadura-ajax
-  Process interlock History                /process-interlock-history-ajax
   Control de Master Sample de SMT          /control-master-sample-smt-ajax
   Historial inspeccion Master Sample SMT   /historial-inspeccion-master-sample-smt-ajax
   Control de inspeccion de OQC             /control-inspeccion-oqc-ajax
@@ -42,13 +42,6 @@ def historial_uso_pegamento_soldadura_ajax():
     return render_template(
         "Control de calidad/historial_uso_pegamento_soldadura_ajax.html"
     )
-
-
-@bp.route("/process-interlock-history-ajax")
-@login_requerido
-def process_interlock_history_ajax():
-    """Template para Process interlock History"""
-    return render_template("Control de calidad/process_interlock_history_ajax.html")
 
 
 @bp.route("/control-master-sample-smt-ajax")

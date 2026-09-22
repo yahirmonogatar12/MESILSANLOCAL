@@ -291,17 +291,6 @@ def smt_historial_opciones():
 def smt_historial_export():
     """Exportar el historial filtrado a Excel (mismos filtros que /data)."""
     try:
-        # Los barcodes 2D traen cabecera ISO/IEC 15434 con caracteres de
-        # control (RS/GS/EOT) que openpyxl rechaza. Se limpian solo aqui:
-        # en pantalla el valor se muestra completo.
-        from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-
-        def _limpiar(row):
-            return {
-                k: (ILLEGAL_CHARACTERS_RE.sub("", v) if isinstance(v, str) else v)
-                for k, v in row.items()
-            }
-
         where_sql, params = _build_where()
         rows = execute_query(
             _SELECT_COLS + where_sql + " ORDER BY id DESC LIMIT 10000",
@@ -309,7 +298,7 @@ def smt_historial_export():
             fetch="all",
         ) or []
         return excel_response_ict(
-            [_limpiar(_fmt_row(row)) for row in rows],
+            [_fmt_row(row) for row in rows],
             _EXPORT_HEADERS,
             _EXPORT_KEYS,
             widths=[16] * len(_EXPORT_HEADERS),

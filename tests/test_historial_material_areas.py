@@ -53,10 +53,13 @@ def test_template_pinta_una_columna_filtrable_por_campo(client, monkeypatch):
 
     html = client.get("/historial-material/assy/ajax").get_data(as_text=True)
 
-    assert html.count("data-mat-filter-field=") == len(hma._AREAS["assy"]["columnas"])
-    assert 'data-area="assy"' in html
+    assert html.count("data-hist-filter-field=") == len(hma._AREAS["assy"]["columnas"])
     assert 'id="mathist-assy-table"' in html
-    assert "historial_material_area.js" in html
+    assert "historial_tabla.js" in html
+    # Contrato que historial_tabla.js lee del contenedor raiz.
+    assert 'data-modulo="assy"' in html
+    assert 'data-api-base="/api/historial-material/assy"' in html
+    assert "linea:linea" in html
 
 
 def test_data_api_pagina_y_filtra(client, monkeypatch):
@@ -111,3 +114,30 @@ def test_filtros_de_columna_desconocidos_se_ignoran(client, monkeypatch):
     assert "DROP" not in capturado["sql"]
     assert "ubicacion" not in capturado["sql"]
     assert capturado["params"] == (1000, 0)
+
+
+def test_export_no_revienta_con_barcodes_2d(client, monkeypatch):
+    """Los contenedores de ASSY traen caracteres de control ISO/IEC 15434.
+
+    openpyxl los rechaza con IllegalCharacterError y tumbaba el export entero;
+    excel_response_ict los limpia al escribir la celda.
+    """
+    sucio = "[)>\x1e06\x1dLT3S0852D8166315\x1ePN1746062-1\x04"
+
+    def fake_execute_query(sql, params=None, fetch=None):
+        if fetch == "one":
+            return {"n": 1}
+        return [{
+            "fecha": None, "hora": None, "linea": "M3", "contenedor": sucio,
+            "material": "EAE41329701", "posicion": "0", "lote_proveedor": sucio,
+            "ubicacion": "M3", "proveedor": "", "spec": "", "qty": "",
+            "result": "OK",
+        }]
+
+    monkeypatch.setattr(hma, "execute_query", fake_execute_query)
+    _login(client)
+
+    response = client.get("/api/historial-material/assy/export")
+
+    assert response.status_code == 200
+    assert len(response.data) > 0

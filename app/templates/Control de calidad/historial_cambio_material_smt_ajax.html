@@ -1,9 +1,9 @@
 <!-- Historial de cambio de material de SMT - Fragmento AJAX (WF_002).
-     WF_004: ict.css + historial_material.css declarados en
+     WF_004: ict.css + historial_tablas.css declarados en
      MainTemplate.html con cache-busting; el JS los reasegura en <head>.
      ponytail: reutiliza las clases de presentacion de ict.css (filters-card,
      results-card, btn-primary, btn-export, ict-pagination) para verse identico
-     al Historial de ICT sin duplicar 1300 lineas de CSS, y las .mat-hist-* que
+     al Historial de ICT sin duplicar 1300 lineas de CSS, y las .hist-tbl-* que
      comparte con los historiales de IMD y ASSY. Los IDs si llevan prefijo
      propio (smt-hist-). -->
 <div id="smt-hist-container" class="smt-hist-container">
@@ -17,7 +17,7 @@
       </svg>
       <h3>Filtros de Búsqueda</h3>
     </div>
-    <div id="smt-hist-filters" class="mat-hist-filters">
+    <div id="smt-hist-filters" class="hist-tbl-filters">
       <div class="filter-group">
         <label for="smt-hist-fecha-desde">
           <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -132,7 +132,7 @@
         <div class="spinner"></div>
         <span>Cargando datos...</span>
       </div>
-      <table id="smt-hist-table" class="mat-hist-table">
+      <table id="smt-hist-table" class="hist-tbl-table">
         <thead>
           <tr>
             <th data-smt-filter-field="fecha">Fecha</th>
@@ -184,4 +184,4 @@
 </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/historial_cambio_material_smt.js', v='20260922d') }}"></script>
+<script src="{{ url_for('static', filename='js/historial_cambio_material_smt.js', v='20260922f') }}"></script>

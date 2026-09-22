@@ -1,11 +1,17 @@
 <!-- Historial de cambio de material por area (IMD / ASSY) - Fragmento AJAX (WF_002).
      Un solo template para las dos areas: el backend pasa `area`, `titulo` y
      `columnas`, y los IDs se prefijan con el area para no colisionar cuando
-     ambas pestanas estan abiertas a la vez.
-     WF_004: ict.css + historial_material.css declarados en MainTemplate.html
+     ambas pestanas estan abiertas a la vez. La logica vive en el JS generico
+     historial_tabla.js; los data-* del contenedor son su contrato.
+     WF_004: ict.css + historial_tablas.css declarados en MainTemplate.html
      con cache-busting; el JS los reasegura en <head>. -->
 {% set p = 'mathist-' ~ area %}
-<div id="{{ p }}-container" class="mat-hist-area-container" data-area="{{ area }}" data-prefijo="{{ p }}">
+<div id="{{ p }}-container" class="hist-tbl-area-container"
+     data-modulo="{{ area }}"
+     data-prefijo="{{ p }}"
+     data-api-base="/api/historial-material/{{ area }}"
+     data-archivo="historial_material_{{ area }}"
+     data-filtros="fecha-desde:fecha_desde,fecha-hasta:fecha_hasta,linea:linea,material:material,resultado:resultado,contenedor:contenedor">
 <div class="ict-page">
 
   <!-- Tarjeta de filtros -->
@@ -16,7 +22,7 @@
       </svg>
       <h3>Filtros de Búsqueda</h3>
     </div>
-    <div id="{{ p }}-filters" class="mat-hist-filters">
+    <div id="{{ p }}-filters" class="hist-tbl-filters">
       <div class="filter-group">
         <label for="{{ p }}-fecha-desde">
           <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -120,11 +126,11 @@
         <div class="spinner"></div>
         <span>Cargando datos...</span>
       </div>
-      <table id="{{ p }}-table" class="mat-hist-table">
+      <table id="{{ p }}-table" class="hist-tbl-table">
         <thead>
           <tr>
             {% for clave, etiqueta in columnas %}
-            <th data-mat-filter-field="{{ clave }}">{{ etiqueta }}</th>
+            <th data-hist-filter-field="{{ clave }}">{{ etiqueta }}</th>
             {% endfor %}
           </tr>
         </thead>
@@ -160,4 +166,4 @@
 </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/historial_material_area.js', v='20260922d') }}"></script>
+<script src="{{ url_for('static', filename='js/historial_tabla.js', v='20260922f') }}"></script>

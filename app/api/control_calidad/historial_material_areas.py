@@ -3,7 +3,7 @@
 Consumido por LISTA_CONTROL_DE_CALIDAD / Historial de material, junto al de
 SMT (`smt_historial.py`). Mismo layout y estilo que el Historial de ICT.
 
-JS cliente: app/static/js/historial_material_area.js
+JS cliente: app/static/js/historial_tabla.js (generico)
 Template:   app/templates/Control de calidad/historial_material_area_ajax.html
 
 Rutas (`<area>` es imd o assy):
@@ -107,6 +107,8 @@ def _fmt_row(row, cfg):
         else:
             valor = row.get(columna)
             salida[clave] = "" if valor is None else valor
+    # Fila resaltada en la tabla: aqui lo malo es un material rechazado.
+    salida["_destacar"] = str(row.get("result") or "").upper() == "NG"
     return salida
 
 
@@ -262,10 +264,12 @@ def historial_material_area_opciones(area):
             "WHERE linea IS NOT NULL AND linea<>'' ORDER BY linea",
             fetch="all",
         ) or []
-        return jsonify({"lineas": [r["linea"] for r in lineas]})
+        # La clave nombra el sufijo del <select> que rellena (contrato de
+        # historial_tabla.js), no el plural.
+        return jsonify({"linea": [r["linea"] for r in lineas]})
     except Exception as e:
         logger.exception("Error en /api/historial-material/%s/opciones", area)
-        return jsonify({"error": str(e), "lineas": []}), 500
+        return jsonify({"error": str(e), "linea": []}), 500
 
 
 @bp.route("/api/historial-material/<area>/export")

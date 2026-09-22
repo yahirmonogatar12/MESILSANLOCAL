@@ -2905,6 +2905,11 @@ window.mostrarProcessInterlockHistory = function () {
   _mostrarModuloCalidad(
     "process-interlock-history-unique-container",
     "/process-interlock-history-ajax",
+    () => {
+      if (typeof window.initHistorialTabla === "function") {
+        window.initHistorialTabla("interlock");
+      }
+    },
   );
 };
 

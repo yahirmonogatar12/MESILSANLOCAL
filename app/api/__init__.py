@@ -98,6 +98,9 @@ _MODULOS_REGISTRADOS = [
     # 2026-09-22: Historial de cambio de material de IMD y ASSY
     # (tablas history_material_* que escribe el proyecto Verificacion BOM).
     "control_calidad.historial_material_areas",
+    # 2026-09-22: Process interlock History (tabla interlock_stop_smd que
+    # escribe el proyecto ESCANEO_INPUT). Antes era un placeholder en renders.py.
+    "control_calidad.process_interlock_history",
     # Migracion 2026-05-28: Historial de liberacion LQC
     "control_calidad.historial_liberacion_lqc",
     # WF_001-WF_004 (2026-09-02): Historial de liberacion OQC

@@ -10,7 +10,7 @@
 (function () {
   "use strict";
 
-  const CSS_VERSION = "20260922d";
+  const CSS_VERSION = "20260922f";
   const STORAGE_KEY = "historialCambioMaterialSmtColumnFilters";
 
   // ====== WF_004 capa 2: asegurar CSS del modulo en <head> ======
@@ -18,13 +18,13 @@
   // casos: que el fragmento se cargue sin pasar por el layout, y que el portal
   // lleve abierto desde antes del deploy — ahi el <link> sigue apuntando a la
   // version anterior y el navegador reusa el CSS viejo cacheado con esa URL.
-  const MODULE_CSS_ID = "historial-material-css";
+  const MODULE_CSS_ID = "historial-tablas-css";
   [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
     { id: "ict-css", href: "/static/css/ict.css?v=20260630a" },
     {
       id: MODULE_CSS_ID,
-      href: `/static/css/historial_material.css?v=${CSS_VERSION}`,
+      href: `/static/css/historial_tablas.css?v=${CSS_VERSION}`,
     },
   ].forEach(({ id, href }) => {
     const existing = document.getElementById(id);
@@ -128,12 +128,12 @@
       const field = header.dataset.smtFilterField;
       const label = header.textContent.trim();
       const value = getColumnFilters()[field] || "";
-      header.classList.add("mat-hist-column-filterable");
+      header.classList.add("hist-tbl-column-filterable");
       header.dataset.smtFilterReady = "true";
       header.innerHTML = `
-        <div class="mat-hist-column-header">
+        <div class="hist-tbl-column-header">
           <span>${escapeHtml(label)}</span>
-          <button class="mat-hist-column-filter-btn${value ? " active" : ""}"
+          <button class="hist-tbl-column-filter-btn${value ? " active" : ""}"
                   type="button"
                   aria-label="Filtrar ${escapeHtml(label)}"
                   aria-expanded="false"
@@ -143,22 +143,22 @@
             </svg>
           </button>
         </div>
-        <div class="mat-hist-column-filter-popover" data-smt-field="${escapeHtml(field)}">
-          <input class="mat-hist-column-filter-input"
+        <div class="hist-tbl-column-filter-popover" data-smt-field="${escapeHtml(field)}">
+          <input class="hist-tbl-column-filter-input"
                  data-smt-field="${escapeHtml(field)}"
                  value="${escapeHtml(value)}"
                  placeholder="Buscar..."
                  aria-label="Buscar en ${escapeHtml(label)}"
                  autocomplete="off">
-          <div class="mat-hist-column-filter-actions">
-            <button class="mat-hist-column-filter-clear" type="button">Limpiar</button>
-            <button class="mat-hist-column-filter-clear-all" type="button">Todos</button>
+          <div class="hist-tbl-column-filter-actions">
+            <button class="hist-tbl-column-filter-clear" type="button">Limpiar</button>
+            <button class="hist-tbl-column-filter-clear-all" type="button">Todos</button>
           </div>
         </div>`;
     });
   }
 
-  // Las clases .mat-hist-* las comparte con los historiales de IMD/ASSY, que
+  // Las clases .hist-tbl-* las comparte con los historiales de IMD/ASSY, que
   // tienen sus propios listeners en document. Cada modulo actua solo sobre lo
   // que cuelga de su contenedor.
   function esDeEsteModulo(node) {
@@ -167,13 +167,13 @@
 
   function closeColumnFilterPopovers(except = null) {
     document
-      .querySelectorAll("#smt-hist-container .mat-hist-column-filter-popover.open")
+      .querySelectorAll("#smt-hist-container .hist-tbl-column-filter-popover.open")
       .forEach(popover => {
       if (popover === except) return;
       popover.classList.remove("open");
       const th = popover.closest("th");
       th?.classList.remove("filter-open");
-      const button = th?.querySelector(".mat-hist-column-filter-btn");
+      const button = th?.querySelector(".hist-tbl-column-filter-btn");
       button?.classList.remove("open");
       button?.setAttribute("aria-expanded", "false");
     });
@@ -182,13 +182,13 @@
   function syncColumnFilterControls() {
     const filters = getColumnFilters();
     document
-      .querySelectorAll("#smt-hist-container .mat-hist-column-filter-input")
+      .querySelectorAll("#smt-hist-container .hist-tbl-column-filter-input")
       .forEach(input => {
       const value = filters[input.dataset.smtField] || "";
       input.value = value;
       input
         .closest("th")
-        ?.querySelector(".mat-hist-column-filter-btn")
+        ?.querySelector(".hist-tbl-column-filter-btn")
         ?.classList.toggle("active", Boolean(value));
     });
   }
@@ -329,7 +329,7 @@
     if (!tbody) return;
 
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td class="mat-hist-empty" colspan="${COLUMNS.length}">Sin registros para los filtros seleccionados</td></tr>`;
+      tbody.innerHTML = `<tr><td class="hist-tbl-empty" colspan="${COLUMNS.length}">Sin registros para los filtros seleccionados</td></tr>`;
       return;
     }
 
@@ -340,7 +340,7 @@
           const value = escapeHtml(row[key]);
           return `<td title="${value}">${value}</td>`;
         }).join("");
-        return `<tr class="${ng ? "mat-hist-row-ng" : ""}">${celdas}</tr>`;
+        return `<tr class="${ng ? "hist-tbl-row-ng" : ""}">${celdas}</tr>`;
       })
       .join("");
   }
@@ -420,11 +420,11 @@
       const target = event.target;
       if (!esDeEsteModulo(target)) return;
 
-      const filterButton = target.closest?.(".mat-hist-column-filter-btn");
+      const filterButton = target.closest?.(".hist-tbl-column-filter-btn");
       if (filterButton) {
         event.preventDefault();
         const th = filterButton.closest("th");
-        const popover = th?.querySelector(".mat-hist-column-filter-popover");
+        const popover = th?.querySelector(".hist-tbl-column-filter-popover");
         if (!popover) return;
         const shouldOpen = !popover.classList.contains("open");
         closeColumnFilterPopovers();
@@ -433,14 +433,14 @@
           th.classList.add("filter-open");
           filterButton.classList.add("open");
           filterButton.setAttribute("aria-expanded", "true");
-          popover.querySelector(".mat-hist-column-filter-input")?.focus();
+          popover.querySelector(".hist-tbl-column-filter-input")?.focus();
         }
         return;
       }
 
-      if (target.closest?.(".mat-hist-column-filter-clear")) {
+      if (target.closest?.(".hist-tbl-column-filter-clear")) {
         event.preventDefault();
-        const field = target.closest(".mat-hist-column-filter-popover")?.dataset.smtField;
+        const field = target.closest(".hist-tbl-column-filter-popover")?.dataset.smtField;
         if (field) {
           setColumnFilter(field, "");
           syncColumnFilterControls();
@@ -449,7 +449,7 @@
         return;
       }
 
-      if (target.closest?.(".mat-hist-column-filter-clear-all")) {
+      if (target.closest?.(".hist-tbl-column-filter-clear-all")) {
         event.preventDefault();
         columnFilters = {};
         saveColumnFilters();
@@ -459,7 +459,7 @@
         return;
       }
 
-      if (target.closest?.(".mat-hist-column-filter-popover")) return;
+      if (target.closest?.(".hist-tbl-column-filter-popover")) return;
       closeColumnFilterPopovers();
 
       if (target.closest?.("#smt-hist-btn-consultar")) {
@@ -479,12 +479,12 @@
     });
 
     document.addEventListener("input", event => {
-      const input = event.target.closest?.(".mat-hist-column-filter-input");
+      const input = event.target.closest?.(".hist-tbl-column-filter-input");
       if (!input || !esDeEsteModulo(input)) return;
       setColumnFilter(input.dataset.smtField, input.value);
       input
         .closest("th")
-        ?.querySelector(".mat-hist-column-filter-btn")
+        ?.querySelector(".hist-tbl-column-filter-btn")
         ?.classList.toggle("active", Boolean(input.value.trim()));
       scheduleColumnFilter();
     });
