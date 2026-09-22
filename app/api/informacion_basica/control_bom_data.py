@@ -1104,6 +1104,11 @@ _ECO_DIFF_CRITICAL_FIELDS = (
     'alt_item_name', 'alt_spec', 'alt_maker', 'remark',
 )
 
+# ECO individual: el remark se publica tal cual viene del Excel, pero no se reporta
+# como cambio (el ERP siempre lo trae distinto). El ECO de familia si lo necesita
+# en el diff porque aplica los cambios campo por campo.
+_ECO_SINGLE_DIFF_FIELDS = tuple(f for f in _ECO_DIFF_CRITICAL_FIELDS if f != 'remark')
+
 _ECO_FAMILY_BLANK_MEANS_UNCHANGED_FIELDS = (
     'item_name', 'spec', 'unit', 'location_text', 'maker', 'supplier',
     'item_class', 'item_process', 'process_name', 'valid_from', 'valid_to',
@@ -1216,6 +1221,9 @@ def _eco_diff_field_value(item, field):
         return '' if value in _ECO_DIFF_SENTINEL_DATES else value
     if field in _ECO_DIFF_LIST_FIELDS:
         return _eco_diff_normalize_list(item.get(field))
+    if field == 'item_process':
+        # Al aprobar, un item_process vacio se guarda como MAIN (_ks_process_value).
+        return _eco_diff_normalize(item.get(field)).upper() or 'MAIN'
     return _eco_diff_normalize(item.get(field))
 
 
@@ -1453,7 +1461,7 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
             if original is None:
                 continue
             field_diffs = []
-            for field in _ECO_DIFF_CRITICAL_FIELDS:
+            for field in _ECO_SINGLE_DIFF_FIELDS:
                 old_val = _eco_diff_field_value(original, field)
                 new_val = _eco_diff_field_value(row, field)
                 if old_val != new_val:

@@ -698,6 +698,21 @@
         }
     }
 
+    // Fechas, remark, clase, proveedor y proceso: se aplican al aprobar pero no son cambio de ingenieria.
+    function renderAdminChanges(rows, render) {
+        if (!rows || !rows.length) return '';
+        return `<details style="margin-top:8px;">
+            <summary style="cursor:pointer; padding:8px 12px; color:#8b98a8; font-size:12px;">Ver ${rows.length} cambios de datos administrativos (fechas, remark, clase, proveedor, proceso)</summary>
+            ${render(rows)}
+        </details>`;
+    }
+
+    // Aviso (no bloquea) cuando el ECO elimina mas de la mitad del BOM: casi siempre es el Excel de otro modelo.
+    function renderBigChangeWarning(warning) {
+        if (!warning) return '';
+        return `<div style="margin-top:10px; padding:8px 12px; background:#3d3212; border:1px solid #9a7d0a; border-radius:5px; color:#f5c542; font-weight:700;">&#9888; ${escapeHtml(warning)}</div>`;
+    }
+
     async function cargarPreviewDiff(ecoId) {
         const summary = document.getElementById('ecoDiffSummary');
         const details = document.getElementById('ecoDiffDetails');
@@ -730,7 +745,9 @@
                     <span style="background:#1e3a2f; color:#52be80; padding:6px 12px; border-radius:5px; font-weight:700;">+ ${counts.added || 0} anadidos</span>
                     <span style="background:#3a2c1e; color:#f5b041; padding:6px 12px; border-radius:5px; font-weight:700;">~ ${counts.modified || 0} modificados</span>
                     <span style="background:#3a1e1e; color:#e74c3c; padding:6px 12px; border-radius:5px; font-weight:700;">- ${counts.removed || 0} eliminados</span>
+                    ${counts.modified_admin ? `<span style="background:#2c3e50; color:#8b98a8; padding:6px 12px; border-radius:5px;">${counts.modified_admin} datos administrativos</span>` : ''}
                 </div>
+                ${renderBigChangeWarning(d.warning)}
                 ${perPartHtml}
             `;
             const showPart = perPartKeys.length > 1;
@@ -744,9 +761,9 @@
                 `<th style="padding:6px 10px; border-bottom:1px solid #34495e; color:#9fb3c8; font-size:11px; text-align:left; font-weight:700;">${escapeHtml(label)}</th>`;
             const renderSection = (title, rows, color, accion) => {
                 if (!rows || !rows.length) return '';
-                const tableMinWidth = accion === 'ADD' ? '1080px' : '760px';
+                const tableMinWidth = accion !== 'MODIFY' ? '1080px' : '760px';
                 const partHeader = showPart ? headerCell('Modelo') : '';
-                const headers = accion === 'ADD'
+                const headers = accion !== 'MODIFY'
                     ? `${partHeader}${headerCell('Nivel')}${headerCell('Item')}${headerCell('Nombre')}${headerCell('Qty')}${headerCell('Ubicacion')}${headerCell('Maker / proveedor')}`
                     : accion === 'MODIFY'
                         ? `${partHeader}${headerCell('Nivel')}${headerCell('Item')}${headerCell('Campo')}${headerCell('Antes')}${headerCell('Despues')}`
@@ -760,7 +777,7 @@
                                 const partCell = showPart
                                     ? `<td style="padding:6px 10px; border-bottom:1px solid #283747; color:#5dade2; font-weight:700;">${escapeHtml(r.part_no || '-')}</td>`
                                     : '';
-                                if (accion === 'ADD') {
+                                if (accion !== 'MODIFY') {
                                     const qtyUnit = [
                                         previewValue(r.eco_qty),
                                         previewValue(r.eco_unit)
@@ -774,7 +791,7 @@
                                         ${previewCell(r.bom_level, 'color:#8b98a8;')}
                                         ${previewCell(r.item_no, 'font-weight:700; color:#ffffff;')}
                                         ${previewCell(r.eco_item_name, 'color:#d7dde5; min-width:150px;')}
-                                        ${previewCell(qtyUnit, 'color:#52be80; font-weight:700; white-space:nowrap;')}
+                                        ${previewCell(qtyUnit, `color:${color}; font-weight:700; white-space:nowrap;`)}
                                         ${previewCell(r.eco_location_text, 'color:#d7dde5; min-width:220px; white-space:normal;')}
                                         ${previewCell(makerSupplier, 'color:#d7dde5; min-width:160px;')}
                                     </tr>`;
@@ -802,7 +819,8 @@
             details.innerHTML =
                 renderSection('Añadidos', d.added, '#52be80', 'ADD') +
                 renderSection('Modificados', d.modified, '#f5b041', 'MODIFY') +
-                renderSection('Eliminados', d.removed, '#e74c3c', 'REMOVE');
+                renderSection('Eliminados', d.removed, '#e74c3c', 'REMOVE') +
+                renderAdminChanges(d.modified_admin, rows => renderSection('Datos administrativos', rows, '#8b98a8', 'MODIFY'));
         } catch (err) {
             summary.innerHTML = `<span style="color:#e74c3c;">Error: ${escapeHtml(err.message || String(err))}</span>`;
         }
@@ -1228,13 +1246,13 @@
                 if (!rows.length) {
                     return '';
                 }
-                const header = action === 'ADD'
+                const header = action !== 'MODIFY'
                     ? `${detailHeader('Modelo')}${detailHeader('Nivel')}${detailHeader('Item')}${detailHeader('Nombre')}${detailHeader('Qty')}${detailHeader('Ubicacion')}${detailHeader('Maker / proveedor')}`
                     : action === 'MODIFY'
                         ? `${detailHeader('Modelo')}${detailHeader('Nivel')}${detailHeader('Item')}${detailHeader('Campo')}${detailHeader('Antes')}${detailHeader('Despues')}`
                         : `${detailHeader('Modelo')}${detailHeader('Nivel')}${detailHeader('Item')}`;
                 const body = rows.map(function(row) {
-                    if (action === 'ADD') {
+                    if (action !== 'MODIFY') {
                         const qtyUnit = [
                             detailValue(row.eco_qty),
                             detailValue(row.eco_unit)
@@ -1248,7 +1266,7 @@
                             ${detailCell(row.bom_level, 'color:#8b98a8;')}
                             ${detailCell(row.item_no, 'font-weight:700; color:#ffffff;')}
                             ${detailCell(row.eco_item_name, 'min-width:150px;')}
-                            ${detailCell(qtyUnit, 'color:#58d68d; font-weight:700; white-space:nowrap;')}
+                            ${detailCell(qtyUnit, `color:${color}; font-weight:700; white-space:nowrap;`)}
                             ${detailCell(row.eco_location_text, 'min-width:220px; white-space:normal;')}
                             ${detailCell(makerSupplier, 'min-width:160px;')}
                         </tr>`;
@@ -1272,7 +1290,7 @@
                 return `
                     <div style="margin-top:12px; border:1px solid #34495e; border-radius:6px; overflow:auto;">
                         <div style="padding:9px 12px; background:#2c3e50; color:${color}; font-weight:700; font-size:12px;">${escapeHtml(label)} (${rows.length})</div>
-                        <table style="width:100%; min-width:${action === 'ADD' ? '1080px' : '820px'}; border-collapse:collapse; font-size:12px;">
+                        <table style="width:100%; min-width:${action !== 'MODIFY' ? '1080px' : '820px'}; border-collapse:collapse; font-size:12px;">
                             <thead><tr style="background:#111827;">${header}</tr></thead>
                             <tbody>${body}</tbody>
                         </table>
@@ -1313,12 +1331,15 @@
                         <span style="background:#123d2a; color:#58d68d; padding:4px 9px; border-radius:10px;">${actionBadge('ADD')} ${escapeHtml(counts.added || 0)}</span>
                         <span style="background:#3d3212; color:#f5c542; padding:4px 9px; border-radius:10px;">${actionBadge('MODIFY')} ${escapeHtml(counts.modified || 0)}</span>
                         <span style="background:#4a1717; color:#ff7675; padding:4px 9px; border-radius:10px;">${actionBadge('REMOVE')} ${escapeHtml(counts.removed || 0)}</span>
+                        ${counts.modified_admin ? `<span style="background:#2c3e50; color:#8b98a8; padding:4px 9px; border-radius:10px;">${escapeHtml(counts.modified_admin)} datos administrativos</span>` : ''}
                     </div>
+                    ${renderBigChangeWarning(diff.warning)}
                 </div>
                 ${totalCambios
                     ? renderChangeSection('Anadidos', diff.added || [], 'ADD') +
                       renderChangeSection('Modificados', diff.modified || [], 'MODIFY') +
-                      renderChangeSection('Eliminados', diff.removed || [], 'REMOVE')
+                      renderChangeSection('Eliminados', diff.removed || [], 'REMOVE') +
+                      renderAdminChanges(diff.modified_admin, rows => renderChangeSection('Datos administrativos', rows, 'MODIFY'))
                     : renderEcnKsField('Cambios registrados', 'Este ECO no tiene cambios registrados en el diff.')}
                 ${actionButtons}
             `;

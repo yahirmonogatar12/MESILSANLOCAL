@@ -888,13 +888,18 @@ def api_ecos_from_excel():
         else:
             ws = wb.active
 
-        header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
-        if not header_row:
-            return jsonify({"success": False, "errors": ["El Excel no tiene encabezados"]}), 400
-        headers = [str(h).strip() if h is not None else "" for h in header_row]
         expected = [label for label, _ in BOM_EXCEL_COLUMNS]
-        idx_map = _build_bom_excel_idx_map(headers)
         required = ["item_no", "qty", "bom_level"]
+        # El export crudo del ERP trae filas de titulo antes de los encabezados.
+        header_row_no, idx_map = 1, {}
+        for row_no, header_row in enumerate(ws.iter_rows(min_row=1, max_row=10, values_only=True), start=1):
+            headers = [str(h).strip() if h is not None else "" for h in header_row]
+            candidate = _build_bom_excel_idx_map(headers)
+            if all(col in candidate for col in required):
+                header_row_no, idx_map = row_no, candidate
+                break
+            if row_no == 1:
+                idx_map = candidate
         missing = [col for col in required if col not in idx_map]
         if missing:
             return jsonify({
@@ -907,7 +912,7 @@ def api_ecos_from_excel():
             }), 400
 
         excel_rows = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
+        for row in ws.iter_rows(min_row=header_row_no + 1, values_only=True):
             if row is None or all(v in (None, "") for v in row):
                 continue
             obj = {}
@@ -1064,6 +1069,60 @@ def api_ecos_scope(eco_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# Campos de compra/vigencia que el ERP y el MES llenan distinto; no son cambio de ingenieria.
+ECO_ADMIN_FIELDS = {"valid_from", "valid_to", "remark", "item_class", "supplier", "item_process", "process_name"}
+
+
+def _fill_removed_rows(eco_id, removed):
+    """Un REMOVE no tiene fila en el ECO; toma nombre/qty/ubicacion de la revision anterior.
+
+    Regresa cuantas filas tenia esa revision (para avisar si el ECO elimina casi todo).
+    """
+    if not removed:
+        return 0
+    base_total = 0
+    eco = execute_query(
+        "SELECT part_no, bom_revision FROM engineering_changes WHERE id = %s",
+        (eco_id,), fetch="one",
+    ) or {}
+    # ponytail: "anterior" = la revision publicada mas reciente distinta a la del ECO;
+    # un ECO viejo visto despues de otros ECOs puede no encontrar la fila y queda en blanco.
+    for part_no in {r.get("part_no") or eco.get("part_no") for r in removed}:
+        base = {}
+        for row in execute_query(
+            """
+            SELECT bom_level, item_no, item_name, qty, unit, location_text, maker
+            FROM v_ecos_bom_current
+            WHERE UPPER(bom_part_no) = UPPER(%s) AND UPPER(bom_rev) <> UPPER(%s)
+            ORDER BY header_synced_at DESC
+            """,
+            (part_no, eco.get("bom_revision") or ""), fetch="all",
+        ) or []:
+            base.setdefault((str(row.get("item_no") or "").upper(), row.get("bom_level") or ""), row)
+        base_total += len(base)
+        for r in removed:
+            if (r.get("part_no") or eco.get("part_no")) != part_no:
+                continue
+            old = base.get((str(r.get("item_no") or "").upper(), r.get("bom_level") or ""))
+            if old:
+                r["eco_item_name"] = old.get("item_name")
+                r["eco_qty"] = _json_safe_datetime(old.get("qty"))
+                r["eco_unit"] = old.get("unit")
+                r["eco_location_text"] = old.get("location_text")
+                r["eco_maker"] = old.get("maker")
+    return base_total
+
+
+def _big_change_warning(removed_count, base_total):
+    # No bloquea: un ECO real puede rehacer el BOM, pero casi siempre es el Excel de otro modelo.
+    if base_total and removed_count > base_total / 2:
+        return (
+            f"Este ECO elimina {removed_count} de {base_total} filas del BOM actual. "
+            "Revisa que el Excel sea del modelo correcto antes de aprobar."
+        )
+    return None
+
+
 @bp.route("/api/ecos/<int:eco_id>/diff", methods=["GET"])
 @login_requerido
 def api_ecos_diff(eco_id):
@@ -1072,11 +1131,14 @@ def api_ecos_diff(eco_id):
         rows = obtener_diff_eco(eco_id)
         rows = [_serialize_eco_row(r) for r in rows]
         added = [r for r in rows if r.get("action") == "ADD"]
-        modified = [r for r in rows if r.get("action") == "MODIFY"]
+        modified_all = [r for r in rows if r.get("action") == "MODIFY"]
+        modified = [r for r in modified_all if r.get("field_changed") not in ECO_ADMIN_FIELDS]
+        modified_admin = [r for r in modified_all if r.get("field_changed") in ECO_ADMIN_FIELDS]
         removed = [r for r in rows if r.get("action") == "REMOVE"]
+        warning = _big_change_warning(len(removed), _fill_removed_rows(eco_id, removed))
 
         per_part = {}
-        for r in rows:
+        for r in added + modified + removed:
             pn = r.get("part_no") or ""
             entry = per_part.setdefault(pn, {"added": 0, "modified": 0, "removed": 0})
             action = r.get("action")
@@ -1092,10 +1154,13 @@ def api_ecos_diff(eco_id):
             "data": {
                 "added": added,
                 "modified": modified,
+                "modified_admin": modified_admin,
                 "removed": removed,
+                "warning": warning,
                 "counts": {
                     "added": len(added),
                     "modified": len(modified),
+                    "modified_admin": len(modified_admin),
                     "removed": len(removed),
                 },
                 "per_part": per_part,
