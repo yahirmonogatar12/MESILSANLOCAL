@@ -92,11 +92,12 @@ _MODULOS_REGISTRADOS = [
     "control_material.material_compras",
     # 2026-09-21: Material por areas > Control de material SMD / MICOM (tablas de sus apps)
     "control_material.material_areas",
-    # control_calidad.smt_historial_simple DEBE ir antes que smt_historial:
-    # ambos definen /api/historial_smt_data y Flask deja responder al primero
-    # registrado (preserva comportamiento legacy de smt_routes_date_fixed.py).
-    "control_calidad.smt_historial_simple",
+    # 2026-09-22: Historial de cambio de material de SMT (reescrito, estilo ICT).
+    # smt_historial_simple.py se elimino junto con las APIs legacy duplicadas.
     "control_calidad.smt_historial",
+    # 2026-09-22: Historial de cambio de material de IMD y ASSY
+    # (tablas history_material_* que escribe el proyecto Verificacion BOM).
+    "control_calidad.historial_material_areas",
     # Migracion 2026-05-28: Historial de liberacion LQC
     "control_calidad.historial_liberacion_lqc",
     # WF_001-WF_004 (2026-09-02): Historial de liberacion OQC

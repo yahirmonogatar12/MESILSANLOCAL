@@ -1,364 +1,327 @@
-"""Endpoints HTTP para historial de cambio de material SMT (version optimizada).
+"""Endpoints HTTP del modulo "Historial de cambio de material de SMT".
 
-Consumido por 'Historial de cambio de material de SMT' en
-LISTA_CONTROL_DE_CALIDAD.
+Consumido por LISTA_CONTROL_DE_CALIDAD / Historial de material.
+JS cliente: app/static/js/historial_cambio_material_smt.js
+Template:   app/templates/Control de calidad/historial_cambio_material_smt_ajax.html
 
 Rutas:
-  GET /smt/historial                  -> render HTML
-  GET /api/historial_smt_data         -> JSON con filtros optimizados
-  GET /api/smt/filtros/opciones       -> lineas y maquinas disponibles
-  GET /api/smt/historial/data         -> JSON variante de compatibilidad
+  GET /historial-cambio-material-smt-ajax  -> render template (canonica)
+  GET /historial-cambio-material-smt       -> 301 a la canonica
+  GET /smt/historial                       -> 301 a la canonica
+  GET /api/smt-historial/data              -> listar con filtros + paginacion
+  GET /api/smt-historial/opciones          -> lineas y maquinas disponibles
+  GET /api/smt-historial/export            -> exportar filtrado a Excel
 
-Migrado desde `app/smt_routes_clean.py` (2026-05-22). Mismo blueprint name
-('smt_api') y mismas rutas; el frontend no requiere cambios.
+Reescrito 2026-09-22 siguiendo WF_002/WF_003/WF_004, con el mismo layout y
+estilo que "Historial de maquina ICT". Se eliminaron las APIs legacy
+(/api/historial_smt_data, /api/smt_stats, /api/smt/filtros/opciones,
+/api/smt/historial/data) junto con el template monolitico anterior y
+`smt_historial_simple.py`.
 
-NOTA: la ruta /api/historial_smt_data tambien la define
-`smt_historial_simple.py` (migrado desde smt_routes_date_fixed.py).
-Por orden de registro Flask, smt_historial_simple SE REGISTRA PRIMERO
-(durante import de routes.py) y por tanto SU implementacion es la que
-responde a esa URL. La version de aqui es codigo muerto pero se conserva
-intencionalmente — mantener el comportamiento legacy hasta decidir
-unificacion.
-
-NOTA WF_003: conserva `get_db_connection()` directo con mysql.connector.
-Migrar a execute_query es trivial aqui (no usa lastrowid ni transacciones),
-queda pendiente para una pasada futura.
+Los endpoints `/api/historial_smt_latest[_v2]` (panel Control de Operacion
+SMT) se conservan al final del archivo sin cambios.
 """
 
 import logging
-import os
 import traceback
+from datetime import datetime
 
-import mysql.connector
-from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, jsonify, redirect, render_template, request
 
-from app.api.shared import login_requerido
+from app.api.shared import excel_response_ict, execute_query, login_requerido
 from app.db_mysql import get_connection
 
 
 logger = logging.getLogger(__name__)
 
-DB_CONFIG = {
-    'host': os.getenv('MYSQL_HOST'),
-    'port': int(os.getenv('MYSQL_PORT', 3306)),
-    'user': os.getenv('MYSQL_USER'),
-    'password': os.getenv('MYSQL_PASSWORD'),
-    'database': os.getenv('MYSQL_DATABASE'),
-    'charset': 'utf8mb4'
-}
-
 
 bp = Blueprint('smt_api', __name__)
 
 
-def get_db_connection():
-    """Crear conexion a la base de datos"""
-    return mysql.connector.connect(**DB_CONFIG)
+# ScanDate/ScanTime llegan del equipo en dos formatos ("20260922" / "2026-09-22",
+# "135510" / "13:55:10") y a veces con basura ("-", "Update"). Se normalizan a
+# digitos para filtrar y se formatean al vuelo para mostrar.
+_SCAN_DATE_SQL = "REPLACE(ScanDate,'-','')"
+_SCAN_TIME_SQL = "REPLACE(ScanTime,':','')"
+
+# Allowlist de filtros por encabezado (cf_*). Los nombres de columna nunca
+# salen del request: solo la clave se busca en este diccionario (WF_003).
+_COLUMN_FILTER_SQL = {
+    "fecha": f"{_SCAN_DATE_SQL} LIKE %s",
+    "hora": f"{_SCAN_TIME_SQL} LIKE %s",
+    "linea": "linea LIKE %s",
+    "maquina": "maquina LIKE %s",
+    "slot": "CAST(SlotNo AS CHAR) LIKE %s",
+    "feeder": "FeederBase LIKE %s",
+    "resultado": "Result LIKE %s",
+    "parte": "PartName LIKE %s",
+    "cantidad": "CAST(Quantity AS CHAR) LIKE %s",
+    "lote": "LOTNO LIKE %s",
+    "barcode": "Barcode LIKE %s",
+    "barcode_anterior": "PreviousBarcode LIKE %s",
+    "seq": "SEQ LIKE %s",
+    "vendor": "Vendor LIKE %s",
+    "archivo": "archivo LIKE %s",
+}
+
+_SELECT_COLS = (
+    "SELECT ScanDate, ScanTime, linea, maquina, SlotNo, FeederBase, Result, "
+    "PartName, Quantity, LOTNO, Barcode, PreviousBarcode, SEQ, Vendor, archivo "
+    "FROM historial_cambio_material_smt "
+)
+
+_EXPORT_HEADERS = [
+    "Fecha", "Hora", "Linea", "Maquina", "Slot", "Feeder", "Resultado",
+    "Parte", "Cantidad", "Lote", "Barcode", "Barcode Anterior", "SEQ",
+    "Vendor", "Archivo",
+]
+_EXPORT_KEYS = [
+    "fecha", "hora", "linea", "maquina", "slot", "feeder", "resultado",
+    "parte", "cantidad", "lote", "barcode", "barcode_anterior", "seq",
+    "vendor", "archivo",
+]
 
 
-@bp.route('/smt/historial', methods=['GET'])
-def smt_historial():
-    """Pagina HTML para visualizar historial SMT con filtros optimizados"""
-    try:
-        return render_template('Control de calidad/historial_cambio_material_smt_ajax.html')
-    except Exception as e:
-        logger.error(f"Error en /smt/historial: {e}")
-        return f"Error cargando template: {e}", 500
+def _solo_digitos(valor):
+    return "".join(ch for ch in str(valor or "") if ch.isdigit())
 
 
-@bp.route('/api/historial_smt_data', methods=['GET'])
-def api_historial_smt_data():
-    """API optimizada para cargar datos SMT con filtros.
+def _fmt_fecha(scan_date):
+    """20260922 | 2026-09-22 -> 2026-09-22. Basura se devuelve tal cual."""
+    d = _solo_digitos(scan_date)
+    return f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 else (scan_date or "")
 
-    Filtros optimizados para cargar solo datos del dia actual por defecto.
-    NOTA: en runtime, esta funcion NO responde — smt_historial_simple.py
-    registra primero la misma ruta y gana en el routing de Flask.
+
+def _fmt_hora(scan_time):
+    """135510 | 13:55:10 -> 13:55:10. Basura se devuelve tal cual."""
+    t = _solo_digitos(scan_time)
+    if 0 < len(t) <= 6:
+        t = t.zfill(6)
+        return f"{t[:2]}:{t[2:4]}:{t[4:6]}"
+    return scan_time or ""
+
+
+def _fmt_row(row):
+    def _txt(key):
+        return row.get(key) or ""
+
+    def _num(key):
+        value = row.get(key)
+        return value if value is not None else ""
+
+    return {
+        "fecha": _fmt_fecha(row.get("ScanDate")),
+        "hora": _fmt_hora(row.get("ScanTime")),
+        "linea": _txt("linea"),
+        "maquina": _txt("maquina"),
+        "slot": _num("SlotNo"),
+        "feeder": _txt("FeederBase"),
+        "resultado": _txt("Result"),
+        "parte": _txt("PartName"),
+        "cantidad": _num("Quantity"),
+        "lote": _txt("LOTNO"),
+        "barcode": _txt("Barcode"),
+        "barcode_anterior": _txt("PreviousBarcode"),
+        "seq": _txt("SEQ"),
+        "vendor": _txt("Vendor"),
+        "archivo": _txt("archivo"),
+    }
+
+
+def _build_where():
+    """WHERE + params a partir de los filtros de la request.
+
+    Devuelve (where_sql, params). Los valores siempre van parametrizados y los
+    nombres de columna salen de la allowlist, nunca del request.
     """
-    try:
-        folder = request.args.get('folder', '')
-        part_name = request.args.get('part_name', '')
-        result = request.args.get('result', '')
-        date_from = request.args.get('date_from', '')
-        date_to = request.args.get('date_to', '')
-        linea = request.args.get('linea', '')
-        maquina = request.args.get('maquina', '')
+    where_sql = "WHERE 1=1"
+    params = []
 
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+    def _add(clause, *vals):
+        nonlocal where_sql
+        where_sql += " " + clause
+        params.extend(vals)
 
-        filters = []
-        params = []
+    fecha_desde = _solo_digitos(request.args.get("fecha_desde", ""))
+    fecha_hasta = _solo_digitos(request.args.get("fecha_hasta", ""))
+    if fecha_desde or fecha_hasta:
+        # Descarta ScanDate corrupto ("-", "Update") antes de comparar texto.
+        _add(f"AND CHAR_LENGTH({_SCAN_DATE_SQL})=8")
+        if fecha_desde:
+            _add(f"AND {_SCAN_DATE_SQL}>=%s", fecha_desde)
+        if fecha_hasta:
+            _add(f"AND {_SCAN_DATE_SQL}<=%s", fecha_hasta)
 
-        if date_from or date_to:
-            if date_from:
-                date_from_formatted = date_from.replace('-', '')
-                filters.append('ScanDate >= %s')
-                params.append(date_from_formatted)
-            if date_to:
-                date_to_formatted = date_to.replace('-', '')
-                filters.append('ScanDate <= %s')
-                params.append(date_to_formatted)
-        elif not filters:
-            from datetime import datetime, timedelta
-            thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y%m%d')
-            filters.append('ScanDate >= %s')
-            params.append(thirty_days_ago)
+    linea = request.args.get("linea", "").strip()
+    if linea:
+        _add("AND linea=%s", linea)
 
-        if linea:
-            filters.append('linea = %s')
-            params.append(linea)
+    maquina = request.args.get("maquina", "").strip()
+    if maquina:
+        _add("AND maquina=%s", maquina)
 
-        if maquina:
-            filters.append('maquina = %s')
-            params.append(maquina)
+    parte = request.args.get("parte", "").strip()
+    if parte:
+        _add("AND PartName LIKE %s", f"{parte}%")
 
-        if folder:
-            filters.append('(archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s)')
-            params.extend([f"%{folder}%", f"%{folder}%", f"%{folder}%"])
+    resultado = request.args.get("resultado", "").strip()
+    if resultado:
+        _add("AND Result=%s", resultado)
 
-        if part_name:
-            filters.append('PartName LIKE %s')
-            params.append(f"%{part_name}%")
+    barcode_like = request.args.get("barcode_like", "").strip()
+    if barcode_like:
+        _add("AND Barcode LIKE %s", f"%{barcode_like}%")
 
-        if result:
-            filters.append('Result = %s')
-            params.append(result)
+    for key, clause in _COLUMN_FILTER_SQL.items():
+        value = request.args.get(f"cf_{key}", "").strip()
+        if not value:
+            continue
+        if key in ("fecha", "hora"):
+            value = _solo_digitos(value)
+            if not value:
+                continue
+        _add(f"AND {clause}", f"%{value}%")
 
-        where_clause = 'WHERE ' + ' AND '.join(filters) if filters else ''
-
-        query = f"""
-            SELECT
-                ScanDate, ScanTime, SlotNo, Result,
-                LOTNO, Barcode, archivo, linea, maquina,
-                PartName, Quantity, SEQ, Vendor,
-                PreviousBarcode, Productdate, FeederBase
-            FROM historial_cambio_material_smt
-            {where_clause}
-            ORDER BY id DESC
-            LIMIT 1000
-        """
-
-        cursor.execute(query, params)
-        results = cursor.fetchall()
-
-        data = []
-        for i, row in enumerate(results, 1):
-            data.append({
-                'index': i,
-                'scan_date': row['ScanDate'],
-                'scan_time': row['ScanTime'],
-                'slotno': row['SlotNo'],
-                'result': row['Result'],
-                'lotno': row['LOTNO'],
-                'serial': row['Barcode'],
-                'barcode': row['Barcode'],
-                'source_file': row['archivo'],
-                'linea': row['linea'],
-                'maquina': row['maquina'],
-                'part_name': row['PartName'],
-                'quantity': row['Quantity'],
-                'seq': row['SEQ'],
-                'vendor': row['Vendor'],
-                'previousbarcode': row.get('PreviousBarcode', '') or '',
-                'productdate': row.get('Productdate', row['ScanDate']) or row['ScanDate'],
-                'feederbase': row.get('FeederBase', '') or '',
-                'l_position': '',
-                'm_position': ''
-            })
-
-        total_records = len(data)
-        ok_count = sum(1 for row in data if row['result'] == 'OK')
-        ng_count = sum(1 for row in data if row['result'] == 'NG')
-
-        stats = {
-            'total': total_records,
-            'ok': ok_count,
-            'ng': ng_count
-        }
-
-        response_data = {
-            'success': True,
-            'data': data,
-            'stats': stats,
-            'total': total_records,
-            'message': f'Encontrados {total_records} registros'
-        }
-
-        cursor.close()
-        conn.close()
-
-        return jsonify(response_data)
-
-    except Exception as e:
-        logger.error(f"Error en /api/historial_smt_data: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'data': [],
-            'stats': {'total': 0, 'ok': 0, 'ng': 0},
-            'total': 0
-        }), 500
-
-
-@bp.route('/api/smt/filtros/opciones', methods=['GET'])
-def get_filtros_opciones():
-    """Obtener opciones disponibles para los filtros (lineas, maquinas)"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        cursor.execute("""
-            SELECT DISTINCT linea
-            FROM historial_cambio_material_smt
-            WHERE linea IS NOT NULL AND linea != ''
-            ORDER BY linea
-        """)
-        lineas = [row['linea'] for row in cursor.fetchall()]
-
-        cursor.execute("""
-            SELECT DISTINCT maquina
-            FROM historial_cambio_material_smt
-            WHERE maquina IS NOT NULL AND maquina != ''
-            ORDER BY maquina
-        """)
-        maquinas = [row['maquina'] for row in cursor.fetchall()]
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({
-            'success': True,
-            'lineas': lineas,
-            'maquinas': maquinas
-        })
-
-    except Exception as e:
-        logger.error(f"Error en filtros opciones: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-
-@bp.route('/api/smt/historial/data', methods=['GET'])
-def get_smt_historial_data():
-    """API endpoint para obtener datos del historial SMT (compatibilidad)"""
-    try:
-        folder = request.args.get('folder', '')
-
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        if folder:
-            cursor.execute("""
-                SELECT
-                    ScanDate, ScanTime, SlotNo, Result,
-                    LOTNO, Barcode, archivo, linea, maquina,
-                    PartName, Quantity, SEQ, Vendor,
-                    PreviousBarcode, Productdate, FeederBase
-                FROM historial_cambio_material_smt
-                WHERE (archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s)
-                ORDER BY ScanDate DESC, ScanTime DESC
-                LIMIT 1000
-            """, (f"%{folder}%", f"%{folder}%", f"%{folder}%"))
-        else:
-            cursor.execute("""
-                SELECT
-                    ScanDate, ScanTime, SlotNo, Result,
-                    LOTNO, Barcode, archivo, linea, maquina,
-                    PartName, Quantity, SEQ, Vendor,
-                    PreviousBarcode, Productdate, FeederBase
-                FROM historial_cambio_material_smt
-                ORDER BY ScanDate DESC, ScanTime DESC
-                LIMIT 1000
-            """)
-
-        results = cursor.fetchall()
-
-        data = []
-        for row in results:
-            data.append({
-                'scan_date': row['ScanDate'],
-                'scan_time': row['ScanTime'],
-                'slot_no': row['SlotNo'],
-                'result': row['Result'],
-                'lot_no': row['LOTNO'],
-                'barcode': row['Barcode'],
-                'source_file': row['archivo'],
-                'linea': row['linea'],
-                'maquina': row['maquina'],
-                'part_name': row['PartName'],
-                'quantity': row['Quantity'],
-                'seq': row['SEQ'],
-                'vendor': row['Vendor'],
-                'previousbarcode': row.get('PreviousBarcode', '') or '',
-                'productdate': row.get('Productdate', row['ScanDate']) or row['ScanDate'],
-                'feederbase': row.get('FeederBase', '') or ''
-            })
-
-        total_records = len(data)
-        ok_count = sum(1 for row in data if row['result'] == 'OK')
-        ng_count = sum(1 for row in data if row['result'] == 'NG')
-
-        stats = {
-            'total': total_records,
-            'ok': ok_count,
-            'ng': ng_count
-        }
-
-        return jsonify({
-            'success': True,
-            'data': data,
-            'stats': stats,
-            'total': total_records
-        })
-
-    except Exception as e:
-        logger.error(f"Error en /api/smt/historial/data: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'data': [],
-            'stats': {'total': 0, 'ok': 0, 'ng': 0},
-            'total': 0
-        }), 500
-    finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
+    return where_sql, params
 
 
 # ---------------------------------------------------------------------------
-# Fase 3.3 (2026-05-28): rutas legacy /historial-cambio-material-smt[-ajax]
-# migradas desde routes.py. Renderizan el mismo template que /smt/historial
-# (definido arriba); las URLs distintas se preservan porque la sidebar
-# LISTA_CONTROL_DE_CALIDAD las usa.
+# Render template
 # ---------------------------------------------------------------------------
-
-
-@bp.route("/historial-cambio-material-smt")
-@login_requerido
-def historial_cambio_material_smt():
-    """Página del historial de cambio de material de SMT"""
-    try:
-        return render_template("Control de calidad/historial_cambio_material_smt.html")
-    except Exception as e:
-        logger.error(f"Error al cargar historial de cambio de material SMT: {e}")
-        return f"Error al cargar la página: {str(e)}", 500
 
 
 @bp.route("/historial-cambio-material-smt-ajax")
+@login_requerido
 def historial_cambio_material_smt_ajax():
-    if "usuario" not in session:
-        return redirect(url_for("auth_sesion.login"))
+    """Render canonico del fragmento AJAX del historial de cambio de material SMT."""
     try:
         return render_template(
             "Control de calidad/historial_cambio_material_smt_ajax.html"
         )
     except Exception as e:
-        logger.error(f"Error en historial_cambio_material_smt_ajax: {e}")
-        return f"Error interno del servidor: {e}", 500
+        logger.error(f"Error al cargar Historial cambio material SMT: {e}")
+        return f"Error al cargar el contenido: {e}", 500
+
+
+@bp.route("/historial-cambio-material-smt")
+@bp.route("/smt/historial")
+def alias_legacy_historial_cambio_material_smt():
+    """Aliases 301 -> /historial-cambio-material-smt-ajax."""
+    return redirect("/historial-cambio-material-smt-ajax", code=301)
+
+
+# ---------------------------------------------------------------------------
+# APIs
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/api/smt-historial/data")
+@login_requerido
+def smt_historial_data():
+    """Registros del historial con filtros y paginacion.
+
+    Paginacion: `page` (1-based) y `per_page` (default 1000, max 1000).
+    Respuesta: { rows, total, page, per_page, total_pages }.
+    """
+    try:
+        where_sql, params = _build_where()
+
+        try:
+            page = max(1, int(request.args.get("page", "1")))
+        except ValueError:
+            page = 1
+        try:
+            per_page = int(request.args.get("per_page", "1000"))
+        except ValueError:
+            per_page = 1000
+        per_page = max(1, min(per_page, 1000))
+
+        count_row = execute_query(
+            "SELECT COUNT(*) AS n FROM historial_cambio_material_smt " + where_sql,
+            tuple(params),
+            fetch="one",
+        ) or {}
+        total = int(count_row.get("n", 0))
+
+        offset = (page - 1) * per_page
+        rows = execute_query(
+            _SELECT_COLS + where_sql + " ORDER BY id DESC LIMIT %s OFFSET %s",
+            tuple(params) + (per_page, offset),
+            fetch="all",
+        ) or []
+
+        return jsonify({
+            "rows": [_fmt_row(row) for row in rows],
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": (total + per_page - 1) // per_page,
+        })
+    except Exception as e:
+        logger.exception("Error en /api/smt-historial/data")
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/smt-historial/opciones")
+@login_requerido
+def smt_historial_opciones():
+    """Valores distintos de linea y maquina para poblar los selects."""
+    try:
+        lineas = execute_query(
+            "SELECT DISTINCT linea FROM historial_cambio_material_smt "
+            "WHERE linea IS NOT NULL AND linea<>'' ORDER BY linea",
+            fetch="all",
+        ) or []
+        maquinas = execute_query(
+            "SELECT DISTINCT maquina FROM historial_cambio_material_smt "
+            "WHERE maquina IS NOT NULL AND maquina<>'' ORDER BY maquina",
+            fetch="all",
+        ) or []
+        return jsonify({
+            "lineas": [r["linea"] for r in lineas],
+            "maquinas": [r["maquina"] for r in maquinas],
+        })
+    except Exception as e:
+        logger.exception("Error en /api/smt-historial/opciones")
+        return jsonify({"error": str(e), "lineas": [], "maquinas": []}), 500
+
+
+@bp.route("/api/smt-historial/export")
+@login_requerido
+def smt_historial_export():
+    """Exportar el historial filtrado a Excel (mismos filtros que /data)."""
+    try:
+        # Los barcodes 2D traen cabecera ISO/IEC 15434 con caracteres de
+        # control (RS/GS/EOT) que openpyxl rechaza. Se limpian solo aqui:
+        # en pantalla el valor se muestra completo.
+        from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+
+        def _limpiar(row):
+            return {
+                k: (ILLEGAL_CHARACTERS_RE.sub("", v) if isinstance(v, str) else v)
+                for k, v in row.items()
+            }
+
+        where_sql, params = _build_where()
+        rows = execute_query(
+            _SELECT_COLS + where_sql + " ORDER BY id DESC LIMIT 10000",
+            tuple(params),
+            fetch="all",
+        ) or []
+        return excel_response_ict(
+            [_limpiar(_fmt_row(row)) for row in rows],
+            _EXPORT_HEADERS,
+            _EXPORT_KEYS,
+            widths=[16] * len(_EXPORT_HEADERS),
+            sheet="Historial SMT",
+            filename=(
+                "historial_cambio_material_smt_"
+                + datetime.now().strftime("%Y%m%d_%H%M%S")
+            ),
+        )
+    except Exception as e:
+        logger.exception("Error en /api/smt-historial/export")
+        return jsonify({"error": str(e)}), 500
 
 
 # ---------------------------------------------------------------------------

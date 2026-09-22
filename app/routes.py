@@ -176,9 +176,10 @@ def api_health():
         }
     )
 
-# smt_routes_date_fixed migrado a app/api/control_calidad/smt_historial_simple.py
-# smt_routes_clean      migrado a app/api/control_calidad/smt_historial.py
-# Ambos se registran via registrar_blueprints_api() en app_factory.py
+# Historial de cambio de material de SMT vive en
+# app/api/control_calidad/smt_historial.py (reescrito 2026-09-22; el antiguo
+# smt_historial_simple.py se elimino). Se registra via
+# registrar_blueprints_api() en app_factory.py
 
 # user_admin (con url_prefix="/admin") y admin_bp ahora se registran
 # desde app/api/__init__.py via registrar_blueprints_api()
