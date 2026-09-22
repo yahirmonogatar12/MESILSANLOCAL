@@ -31,6 +31,13 @@ def test_eco_diff_no_marca_cambios_fantasma():
     # item_process vacio del ERP = MAIN que el MES guarda al aprobar
     assert _eco_diff_field_value({'item_process': ''}, 'item_process') == _eco_diff_field_value({'item_process': 'MAIN'}, 'item_process')
     assert _eco_diff_field_value({'item_process': 'SMD'}, 'item_process') != 'MAIN'
+    # process_name vacio = el item_process con el que se publica
+    assert _eco_diff_field_value({'process_name': '', 'item_process': 'SMD'}, 'process_name') == 'SMD'
+    assert _eco_diff_field_value({'process_name': 'MAIN', 'item_process': ''}, 'process_name') == \
+        _eco_diff_field_value({'process_name': '', 'item_process': ''}, 'process_name')
+    # qty a 4 decimales (precision de engineering_change_bom_items.qty)
+    assert _eco_diff_field_value({'qty': '0.13333'}, 'qty') == _eco_diff_field_value({'qty': '0.1333'}, 'qty')
+    assert _eco_diff_field_value({'qty': '0.1334'}, 'qty') != _eco_diff_field_value({'qty': '0.1333'}, 'qty')
 
     # fila que el ECO NO toca: conserva su valid_from y su remark reales
     carry = {'item_no': '49111007', 'bom_level': '01-01', 'valid_from': '2026-07-01', 'remark': ''}
@@ -86,6 +93,14 @@ def test_eco_from_excel_acepta_export_crudo_del_erp(monkeypatch):
         body, code = inspect.unwrap(ctl.api_ecos_from_excel)()
     assert code == 201, body.get_json()
     assert [(r['bom_level'], r['item_no'], r['qty']) for r in captured['rows']] == [('01-01', 'EAH30114201', 1)]
+
+
+def test_eco_excel_erp_no_convierte_detalle_de_proceso_en_proceso():
+    from app.api.informacion_basica.control_bom import _normalize_bom_excel_row
+    # ERP: 품목공정 vacio + 세부공정 '이형' -> el proceso sigue vacio (se publica MAIN)
+    assert _normalize_bom_excel_row({'item_process': '', 'process_name': '이형'}, True)['item_process'] == ''
+    # Excel viejo sin columna de proceso: se conserva el comportamiento anterior
+    assert _normalize_bom_excel_row({'item_process': None, 'process_name': 'SMD'})['item_process'] == 'SMD'
 
 
 def test_eco_aviso_muchos_cambios_no_bloquea():

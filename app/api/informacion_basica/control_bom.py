@@ -588,9 +588,12 @@ def _build_bom_excel_idx_map(headers):
     return idx_map
 
 
-def _normalize_bom_excel_row(obj):
+def _normalize_bom_excel_row(obj, has_item_process_col=False):
     process_name = str(obj.get("process_name") or "").strip()
-    if not obj.get("item_process") and process_name and not process_name.replace("/", "").isdigit():
+    # Solo para Excels sin columna de proceso: el export del ERP trae 품목공정 vacio y 세부공정
+    # con el detalle (이형, CHIP, IC), que no es un proceso MAIN/SMD/IMD.
+    if (not has_item_process_col and not obj.get("item_process") and process_name
+            and not process_name.replace("/", "").isdigit()):
         obj["item_process"] = process_name
     if not obj.get("process_name") and obj.get("item_process"):
         obj["process_name"] = obj.get("item_process")
@@ -919,7 +922,7 @@ def api_ecos_from_excel():
             for col in expected:
                 i = idx_map.get(col)
                 obj[col] = row[i] if i is not None and i < len(row) else None
-            excel_rows.append(_normalize_bom_excel_row(obj))
+            excel_rows.append(_normalize_bom_excel_row(obj, "item_process" in idx_map))
 
         usuario = session.get("usuario", "desconocido")
         result = crear_eco_desde_excel(metadata, excel_rows, usuario)

@@ -1048,7 +1048,7 @@ def crear_eco(data, created_by='desconocido'):
                     _eco_normalize_text(item.get('item_name')),
                     _eco_normalize_text(item.get('item_name_en')),
                     _eco_normalize_text(item.get('unit')),
-                    _eco_normalize_text(item.get('maker')),
+                    _eco_normalize_text(item.get('maker') or item.get('supplier')),
                     _eco_normalize_text(item.get('process_name')),
                     process_value,
                     _eco_normalize_text(item.get('item_class')),
@@ -1188,7 +1188,8 @@ def _eco_diff_normalize_qty(value):
     try:
         if value is None or str(value).strip() == '':
             return ''
-        return f"{float(value):g}"
+        # engineering_change_bom_items.qty es DECIMAL(10,4): comparar a la precision que se publica.
+        return f"{round(float(value), 4):g}"
     except (TypeError, ValueError):
         return _eco_diff_normalize(value)
 
@@ -1224,6 +1225,9 @@ def _eco_diff_field_value(item, field):
     if field == 'item_process':
         # Al aprobar, un item_process vacio se guarda como MAIN (_ks_process_value).
         return _eco_diff_normalize(item.get(field)).upper() or 'MAIN'
+    if field == 'process_name':
+        # Al aprobar, un process_name vacio se guarda con el item_process.
+        return _eco_diff_normalize(item.get(field)) or _eco_diff_field_value(item, 'item_process')
     return _eco_diff_normalize(item.get(field))
 
 
@@ -1407,9 +1411,10 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
             if row_ref is None:
                 errors.append(f"Fila {idx} ({item_no}): __row_id '{row_ref_raw}' no existe en BOM actual")
         else:
-            # Primero por BOM level; si el ERP renumero, por ruta padre/hijo.
+            # Primero por ruta padre/hijo (sobrevive a que el ERP renumere, y no confunde la
+            # misma parte bajo dos padres); si cambio el padre, por item + BOM level.
             level_keys = list(reversed(_eco_single_row_keys_from_values(item_no, bom_level, item_seq)))
-            for key in level_keys + [excel_path_keys[idx - 1]]:
+            for key in [excel_path_keys[idx - 1]] + level_keys:
                 row_ref = current_ref_by_key.get(key)
                 if row_ref and row_ref not in seen_refs:
                     break
@@ -1419,6 +1424,16 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
             if row_ref in seen_refs:
                 errors.append(f"Fila {idx} ({item_no}): referencia de BOM duplicada")
             seen_refs.add(row_ref)
+
+        # El export del ERP no trae is_alternate: se conserva el del MES mientras la fila
+        # siga teniendo sustituto; una fila nueva lo toma de si trae sustituto.
+        alt_item_no = _eco_normalize_upper(raw.get('alt_item_no'))
+        if _eco_normalize_text(raw.get('is_alternate')):
+            is_alternate = _eco_parse_bool(raw.get('is_alternate'))
+        elif row_ref is not None:
+            is_alternate = bool(alt_item_no) and _eco_parse_bool(current_entries[row_ref].get('is_alternate'))
+        else:
+            is_alternate = bool(alt_item_no)
 
         parsed_rows.append({
             '__row_id': row_id,
@@ -1436,8 +1451,8 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
             'process_name': _eco_normalize_text(raw.get('process_name')),
             'valid_from': _eco_normalize_date(raw.get('valid_from')) or None,
             'valid_to': _eco_normalize_date(raw.get('valid_to')) or None,
-            'is_alternate': _eco_parse_bool(raw.get('is_alternate')),
-            'alt_item_no': _eco_normalize_upper(raw.get('alt_item_no')),
+            'is_alternate': is_alternate,
+            'alt_item_no': alt_item_no,
             'alt_item_name': _eco_normalize_text(raw.get('alt_item_name')),
             'alt_spec': _eco_normalize_text(raw.get('alt_spec')),
             'alt_maker': _eco_normalize_text(raw.get('alt_maker')),
@@ -1522,7 +1537,7 @@ def crear_eco_desde_excel(metadata, excel_rows, created_by='desconocido'):
                 row['item_no'],
                 row['qty'],
                 row['location_text'],
-                row['supplier'] or row['maker'],
+                row['supplier'],   # tal cual el Excel: el maker no es el proveedor
                 '',
                 row['item_class'],
                 row['spec'],
@@ -2137,7 +2152,7 @@ def importar_items_eco_desde_dataframe(eco_id, df):
             _eco_normalize_text(row.get(col_item_name) if col_item_name else ''),
             _eco_normalize_text(row.get(col_item_name_en) if col_item_name_en else ''),
             _eco_normalize_text(row.get(col_unit) if col_unit else 'EA') or 'EA',
-            _eco_normalize_text(row.get(col_maker) if col_maker else ''),
+            _eco_normalize_text((row.get(col_maker) if col_maker else '') or (row.get(col_proveedor) if col_proveedor else '')),
             process_name,
             item_process,
             _eco_normalize_text(row.get(col_item_class) if col_item_class else row.get(col_classification) if col_classification else ''),
@@ -2618,7 +2633,7 @@ def aprobar_eco(eco_id, approved_by='desconocido'):
                 _eco_parse_qty(item.get('qty')),
                 _eco_normalize_text(item.get('unit'), 'EA') or 'EA',
                 location_text,
-                _eco_normalize_text(item.get('maker') or item.get('proveedor')),
+                _eco_normalize_text(item.get('maker')),
                 process_name,
                 item_process,
                 _eco_normalize_text(item.get('proveedor')),
