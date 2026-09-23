@@ -1,0 +1,127 @@
+/* Layout compartido de los tres planes de produccion: ASSY, IMT y SMT.
+ *
+ * Los tres tienen la misma estructura (toolbar + tabla ancha) y sufrian los
+ * mismos dos problemas, asi que las reglas viven una sola vez aqui en lugar de
+ * repetirse en control_plan_assy.css / _imt.css / _smt.css:
+ *
+ *   1. Dos scrollbars verticales. Sin acotar el alto, el content-area crece
+ *      con su contenido y saca su PROPIA barra al lado de la de la tabla.
+ *      Acotar solo el contenedor del modulo no basta: el area sigue siendo
+ *      quien desborda. Mismo patron que almacen_embarques_oqc_pendientes.css.
+ *   2. Al scrollear en horizontal se perdia de vista la primera columna y ya
+ *      no se sabia de que renglon era cada dato.
+ *
+ * Se carga DESPUES de los control_plan_*.css en MainTemplate.html, para ganar
+ * por orden sin tener que llenar todo de !important.
+ *
+ * ponytail: un archivo para los tres. Si aparece un cuarto plan con la misma
+ * forma, se agrega su id a las listas de selectores y ya.
+ */
+
+/* ============================================================
+   1. Una sola scrollbar vertical: la de la tabla
+   ============================================================ */
+
+/* El area solo se acota cuando el plan es el modulo visible, para no tocar
+   los demas modulos que comparten #control-proceso-content-area. */
+#control-proceso-content-area:not(.mes-area-hidden):has(> #plan-main-assy-unique-container[style*="display: block"]),
+#control-proceso-content-area:not(.mes-area-hidden):has(> #plan-main-imd-unique-container[style*="display: block"]),
+#control-proceso-content-area:not(.mes-area-hidden):has(> #plan-main-smt-unique-container[style*="display: block"]) {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    height: calc(100dvh - var(--header-height, 100px)) !important;
+    max-height: calc(100dvh - var(--header-height, 100px)) !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Con pestanas abiertas el area ya baja por su margin-top: hay que descontar
+   esos pixeles del alto o vuelve a desbordar justo por ellos. */
+body:has(#global-tabs-bar:not(:empty)) #control-proceso-content-area:not(.mes-area-hidden):has(> #plan-main-assy-unique-container[style*="display: block"]),
+body:has(#global-tabs-bar:not(:empty)) #control-proceso-content-area:not(.mes-area-hidden):has(> #plan-main-imd-unique-container[style*="display: block"]),
+body:has(#global-tabs-bar:not(:empty)) #control-proceso-content-area:not(.mes-area-hidden):has(> #plan-main-smt-unique-container[style*="display: block"]) {
+    height: calc(100dvh - var(--header-height, 100px) - var(--tabs-height, 26px)) !important;
+    max-height: calc(100dvh - var(--header-height, 100px) - var(--tabs-height, 26px)) !important;
+}
+
+#plan-main-assy-unique-container[style*="display: block"],
+#plan-main-imd-unique-container[style*="display: block"],
+#plan-main-smt-unique-container[style*="display: block"] {
+    overflow: hidden !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    box-sizing: border-box !important;
+    margin-top: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+}
+
+/* Contenedor del modulo: toma el alto del area, no el de la ventana. */
+#assy-container,
+#imd-plan-container,
+#smt-plan-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* La toolbar no cede alto; el sobrante es para la tabla. */
+#assy-toolbar,
+#imd-plan-toolbar,
+#smt-plan-toolbar {
+    flex-shrink: 0;
+}
+
+/* min-height:0 es lo que deja encoger a un item flex por debajo de su
+   contenido, y eso es justo lo que habilita su scroll interno. */
+#assy-table-container,
+#imd-plan-table-container,
+#smt-plan-table-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow: auto;
+}
+
+/* ============================================================
+   2. Primera columna fija al scrollear en horizontal
+   ============================================================ */
+
+/* `:not([colspan])` deja fuera las filas de GRUPO, los separadores y los
+   mensajes de "sin datos": son un unico td que abarca toda la tabla, y
+   fijarlos al borde izquierdo se veria como un texto suelto flotando.
+   No se toca background-color: las reglas de cada modulo ya pintan todos los
+   td (incluidas las variantes par/impar y :hover), asi que la celda fija
+   queda opaca y del color que le toca a su fila. */
+#assy-table td:first-child:not([colspan]),
+#imd-plan-table td:first-child:not([colspan]),
+#smt-plan-table td:first-child:not([colspan]) {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+}
+
+/* La esquina (primer th) es sticky en los dos ejes y debe quedar por encima
+   del resto del thead, que ya va con z-index alto por el sticky superior. */
+#assy-table thead th:first-child,
+#imd-plan-table thead th:first-child,
+#smt-plan-table thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 101;
+}
+
+/* Sombra sutil que marca el corte cuando hay contenido desplazado debajo. */
+#assy-table td:first-child:not([colspan]),
+#assy-table thead th:first-child,
+#imd-plan-table td:first-child:not([colspan]),
+#imd-plan-table thead th:first-child,
+#smt-plan-table td:first-child:not([colspan]),
+#smt-plan-table thead th:first-child {
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.35);
+}

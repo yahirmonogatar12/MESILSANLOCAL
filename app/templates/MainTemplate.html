@@ -61,10 +61,13 @@
     <link id="control-caja-metal-mask-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_caja_metal_mask.css', v='20260526a') }}">
     <link id="control-squeegee-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_squeegee.css', v='20260526a') }}">
     <!-- WF_004: CSS persistente Control de produccion (ASSY / IMT / SMT Plan) -->
-    <link id="control-plan-assy-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_assy.css', v='20260720a') }}">
+    <link id="control-plan-assy-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_assy.css', v='20260923c') }}">
     <link id="part-planning-css" rel="stylesheet" href="{{ url_for('static', filename='css/part_planning.css', v='20260715b') }}">
-    <link id="control-plan-imt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_imt.css', v='20260526a') }}">
-    <link id="control-plan-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_smt.css', v='20260526a') }}">
+    <link id="control-plan-imt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_imt.css', v='20260923a') }}">
+    <link id="control-plan-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_smt.css', v='20260923a') }}">
+    <!-- WF_004: layout compartido de los 3 planes (ASSY/IMT/SMT). Va despues
+         de los tres para ganar por orden de carga. -->
+    <link id="planes-produccion-layout-css" rel="stylesheet" href="{{ url_for('static', filename='css/planes_produccion_layout.css', v='20260923a') }}">
     <link id="control-scrap-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_scrap.css', v='20260921g') }}">
     <link id="historial-operacion-proceso-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_operacion_proceso.css', v='20260921a') }}">
     <link id="material-areas-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_areas.css', v='20260921b') }}">
@@ -1228,7 +1231,7 @@
 
     <!-- ANIMACIONES PARA DROPDOWNS EN DESKTOP -->
     <link rel="stylesheet" href="../static/css/desktop-dropdown-animations.css?v=20260520d">
-    <link rel="stylesheet" href="../static/css/sidebar-tabs.css?v=20260522c">
+    <link rel="stylesheet" href="../static/css/sidebar-tabs.css?v=20260923c">
 
     <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
     <script src="../static/js/unified-dropdowns.js?v=20260917m"></script>
