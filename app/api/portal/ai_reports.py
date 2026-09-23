@@ -11,6 +11,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.api.shared.permisos import puede_boton
+from app.api.shared.scan_serial import part_no_desde_serial_sql
 from app.db import get_db_connection
 
 from .ai_store import (
@@ -1432,7 +1433,7 @@ def _quality_lqc_analysis_report(filters: dict[str, Any], *, limit: int) -> dict
     status_filter = str(resolved.get("status") or "").strip()[:80]
     part_expr = (
         "COALESCE(NULLIF(p.part_no, ''), "
-        "LEFT(b.serial, GREATEST(CHAR_LENGTH(b.serial) - 12, 1)), 'SIN PARTE')"
+        f"{part_no_desde_serial_sql('b.serial')}, 'SIN PARTE')"
     )
     line_expr = "COALESCE(NULLIF(p.line, ''), 'SIN PLAN')"
     shift_expr = """

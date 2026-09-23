@@ -26,6 +26,7 @@ from datetime import datetime, time, timedelta
 from flask import Blueprint, jsonify, redirect, render_template, request
 
 from app.api.shared import login_requerido
+from app.api.shared.scan_serial import part_no_desde_serial_sql
 from app.config_mysql import get_pooled_connection
 from app.api.pda.shipping_material import get_dict_cursor
 
@@ -268,11 +269,12 @@ def lqc_datos_api():
                 params.append(turno_filtro)
 
             where_clause = " AND ".join(where_conditions)
+            part_desde_serial = part_no_desde_serial_sql("b.serial")
             query = f"""
                 SELECT
                     {line_expr} AS linea,
                     {fecha_operativa_expr} AS fecha,
-                    COALESCE(NULLIF(p.part_no, ''), LEFT(b.serial, GREATEST(CHAR_LENGTH(b.serial) - 12, 1))) AS part,
+                    COALESCE(NULLIF(p.part_no, ''), {part_desde_serial}) AS part,
                     COALESCE(NULLIF(p.model_code, ''), '') AS model_code,
                     COALESCE(b.lot_no, '') AS lot_no,
                     b.box_code,

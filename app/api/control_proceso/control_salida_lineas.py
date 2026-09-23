@@ -25,6 +25,7 @@ from datetime import date, datetime, timedelta
 from flask import Blueprint, jsonify, render_template, request
 
 from app.api.shared import execute_query, login_requerido, requiere_permiso_dropdown
+from app.api.shared.scan_serial import part_no_desde_serial_sql
 from app.api.control_proceso.almacen_embarques import (
     _exportar_historial_embarques_excel,
     _normalizar_texto_embarques_historial,
@@ -86,7 +87,7 @@ def _obtener_control_salida_lineas(limit=500):
 
     production_part_expr = (
         "COALESCE(NULLIF(p.part_no, ''), "
-        "NULLIF(LEFT(b.serial, GREATEST(CHAR_LENGTH(b.serial) - 12, 1)), ''), "
+        f"NULLIF({part_no_desde_serial_sql('b.serial')}, ''), "
         "'SIN PARTE')"
     )
     production_model_expr = "COALESCE(NULLIF(p.model_code, ''), '')"
