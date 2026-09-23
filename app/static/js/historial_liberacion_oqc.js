@@ -1,7 +1,7 @@
 (function () {
   const PREFIX = "historial-liberacion-oqc";
   const MODULE_ID = `${PREFIX}-module`;
-  const ASSET_VERSION = "20260903a";
+  const ASSET_VERSION = "20260923a";
   const TABLE_COLSPAN = 9;
   const STYLESHEETS = [
     {
@@ -72,6 +72,7 @@
       clearBtn: document.getElementById(`${PREFIX}-clear-btn`),
       exportBtn: document.getElementById(`${PREFIX}-export-btn`),
       countLabel: document.getElementById(`${PREFIX}-count`),
+      piecesLabel: document.getElementById(`${PREFIX}-pieces`),
       statusLabel: document.getElementById(`${PREFIX}-status-label`),
       tableBody: document.getElementById(`${PREFIX}-tbody`),
     };
@@ -104,16 +105,25 @@
   }
 
   function setLoading(message) {
-    const { tableBody } = getElements();
+    const { tableBody, countLabel, piecesLabel } = getElements();
+    if (countLabel) {
+      countLabel.textContent = "0 cajas mostradas";
+    }
+    if (piecesLabel) {
+      piecesLabel.textContent = "0 piezas mostradas";
+    }
     if (tableBody) {
       tableBody.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="ae-empty-cell">${escapeHtml(message)}</td></tr>`;
     }
   }
 
   function setEmpty(message) {
-    const { tableBody, countLabel } = getElements();
+    const { tableBody, countLabel, piecesLabel } = getElements();
     if (countLabel) {
       countLabel.textContent = "0 cajas mostradas";
+    }
+    if (piecesLabel) {
+      piecesLabel.textContent = "0 piezas mostradas";
     }
     if (tableBody) {
       tableBody.innerHTML = `<tr><td colspan="${TABLE_COLSPAN}" class="ae-empty-cell">${escapeHtml(message)}</td></tr>`;
@@ -204,24 +214,22 @@
 
       if (!rows.length) {
         setEmpty("No hay liberaciones OQC para los filtros actuales.");
-        setStatus("Sin registros para los filtros actuales");
+        setStatus("");
         return;
       }
 
       elements.tableBody.innerHTML = renderRows(rows);
+      const shownPieces = rows.reduce(
+        (total, row) => total + (Number(row.quantity) || 0),
+        0,
+      );
       if (elements.countLabel) {
         elements.countLabel.textContent = `${formatNumber(rows.length)} cajas mostradas`;
       }
-
-      const totalBoxes = Number(payload.summary?.total_boxes || rows.length) || 0;
-      const updatedAt = new Date().toLocaleTimeString("es-MX", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      const limitText = payload.truncated
-        ? `Mostrando ${formatNumber(rows.length)} de ${formatNumber(totalBoxes)} cajas`
-        : `${formatNumber(totalBoxes)} cajas en el filtro`;
-      setStatus(`${limitText}. Actualizado a las ${updatedAt}`);
+      if (elements.piecesLabel) {
+        elements.piecesLabel.textContent = `${formatNumber(shownPieces)} piezas mostradas`;
+      }
+      setStatus("");
 
       const moduleRoot = document.getElementById(MODULE_ID);
       bindScrollableShell(moduleRoot);
