@@ -12,6 +12,10 @@ import os
 from types import SimpleNamespace
 
 os.environ.setdefault("MES_SKIP_STARTUP_INIT", "1")
+# El .env de la planta trae MES_FORCE_STARTUP_INIT=1, que gana sobre el SKIP:
+# sin esto cada corrida de pytest ejecutaba el DDL de arranque contra la
+# MySQL del .env (produccion). load_dotenv() no pisa variables ya definidas.
+os.environ.setdefault("MES_FORCE_STARTUP_INIT", "0")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-do-not-use-in-prod")
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 

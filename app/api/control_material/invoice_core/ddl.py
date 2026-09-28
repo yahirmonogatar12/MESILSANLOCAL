@@ -65,6 +65,7 @@ def init_material_invoice_tables():
         CREATE TABLE IF NOT EXISTS material_invoices (
             id BIGINT NOT NULL AUTO_INCREMENT,
             numero_invoice VARCHAR(255) NOT NULL,
+            ambito VARCHAR(20) NOT NULL DEFAULT 'ALMACEN',
             tipo VARCHAR(255) NULL,
             archivo_nombre VARCHAR(255) NULL,
             archivo_ruta VARCHAR(512) NULL,
@@ -97,6 +98,9 @@ def init_material_invoice_tables():
         """
     )
     invoice_columns = (
+        # Ambito del invoice (ALMACEN / EMBARQUES). El DEFAULT deja los
+        # invoices previos en ALMACEN, que es de donde salieron todos.
+        ("ambito", "ambito VARCHAR(20) NOT NULL DEFAULT 'ALMACEN'"),
         ("tipo", "tipo VARCHAR(255) NULL"),
         ("archivo_ruta", "archivo_ruta VARCHAR(512) NULL"),
         ("archivo_size", "archivo_size BIGINT NULL"),

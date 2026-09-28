@@ -487,6 +487,7 @@ class AuthSystem:
             ('LISTA_DE_MATERIALES', 'Control de material', 'Inventario actual', 'Acceso al inventario actual de material'),
             # WF_001 (2026-06-12): seed modulos Facturas/Invoice y Valorizacion de inventario.
             ('LISTA_DE_MATERIALES', 'Control de material', 'Facturas / Invoice', 'Acceso a facturas / invoice de material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Invoice Embarques', 'Acceso a invoices de embarques'),
             ('LISTA_DE_MATERIALES', 'Control de material', 'Valorización de inventario', 'Acceso a valorización de inventario de material'),
             ('LISTA_DE_MATERIALES', 'Control de material', 'Lista de compras', 'Acceso a lista de compras y costeo por transaccion'),
 

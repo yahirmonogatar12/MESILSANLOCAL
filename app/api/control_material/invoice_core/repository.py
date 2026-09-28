@@ -5,16 +5,23 @@ from decimal import Decimal
 from app.api.control_material.invoice_core.constants import MONEDA_DEFAULT
 from app.api.control_material.invoice_core.matcher import invoice_has_differences
 
-def fetch_invoice(cursor, invoice_id, for_update=False):
+def fetch_invoice(cursor, invoice_id, for_update=False, ambito=None):
+    """Invoice por id, acotado al ambito cuando se pasa uno.
+
+    Con `ambito`, un invoice de otro ambito es indistinguible de uno
+    inexistente: devuelve None y el llamador cae en su 404 de siempre. Asi no
+    hay que repetir el chequeo en cada ruta ni se filtran ids por enumeracion.
+    """
     suffix = " FOR UPDATE" if for_update else ""
     cursor.execute(
         f"""
         SELECT *
         FROM material_invoices
         WHERE id = %s
+          AND (%s IS NULL OR ambito = %s)
         LIMIT 1{suffix}
         """,
-        (invoice_id,),
+        (invoice_id, ambito, ambito),
     )
     return cursor.fetchone()
 

@@ -82,6 +82,7 @@ def crear_tabla_plan_smt_v2():
         execute_query(query)
         logger.info("Tabla plan_smt creada/verificada")
         _ensure_qr_required_count_column()
+        _ensure_lado_columns()
     except Exception as e:
         logger.error(f"Error creando tabla plan_smt: {e}")
 
@@ -121,6 +122,57 @@ def _ensure_qr_required_count_column():
             logger.error(f"Error asegurando columna {col}: {e}")
 
 
+# Lado de la PCB. Un modelo de doble cara se corre dos veces: BOTTOM (el QR
+# queda arriba y se escanea) y TOP (el QR queda abajo: cuenta el sensor, 0 QR).
+# El TOP es sublote de su BOTTOM: lote "<BOTTOM>-T" con lote_padre = BOTTOM.
+LADOS = ("", "BOTTOM", "TOP")
+
+
+def _lado(value):
+    v = str(value or "").strip().upper()
+    return v if v in LADOS else ""
+
+
+def _ensure_lado_columns():
+    """Migracion idempotente: lado ('' = una cara) y lote_padre (TOP -> BOTTOM)."""
+    columnas = (
+        ("lado", "VARCHAR(10) NOT NULL DEFAULT ''"),
+        ("lote_padre", "VARCHAR(50) NULL"),
+    )
+    for col, ddl in columnas:
+        try:
+            existing = execute_query(
+                "SHOW COLUMNS FROM plan_smt LIKE %s", (col,), fetch="one"
+            )
+            if not existing:
+                execute_query(f"ALTER TABLE plan_smt ADD COLUMN {col} {ddl}")
+                logger.info(f"Columna plan_smt.{col} agregada")
+        except Exception as e:
+            logger.error(f"Error asegurando columna {col}: {e}")
+    try:
+        if not execute_query(
+            "SHOW INDEX FROM plan_smt WHERE Key_name = 'idx_lote_padre'", fetch="one"
+        ):
+            execute_query("ALTER TABLE plan_smt ADD INDEX idx_lote_padre (lote_padre)")
+    except Exception as e:
+        logger.error(f"Error asegurando indice idx_lote_padre: {e}")
+
+
+# Producido del BOTTOM (lote padre + sus sublotes reprogramados) y del TOP
+# (todos los TOP del mismo padre), para mostrar "TOP x / BOTTOM y". Solo se
+# muestra: no frena nada.
+_SQL_PRODUCIDO_LADOS = (
+    "CASE WHEN p.lado = 'TOP' AND p.lote_padre IS NOT NULL THEN ("
+    "SELECT COALESCE(SUM(b.produced_count), 0) FROM plan_smt b "
+    "WHERE b.lado = 'BOTTOM' AND (b.lot_no = p.lote_padre OR b.lot_no LIKE CONCAT(p.lote_padre, '-%%'))"
+    ") END AS bottom_producido, "
+    "CASE WHEN p.lado = 'TOP' AND p.lote_padre IS NOT NULL THEN ("
+    "SELECT COALESCE(SUM(x.produced_count), 0) FROM plan_smt x "
+    "WHERE x.lado = 'TOP' AND x.lote_padre = p.lote_padre"
+    ") END AS top_producido"
+)
+
+
 # crear_tabla_plan_smt_v2 movido a app/startup_init.py
 
 
@@ -148,7 +200,9 @@ def api_plan_smt_list():
             "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
             "COALESCE(produced_count,0) AS produced_count, COALESCE(output,0) AS output, COALESCE(entregadas_main,0) AS entregadas_main, "
             "status, group_no, sequence, routing, COALESCE(qr_required_count,1) AS qr_required_count, "
-            "COALESCE(array_size,1) AS array_size FROM plan_smt"
+            "COALESCE(array_size,1) AS array_size, COALESCE(lado,'') AS lado, lote_padre, "
+            + _SQL_PRODUCIDO_LADOS
+            + " FROM plan_smt p"
         )
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -189,6 +243,14 @@ def api_plan_smt_list():
                         r.get("qr_required_count") if isinstance(r, dict) else r[21]
                     ),
                     "array_size": r.get("array_size") if isinstance(r, dict) else r[22],
+                    "lado": r.get("lado") if isinstance(r, dict) else r[23],
+                    "lote_padre": r.get("lote_padre") if isinstance(r, dict) else r[24],
+                    "bottom_producido": (
+                        r.get("bottom_producido") if isinstance(r, dict) else r[25]
+                    ),
+                    "top_producido": (
+                        r.get("top_producido") if isinstance(r, dict) else r[26]
+                    ),
                 }
             )
         return jsonify(data)
@@ -251,34 +313,26 @@ def api_plan_smt_create():
 
         qr_required_count = _int_en_rango(data.get("qr_required_count"), 1, *QR_RANGE)
         array_size = _int_en_rango(data.get("array_size"), 1, *ARRAY_RANGE)
+        lado = _lado(data.get("lado"))
 
         sql = (
             "INSERT INTO plan_smt (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
-            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, array_size, created_at) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,%s,%s,NOW())"
+            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, array_size, lado, lote_padre, created_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,%s,%s,%s,%s,NOW())"
         )
-        params = (
-            lot_no,
-            wo_code,
-            po_code,
-            fecha,
-            line,
-            shift,
-            model_code,
-            part_no,
-            project,
-            process,
-            plan_count,
-            ct,
-            uph,
-            group_no,
-            sequence,
-            qr_required_count,
-            array_size,
-        )
+        comunes = (wo_code, po_code, fecha, line, shift, model_code, part_no, project,
+                   process, plan_count, ct, uph, group_no, sequence)
 
-        execute_query(sql, params)
-        return jsonify({"success": True, "lot_no": lot_no, "id": lot_no})
+        execute_query(sql, (lot_no, *comunes, qr_required_count, array_size, lado, None))
+
+        # BOTTOM de doble cara: su TOP nace ligado. En TOP el QR queda debajo
+        # de la PCB, asi que 0 QR (cuenta el sensor) con el mismo array.
+        lot_top = None
+        if lado == "BOTTOM" and data.get("crear_top", True) is not False:
+            lot_top = f"{lot_no}-T"
+            execute_query(sql, (lot_top, *comunes, 0, array_size, "TOP", lot_no))
+
+        return jsonify({"success": True, "lot_no": lot_no, "id": lot_no, "lot_top": lot_top})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -345,6 +399,7 @@ def api_plan_smt_update():
             "sequence",
             "qr_required_count",
             "array_size",
+            "lado",
         ]
         for field in allowed_fields:
             if field in data:
@@ -353,6 +408,8 @@ def api_plan_smt_update():
                     value = _int_en_rango(value, 1, *QR_RANGE)
                 elif field == "array_size":
                     value = _int_en_rango(value, 1, *ARRAY_RANGE)
+                elif field == "lado":
+                    value = _lado(value)
                 sets.append(f"{field} = %s")
                 vals.append(value)
         if not sets:
@@ -487,7 +544,8 @@ def api_plan_smt_reschedule():
                    part_no, project, process, plan_count, produced_count, ct, uph,
                    routing, status, group_no, sequence, shift,
                    COALESCE(qr_required_count, 1) AS qr_required_count,
-                   COALESCE(array_size, 1) AS array_size
+                   COALESCE(array_size, 1) AS array_size,
+                   COALESCE(lado, '') AS lado, lote_padre
             FROM plan_smt WHERE lot_no IN ({placeholders})
         """,
                 tuple(lot_nos),
@@ -508,18 +566,17 @@ def api_plan_smt_reschedule():
             if pendiente <= 0:
                 continue
 
-            # Determinar lote base
+            # Determinar lote base: SMT-YYMMDD-NNN (3 partes); el TOP de doble
+            # cara es SMT-YYMMDD-NNN-T y sus reprogramados quedan ...-T-NN.
             parts = lot_original.split("-")
-            # SMT-YYMMDD-NNN formato base tiene 3 partes separadas por -
-            if len(parts) > 3:
-                lot_base = "-".join(parts[:3])
-            else:
-                lot_base = lot_original
+            n_base = 4 if len(parts) > 3 and parts[3] == "T" else 3
+            lot_base = "-".join(parts[:n_base])
 
-            # Buscar siguiente secuencia de sublotes
+            # Siguiente secuencia: solo sublotes -NN de ESTE base (el -T de un
+            # BOTTOM no cuenta como sublote reprogramado).
             sub_count = execute_query(
-                "SELECT COUNT(*) as c FROM plan_smt WHERE lot_no LIKE %s AND lot_no <> %s AND CHAR_LENGTH(lot_no) > CHAR_LENGTH(%s)",
-                (f"{lot_base}-%", lot_base, lot_base),
+                "SELECT COUNT(*) as c FROM plan_smt WHERE lot_no REGEXP %s",
+                (f"^{lot_base}-[0-9]+$",),
                 fetch="one",
             )
             next_seq = (sub_count["c"] if sub_count else 0) + 1
@@ -530,8 +587,8 @@ def api_plan_smt_reschedule():
                 INSERT INTO plan_smt
                 (lot_no, wo_code, po_code, working_date, line, shift, model_code,
                  part_no, project, process, plan_count, ct, uph, routing, status,
-                 group_no, sequence, qr_required_count, array_size, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PLAN', %s, %s, %s, %s, NOW())
+                 group_no, sequence, qr_required_count, array_size, lado, lote_padre, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PLAN', %s, %s, %s, %s, %s, %s, NOW())
             """,
                 (
                     nuevo_lot,
@@ -552,6 +609,8 @@ def api_plan_smt_reschedule():
                     plan.get("sequence"),
                     plan.get("qr_required_count"),
                     plan.get("array_size"),
+                    plan.get("lado") or "",
+                    plan.get("lote_padre"),
                 ),
             )
 
@@ -609,6 +668,8 @@ def api_plan_smt_export_excel():
             "Status",
             "QR requeridos",
             "Array",
+            "Lado",
+            "Lote padre",
         ]
         ws.append(headers)
         for c in ws[1]:
@@ -638,6 +699,8 @@ def api_plan_smt_export_excel():
                     p.get("status", ""),
                     p.get("qr_required_count", 1),
                     p.get("array_size", 1),
+                    p.get("lado", ""),
+                    p.get("lote_padre") or "",
                 ]
             )
         bio = io.BytesIO()
@@ -704,6 +767,7 @@ def api_plan_smt_import_excel():
 
         fecha_default = _fp_safe_date(working_date_default) or datetime.utcnow().date()
         parsed_rows = []
+        tops_omitidos = 0
 
         for _, row in df.iterrows():
             if has_headers:
@@ -728,6 +792,7 @@ def api_plan_smt_import_excel():
                     "qr_required_count", row.get("qr_requeridos", row.get("qr"))
                 )
                 array_raw = row.get("array_size", row.get("array"))
+                lado_raw = row.get("lado", row.get("side"))
             else:
                 line_raw = str(row.iloc[0]).strip() if len(row) > 0 else ""
                 part_no = str(row.iloc[1]).strip() if len(row) > 1 else ""
@@ -739,6 +804,8 @@ def api_plan_smt_import_excel():
                 # Columnas 4 y 5 opcionales: QR requeridos y Array (default 1).
                 qr_raw = row.iloc[4] if len(row) > 4 else None
                 array_raw = row.iloc[5] if len(row) > 5 else None
+                # Columna 6 opcional: Lado (BOTTOM / TOP / vacio).
+                lado_raw = row.iloc[6] if len(row) > 6 else None
 
             if (
                 not part_no
@@ -752,6 +819,13 @@ def api_plan_smt_import_excel():
             if shift == "NAN" or not shift:
                 shift = "DIA"
 
+            lado = _lado(lado_raw)
+            if lado == "TOP":
+                # El TOP se genera solo con su BOTTOM (ligado); una fila TOP
+                # suelta en el archivo lo duplicaria.
+                tops_omitidos += 1
+                continue
+
             parsed_rows.append(
                 {
                     "line": line,
@@ -760,6 +834,7 @@ def api_plan_smt_import_excel():
                     "plan_count": plan_count,
                     "qr_required_count": _int_en_rango(qr_raw, 1, *QR_RANGE),
                     "array_size": _int_en_rango(array_raw, 1, *ARRAY_RANGE),
+                    "lado": lado,
                 }
             )
 
@@ -818,8 +893,7 @@ def api_plan_smt_import_excel():
 
             lot_no = f"{lot_prefix}-{base_count + idx:03d}"
 
-            records.append(
-                (
+            fila = (
                     lot_no,  # lot_no
                     "SIN-WO",  # wo_code
                     "SIN-PO",  # po_code
@@ -838,14 +912,21 @@ def api_plan_smt_import_excel():
                     idx,  # sequence
                     item["qr_required_count"],  # qr_required_count
                     item["array_size"],  # array_size
-                )
+                    item["lado"],  # lado
+                    None,  # lote_padre
             )
+            records.append(fila)
+            if item["lado"] == "BOTTOM":
+                # TOP ligado: 0 QR (cuenta el sensor), mismo array y cantidad.
+                records.append(
+                    (f"{lot_no}-T",) + fila[1:16] + (0, item["array_size"], "TOP", lot_no)
+                )
 
         insert_prefix = (
             "INSERT INTO plan_smt (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
-            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, array_size, created_at) VALUES "
+            "plan_count, ct, uph, status, group_no, sequence, qr_required_count, array_size, lado, lote_padre, created_at) VALUES "
         )
-        row_placeholders = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())"
+        row_placeholders = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())"
         insert_batch_size = 200
         imported = 0
 
@@ -858,11 +939,14 @@ def api_plan_smt_import_excel():
             execute_query(insert_prefix + values_sql, tuple(params))
             imported += len(batch)
 
+        mensaje = f"{imported} planes importados"
+        if tops_omitidos:
+            mensaje += f" ({tops_omitidos} fila(s) TOP omitidas: el TOP se crea solo con su BOTTOM)"
         return jsonify(
             {
                 "success": True,
                 "imported": imported,
-                "message": f"{imported} planes importados",
+                "message": mensaje,
             }
         )
     except Exception as e:

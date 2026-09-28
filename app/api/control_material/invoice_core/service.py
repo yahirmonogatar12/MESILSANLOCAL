@@ -17,6 +17,8 @@ from app.api.control_material.costing_core.resolver import (
     upsert_inventory_cost,
 )
 from app.api.control_material.invoice_core.constants import (
+    AMBITOS_SOLO_DOCUMENTAL,
+    AMBITO_ALMACEN,
     ERROR_INTERNO,
     ESTADOS_INVOICE,
     MONEDA_DEFAULT,
@@ -71,7 +73,33 @@ def _db():
     return conn, dict_cursor(conn), None
 
 
-def _duplicate_upload_result(cursor, numero_invoice, file_hash, exc):
+def _mensaje_duplicado(base, ambito_existente, ambito_actual):
+    """Aclara el ambito cuando el duplicado esta en el OTRO ambito.
+
+    La unicidad de numero_invoice y del hash es global, asi que quien sube
+    desde embarques puede chocar con un invoice de almacen que no vera nunca
+    en su listado. Sin esta aclaracion el mensaje resulta incomprensible.
+    """
+    if ambito_existente and ambito_actual and ambito_existente != ambito_actual:
+        return f"{base} en el ambito {ambito_existente}.".replace("..", ".")
+    return base
+
+
+def _respuesta_duplicado(existing, motivo, base, ambito):
+    """409 de duplicado, aclarando el ambito si el choque es con el otro."""
+    ambito_existente = (existing or {}).get("ambito")
+    payload = {
+        "success": False,
+        "duplicado": True,
+        "motivo": motivo,
+        "message": _mensaje_duplicado(f"{base}.", ambito_existente, ambito),
+    }
+    if existing and (not ambito or ambito_existente == ambito):
+        payload["invoice_id"] = existing["id"]
+    return payload, 409
+
+
+def _duplicate_upload_result(cursor, numero_invoice, file_hash, exc, ambito=None):
     """Convierte una colision de indice unico en la respuesta HTTP esperada."""
     args = getattr(exc, "args", ())
     if not args or args[0] != 1062:
@@ -81,30 +109,33 @@ def _duplicate_upload_result(cursor, numero_invoice, file_hash, exc):
     if "uk_invoice_file_hash" in error_text:
         motivo = "ARCHIVO_HASH"
         message = "Este archivo parece ya cargado."
-        query = "SELECT id FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1"
+        query = "SELECT id, ambito FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1"
         value = file_hash
     else:
         # uk_invoice_numero es la colision habitual. Si el driver no incluye el
         # nombre del indice, el numero sigue siendo la respuesta mas util.
         motivo = "NUMERO_INVOICE"
         message = "Esta invoice ya fue cargada."
-        query = "SELECT id FROM material_invoices WHERE numero_invoice = %s LIMIT 1"
+        query = "SELECT id, ambito FROM material_invoices WHERE numero_invoice = %s LIMIT 1"
         value = numero_invoice
 
     cursor.execute(query, (value,))
     existing = cursor.fetchone()
+    ambito_existente = (existing or {}).get("ambito")
     payload = {
         "success": False,
         "duplicado": True,
         "motivo": motivo,
-        "message": message,
+        "message": _mensaje_duplicado(message, ambito_existente, ambito),
     }
-    if existing:
+    # El id solo se expone si el invoice es del mismo ambito: si no, seria un
+    # puntero a algo que este usuario no puede abrir.
+    if existing and (not ambito or ambito_existente == ambito):
         payload["invoice_id"] = existing["id"]
     return payload, 409
 
 
-def list_invoices(args):
+def list_invoices(args, ambito=None):
     conn, cursor, error = _db()
     if error:
         return error
@@ -115,6 +146,10 @@ def list_invoices(args):
         fecha_fin = sanitizar_texto(args.get("fecha_fin"), 10)
         params = []
         where = ["1=1"]
+        # Cada ambito solo ve sus invoices. None = sin filtro (uso interno).
+        if ambito:
+            where.append("mi.ambito = %s")
+            params.append(ambito)
         if q:
             where.append("(mi.numero_invoice LIKE %s OR COALESCE(mi.tipo, '') LIKE %s OR mi.archivo_nombre LIKE %s)")
             like = f"%{q}%"
@@ -167,7 +202,7 @@ def list_invoices(args):
         conn.close()
 
 
-def preview_invoice(files, form):
+def preview_invoice(files, form, ambito=None):
     """Parsea el Excel y devuelve lo que se cargaria, sin tocar la BD de invoices.
 
     Valida las partes contra materiales (UOM y existencia) y detecta si la
@@ -207,15 +242,28 @@ def preview_invoice(files, form):
 
         # Detecta duplicado por numero o por hash de archivo.
         duplicado = None
-        cursor.execute("SELECT id FROM material_invoices WHERE numero_invoice = %s LIMIT 1", (numero_invoice,))
+        cursor.execute(
+            "SELECT id, ambito FROM material_invoices WHERE numero_invoice = %s LIMIT 1",
+            (numero_invoice,),
+        )
         row = cursor.fetchone()
-        if row:
-            duplicado = {"motivo": "NUMERO_INVOICE", "invoice_id": row["id"]}
-        else:
-            cursor.execute("SELECT id FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1", (file_hash,))
+        motivo_dup = "NUMERO_INVOICE"
+        if not row:
+            cursor.execute(
+                "SELECT id, ambito FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1",
+                (file_hash,),
+            )
             row = cursor.fetchone()
-            if row:
-                duplicado = {"motivo": "ARCHIVO_HASH", "invoice_id": row["id"]}
+            motivo_dup = "ARCHIVO_HASH"
+        if row:
+            duplicado = {"motivo": motivo_dup}
+            ambito_existente = row.get("ambito")
+            if not ambito or ambito_existente == ambito:
+                duplicado["invoice_id"] = row["id"]
+            else:
+                # Existe en el otro ambito: este usuario no lo vera en su
+                # listado, asi que hay que decirselo.
+                duplicado["ambito"] = ambito_existente
 
         total_monto = sum((r.get("costo_total") or Decimal("0.0000")) for r in parsed["invoice_lines"])
         sin_parte = sum(1 for r in parsed["invoice_lines"] if r.get("estado_match") == "SIN_ALIAS")
@@ -260,7 +308,7 @@ def preview_invoice(files, form):
         conn.close()
 
 
-def upload_invoice(files, form):
+def upload_invoice(files, form, ambito=None):
     uploaded = files.get("file") or files.get("archivo")
     if not uploaded:
         return {"success": False, "error": "Archivo requerido."}, 400
@@ -294,33 +342,21 @@ def upload_invoice(files, form):
     archivo_ruta = None
     archivo_guardado = False
     try:
-        cursor.execute("SELECT id FROM material_invoices WHERE numero_invoice = %s LIMIT 1", (numero_invoice,))
+        cursor.execute(
+            "SELECT id, ambito FROM material_invoices WHERE numero_invoice = %s LIMIT 1",
+            (numero_invoice,),
+        )
         existing = cursor.fetchone()
         if existing:
-            return (
-                {
-                    "success": False,
-                    "duplicado": True,
-                    "motivo": "NUMERO_INVOICE",
-                    "invoice_id": existing["id"],
-                    "message": "Esta invoice ya fue cargada.",
-                },
-                409,
-            )
+            return _respuesta_duplicado(existing, "NUMERO_INVOICE", "Esta invoice ya fue cargada", ambito)
 
-        cursor.execute("SELECT id FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1", (file_hash,))
+        cursor.execute(
+            "SELECT id, ambito FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1",
+            (file_hash,),
+        )
         existing = cursor.fetchone()
         if existing:
-            return (
-                {
-                    "success": False,
-                    "duplicado": True,
-                    "motivo": "ARCHIVO_HASH",
-                    "invoice_id": existing["id"],
-                    "message": "Este archivo parece ya cargado.",
-                },
-                409,
-            )
+            return _respuesta_duplicado(existing, "ARCHIVO_HASH", "Este archivo parece ya cargado", ambito)
 
         usuario = _usuario_actual()
         fecha = obtener_fecha_hora_mexico()
@@ -342,14 +378,16 @@ def upload_invoice(files, form):
         cursor.execute(
             """
             INSERT INTO material_invoices (
-                numero_invoice, tipo, archivo_nombre, archivo_ruta,
+                numero_invoice, ambito, tipo, archivo_nombre, archivo_ruta,
                 archivo_size, archivo_mime, archivo_hash_sha256,
                 estado, moneda, total_lineas, total_packing, total_monto,
                 usuario_carga, fecha_carga
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'BORRADOR', %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'BORRADOR', %s, %s, %s, %s, %s, %s)
             """,
             (
                 numero_invoice,
+                # El ambito lo fija la ruta por la que se subio, no el usuario.
+                ambito or AMBITO_ALMACEN,
                 tipo or None,
                 filename,
                 archivo_ruta,
@@ -400,7 +438,7 @@ def upload_invoice(files, form):
         if archivo_guardado and archivo_ruta:
             delete_file(archivo_ruta)
         try:
-            duplicate_result = _duplicate_upload_result(cursor, numero_invoice, file_hash, exc)
+            duplicate_result = _duplicate_upload_result(cursor, numero_invoice, file_hash, exc, ambito)
         except Exception:
             duplicate_result = None
             logger.exception("No se pudo resolver la colision de invoice: %s", exc)
@@ -491,12 +529,12 @@ def _insert_packing_lines(cursor, invoice_id, packing_lines):
     )
 
 
-def get_invoice_detail(invoice_id):
+def get_invoice_detail(invoice_id, ambito=None):
     conn, cursor, error = _db()
     if error:
         return error
     try:
-        invoice = fetch_invoice(cursor, invoice_id)
+        invoice = fetch_invoice(cursor, invoice_id, ambito=ambito)
         if not invoice:
             return {"success": False, "error": "Invoice no encontrada."}, 404
         cursor.execute(
@@ -773,7 +811,7 @@ def _int_payload(value, field_name):
     return int(number)
 
 
-def update_invoice_line(invoice_id, line_id, data):
+def update_invoice_line(invoice_id, line_id, data, ambito=None):
     try:
         nuevo_line_no = _int_payload(data.get("line_no"), "No.")
         cantidad = _decimal_payload(data.get("cantidad"), "Cantidad")
@@ -812,7 +850,7 @@ def update_invoice_line(invoice_id, line_id, data):
         return error
     try:
         cursor.execute("START TRANSACTION")
-        invoice = fetch_invoice(cursor, invoice_id, for_update=True)
+        invoice = fetch_invoice(cursor, invoice_id, for_update=True, ambito=ambito)
         if not invoice:
             conn.rollback()
             return {"success": False, "error": "Invoice no encontrada."}, 404
@@ -1037,13 +1075,13 @@ def update_invoice_line(invoice_id, line_id, data):
         conn.close()
 
 
-def get_invoice_candidates(invoice_id, args):
+def get_invoice_candidates(invoice_id, args, ambito=None):
     packing_line_id = args.get("packing_line_id")
     conn, cursor, error = _db()
     if error:
         return error
     try:
-        invoice = fetch_invoice(cursor, invoice_id)
+        invoice = fetch_invoice(cursor, invoice_id, ambito=ambito)
         if not invoice:
             return {"success": False, "error": "Invoice no encontrada."}, 404
 
@@ -1094,7 +1132,7 @@ def get_invoice_candidates(invoice_id, args):
         conn.close()
 
 
-def get_partial_packing_for_part(invoice_id, args):
+def get_partial_packing_for_part(invoice_id, args, ambito=None):
     """Packing lines de la MISMA parte que un lote, con cantidad pendiente.
 
     Sirve para elegir a cual packing parcial linkear un lote que llego en un
@@ -1106,7 +1144,7 @@ def get_partial_packing_for_part(invoice_id, args):
     if error:
         return error
     try:
-        invoice = fetch_invoice(cursor, invoice_id)
+        invoice = fetch_invoice(cursor, invoice_id, ambito=ambito)
         if not invoice:
             return {"success": False, "error": "Invoice no encontrada."}, 404
         if not codigo:
@@ -1167,7 +1205,7 @@ def get_partial_packing_for_part(invoice_id, args):
         conn.close()
 
 
-def apply_invoice(invoice_id, data):
+def apply_invoice(invoice_id, data, ambito=None):
     conn, cursor, error = _db()
     if error:
         return error
@@ -1175,13 +1213,19 @@ def apply_invoice(invoice_id, data):
         usuario = _usuario_actual()
         fecha = obtener_fecha_hora_mexico()
         cursor.execute("START TRANSACTION")
-        invoice = fetch_invoice(cursor, invoice_id, for_update=True)
+        invoice = fetch_invoice(cursor, invoice_id, for_update=True, ambito=ambito)
         if not invoice:
             conn.rollback()
             return {"success": False, "error": "Invoice no encontrada."}, 404
         if invoice.get("estado") == "CANCELADA":
             conn.rollback()
             return {"success": False, "error": "No se puede aplicar una invoice cancelada."}, 400
+        if invoice.get("ambito") in AMBITOS_SOLO_DOCUMENTAL:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "Los invoices de embarques son solo documentales: no aplican a inventario.",
+            }, 400
 
         applied, skipped = _apply_items_or_auto(cursor, invoice, data, usuario, fecha)
         estado = recalculate_invoice_state(cursor, invoice_id)
@@ -1401,7 +1445,7 @@ def _auto_apply_invoice(cursor, invoice, usuario, fecha):
     return applied, skipped
 
 
-def unapply_invoice(invoice_id, data):
+def unapply_invoice(invoice_id, data, ambito=None):
     conn, cursor, error = _db()
     if error:
         return error
@@ -1409,13 +1453,19 @@ def unapply_invoice(invoice_id, data):
         usuario = _usuario_actual()
         fecha = obtener_fecha_hora_mexico()
         cursor.execute("START TRANSACTION")
-        invoice = fetch_invoice(cursor, invoice_id, for_update=True)
+        invoice = fetch_invoice(cursor, invoice_id, for_update=True, ambito=ambito)
         if not invoice:
             conn.rollback()
             return {"success": False, "error": "Invoice no encontrada."}, 404
         if invoice.get("estado") == "CANCELADA":
             conn.rollback()
             return {"success": False, "error": "No se puede desaplicar una invoice cancelada."}, 400
+        if invoice.get("ambito") in AMBITOS_SOLO_DOCUMENTAL:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "Los invoices de embarques son solo documentales: no aplican a inventario.",
+            }, 400
 
         result = _unapply_links_locked(cursor, invoice_id, data, usuario, fecha)
         estado = recalculate_invoice_state(cursor, invoice_id)
@@ -1509,7 +1559,7 @@ def _unapply_links_locked(cursor, invoice_id, data, usuario, fecha):
     }
 
 
-def reapply_invoice(invoice_id, data):
+def reapply_invoice(invoice_id, data, ambito=None):
     conn, cursor, error = _db()
     if error:
         return error
@@ -1517,13 +1567,19 @@ def reapply_invoice(invoice_id, data):
         usuario = _usuario_actual()
         fecha = obtener_fecha_hora_mexico()
         cursor.execute("START TRANSACTION")
-        invoice = fetch_invoice(cursor, invoice_id, for_update=True)
+        invoice = fetch_invoice(cursor, invoice_id, for_update=True, ambito=ambito)
         if not invoice:
             conn.rollback()
             return {"success": False, "error": "Invoice no encontrada."}, 404
         if invoice.get("estado") == "CANCELADA":
             conn.rollback()
             return {"success": False, "error": "No se puede reaplicar una invoice cancelada."}, 400
+        if invoice.get("ambito") in AMBITOS_SOLO_DOCUMENTAL:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "Los invoices de embarques son solo documentales: no aplican a inventario.",
+            }, 400
 
         unapply_result = _unapply_links_locked(
             cursor,
@@ -1558,7 +1614,7 @@ def reapply_invoice(invoice_id, data):
         conn.close()
 
 
-def resolve_invoice_file(invoice_id):
+def resolve_invoice_file(invoice_id, ambito=None):
     """Localiza el Excel original de una invoice en disco.
 
     Devuelve (info, status). info trae ruta absoluta y nombre de descarga.
@@ -1571,10 +1627,10 @@ def resolve_invoice_file(invoice_id):
             """
             SELECT numero_invoice, archivo_nombre, archivo_ruta, archivo_mime
             FROM material_invoices
-            WHERE id = %s
+            WHERE id = %s AND (%s IS NULL OR ambito = %s)
             LIMIT 1
             """,
-            (invoice_id,),
+            (invoice_id, ambito, ambito),
         )
         row = cursor.fetchone()
         if not row:
@@ -1607,7 +1663,7 @@ def resolve_invoice_file(invoice_id):
         conn.close()
 
 
-def delete_invoice(invoice_id):
+def delete_invoice(invoice_id, ambito=None):
     """Borra una invoice solo si NO tiene links APLICADO (activos).
 
     Un link APLICADO representa un lote costeado desde esta invoice; borrarla
@@ -1624,8 +1680,13 @@ def delete_invoice(invoice_id):
     try:
         cursor.execute("START TRANSACTION")
         cursor.execute(
-            "SELECT id, numero_invoice, archivo_ruta FROM material_invoices WHERE id = %s LIMIT 1 FOR UPDATE",
-            (invoice_id,),
+            """
+            SELECT id, numero_invoice, archivo_ruta
+            FROM material_invoices
+            WHERE id = %s AND (%s IS NULL OR ambito = %s)
+            LIMIT 1 FOR UPDATE
+            """,
+            (invoice_id, ambito, ambito),
         )
         invoice = cursor.fetchone()
         if not invoice:
@@ -1677,7 +1738,7 @@ def delete_invoice(invoice_id):
         conn.close()
 
 
-def set_manual_receipt(invoice_id, packing_line_id, data):
+def set_manual_receipt(invoice_id, packing_line_id, data, ambito=None):
     """Confirma una línea sin Part System como recibida, sin inventariarla.
 
     Cada cambio agrega un evento RECIBIDO/REVERTIDO; nunca se borra el evento
@@ -1697,10 +1758,11 @@ def set_manual_receipt(invoice_id, packing_line_id, data):
             FROM material_invoice_packing_lines p
             JOIN material_invoices i ON i.id = p.invoice_id
             WHERE p.id = %s AND p.invoice_id = %s
+              AND (%s IS NULL OR i.ambito = %s)
             LIMIT 1
             FOR UPDATE
             """,
-            (packing_line_id, invoice_id),
+            (packing_line_id, invoice_id, ambito, ambito),
         )
         packing = cursor.fetchone()
         if not packing:
@@ -1779,7 +1841,7 @@ def set_manual_receipt(invoice_id, packing_line_id, data):
         conn.close()
 
 
-def set_invoice_closed(invoice_id, cerrado):
+def set_invoice_closed(invoice_id, cerrado, ambito=None):
     """Marca/desmarca el cierre manual de un invoice parcial.
 
     Un invoice cerrado deja de aparecer como "abierto" en la entrada de material
@@ -1791,11 +1853,17 @@ def set_invoice_closed(invoice_id, cerrado):
         return error
     try:
         cursor.execute(
-            "UPDATE material_invoices SET cerrado_manual = %s WHERE id = %s",
-            (1 if cerrado else 0, invoice_id),
+            """
+            UPDATE material_invoices SET cerrado_manual = %s
+            WHERE id = %s AND (%s IS NULL OR ambito = %s)
+            """,
+            (1 if cerrado else 0, invoice_id, ambito, ambito),
         )
         if cursor.rowcount == 0:
-            cursor.execute("SELECT id FROM material_invoices WHERE id = %s", (invoice_id,))
+            cursor.execute(
+                "SELECT id FROM material_invoices WHERE id = %s AND (%s IS NULL OR ambito = %s)",
+                (invoice_id, ambito, ambito),
+            )
             if not cursor.fetchone():
                 conn.rollback()
                 return {"success": False, "error": "Invoice no encontrada."}, 404

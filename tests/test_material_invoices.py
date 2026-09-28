@@ -3,6 +3,7 @@ from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
 
+import pytest
 from openpyxl import Workbook
 
 from app.api.control_material.invoice_core import service as invoice_service
@@ -240,11 +241,13 @@ class _UploadCursor:
 
     def execute(self, query, params=None):
         normalized = " ".join(query.split())
-        if normalized.startswith("SELECT id FROM material_invoices"):
+        if normalized.startswith("SELECT id, ambito FROM material_invoices"):
             self._select_count += 1
             # Las dos consultas preventivas no encuentran nada. Tras el 1062,
             # la consulta de recuperacion ya ve la invoice de la otra solicitud.
-            self._row = {"id": 91} if self._select_count >= 3 else None
+            self._row = (
+                {"id": 91, "ambito": "ALMACEN"} if self._select_count >= 3 else None
+            )
             return
         if normalized == "START TRANSACTION":
             self.events.append("transaction")
@@ -382,3 +385,157 @@ def test_list_invoices_abiertos_ignora_fechas_y_todos_si_las_aplica(monkeypatch)
     assert "mi.fecha_carga >= %s" in cursor.query
     assert "mi.fecha_carga <= %s" in cursor.query
     assert cursor.params == ["2026-06-15 00:00:00", "2026-06-29 23:59:59"]
+
+
+# ---------------------------------------------------------------------------
+# Separacion por ambito (ALMACEN / EMBARQUES), 2026-09-25
+# ---------------------------------------------------------------------------
+
+
+class _AmbitoCursor:
+    """Cursor que graba la ultima consulta, para asertar sobre el SQL generado."""
+
+    def __init__(self, rowcount=1, row=None):
+        self.query = ""
+        self.params = None
+        self.queries = []
+        self.rowcount = rowcount
+        self._row = row
+
+    def execute(self, query, params=None):
+        self.query = " ".join(query.split())
+        self.params = params
+        self.queries.append(self.query)
+
+    def fetchone(self):
+        return self._row
+
+    def fetchall(self):
+        return []
+
+    def close(self):
+        pass
+
+
+class _AmbitoConnection:
+    def __init__(self):
+        self.commits = 0
+        self.rollbacks = 0
+
+    def commit(self):
+        self.commits += 1
+
+    def rollback(self):
+        self.rollbacks += 1
+
+    def close(self):
+        pass
+
+
+def _patch_db(monkeypatch, cursor, conn):
+    monkeypatch.setattr(invoice_service, "_db", lambda: (conn, cursor, None))
+
+
+def test_fetch_invoice_acota_por_ambito():
+    from app.api.control_material.invoice_core.repository import fetch_invoice
+
+    cursor = _AmbitoCursor(row={"id": 1})
+    fetch_invoice(cursor, 7, ambito="EMBARQUES")
+    assert "(%s IS NULL OR ambito = %s)" in cursor.query
+    assert cursor.params == (7, "EMBARQUES", "EMBARQUES")
+
+    # Sin ambito el predicado sigue ahi pero no filtra: lo neutraliza el NULL.
+    fetch_invoice(cursor, 7)
+    assert cursor.params == (7, None, None)
+
+
+def test_list_invoices_filtra_por_ambito(monkeypatch):
+    cursor, conn = _AmbitoCursor(), _AmbitoConnection()
+    _patch_db(monkeypatch, cursor, conn)
+
+    invoice_service.list_invoices({}, "EMBARQUES")
+
+    assert "mi.ambito = %s" in cursor.query
+    assert "EMBARQUES" in cursor.params
+
+
+def test_list_invoices_sin_ambito_no_filtra(monkeypatch):
+    cursor, conn = _AmbitoCursor(), _AmbitoConnection()
+    _patch_db(monkeypatch, cursor, conn)
+
+    invoice_service.list_invoices({})
+
+    assert "mi.ambito" not in cursor.query
+
+
+def test_set_invoice_closed_acota_por_ambito_y_da_404(monkeypatch):
+    """El UPDATE iba a ciegas: cualquiera cerraba cualquier invoice por id."""
+    cursor, conn = _AmbitoCursor(rowcount=0, row=None), _AmbitoConnection()
+    _patch_db(monkeypatch, cursor, conn)
+
+    payload, status = invoice_service.set_invoice_closed(1, True, "EMBARQUES")
+
+    assert status == 404
+    assert "(%s IS NULL OR ambito = %s)" in cursor.queries[0]
+    assert conn.commits == 0
+
+
+def test_delete_invoice_de_otro_ambito_no_borra_nada(monkeypatch):
+    cursor, conn = _AmbitoCursor(row=None), _AmbitoConnection()
+    _patch_db(monkeypatch, cursor, conn)
+
+    payload, status = invoice_service.delete_invoice(1, "EMBARQUES")
+
+    assert status == 404
+    assert not any(q.startswith("DELETE") for q in cursor.queries)
+    assert conn.commits == 0
+
+
+def test_resolve_invoice_file_acota_por_ambito(monkeypatch):
+    """La descarga del Excel es la fuga mas directa entre ambitos."""
+    cursor, conn = _AmbitoCursor(row=None), _AmbitoConnection()
+    _patch_db(monkeypatch, cursor, conn)
+
+    payload, status = invoice_service.resolve_invoice_file(1, "EMBARQUES")
+
+    assert status == 404
+    assert "(%s IS NULL OR ambito = %s)" in cursor.query
+
+
+@pytest.mark.parametrize("accion", ["apply_invoice", "unapply_invoice", "reapply_invoice"])
+def test_embarques_no_aplica_a_inventario(monkeypatch, accion):
+    cursor, conn = _AmbitoCursor(), _AmbitoConnection()
+    _patch_db(monkeypatch, cursor, conn)
+    # _usuario_actual lee la sesion de Flask; fuera de request no hay contexto.
+    monkeypatch.setattr(invoice_service, "_usuario_actual", lambda: "TEST")
+    monkeypatch.setattr(
+        invoice_service,
+        "fetch_invoice",
+        lambda *a, **k: {"id": 1, "estado": "VALIDADA", "ambito": "EMBARQUES"},
+    )
+
+    payload, status = getattr(invoice_service, accion)(1, {}, "EMBARQUES")
+
+    assert status == 400
+    assert "solo documentales" in payload["error"]
+    assert conn.commits == 0
+    assert conn.rollbacks == 1
+
+
+def test_mensaje_de_duplicado_aclara_el_otro_ambito():
+    """La unicidad es global: quien sube desde embarques puede chocar con un
+    invoice de almacen que nunca vera en su listado."""
+    payload, status = invoice_service._respuesta_duplicado(
+        {"id": 91, "ambito": "ALMACEN"}, "NUMERO_INVOICE", "Esta invoice ya fue cargada", "EMBARQUES"
+    )
+    assert status == 409
+    assert "ALMACEN" in payload["message"]
+    # Sin invoice_id: seria un puntero a algo que este usuario no puede abrir.
+    assert "invoice_id" not in payload
+
+    # Mismo ambito: comportamiento de siempre.
+    payload, _ = invoice_service._respuesta_duplicado(
+        {"id": 91, "ambito": "ALMACEN"}, "NUMERO_INVOICE", "Esta invoice ya fue cargada", "ALMACEN"
+    )
+    assert payload["invoice_id"] == 91
+    assert payload["message"] == "Esta invoice ya fue cargada."

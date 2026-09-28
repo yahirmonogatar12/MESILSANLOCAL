@@ -3466,17 +3466,27 @@ function hideAllMaterialContainers() {
                 window.mostrarInventarioActual();
             };
 
-            window.mostrarMaterialInvoices = function() {
+            // Invoices por ambito (ALMACEN / EMBARQUES). Los dos botones comparten
+            // contenedor a proposito: el JS del modulo usa IDs fijos, asi que dos
+            // fragmentos vivos a la vez los duplicarian en el DOM. Cada click
+            // recarga el fragmento con su ambito.
+            window.mostrarMaterialInvoicesAmbito = function(ambito) {
                 prepararPanelSeccion('material');
                 const container = document.getElementById('material-invoices-unique-container');
                 if (container) container.style.display = 'block';
 
-                cargarContenidoDinamico('material-invoices-unique-container', '/material/invoices', () => {
+                const ruta = ambito === 'EMBARQUES'
+                    ? '/material/invoices/EMBARQUES'
+                    : '/material/invoices';
+
+                cargarContenidoDinamico('material-invoices-unique-container', ruta, () => {
                     if (typeof window.initMaterialInvoices === 'function') {
                         window.initMaterialInvoices();
                     }
                 });
             };
+            window.mostrarMaterialInvoices = () => window.mostrarMaterialInvoicesAmbito('ALMACEN');
+            window.mostrarMaterialInvoicesEmbarques = () => window.mostrarMaterialInvoicesAmbito('EMBARQUES');
 
             window.mostrarMaterialCompras = function() {
                 prepararPanelSeccion('material');

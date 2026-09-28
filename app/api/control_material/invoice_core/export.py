@@ -10,13 +10,13 @@ from app.api.shared import conexion_o_error, dict_cursor, excel_response
 logger = logging.getLogger(__name__)
 
 
-def export_invoice(invoice_id):
+def export_invoice(invoice_id, ambito=None):
     conn, error_response = conexion_o_error()
     if error_response:
         return {"success": False, "error": "Base de datos no disponible"}, 503
     cursor = dict_cursor(conn)
     try:
-        invoice = fetch_invoice(cursor, invoice_id)
+        invoice = fetch_invoice(cursor, invoice_id, ambito=ambito)
         if not invoice:
             return {"success": False, "error": "Invoice no encontrada."}, 404
         cursor.execute(

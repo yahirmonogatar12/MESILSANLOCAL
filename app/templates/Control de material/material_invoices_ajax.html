@@ -1,7 +1,7 @@
-<div id="mat-invoice-page" class="mat-invoice-page">
+<div id="mat-invoice-page" class="mat-invoice-page" data-ambito="{{ ambito|default('ALMACEN') }}">
     <div class="mat-invoice-header">
         <div>
-            <h2>Facturas / Invoice</h2>
+            <h2>Facturas / Invoice &mdash; {{ 'Embarques' if ambito == 'EMBARQUES' else 'Almacén' }}</h2>
             <span>Carga Excel, conciliacion packing y aplicacion por lote.</span>
         </div>
         <div class="mat-invoice-header-actions">
@@ -302,4 +302,4 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/material_column_filters.js', v='20260707a') }}"></script>
-<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260728manual1') }}"></script>
+<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260925a') }}"></script>

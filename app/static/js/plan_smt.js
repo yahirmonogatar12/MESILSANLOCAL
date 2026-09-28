@@ -203,6 +203,7 @@ function renderTableSMT(plans) {
           <td>${plan.ct || 0}</td>
           <td>${plan.uph || 0}</td>
           <td>${plan.plan_count || 0}</td>
+          ${ladoCellSMT(plan)}
           <td style="text-align:center; ${(plan.qr_required_count ?? 1) !== 1 ? 'color:#3498db; font-weight:bold;' : ''}">${plan.qr_required_count ?? 1}</td>
           <td style="text-align:center; ${(plan.array_size ?? 1) !== 1 ? 'color:#3498db; font-weight:bold;' : ''}">${plan.array_size ?? 1}</td>
           <td>${plan.produced_count || 0}</td>
@@ -219,6 +220,20 @@ function renderTableSMT(plans) {
 
 // ====== Drag & Drop ======
 let draggedRowSMT = null;
+
+// Lado de la PCB. El TOP (sublote de su BOTTOM) se muestra contra lo que
+// produjo el BOTTOM; si lo rebasa se pinta naranja. Solo se muestra: no frena.
+function ladoCellSMT(plan) {
+  const lado = plan.lado || '';
+  if (lado !== 'TOP') return `<td style="text-align:center;">${lado || '—'}</td>`;
+  const top = Number(plan.top_producido ?? plan.produced_count ?? 0);
+  const bottom = plan.bottom_producido;
+  const rebasa = bottom != null && top > Number(bottom);
+  const detalle = plan.lote_padre
+    ? `<div style="font-size:10px; color:${rebasa ? '#e67e22' : '#888'};" title="TOP producido / BOTTOM producido">de ${plan.lote_padre} · ${top}/${bottom ?? 0}</div>`
+    : '';
+  return `<td style="text-align:center; ${rebasa ? 'color:#e67e22; font-weight:bold;' : ''}">TOP${detalle}</td>`;
+}
 
 function initDragDropSMT() {
   const tbody = document.getElementById('smt-plan-tableBody');
@@ -354,6 +369,11 @@ function openEditModalSMT(planId) {
             <div><label style="color: #888; font-size: 12px;">Part No</label><input type="text" name="part_no" id="smt-edit-part_no" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
             <div><label style="color: #888; font-size: 12px;">Cantidad</label><input type="number" name="plan_count" id="smt-edit-plan_count" min="0" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
             <div><label style="color: #888; font-size: 12px;">QR requeridos</label><input type="number" name="qr_required_count" id="smt-edit-qr_required_count" min="0" max="20" value="1" title="QR distintos por planilla para liberar la banda (0 = modelo sin QR)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
+            <div><label style="color: #888; font-size: 12px;">Lado</label>
+              <select name="lado" id="smt-edit-lado" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
+                <option value="">Una cara</option><option value="BOTTOM">BOTTOM</option><option value="TOP">TOP</option>
+              </select>
+            </div>
             <div><label style="color: #888; font-size: 12px;">Array</label><input type="number" name="array_size" id="smt-edit-array_size" min="0" max="100" value="1" title="PCBs por panel (array)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
           </div>
           <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
@@ -378,6 +398,7 @@ function openEditModalSMT(planId) {
   document.getElementById('smt-edit-plan_count').value = plan.plan_count || 0;
   document.getElementById('smt-edit-qr_required_count').value = plan.qr_required_count ?? 1;
   document.getElementById('smt-edit-array_size').value = plan.array_size ?? 1;
+  document.getElementById('smt-edit-lado').value = plan.lado || '';
 
   const cancelBtn = document.getElementById('smt-edit-cancel-plan-btn');
   if (cancelBtn) {
@@ -410,7 +431,8 @@ async function updatePlanSMT(formData) {
       part_no: partNo,
       plan_count: parseInt(formData.get('plan_count'), 10) || 0,
       qr_required_count: intEnRangoSMT(formData.get('qr_required_count'), 1, 0, 20),
-      array_size: intEnRangoSMT(formData.get('array_size'), 1, 0, 100)
+      array_size: intEnRangoSMT(formData.get('array_size'), 1, 0, 100),
+      lado: formData.get('lado') || ''
     };
 
     const response = await axios.post('/api/plan-smt/update', data);
@@ -579,6 +601,14 @@ function createModalsInBodySMT() {
               <input type="number" name="qr_required_count" value="1" min="0" max="20" title="QR distintos por planilla para liberar la banda (0 = modelo sin QR)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
             </div>
             <div class="form-group">
+              <label style="color: #888; font-size: 12px;">Lado</label>
+              <select name="lado" title="BOTTOM crea tambien su TOP ligado (0 QR, cuenta el sensor)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
+                <option value="">Una cara</option>
+                <option value="BOTTOM">BOTTOM (crea tambien su TOP)</option>
+                <option value="TOP">TOP</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label style="color: #888; font-size: 12px;">Array</label>
               <input type="number" name="array_size" value="1" min="0" max="100" title="PCBs por panel (array)" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
             </div>
@@ -622,6 +652,7 @@ async function createPlanSMT(formData) {
       plan_count: parseInt(formData.get('plan_count')) || 0,
       qr_required_count: intEnRangoSMT(formData.get('qr_required_count'), 1, 0, 20),
       array_size: intEnRangoSMT(formData.get('array_size'), 1, 0, 100),
+      lado: formData.get('lado') || '',
       uph: parseInt(formData.get('uph')) || 100,
       status: 'PLAN'
     };
@@ -629,7 +660,9 @@ async function createPlanSMT(formData) {
     const response = await axios.post('/api/plan-smt', data);
     
     if (response.data.success || response.data.lot_no) {
-      alert('Plan creado exitosamente');
+      alert(response.data.lot_top
+        ? `Plan creado: ${response.data.lot_no} (BOTTOM) y ${response.data.lot_top} (TOP, cuenta el sensor)`
+        : 'Plan creado exitosamente');
       document.getElementById('smt-plan-modal').style.display = 'none';
       document.getElementById('smt-plan-form').reset();
       loadPlansSMT();
@@ -665,7 +698,9 @@ async function exportarExcelSMT() {
       output: p.output,
       status: p.status,
       qr_required_count: p.qr_required_count,
-      array_size: p.array_size
+      array_size: p.array_size,
+      lado: p.lado || '',
+      lote_padre: p.lote_padre || ''
     }));
     
     const response = await fetch('/api/plan-smt/export-excel', {

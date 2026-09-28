@@ -194,8 +194,25 @@
     return data;
   }
 
+  // El ambito lo fija la ruta por la que se cargo el fragmento; el backend lo
+  // vuelve a validar contra el permiso, asi que esto es solo para que la API
+  // sepa a que ambito se refiere la peticion.
+  function ambitoActual() {
+    return el("mat-invoice-page")?.dataset.ambito || "ALMACEN";
+  }
+
+  function esSoloDocumental() {
+    return ambitoActual() === "EMBARQUES";
+  }
+
+  function conAmbito(url) {
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}ambito=${encodeURIComponent(ambitoActual())}`;
+  }
+
   function queryParams() {
     const params = new URLSearchParams();
+    params.set("ambito", ambitoActual());
     const q = el("mat-invoice-search")?.value.trim();
     const estado = el("mat-invoice-state")?.value;
     const desde = el("mat-invoice-date-from")?.value;
@@ -329,7 +346,7 @@
     setLoading(true);
     setMessage("mat-invoice-detail-message", "");
     try {
-      const data = await fetchJson(`/api/material_admin/invoices/${encodeURIComponent(invoiceId)}`);
+      const data = await fetchJson(conAmbito(`/api/material_admin/invoices/${encodeURIComponent(invoiceId)}`));
       state.selectedInvoice = data.invoice;
       renderDetail(data);
       el("mat-invoice-detail").hidden = false;
@@ -360,7 +377,23 @@
     renderPacking(data.packing || []);
     renderLinks(data.links || []);
     renderManualReceipts(data.manual_receipts || []);
+    aplicarModoSoloDocumental();
     syncTabs();
+  }
+
+  function aplicarModoSoloDocumental() {
+    if (!esSoloDocumental()) return;
+    // Embarques no aplica a inventario: sin estos botones no hay forma de
+    // provocar el 400 del backend desde la interfaz.
+    ["mat-invoice-apply-auto", "mat-invoice-reapply", "mat-invoice-unapply"].forEach((id) => {
+      const boton = el(id);
+      if (boton) boton.hidden = true;
+    });
+    document
+      .querySelectorAll("#mat-invoice-page .mat-invoice-manual-receipt")
+      .forEach((boton) => {
+        boton.hidden = true;
+      });
   }
 
   function renderLines(rows) {
@@ -577,8 +610,10 @@
     setLoading(true);
     try {
       await fetchJson(
-        `/api/material_admin/invoices/${encodeURIComponent(state.selectedInvoiceId)}` +
-        `/packing/${encodeURIComponent(packingLineId)}/manual-receipt`,
+        conAmbito(
+          `/api/material_admin/invoices/${encodeURIComponent(state.selectedInvoiceId)}` +
+          `/packing/${encodeURIComponent(packingLineId)}/manual-receipt`
+        ),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -638,7 +673,7 @@
     state.pendingUpload = new FormData(form);
     setLoading(true);
     try {
-      const data = await fetchJson("/api/material_admin/invoices/preview", {
+      const data = await fetchJson(conAmbito("/api/material_admin/invoices/preview"), {
         method: "POST",
         body: state.pendingUpload,
       });
@@ -740,7 +775,7 @@
     hideModal("mat-invoice-preview");
     showUploadProgress(numeroInvoice);
     try {
-      const data = await fetchJson("/api/material_admin/invoices/upload", {
+      const data = await fetchJson(conAmbito("/api/material_admin/invoices/upload"), {
         method: "POST",
         body: pendingUpload,
       });
@@ -770,7 +805,7 @@
     }
     setLoading(true);
     try {
-      await fetchJson(`/api/material_admin/invoices/${encodeURIComponent(invoiceId)}`, {
+      await fetchJson(conAmbito(`/api/material_admin/invoices/${encodeURIComponent(invoiceId)}`), {
         method: "DELETE",
       });
       setMessage("mat-invoice-upload-message", `Invoice ${numeroInvoice || invoiceId} eliminada.`, "success");
@@ -792,7 +827,7 @@
     setLoading(true);
     setMessage("mat-invoice-detail-message", "");
     try {
-      const data = await fetchJson(`/api/material_admin/invoices/${state.selectedInvoiceId}/${action}`, {
+      const data = await fetchJson(conAmbito(`/api/material_admin/invoices/${state.selectedInvoiceId}/${action}`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body || {}),
@@ -887,7 +922,7 @@
     setLoading(true);
     try {
       const data = await fetchJson(
-        `/api/material_admin/invoices/${state.selectedInvoiceId}/lines/${pending.lineId}`,
+        conAmbito(`/api/material_admin/invoices/${state.selectedInvoiceId}/lines/${pending.lineId}`),
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -934,7 +969,7 @@
     try {
       const params = new URLSearchParams({ codigo_material_recibido: codigo });
       const data = await fetchJson(
-        `/api/material_admin/invoices/${state.selectedInvoiceId}/partial-packing?${params.toString()}`
+        conAmbito(`/api/material_admin/invoices/${state.selectedInvoiceId}/partial-packing?${params.toString()}`)
       );
       const records = data.records || [];
       if (subtitle) {
@@ -971,7 +1006,7 @@
     }
     setLoading(true);
     try {
-      const data = await fetchJson(`/api/material_admin/invoices/${state.selectedInvoiceId}/apply`, {
+      const data = await fetchJson(conAmbito(`/api/material_admin/invoices/${state.selectedInvoiceId}/apply`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1273,7 +1308,7 @@
 
     try {
       await ensureSheetJs();
-      const res = await fetch(`/api/material_admin/invoices/${encodeURIComponent(invoiceId)}/file`, {
+      const res = await fetch(conAmbito(`/api/material_admin/invoices/${encodeURIComponent(invoiceId)}/file`), {
         credentials: "same-origin",
       });
       if (!res.ok) {
@@ -1409,7 +1444,7 @@
       if (target.closest("#mat-invoice-viewer-download")) {
         event.preventDefault();
         if (state.viewerInvoiceId) {
-          window.location.href = `/api/material_admin/invoices/${encodeURIComponent(state.viewerInvoiceId)}/file?download=1`;
+          window.location.href = conAmbito(`/api/material_admin/invoices/${encodeURIComponent(state.viewerInvoiceId)}/file?download=1`);
         }
         return;
       }
