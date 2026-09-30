@@ -12,6 +12,7 @@ from app.api.control_material.invoice_core.export import export_invoice
 from app.api.control_material.invoice_core.service import (
     apply_invoice,
     delete_invoice,
+    delete_invoice_line,
     get_invoice_candidates,
     get_invoice_detail,
     get_partial_packing_for_part,
@@ -150,6 +151,13 @@ def api_update_invoice_line(invoice_id, line_id):
     return _json_result(
         update_invoice_line(invoice_id, line_id, request.get_json(silent=True) or {}, g.ambito_invoice)
     )
+
+
+@bp.route("/api/material_admin/invoices/<int:invoice_id>/lines/<int:line_id>", methods=["DELETE"])
+@login_requerido
+@requiere_permiso_ambito
+def api_delete_invoice_line(invoice_id, line_id):
+    return _json_result(delete_invoice_line(invoice_id, line_id, g.ambito_invoice))
 
 
 @bp.route("/api/material_admin/invoices/<int:invoice_id>/close", methods=["POST"])

@@ -151,6 +151,7 @@ def test_material_invoice_blueprints_registran_rutas(app):
         if str(rule) == "/api/material_admin/invoices/<int:invoice_id>/lines/<int:line_id>":
             metodos_linea |= set(rule.methods or [])
     assert "PATCH" in metodos_linea
+    assert "DELETE" in metodos_linea
     assert "/api/material_admin/inventory/valuation" in rules
     assert "/api/material_admin/inventory/valuation/backfill" in rules
     # Las rutas de numeros de parte originales (aliases) se retiraron.
@@ -539,3 +540,70 @@ def test_mensaje_de_duplicado_aclara_el_otro_ambito():
     )
     assert payload["invoice_id"] == 91
     assert payload["message"] == "Esta invoice ya fue cargada."
+
+
+# ---------------------------------------------------------------------------
+# Eliminar un numero de parte de una invoice cargada, 2026-09-30
+# ---------------------------------------------------------------------------
+
+
+class _DeleteLineCursor(_AmbitoCursor):
+    """Responde la linea, su packing y el conteo de vinculos."""
+
+    def __init__(self, links=0, recibidos=0, entradas=0):
+        super().__init__()
+        self.vinculos = {"links": links, "recibidos": recibidos, "entradas": entradas}
+
+    def fetchone(self):
+        if "FROM material_invoice_lines" in self.query:
+            return {"id": 5, "line_no": 3, "raw_part_num": "ABC", "numero_parte_sistema": "ABC"}
+        if "AS recibidos" in self.query:
+            return self.vinculos
+        return None
+
+    def fetchall(self):
+        if "FROM material_invoice_packing_lines" in self.query:
+            return [{"id": 11}, {"id": 12}]
+        return []
+
+
+@pytest.mark.parametrize("links, recibidos, entradas", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
+def test_delete_invoice_line_bloquea_con_material_vinculado(monkeypatch, links, recibidos, entradas):
+    cursor, conn = _DeleteLineCursor(links, recibidos, entradas), _AmbitoConnection()
+    _patch_db(monkeypatch, cursor, conn)
+    monkeypatch.setattr(invoice_service, "fetch_invoice", lambda *a, **k: {"id": 1, "estado": "VALIDADA", "numero_invoice": "INV-1"})
+
+    payload, status = invoice_service.delete_invoice_line(1, 5, "ALMACEN")
+
+    assert status == 409
+    assert "material vinculado" in payload["error"]
+    if entradas:
+        # Solo cuenta lo recibido de la misma parte base en el mismo pallet.
+        consulta = next(q for q in cursor.queries if "AS entradas" in q)
+        assert "cma.pallet_no = p.pallet_no" in consulta
+        assert "SUBSTRING_INDEX(p.numero_parte_sistema, '-', 1)" in consulta
+    assert not any(q.startswith("DELETE") for q in cursor.queries)
+    assert conn.commits == 0
+
+
+def test_delete_invoice_line_borra_linea_y_su_packing(monkeypatch):
+    cursor, conn = _DeleteLineCursor(), _AmbitoConnection()
+    _patch_db(monkeypatch, cursor, conn)
+    monkeypatch.setattr(invoice_service, "fetch_invoice", lambda *a, **k: {"id": 1, "estado": "VALIDADA", "numero_invoice": "INV-1"})
+    monkeypatch.setattr(invoice_service, "recalculate_invoice_state", lambda *_: "APLICADA")
+    monkeypatch.setattr(invoice_service, "_usuario_actual", lambda: "TEST")
+
+    payload, status = invoice_service.delete_invoice_line(1, 5, "ALMACEN")
+
+    assert status == 200
+    assert payload["packing_eliminados"] == 2
+    assert payload["estado"] == "APLICADA"
+    borrados = [q.split(" WHERE")[0] for q in cursor.queries if q.startswith("DELETE")]
+    assert borrados == [
+        "DELETE FROM material_invoice_manual_receipts",
+        "DELETE FROM material_invoice_lot_links",
+        "DELETE FROM material_invoice_packing_lines",
+        "DELETE FROM material_invoice_lines",
+    ]
+    assert any("total_lineas" in q for q in cursor.queries)
+    assert conn.commits == 1

@@ -947,6 +947,35 @@
     }
   }
 
+  async function deleteLine() {
+    const pending = state.pendingLineEdit;
+    if (!pending) return;
+    const parte = pending.row.numero_parte_sistema || pending.row.raw_part_num || pending.lineId;
+    if (!window.confirm(`¿Eliminar la parte ${parte} (linea ${pending.row.line_no || pending.lineId}) de esta invoice?\n\nSe quita tambien su packing y ya no se considerara en almacen. Esta accion no se puede deshacer.`)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await fetchJson(
+        conAmbito(`/api/material_admin/invoices/${state.selectedInvoiceId}/lines/${pending.lineId}`),
+        { method: "DELETE" }
+      );
+      closeLineEdit();
+      setMessage(
+        "mat-invoice-detail-message",
+        `Parte ${parte} eliminada. Packing eliminado: ${numberText(data.packing_eliminados)}. Estado: ${data.estado || ""}.`,
+        "success"
+      );
+      await loadDetail(state.selectedInvoiceId);
+      await loadInvoices();
+    } catch (err) {
+      const msg = err.status === 409 ? (err.payload?.error || err.message) : err.message;
+      setMessage("mat-invoice-line-edit-message", `No se pudo eliminar: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function closePalletLink() {
     hideModal("mat-invoice-pallet-link");
     state.pendingPalletLink = null;
@@ -1403,6 +1432,11 @@
       if (target.closest("#mat-invoice-line-edit-confirm")) {
         event.preventDefault();
         saveLineEdit();
+        return;
+      }
+      if (target.closest("#mat-invoice-line-delete")) {
+        event.preventDefault();
+        deleteLine();
         return;
       }
       if (target.closest("[data-line-edit-close]")) {

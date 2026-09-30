@@ -811,6 +811,33 @@ def _int_payload(value, field_name):
     return int(number)
 
 
+def _packing_ids_de_linea(cursor, invoice_id, line):
+    """Packing lines de una linea de invoice, bloqueadas FOR UPDATE.
+
+    En INVOICE(CONVERTED) la linea de invoice y packing nacen del mismo
+    renglon. Si la parte estaba en SIN_ALIAS, invoice_line_id puede seguir
+    sin conciliacion; por eso tambien se busca por line_no + raw_part_num.
+    """
+    cursor.execute(
+        """
+        SELECT id
+        FROM material_invoice_packing_lines
+        WHERE invoice_id = %s
+          AND (
+            invoice_line_id = %s
+            OR (
+              invoice_line_id IS NULL
+              AND line_no = %s
+              AND COALESCE(raw_part_num, '') = %s
+            )
+          )
+        FOR UPDATE
+        """,
+        (invoice_id, line["id"], line.get("line_no"), line.get("raw_part_num") or ""),
+    )
+    return [row["id"] for row in (cursor.fetchall() or [])]
+
+
 def update_invoice_line(invoice_id, line_id, data, ambito=None):
     try:
         nuevo_line_no = _int_payload(data.get("line_no"), "No.")
@@ -898,27 +925,7 @@ def update_invoice_line(invoice_id, line_id, data, ambito=None):
                 409,
             )
 
-        # En INVOICE(CONVERTED) la linea de invoice y packing nacen del mismo
-        # renglon. Si la parte estaba en SIN_ALIAS, packing_line_id puede seguir
-        # sin conciliacion; por eso tambien se busca por line_no + raw_part_num.
-        cursor.execute(
-            """
-            SELECT id
-            FROM material_invoice_packing_lines
-            WHERE invoice_id = %s
-              AND (
-                invoice_line_id = %s
-                OR (
-                  invoice_line_id IS NULL
-                  AND line_no = %s
-                  AND COALESCE(raw_part_num, '') = %s
-                )
-              )
-            FOR UPDATE
-            """,
-            (invoice_id, line_id, line.get("line_no"), line.get("raw_part_num") or ""),
-        )
-        packing_ids = [row["id"] for row in (cursor.fetchall() or [])]
+        packing_ids = _packing_ids_de_linea(cursor, invoice_id, line)
         if packing_ids:
             placeholders = ", ".join(["%s"] * len(packing_ids))
             cursor.execute(
@@ -1069,6 +1076,178 @@ def update_invoice_line(invoice_id, line_id, data, ambito=None):
     except Exception as exc:
         conn.rollback()
         logger.exception("Error editando linea invoice %s linea %s: %s", invoice_id, line_id, exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def delete_invoice_line(invoice_id, line_id, ambito=None):
+    """Quita un numero de parte de la invoice: su linea y su packing.
+
+    Solo si no tiene material vinculado: links APLICADO, recepcion manual
+    vigente o entradas en almacen de esa parte en ese pallet (mismo criterio
+    parte base + pallet exacto que el auto-apply de almacen; lo recibido con
+    otra parte u otro pallet no bloquea). Se borra igual que `delete_invoice`: al desaparecer las filas,
+    ni el MES ni el programa de almacen (que lee packing en vivo para validar
+    entradas, pendientes y estado) la vuelven a considerar.
+    """
+    conn, cursor, error = _db()
+    if error:
+        return error
+    try:
+        cursor.execute("START TRANSACTION")
+        invoice = fetch_invoice(cursor, invoice_id, for_update=True, ambito=ambito)
+        if not invoice:
+            conn.rollback()
+            return {"success": False, "error": "Invoice no encontrada."}, 404
+        if invoice.get("estado") == "CANCELADA":
+            conn.rollback()
+            return {"success": False, "error": "No se puede editar una invoice cancelada."}, 400
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM material_invoice_lines
+            WHERE id = %s AND invoice_id = %s
+            LIMIT 1
+            FOR UPDATE
+            """,
+            (line_id, invoice_id),
+        )
+        line = cursor.fetchone()
+        if not line:
+            conn.rollback()
+            return {"success": False, "error": "Linea de invoice no encontrada."}, 404
+
+        packing_ids = _packing_ids_de_linea(cursor, invoice_id, line)
+        # Sin packing, IN (NULL) no encuentra nada y la consulta sigue valida.
+        packing_in = ", ".join(["%s"] * len(packing_ids)) or "NULL"
+        cursor.execute(
+            f"""
+            SELECT
+              (SELECT COUNT(*)
+               FROM material_invoice_lot_links
+               WHERE invoice_id = %s
+                 AND estado = 'APLICADO'
+                 AND (invoice_line_id = %s OR packing_line_id IN ({packing_in}))
+              ) AS links,
+              (SELECT COUNT(*)
+               FROM material_invoice_manual_receipts r
+               JOIN (
+                 SELECT packing_line_id, MAX(id) AS ultimo_id
+                 FROM material_invoice_manual_receipts
+                 WHERE packing_line_id IN ({packing_in})
+                 GROUP BY packing_line_id
+               ) ultimo ON ultimo.ultimo_id = r.id
+               WHERE r.accion = 'RECIBIDO'
+              ) AS recibidos,
+              (SELECT COUNT(DISTINCT cma.codigo_material_recibido)
+               FROM material_invoice_packing_lines p
+               JOIN control_material_almacen cma
+                 ON cma.numero_invoice = %s
+                AND cma.pallet_no = p.pallet_no
+                AND (cma.cancelado = 0 OR cma.cancelado IS NULL)
+               LEFT JOIN inventario_lotes il
+                 ON il.codigo_material_recibido = cma.codigo_material_recibido
+               WHERE p.id IN ({packing_in})
+                 AND SUBSTRING_INDEX(COALESCE(il.numero_parte, cma.numero_parte), '-', 1)
+                     = SUBSTRING_INDEX(p.numero_parte_sistema, '-', 1)
+              ) AS entradas
+            """,
+            [invoice_id, line_id, *packing_ids, *packing_ids, invoice["numero_invoice"], *packing_ids],
+        )
+        vinculos = cursor.fetchone() or {}
+        links = int(vinculos.get("links") or 0)
+        recibidos = int(vinculos.get("recibidos") or 0)
+        entradas = int(vinculos.get("entradas") or 0)
+        if links or recibidos or entradas:
+            conn.rollback()
+            if links:
+                motivo = f"{links} lote(s) APLICADO. Desaplica primero."
+            elif recibidos:
+                motivo = f"{recibidos} recepcion(es) manual(es). Reviertela(s) primero."
+            else:
+                motivo = (
+                    f"{entradas} entrada(s) recibida(s) en almacen de esta parte en su pallet. "
+                    "Cancelalas o reasignalas primero."
+                )
+            return (
+                {
+                    "success": False,
+                    "error": f"No se puede eliminar: la parte tiene material vinculado ({motivo})",
+                    "links": links,
+                    "recibidos": recibidos,
+                    "entradas": entradas,
+                },
+                409,
+            )
+
+        # Los links DESAPLICADO y los eventos de recepcion manual revertidos son
+        # historico inerte de estas filas; se van con ellas, como en delete_invoice.
+        if packing_ids:
+            cursor.execute(
+                f"DELETE FROM material_invoice_manual_receipts WHERE packing_line_id IN ({packing_in})",
+                packing_ids,
+            )
+        cursor.execute(
+            f"""
+            DELETE FROM material_invoice_lot_links
+            WHERE invoice_id = %s
+              AND (invoice_line_id = %s OR packing_line_id IN ({packing_in}))
+            """,
+            [invoice_id, line_id, *packing_ids],
+        )
+        if packing_ids:
+            cursor.execute(
+                f"DELETE FROM material_invoice_packing_lines WHERE id IN ({packing_in})",
+                packing_ids,
+            )
+        cursor.execute(
+            "DELETE FROM material_invoice_lines WHERE id = %s AND invoice_id = %s",
+            (line_id, invoice_id),
+        )
+        cursor.execute(
+            """
+            UPDATE material_invoices mi
+            SET total_monto = (
+                  SELECT COALESCE(SUM(costo_total), 0)
+                  FROM material_invoice_lines WHERE invoice_id = %s
+                ),
+                total_lineas = (
+                  SELECT COUNT(*) FROM material_invoice_lines WHERE invoice_id = %s
+                ),
+                total_packing = (
+                  SELECT COUNT(*) FROM material_invoice_packing_lines WHERE invoice_id = %s
+                )
+            WHERE mi.id = %s
+            """,
+            (invoice_id, invoice_id, invoice_id, invoice_id),
+        )
+        estado = recalculate_invoice_state(cursor, invoice_id)
+        conn.commit()
+        logger.info(
+            "Linea %s (parte %s) eliminada de invoice %s por %s; packing borrado: %s",
+            line_id,
+            line.get("numero_parte_sistema"),
+            invoice.get("numero_invoice"),
+            _usuario_actual(),
+            packing_ids,
+        )
+        return (
+            {
+                "success": True,
+                "invoice_id": invoice_id,
+                "line_id": line_id,
+                "numero_parte_sistema": line.get("numero_parte_sistema"),
+                "packing_eliminados": len(packing_ids),
+                "estado": estado,
+            },
+            200,
+        )
+    except Exception as exc:
+        conn.rollback()
+        logger.exception("Error eliminando linea invoice %s linea %s: %s", invoice_id, line_id, exc)
         return {"success": False, "error": ERROR_INTERNO}, 500
     finally:
         cursor.close()
