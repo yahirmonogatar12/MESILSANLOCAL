@@ -188,7 +188,8 @@ async function trzLoadMateriales() {
         `<td>${trzEsc(r.material_start_ts)}</td><td>${trzEsc(r.pcb_last_ts)}</td>`;
       tbody.appendChild(tr);
     });
-    if (status) status.textContent = `${data.items.length} registro${data.items.length !== 1 ? "s" : ""}`;
+    if (status) status.textContent = `${data.items.length} registro${data.items.length !== 1 ? "s" : ""}` +
+      (data.message ? ` · ${data.message}` : "");
   } catch (e) {
     console.error(e); trzNotify("Error al cargar trazabilidad", "error");
   } finally {
