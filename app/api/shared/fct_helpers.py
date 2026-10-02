@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime, time as dt_time, timedelta
 from decimal import Decimal
 
@@ -95,6 +96,37 @@ def _fct_normalize_operator_line(value) -> str:
     }.get(text, text)
 
 
+def _fct_normalize_operator_station(value) -> str:
+    """Normaliza la estacion del log FCT al codigo de ``stations_qa``.
+
+    Los archivos FCT identifican las estaciones como ``L02FCT1A`` y
+    ``L02FCT1B``. La vista de sesiones QA usa ``FCT-01-02`` y
+    ``FCT-02-02`` respectivamente: el sufijo A/B identifica la estacion y
+    el numero de linea identifica el host M1..M4.
+
+    Si el valor ya viene como codigo QA, se conserva normalizado para que la
+    comparacion sea estable y los valores desconocidos no se mezclen con otra
+    estacion por accidente.
+    """
+    text = str(value or "").strip().upper()
+    if not text:
+        return ""
+
+    compact = re.sub(r"[ _]+", "", text)
+    match = re.fullmatch(r"L(\d{2})FCT1([AB])", compact)
+    if match:
+        line_number, side = match.groups()
+        station_number = "01" if side == "A" else "02"
+        return f"FCT-{station_number}-{line_number}"
+
+    match = re.fullmatch(r"FCT[-_ ]?(\d{1,2})[-_ ]?(\d{1,2})", text)
+    if match:
+        station_number, line_number = match.groups()
+        return f"FCT-{int(station_number):02d}-{int(line_number):02d}"
+
+    return text
+
+
 def _fct_to_datetime(value):
     if value is None:
         return None
@@ -114,7 +146,12 @@ def _fct_to_datetime(value):
     return None
 
 
-def _fct_load_operator_sessions(min_ts, max_ts, lines: set[str] | None = None) -> dict[str, list[dict]]:
+def _fct_load_operator_sessions(
+    min_ts,
+    max_ts,
+    lines: set[str] | None = None,
+    stations: set[str] | None = None,
+) -> dict[tuple[str, str], list[dict]]:
     min_dt = _fct_to_datetime(min_ts)
     max_dt = _fct_to_datetime(max_ts)
     if not min_dt or not max_dt:
@@ -133,6 +170,17 @@ def _fct_load_operator_sessions(min_ts, max_ts, lines: set[str] | None = None) -
         line_filter = f" AND linea IN ({placeholders})"
         params.extend(normalized_lines)
 
+    normalized_stations = sorted({
+        _fct_normalize_operator_station(station)
+        for station in (stations or set())
+        if _fct_normalize_operator_station(station)
+    })
+    station_filter = ""
+    if normalized_stations:
+        placeholders = ", ".join(["%s"] * len(normalized_stations))
+        station_filter = f" AND estacion IN ({placeholders})"
+        params.extend(normalized_stations)
+
     rows = execute_query(
         "SELECT session_id, estacion, linea, usuario, username, estado, inicio_local, fin_local "
         "FROM historial_estaciones_qa "
@@ -142,16 +190,18 @@ def _fct_load_operator_sessions(min_ts, max_ts, lines: set[str] | None = None) -
         "AND inicio_local <= %s "
         "AND COALESCE(fin_local, NOW()) >= %s "
         f"{line_filter} "
+        f"{station_filter} "
         "ORDER BY inicio_local ASC",
         tuple(params),
         fetch="all",
     ) or []
 
-    sessions: dict[str, list[dict]] = {}
+    sessions: dict[tuple[str, str], list[dict]] = {}
     for session in rows:
         line = _fct_normalize_operator_line(session.get("linea"))
-        if line:
-            sessions.setdefault(line, []).append(session)
+        station = _fct_normalize_operator_station(session.get("estacion"))
+        if line and station:
+            sessions.setdefault((line, station), []).append(session)
     return sessions
 
 
@@ -209,14 +259,22 @@ def fct_attach_operator(rows: list[dict]) -> list[dict]:
         for row in rows
         if row.get("operator_line") or row.get("linea")
     }
-    sessions_by_line = _fct_load_operator_sessions(min(timestamps), max(timestamps), lines)
+    stations = {
+        _fct_normalize_operator_station(row.get("estacion"))
+        for row in rows
+        if row.get("estacion")
+    }
+    sessions_by_station = _fct_load_operator_sessions(
+        min(timestamps), max(timestamps), lines, stations
+    )
 
     for row in rows:
         timestamp = _fct_to_datetime(row.get("ts"))
         line = _fct_normalize_operator_line(row.get("operator_line") or row.get("linea"))
+        station = _fct_normalize_operator_station(row.get("estacion"))
         candidates = [
             session
-            for session in sessions_by_line.get(line, [])
+            for session in sessions_by_station.get((line, station), [])
             if timestamp and _fct_session_covers(session, timestamp)
         ]
         row["operador"] = _fct_unique_operator_text(candidates)
@@ -241,15 +299,23 @@ def fct_attach_summary_operators(rows: list[dict]) -> list[dict]:
         for row in rows
         if row.get("operator_line") or row.get("linea")
     }
-    sessions_by_line = _fct_load_operator_sessions(min(timestamps), max(timestamps), lines)
+    stations = {
+        _fct_normalize_operator_station(row.get("estacion"))
+        for row in rows
+        if row.get("estacion")
+    }
+    sessions_by_station = _fct_load_operator_sessions(
+        min(timestamps), max(timestamps), lines, stations
+    )
 
     for row in rows:
         start_ts = _fct_to_datetime(row.get("primer_test"))
         end_ts = _fct_to_datetime(row.get("ultimo_test"))
         line = _fct_normalize_operator_line(row.get("operator_line") or row.get("linea"))
+        station = _fct_normalize_operator_station(row.get("estacion"))
         candidates = [
             session
-            for session in sessions_by_line.get(line, [])
+            for session in sessions_by_station.get((line, station), [])
             if start_ts and end_ts and _fct_session_overlaps(session, start_ts, end_ts)
         ]
         row["operador"] = _fct_operator_list_text(candidates)
