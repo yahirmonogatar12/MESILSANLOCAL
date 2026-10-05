@@ -205,7 +205,8 @@ class MainActivity : Activity() {
             !running -> R.color.status_unknown to getString(R.string.state_stopped)
             s.state == PeerState.UNKNOWN -> R.color.status_unknown to getString(R.string.state_checking)
             s.state == PeerState.ONLINE -> R.color.status_online to getString(R.string.state_online)
-            s.state == PeerState.NO_APP -> R.color.status_warning to getString(R.string.state_no_app)
+            // Responde al ping aunque no tenga la app (PC, otro Android, etc.): está en línea.
+            s.state == PeerState.NO_APP -> R.color.status_online to getString(R.string.state_online_ping)
             s.alerted -> R.color.status_offline to getString(R.string.state_offline)
             else -> R.color.status_warning to getString(R.string.state_failing, s.failures, threshold)
         }

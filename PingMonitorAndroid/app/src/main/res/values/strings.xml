@@ -10,7 +10,7 @@
     <string name="server_error">No se pudo abrir el puerto: %1$s</string>
     <string name="monitoring">Monitoreo activo</string>
     <string name="monitored_devices">Dispositivos vigilados</string>
-    <string name="empty_peers">Agrega la otra tablet con el botón \"+ Agregar\"\nusando su IP de Tailscale (100.x.x.x) o su nombre MagicDNS.</string>
+    <string name="empty_peers">Agrega un equipo con el botón \"+ Agregar\" usando su IP de Tailscale (100.x.x.x) o su nombre MagicDNS.\nPuede ser una PC, otra tablet o cualquier equipo: no necesita tener esta app.</string>
     <string name="warnings_text">Para que las alertas funcionen siempre, permite las notificaciones y quita la optimización de batería.</string>
     <string name="allow_notifications">Permitir notificaciones</string>
     <string name="disable_battery_opt">Quitar optimización de batería</string>
@@ -20,14 +20,14 @@
     <string name="check_now">Verificar ahora</string>
     <string name="settings">Configuración</string>
     <string name="monitoring_off_hint">Activa el monitoreo primero</string>
-    <string name="no_peers_hint">Monitoreo activo. Agrega la otra tablet con \"+ Agregar\"</string>
+    <string name="no_peers_hint">Monitoreo activo. Agrega un equipo con \"+ Agregar\"</string>
 
     <!-- Tarjeta de dispositivo -->
     <string name="remote_name">Se identifica como: %1$s</string>
     <string name="state_stopped">Monitoreo detenido</string>
     <string name="state_checking">Verificando…</string>
     <string name="state_online">En línea</string>
-    <string name="state_no_app">Responde ping (app cerrada)</string>
+    <string name="state_online_ping">En línea (ping)</string>
     <string name="state_offline">SIN CONEXIÓN</string>
     <string name="state_failing">Sin respuesta (%1$d/%2$d)</string>
     <string name="latency_ms">%1$d ms</string>
@@ -38,7 +38,7 @@
 
     <!-- Diálogos -->
     <string name="peer_name">Nombre</string>
-    <string name="peer_name_hint">Ej. Tablet Línea 2</string>
+    <string name="peer_name_hint">Ej. PC Oficina, Tablet Línea 2</string>
     <string name="peer_host">IP de Tailscale o nombre MagicDNS</string>
     <string name="peer_host_hint">Ej. 100.101.102.103</string>
     <string name="save">Guardar</string>

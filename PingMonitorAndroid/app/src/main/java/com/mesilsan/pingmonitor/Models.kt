@@ -15,7 +15,7 @@ enum class PeerState {
     /** Responde al ping y la app PingMonitor del otro lado contesta. */
     ONLINE,
 
-    /** Responde al ping pero la app del otro lado no contesta (cerrada o detenida). */
+    /** Responde al ping; el otro equipo no tiene la app (PC, otro Android) o está cerrada. */
     NO_APP,
 
     /** No responde: sin conexión. */

@@ -27,7 +27,7 @@ Estados que muestra la pantalla por dispositivo:
 | Color | Estado | Significado |
 |---|---|---|
 | 🟢 | En línea | Responde al ping y la app del otro lado contesta |
-| 🟡 | Responde ping (app cerrada) | Hay conexión, pero la app no está corriendo en la otra tablet |
+| 🟢 | En línea (ping) | Responde al ping; el equipo no tiene la app (PC, otro Android…) |
 | 🟡 | Sin respuesta (1/3) | Falló, aún no llega al límite para alertar |
 | 🔴 | SIN CONEXIÓN | Se envió la notificación de desconexión |
 
