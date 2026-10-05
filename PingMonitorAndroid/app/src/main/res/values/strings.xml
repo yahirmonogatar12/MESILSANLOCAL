@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ping Monitor</string>
+
+    <!-- Pantalla principal -->
+    <string name="this_device">Este dispositivo</string>
+    <string name="tailscale_ip">IP Tailscale: %1$s</string>
+    <string name="tailscale_ip_missing">IP Tailscale: no detectada (¿Tailscale está conectado?)</string>
+    <string name="listening_port">Escuchando en el puerto %1$d</string>
+    <string name="server_error">No se pudo abrir el puerto: %1$s</string>
+    <string name="monitoring">Monitoreo activo</string>
+    <string name="monitored_devices">Dispositivos vigilados</string>
+    <string name="empty_peers">Agrega la otra tablet con el botón +\nusando su IP de Tailscale (100.x.x.x) o su nombre MagicDNS.</string>
+    <string name="warnings_text">Para que las alertas funcionen siempre, permite las notificaciones y quita la optimización de batería.</string>
+    <string name="allow_notifications">Permitir notificaciones</string>
+    <string name="disable_battery_opt">Quitar optimización de batería</string>
+    <string name="add_peer">Agregar dispositivo</string>
+    <string name="edit_peer">Editar dispositivo</string>
+    <string name="check_now">Verificar ahora</string>
+    <string name="settings">Configuración</string>
+    <string name="monitoring_off_hint">Activa el monitoreo primero</string>
+    <string name="no_peers_hint">Monitoreo activo. Agrega la otra tablet con el botón +</string>
+
+    <!-- Tarjeta de dispositivo -->
+    <string name="remote_name">Se identifica como: %1$s</string>
+    <string name="state_stopped">Monitoreo detenido</string>
+    <string name="state_checking">Verificando…</string>
+    <string name="state_online">En línea</string>
+    <string name="state_no_app">Responde ping (app cerrada)</string>
+    <string name="state_offline">SIN CONEXIÓN</string>
+    <string name="state_failing">Sin respuesta (%1$d/%2$d)</string>
+    <string name="latency_ms">%1$d ms</string>
+    <string name="last_seen">Última respuesta: %1$s</string>
+    <string name="last_seen_never">Aún no ha respondido</string>
+    <string name="incoming_seen">Nos hizo ping: %1$s</string>
+    <string name="incoming_never">Aún no nos ha hecho ping</string>
+
+    <!-- Diálogos -->
+    <string name="peer_name">Nombre</string>
+    <string name="peer_name_hint">Ej. Tablet Línea 2</string>
+    <string name="peer_host">IP de Tailscale o nombre MagicDNS</string>
+    <string name="peer_host_hint">Ej. 100.101.102.103</string>
+    <string name="save">Guardar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete">Eliminar</string>
+    <string name="delete_peer_title">Eliminar dispositivo</string>
+    <string name="delete_peer_message">¿Dejar de vigilar \"%1$s\"?</string>
+    <string name="error_required">Requerido</string>
+    <string name="error_host">Solo letras, números, puntos, guiones o \":\"</string>
+    <string name="error_range">Debe estar entre %1$d y %2$d</string>
+    <string name="setting_device_name">Nombre de este dispositivo</string>
+    <string name="setting_interval">Verificar cada (segundos)</string>
+    <string name="setting_threshold">Fallos seguidos antes de alertar</string>
+    <string name="setting_repeat">Repetir alerta cada (minutos, 0 = no)</string>
+    <string name="setting_port">Puerto (igual en todas las tablets)</string>
+
+    <!-- Notificaciones -->
+    <string name="channel_service">Monitoreo en ejecución</string>
+    <string name="channel_alerts">Alertas de conexión</string>
+    <string name="channel_alerts_desc">Avisa cuando una tablet pierde conexión</string>
+    <string name="channel_recovery">Conexión recuperada</string>
+    <string name="fg_title">Ping Monitor activo</string>
+    <string name="fg_starting">Iniciando…</string>
+    <string name="fg_no_peers">Sin dispositivos configurados</string>
+    <string name="fg_summary">%1$d de %2$d en línea · cada %3$d s</string>
+    <string name="stop">Detener</string>
+    <string name="alert_down_title">⚠ Sin conexión: %1$s</string>
+    <string name="alert_down_text">%1$s no responde al ping %2$s.</string>
+    <string name="alert_down_since">desde las %1$s</string>
+    <string name="alert_down_never">(nunca ha respondido)</string>
+    <string name="alert_up_title">✓ Conexión recuperada: %1$s</string>
+    <string name="alert_up_text">%1$s volvió a responder a las %2$s.</string>
+    <string name="local_down_title">⚠ Esta tablet perdió conexión</string>
+    <string name="local_no_network">No hay red (Wi‑Fi / Ethernet / datos) en este dispositivo.</string>
+    <string name="local_no_tailscale">Tailscale no está conectado en este dispositivo.</string>
+    <string name="local_up_title">✓ Conexión restablecida</string>
+    <string name="local_up_text">Esta tablet volvió a tener red y Tailscale.</string>
+</resources>

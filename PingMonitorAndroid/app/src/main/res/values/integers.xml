@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Columnas de la lista de dispositivos: 1 en teléfono, más en tablets. -->
+    <integer name="grid_columns">1</integer>
+</resources>
