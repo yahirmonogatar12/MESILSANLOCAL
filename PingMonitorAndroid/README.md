@@ -43,7 +43,7 @@ para confirmar que la comunicación funciona en ambos sentidos.
    - Toca **Permitir notificaciones** y **Quitar optimización de batería**
      (necesario para que siga funcionando con la pantalla apagada y arranque
      sola al reiniciar).
-   - Toca **Agregar dispositivo** y escribe el nombre e IP de Tailscale (o el
+   - Toca **+ Agregar** y escribe el nombre e IP de Tailscale (o el
      nombre MagicDNS) de la **otra** tablet.
    - Activa **Monitoreo activo**.
 
@@ -61,7 +61,7 @@ El monitoreo se reinicia solo al encender la tablet.
 
 ### Opción A: Android Studio
 
-Abre la carpeta `PingMonitorAndroid/` en Android Studio (Koala o más reciente)
+Abre la carpeta del proyecto en Android Studio (Koala o más reciente)
 y ejecuta **Run** o **Build › Build APK(s)**.
 
 ### Opción B: línea de comandos
@@ -80,9 +80,18 @@ El workflow `.github/workflows/ping-monitor-android.yml` compila la app en cada
 push que cambie esta carpeta. El APK se descarga desde la pestaña **Actions** →
 la ejecución → artefacto **PingMonitor-apk**.
 
+> Si instalas un APK firmado con otra llave (p. ej. el compilado por Claude y
+> luego uno de Android Studio), desinstala primero la versión anterior.
+>
 > El APK release se firma con la llave *debug* para poder instalarlo directo
 > (sideload). Si se va a publicar, configura un keystore propio en
 > `app/build.gradle.kts`.
+
+## Dependencias
+
+Ninguna librería externa: solo APIs de Android y la librería estándar de
+Kotlin (sin AndroidX ni Material). Así el APK es pequeño (~0.8 MB) y se puede
+compilar incluso sin acceso al repositorio Maven de Google.
 
 ## Requisitos
 
@@ -94,8 +103,7 @@ la ejecución → artefacto **PingMonitor-apk**.
 
 ```
 app/src/main/java/com/mesilsan/pingmonitor/
-├── MainActivity.kt      Pantalla principal, diálogos de dispositivos y configuración
-├── PeerAdapter.kt       Tarjetas de estado de cada dispositivo
+├── MainActivity.kt      Pantalla principal, tarjetas de estado y diálogos
 ├── MonitorService.kt    Servicio en primer plano: ciclo de ping + alertas
 ├── HeartbeatServer.kt   Servidor TCP que responde PONG
 ├── PeerChecker.kt       Ping ICMP + ping TCP de aplicación

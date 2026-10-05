@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="brand">#1565C0</color>
+    <color name="brand_dark">#0D47A1</color>
     <color name="status_online">#2E7D32</color>
     <color name="status_warning">#EF8F00</color>
     <color name="status_offline">#C62828</color>
     <color name="status_unknown">#9E9E9E</color>
+    <color name="card_bg">#FFFFFF</color>
+    <color name="card_stroke">#DADCE0</color>
+    <color name="screen_bg">#F3F5F8</color>
     <color name="warning_bg">#FFF3E0</color>
     <color name="warning_text">#5D4037</color>
     <color name="ic_launcher_background">#1565C0</color>

@@ -3,6 +3,9 @@
     <color name="status_online">#66BB6A</color>
     <color name="status_warning">#FFB300</color>
     <color name="status_offline">#EF5350</color>
+    <color name="card_bg">#1F2328</color>
+    <color name="card_stroke">#3A3F45</color>
+    <color name="screen_bg">#121417</color>
     <color name="warning_bg">#3E2723</color>
     <color name="warning_text">#FFE0B2</color>
 </resources>

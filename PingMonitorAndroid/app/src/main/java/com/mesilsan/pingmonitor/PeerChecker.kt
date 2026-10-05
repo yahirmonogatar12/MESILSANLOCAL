@@ -1,12 +1,11 @@
 package com.mesilsan.pingmonitor
 
 import android.os.SystemClock
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToLong
 
@@ -27,13 +26,18 @@ object PeerChecker {
         val latencyMs get() = icmpMs ?: appMs
     }
 
-    suspend fun check(host: String, port: Int, myName: String, timeoutMs: Int = 3000): Result =
-        coroutineScope {
-            val icmp = async(Dispatchers.IO) { icmpPing(host, timeoutMs) }
-            val app = async(Dispatchers.IO) { appPing(host, port, myName, timeoutMs) }
-            val appResult = app.await()
-            Result(icmp.await(), appResult?.first, appResult?.second)
+    /** Ejecuta ambas pruebas en paralelo usando [executor]. */
+    fun check(executor: ExecutorService, host: String, port: Int, myName: String, timeoutMs: Int = 3000): Result {
+        val icmp = executor.submit(Callable { icmpPing(host, timeoutMs) })
+        val app = appPing(host, port, myName, timeoutMs)
+        val icmpMs = try {
+            icmp.get((timeoutMs + 5000).toLong(), TimeUnit.MILLISECONDS)
+        } catch (e: Exception) {
+            icmp.cancel(true)
+            null
         }
+        return Result(icmpMs, app?.first, app?.second)
+    }
 
     /** Devuelve la latencia en ms, o null si no respondió. */
     private fun icmpPing(host: String, timeoutMs: Int): Long? {
@@ -52,6 +56,8 @@ object PeerChecker {
             Regex("time[=<]\\s*([0-9.]+)").find(output)
                 ?.groupValues?.get(1)?.toDoubleOrNull()?.roundToLong()
                 ?: (SystemClock.elapsedRealtime() - start)
+        } catch (e: InterruptedException) {
+            null
         } catch (e: Exception) {
             // Si el comando ping no existe en el dispositivo, usar el método de Java.
             try {

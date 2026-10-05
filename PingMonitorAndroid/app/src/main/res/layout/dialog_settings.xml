@@ -3,87 +3,87 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <LinearLayout
+    <LinearLayout 
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minWidth="320dp"
         android:orientation="vertical"
         android:paddingStart="24dp"
-        android:paddingTop="16dp"
+        android:paddingTop="8dp"
         android:paddingEnd="24dp">
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutDeviceName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/setting_device_name">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/inputDeviceName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textCapWords"
-                android:maxLines="1" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutInterval"
-            android:layout_width="match_parent"
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/setting_interval">
+            android:text="@string/setting_device_name"
+            android:textAppearance="@android:style/TextAppearance.Material.Caption" />
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/inputInterval"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:maxLines="1" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutThreshold"
+        <EditText
+            android:id="@+id/inputDeviceName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/setting_threshold">
+            android:importantForAutofill="no"
+            android:inputType="textCapWords"
+            android:maxLines="1" />
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/inputThreshold"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:maxLines="1" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutRepeat"
-            android:layout_width="match_parent"
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/setting_repeat">
+            android:text="@string/setting_interval"
+            android:textAppearance="@android:style/TextAppearance.Material.Caption" />
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/inputRepeat"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:maxLines="1" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutPort"
+        <EditText
+            android:id="@+id/inputInterval"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/setting_port">
+            android:importantForAutofill="no"
+            android:inputType="number"
+            android:maxLines="1" />
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/inputPort"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:maxLines="1" />
-        </com.google.android.material.textfield.TextInputLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setting_threshold"
+            android:textAppearance="@android:style/TextAppearance.Material.Caption" />
+
+        <EditText
+            android:id="@+id/inputThreshold"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:importantForAutofill="no"
+            android:inputType="number"
+            android:maxLines="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setting_repeat"
+            android:textAppearance="@android:style/TextAppearance.Material.Caption" />
+
+        <EditText
+            android:id="@+id/inputRepeat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:importantForAutofill="no"
+            android:inputType="number"
+            android:maxLines="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setting_port"
+            android:textAppearance="@android:style/TextAppearance.Material.Caption" />
+
+        <EditText
+            android:id="@+id/inputPort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:importantForAutofill="no"
+            android:inputType="number"
+            android:maxLines="1" />
     </LinearLayout>
 </ScrollView>

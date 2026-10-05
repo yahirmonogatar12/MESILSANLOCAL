@@ -10,16 +10,17 @@
     <string name="server_error">No se pudo abrir el puerto: %1$s</string>
     <string name="monitoring">Monitoreo activo</string>
     <string name="monitored_devices">Dispositivos vigilados</string>
-    <string name="empty_peers">Agrega la otra tablet con el botón +\nusando su IP de Tailscale (100.x.x.x) o su nombre MagicDNS.</string>
+    <string name="empty_peers">Agrega la otra tablet con el botón \"+ Agregar\"\nusando su IP de Tailscale (100.x.x.x) o su nombre MagicDNS.</string>
     <string name="warnings_text">Para que las alertas funcionen siempre, permite las notificaciones y quita la optimización de batería.</string>
     <string name="allow_notifications">Permitir notificaciones</string>
     <string name="disable_battery_opt">Quitar optimización de batería</string>
     <string name="add_peer">Agregar dispositivo</string>
+    <string name="add_peer_button">+ Agregar</string>
     <string name="edit_peer">Editar dispositivo</string>
     <string name="check_now">Verificar ahora</string>
     <string name="settings">Configuración</string>
     <string name="monitoring_off_hint">Activa el monitoreo primero</string>
-    <string name="no_peers_hint">Monitoreo activo. Agrega la otra tablet con el botón +</string>
+    <string name="no_peers_hint">Monitoreo activo. Agrega la otra tablet con \"+ Agregar\"</string>
 
     <!-- Tarjeta de dispositivo -->
     <string name="remote_name">Se identifica como: %1$s</string>

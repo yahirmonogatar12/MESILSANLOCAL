@@ -10,20 +10,11 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
-import androidx.core.app.ServiceCompat
-import androidx.core.content.ContextCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 
 /**
  * Servicio en primer plano que:
@@ -33,17 +24,21 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 class MonitorService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val checkNow = Channel<Unit>(Channel.CONFLATED)
-
     private lateinit var store: PeerStore
-    private var loopJob: Job? = null
+    private val pool: ExecutorService = Executors.newCachedThreadPool()
+
+    /** Recibe un elemento para despertar al ciclo antes de tiempo. */
+    private val wakeUp = LinkedBlockingQueue<Boolean>()
+
+    @Volatile
+    private var stopped = false
+    private var worker: Thread? = null
     private var server: HeartbeatServer? = null
     private var serverPort = -1
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
 
-    /** Solo se modifica desde el ciclo de monitoreo (una corrutina a la vez). */
+    /** Solo se modifica desde el hilo [worker]. */
     private val statuses = LinkedHashMap<String, PeerStatus>()
     private var localProblem: String? = null
 
@@ -57,22 +52,20 @@ class MonitorService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             store.monitoringEnabled = false
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
         }
 
         try {
-            ServiceCompat.startForeground(
-                this,
-                Notifications.ID_FOREGROUND,
-                Notifications.foreground(this, getString(R.string.fg_starting)),
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-                } else {
-                    0
-                },
-            )
+            val notification = Notifications.foreground(this, getString(R.string.fg_starting))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    Notifications.ID_FOREGROUND, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                )
+            } else {
+                startForeground(Notifications.ID_FOREGROUND, notification)
+            }
         } catch (e: Exception) {
             // Android puede bloquear el arranque desde segundo plano si la app
             // no está exenta de la optimización de batería.
@@ -84,21 +77,24 @@ class MonitorService : Service() {
         store.monitoringEnabled = true
         MonitorState.setRunning(true)
         ensureServer()
-        if (loopJob?.isActive != true) {
+        if (worker?.isAlive != true) {
             acquireLocks()
-            loopJob = scope.launch { monitorLoop() }
+            worker = Thread({ monitorLoop() }, "ping-monitor").also { it.start() }
         } else {
-            checkNow.trySend(Unit)
+            wakeUp.offer(true)
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
-        scope.cancel()
+        stopped = true
+        wakeUp.offer(true)
+        worker?.interrupt()
+        pool.shutdownNow()
         server?.stop()
         server = null
         releaseLocks()
-        MonitorState.statuses.value.keys.forEach { Notifications.cancelPeer(this, it) }
+        MonitorState.statuses.keys.forEach { Notifications.cancelPeer(this, it) }
         Notifications.cancelLocal(this)
         MonitorState.setRunning(false)
         super.onDestroy()
@@ -118,19 +114,26 @@ class MonitorService : Service() {
         ).also { it.start() }
     }
 
-    private suspend fun monitorLoop() {
-        while (scope.isActive) {
+    private fun monitorLoop() {
+        while (!stopped) {
             try {
                 runCycle()
+            } catch (e: InterruptedException) {
+                break
             } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.e(TAG, "Error en ciclo de monitoreo", e)
             }
-            withTimeoutOrNull(store.intervalSec * 1000L) { checkNow.receive() }
+            if (stopped) break
+            try {
+                wakeUp.poll(store.intervalSec.toLong(), TimeUnit.SECONDS)
+                wakeUp.clear()
+            } catch (e: InterruptedException) {
+                break
+            }
         }
     }
 
-    private suspend fun runCycle() {
+    private fun runCycle() {
         val peers = store.peers()
         syncPeers(peers)
         checkLocalNetwork()
@@ -138,9 +141,19 @@ class MonitorService : Service() {
 
         val myName = store.deviceName
         val port = store.port
-        val results = coroutineScope {
-            peers.map { peer -> async { peer to PeerChecker.check(peer.host, port, myName) } }.awaitAll()
+        val futures = peers.map { peer ->
+            peer to pool.submit(Callable { PeerChecker.check(pool, peer.host, port, myName) })
         }
+        val results = futures.map { (peer, future) ->
+            peer to try {
+                future.get(30, TimeUnit.SECONDS)
+            } catch (e: InterruptedException) {
+                throw e
+            } catch (e: Exception) {
+                PeerChecker.Result(null, null, null)
+            }
+        }
+        if (stopped) return
 
         val now = System.currentTimeMillis()
         val threshold = store.failThreshold
@@ -265,8 +278,7 @@ class MonitorService : Service() {
         private const val TAG = "MonitorService"
 
         fun start(context: Context, action: String? = null) {
-            val intent = Intent(context, MonitorService::class.java).setAction(action)
-            ContextCompat.startForegroundService(context, intent)
+            context.startForegroundService(Intent(context, MonitorService::class.java).setAction(action))
         }
 
         fun stop(context: Context) {

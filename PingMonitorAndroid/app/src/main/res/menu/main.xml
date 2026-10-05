@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_check_now"
         android:icon="@drawable/ic_refresh"
-        android:title="@string/check_now"
-        app:showAsAction="ifRoom" />
+        android:showAsAction="ifRoom"
+        android:title="@string/check_now" />
     <item
         android:id="@+id/action_settings"
         android:icon="@drawable/ic_settings"
-        android:title="@string/settings"
-        app:showAsAction="ifRoom" />
+        android:showAsAction="ifRoom"
+        android:title="@string/settings" />
 </menu>

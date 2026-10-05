@@ -1,41 +1,64 @@
 package com.mesilsan.pingmonitor
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import android.os.Handler
+import android.os.Looper
+import java.util.concurrent.CopyOnWriteArraySet
 
-/** Estado compartido entre el servicio y la pantalla. */
+/** Estado compartido entre el servicio y la pantalla. Los listeners se llaman en el hilo principal. */
 object MonitorState {
 
-    private val _running = MutableStateFlow(false)
-    val running: StateFlow<Boolean> = _running.asStateFlow()
+    @Volatile
+    var running = false
+        private set
 
     /** Estado por id de dispositivo. */
-    private val _statuses = MutableStateFlow<Map<String, PeerStatus>>(emptyMap())
-    val statuses: StateFlow<Map<String, PeerStatus>> = _statuses.asStateFlow()
+    @Volatile
+    var statuses: Map<String, PeerStatus> = emptyMap()
+        private set
 
     /** Último ping recibido por dirección IP remota. */
-    private val _incoming = MutableStateFlow<Map<String, IncomingPing>>(emptyMap())
-    val incoming: StateFlow<Map<String, IncomingPing>> = _incoming.asStateFlow()
+    @Volatile
+    var incoming: Map<String, IncomingPing> = emptyMap()
+        private set
 
     /** Error del servidor local (p. ej. puerto ocupado), o null si funciona. */
-    private val _serverError = MutableStateFlow<String?>(null)
-    val serverError: StateFlow<String?> = _serverError.asStateFlow()
+    @Volatile
+    var serverError: String? = null
+        private set
+
+    private val listeners = CopyOnWriteArraySet<() -> Unit>()
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    fun addListener(listener: () -> Unit) {
+        listeners.add(listener)
+    }
+
+    fun removeListener(listener: () -> Unit) {
+        listeners.remove(listener)
+    }
+
+    private fun changed() {
+        mainHandler.post { listeners.forEach { it() } }
+    }
 
     fun setRunning(value: Boolean) {
-        _running.value = value
+        running = value
+        changed()
     }
 
     fun setStatuses(value: Map<String, PeerStatus>) {
-        _statuses.value = value
+        statuses = value
+        changed()
     }
 
+    @Synchronized
     fun recordIncoming(ping: IncomingPing) {
-        _incoming.update { it + (ping.address to ping) }
+        incoming = incoming + (ping.address to ping)
+        changed()
     }
 
     fun setServerError(value: String?) {
-        _serverError.value = value
+        serverError = value
+        changed()
     }
 }

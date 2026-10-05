@@ -1,62 +1,81 @@
 package com.mesilsan.pingmonitor
 
 import android.Manifest
+import android.app.Activity
+import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import android.text.format.DateUtils
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.Switch
+import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.mesilsan.pingmonitor.databinding.ActivityMainBinding
-import com.mesilsan.pingmonitor.databinding.DialogPeerBinding
-import com.mesilsan.pingmonitor.databinding.DialogSettingsBinding
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
-    private lateinit var binding: ActivityMainBinding
     private lateinit var store: PeerStore
-    private lateinit var adapter: PeerAdapter
-    private var updatingSwitch = false
 
-    private val notificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (!granted) openNotificationSettings()
+    private lateinit var deviceName: TextView
+    private lateinit var tailscaleIp: TextView
+    private lateinit var portText: TextView
+    private lateinit var serverError: TextView
+    private lateinit var switchMonitoring: Switch
+    private lateinit var warningsCard: View
+    private lateinit var btnNotifications: Button
+    private lateinit var btnBattery: Button
+    private lateinit var peersContainer: LinearLayout
+    private lateinit var emptyText: TextView
+
+    private var updatingSwitch = false
+    private var openSettingsIfDenied = false
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val stateListener: () -> Unit = { render() }
+    private val ticker = object : Runnable {
+        override fun run() {
+            // Refresca "hace X segundos" y la IP de Tailscale.
             render()
+            handler.postDelayed(this, 2000)
         }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        setSupportActionBar(binding.toolbar)
-
+        setContentView(R.layout.activity_main)
         store = PeerStore(this)
-        adapter = PeerAdapter(onClick = { showPeerDialog(it) })
-        binding.peerList.layoutManager =
-            GridLayoutManager(this, resources.getInteger(R.integer.grid_columns))
-        binding.peerList.adapter = adapter
 
-        binding.fabAdd.setOnClickListener { showPeerDialog(null) }
-        binding.btnNotifications.setOnClickListener { requestNotifications() }
-        binding.btnBattery.setOnClickListener { requestBatteryExemption() }
-        binding.switchMonitoring.setOnCheckedChangeListener { _, checked ->
+        deviceName = findViewById(R.id.deviceName)
+        tailscaleIp = findViewById(R.id.tailscaleIp)
+        portText = findViewById(R.id.port)
+        serverError = findViewById(R.id.serverError)
+        switchMonitoring = findViewById(R.id.switchMonitoring)
+        warningsCard = findViewById(R.id.warningsCard)
+        btnNotifications = findViewById(R.id.btnNotifications)
+        btnBattery = findViewById(R.id.btnBattery)
+        peersContainer = findViewById(R.id.peersContainer)
+        emptyText = findViewById(R.id.emptyText)
+
+        findViewById<Button>(R.id.btnAdd).setOnClickListener { showPeerDialog(null) }
+        btnNotifications.setOnClickListener {
+            openSettingsIfDenied = true
+            requestNotifications()
+        }
+        btnBattery.setOnClickListener { requestBatteryExemption() }
+        switchMonitoring.setOnCheckedChangeListener { _, checked ->
             if (updatingSwitch) return@setOnCheckedChangeListener
             if (checked) startMonitoring() else MonitorService.stop(this)
         }
@@ -64,24 +83,20 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) {
             if (!Notifications.canNotify(this)) requestNotifications()
             // Si estaba activo (p. ej. la app fue cerrada a la fuerza), reanudar.
-            if (store.monitoringEnabled && !MonitorState.running.value) startMonitoring()
+            if (store.monitoringEnabled && !MonitorState.running) startMonitoring()
         }
+    }
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { MonitorState.running.collect { render() } }
-                launch { MonitorState.statuses.collect { render() } }
-                launch { MonitorState.incoming.collect { render() } }
-                launch { MonitorState.serverError.collect { render() } }
-                launch {
-                    // Refresca "hace X segundos" y la IP de Tailscale.
-                    while (true) {
-                        delay(2000)
-                        render()
-                    }
-                }
-            }
-        }
+    override fun onStart() {
+        super.onStart()
+        MonitorState.addListener(stateListener)
+        handler.post(ticker)
+    }
+
+    override fun onStop() {
+        MonitorState.removeListener(stateListener)
+        handler.removeCallbacks(ticker)
+        super.onStop()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -91,7 +106,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
         R.id.action_check_now -> {
-            if (MonitorState.running.value) {
+            if (MonitorState.running) {
                 MonitorService.start(this, MonitorService.ACTION_CHECK_NOW)
             } else {
                 Toast.makeText(this, R.string.monitoring_off_hint, Toast.LENGTH_SHORT).show()
@@ -105,42 +120,118 @@ class MainActivity : AppCompatActivity() {
         else -> super.onOptionsItemSelected(item)
     }
 
-    private fun render() {
-        val running = MonitorState.running.value
+    @Deprecated("Deprecated in Java")
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_NOTIFICATIONS) {
+            val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
+            if (!granted && openSettingsIfDenied) openNotificationSettings()
+            openSettingsIfDenied = false
+            render()
+        }
+    }
 
-        binding.deviceName.text = store.deviceName
-        binding.tailscaleIp.text = NetworkUtils.tailscaleIp()
+    private fun render() {
+        val running = MonitorState.running
+
+        deviceName.text = store.deviceName
+        tailscaleIp.text = NetworkUtils.tailscaleIp()
             ?.let { getString(R.string.tailscale_ip, it) }
             ?: getString(R.string.tailscale_ip_missing)
-        binding.port.text = getString(R.string.listening_port, store.port)
-        val serverError = MonitorState.serverError.value
-        binding.serverError.isVisible = running && serverError != null
-        binding.serverError.text = getString(R.string.server_error, serverError ?: "")
+        portText.text = getString(R.string.listening_port, store.port)
+        val error = MonitorState.serverError
+        serverError.visibility = if (running && error != null) View.VISIBLE else View.GONE
+        serverError.text = getString(R.string.server_error, error ?: "")
 
         updatingSwitch = true
-        binding.switchMonitoring.isChecked = running
+        switchMonitoring.isChecked = running
         updatingSwitch = false
 
         val needsNotifications = !Notifications.canNotify(this)
         val needsBattery = !isIgnoringBatteryOptimizations()
-        binding.warningsCard.isVisible = needsNotifications || needsBattery
-        binding.btnNotifications.isVisible = needsNotifications
-        binding.btnBattery.isVisible = needsBattery
+        warningsCard.visibility = if (needsNotifications || needsBattery) View.VISIBLE else View.GONE
+        btnNotifications.visibility = if (needsNotifications) View.VISIBLE else View.GONE
+        btnBattery.visibility = if (needsBattery) View.VISIBLE else View.GONE
 
-        val statuses = MonitorState.statuses.value
-        val incoming = MonitorState.incoming.value.values
+        val statuses = MonitorState.statuses
+        val incoming = MonitorState.incoming.values
         val threshold = store.failThreshold
-        val rows = store.peers().map { peer ->
-            val status = statuses[peer.id]?.takeIf { it.peer.host == peer.host }
-                ?.copy(peer = peer) ?: PeerStatus(peer)
-            val fromPeer = incoming
-                .filter { normalize(it.address) == peer.host || (status.remoteName != null && it.name == status.remoteName) }
-                .maxByOrNull { it.time }
-            PeerRow(status, fromPeer, running, threshold)
+        val peers = store.peers()
+        val columns = resources.getInteger(R.integer.grid_columns).coerceAtLeast(1)
+
+        peersContainer.removeAllViews()
+        peers.chunked(columns).forEach { chunk ->
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            for (i in 0 until columns) {
+                val peer = chunk.getOrNull(i)
+                val cell = if (peer == null) {
+                    View(this)
+                } else {
+                    val status = statuses[peer.id]?.takeIf { it.peer.host == peer.host }
+                        ?.copy(peer = peer) ?: PeerStatus(peer)
+                    val fromPeer = incoming
+                        .filter {
+                            normalize(it.address) == peer.host ||
+                                (status.remoteName != null && it.name == status.remoteName)
+                        }
+                        .maxByOrNull { it.time }
+                    peerCard(row, status, fromPeer, running, threshold)
+                }
+                row.addView(cell, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            peersContainer.addView(row)
         }
-        adapter.submit(rows)
-        binding.emptyText.isVisible = rows.isEmpty()
+        emptyText.visibility = if (peers.isEmpty()) View.VISIBLE else View.GONE
     }
+
+    private fun peerCard(
+        parent: LinearLayout,
+        s: PeerStatus,
+        incoming: IncomingPing?,
+        running: Boolean,
+        threshold: Int,
+    ): View {
+        val card = layoutInflater.inflate(R.layout.item_peer, parent, false)
+        val now = System.currentTimeMillis()
+
+        card.findViewById<TextView>(R.id.name).text = s.peer.name
+        card.findViewById<TextView>(R.id.host).text = s.peer.host
+        card.findViewById<TextView>(R.id.remoteName).apply {
+            visibility = if (s.remoteName != null) View.VISIBLE else View.GONE
+            text = getString(R.string.remote_name, s.remoteName ?: "")
+        }
+
+        val (color, label) = when {
+            !running -> R.color.status_unknown to getString(R.string.state_stopped)
+            s.state == PeerState.UNKNOWN -> R.color.status_unknown to getString(R.string.state_checking)
+            s.state == PeerState.ONLINE -> R.color.status_online to getString(R.string.state_online)
+            s.state == PeerState.NO_APP -> R.color.status_warning to getString(R.string.state_no_app)
+            s.alerted -> R.color.status_offline to getString(R.string.state_offline)
+            else -> R.color.status_warning to getString(R.string.state_failing, s.failures, threshold)
+        }
+        val colorInt = getColor(color)
+        card.findViewById<View>(R.id.statusDot).backgroundTintList = ColorStateList.valueOf(colorInt)
+        card.findViewById<TextView>(R.id.state).apply {
+            text = label
+            setTextColor(colorInt)
+        }
+        card.findViewById<TextView>(R.id.latency).apply {
+            visibility = if (running && s.latencyMs != null) View.VISIBLE else View.GONE
+            text = getString(R.string.latency_ms, s.latencyMs ?: 0L)
+        }
+        card.findViewById<TextView>(R.id.lastSeen).text = s.lastSeen
+            ?.let { getString(R.string.last_seen, relative(it, now)) }
+            ?: getString(R.string.last_seen_never)
+        card.findViewById<TextView>(R.id.incoming).text = incoming
+            ?.let { getString(R.string.incoming_seen, relative(it.time, now)) }
+            ?: getString(R.string.incoming_never)
+
+        card.setOnClickListener { showPeerDialog(s.peer) }
+        return card
+    }
+
+    private fun relative(time: Long, now: Long): CharSequence =
+        DateUtils.getRelativeTimeSpanString(time.coerceAtMost(now), now, DateUtils.SECOND_IN_MILLIS)
 
     private fun normalize(address: String) = address.removePrefix("::ffff:").substringBefore('%')
 
@@ -152,19 +243,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun reloadService() {
-        if (MonitorState.running.value) MonitorService.start(this, MonitorService.ACTION_CHECK_NOW)
+        if (MonitorState.running) MonitorService.start(this, MonitorService.ACTION_CHECK_NOW)
         render()
     }
 
     private fun showPeerDialog(peer: Peer?) {
-        val dialogBinding = DialogPeerBinding.inflate(layoutInflater)
+        val view = layoutInflater.inflate(R.layout.dialog_peer, null)
+        val inputName = view.findViewById<EditText>(R.id.inputName)
+        val inputHost = view.findViewById<EditText>(R.id.inputHost)
         peer?.let {
-            dialogBinding.inputName.setText(it.name)
-            dialogBinding.inputHost.setText(it.host)
+            inputName.setText(it.name)
+            inputHost.setText(it.host)
         }
-        val builder = MaterialAlertDialogBuilder(this)
+        val builder = AlertDialog.Builder(this)
             .setTitle(if (peer == null) R.string.add_peer else R.string.edit_peer)
-            .setView(dialogBinding.root)
+            .setView(view)
             .setPositiveButton(R.string.save, null)
             .setNegativeButton(R.string.cancel, null)
         if (peer != null) {
@@ -173,18 +266,21 @@ class MainActivity : AppCompatActivity() {
         val dialog = builder.create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val name = dialogBinding.inputName.text?.toString()?.trim().orEmpty()
-                val host = dialogBinding.inputHost.text?.toString()?.trim().orEmpty()
-                dialogBinding.layoutName.error =
-                    if (name.isEmpty()) getString(R.string.error_required) else null
-                dialogBinding.layoutHost.error = when {
-                    host.isEmpty() -> getString(R.string.error_required)
-                    !HOST_REGEX.matches(host) -> getString(R.string.error_host)
-                    else -> null
+                val name = inputName.text.toString().trim()
+                val host = inputHost.text.toString().trim()
+                var ok = true
+                if (name.isEmpty()) {
+                    inputName.error = getString(R.string.error_required)
+                    ok = false
                 }
-                if (dialogBinding.layoutName.error != null || dialogBinding.layoutHost.error != null) {
-                    return@setOnClickListener
+                if (host.isEmpty()) {
+                    inputHost.error = getString(R.string.error_required)
+                    ok = false
+                } else if (!HOST_REGEX.matches(host)) {
+                    inputHost.error = getString(R.string.error_host)
+                    ok = false
                 }
+                if (!ok) return@setOnClickListener
                 if (peer == null) {
                     store.addPeer(name, host)
                 } else {
@@ -198,7 +294,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmDelete(peer: Peer) {
-        MaterialAlertDialogBuilder(this)
+        AlertDialog.Builder(this)
             .setTitle(R.string.delete_peer_title)
             .setMessage(getString(R.string.delete_peer_message, peer.name))
             .setPositiveButton(R.string.delete) { _, _ ->
@@ -211,49 +307,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSettingsDialog() {
-        val d = DialogSettingsBinding.inflate(layoutInflater)
-        d.inputDeviceName.setText(store.deviceName)
-        d.inputInterval.setText(store.intervalSec.toString())
-        d.inputThreshold.setText(store.failThreshold.toString())
-        d.inputRepeat.setText(store.repeatAlertMin.toString())
-        d.inputPort.setText(store.port.toString())
+        val view = layoutInflater.inflate(R.layout.dialog_settings, null)
+        val inputDeviceName = view.findViewById<EditText>(R.id.inputDeviceName)
+        val inputInterval = view.findViewById<EditText>(R.id.inputInterval)
+        val inputThreshold = view.findViewById<EditText>(R.id.inputThreshold)
+        val inputRepeat = view.findViewById<EditText>(R.id.inputRepeat)
+        val inputPort = view.findViewById<EditText>(R.id.inputPort)
+        inputDeviceName.setText(store.deviceName)
+        inputInterval.setText(store.intervalSec.toString())
+        inputThreshold.setText(store.failThreshold.toString())
+        inputRepeat.setText(store.repeatAlertMin.toString())
+        inputPort.setText(store.port.toString())
 
-        val dialog = MaterialAlertDialogBuilder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.settings)
-            .setView(d.root)
+            .setView(view)
             .setPositiveButton(R.string.save, null)
             .setNegativeButton(R.string.cancel, null)
             .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val name = d.inputDeviceName.text?.toString()?.trim().orEmpty()
-                val interval = d.inputInterval.text?.toString()?.toIntOrNull()
-                val threshold = d.inputThreshold.text?.toString()?.toIntOrNull()
-                val repeat = d.inputRepeat.text?.toString()?.toIntOrNull()
-                val port = d.inputPort.text?.toString()?.toIntOrNull()
-
-                d.layoutDeviceName.error = if (name.isEmpty()) getString(R.string.error_required) else null
-                d.layoutInterval.error =
-                    if (interval == null || interval < PeerStore.MIN_INTERVAL || interval > PeerStore.MAX_INTERVAL) {
-                        getString(R.string.error_range, PeerStore.MIN_INTERVAL, PeerStore.MAX_INTERVAL)
-                    } else null
-                d.layoutThreshold.error =
-                    if (threshold == null || threshold !in 1..100) getString(R.string.error_range, 1, 100) else null
-                d.layoutRepeat.error =
-                    if (repeat == null || repeat !in 0..1440) getString(R.string.error_range, 0, 1440) else null
-                d.layoutPort.error =
-                    if (port == null || port !in 1024..65535) getString(R.string.error_range, 1024, 65535) else null
-                if (listOf(d.layoutDeviceName, d.layoutInterval, d.layoutThreshold, d.layoutRepeat, d.layoutPort)
-                        .any { it.error != null }
-                ) {
+                val name = inputDeviceName.text.toString().trim()
+                if (name.isEmpty()) inputDeviceName.error = getString(R.string.error_required)
+                val interval = readInt(inputInterval, PeerStore.MIN_INTERVAL, PeerStore.MAX_INTERVAL)
+                val threshold = readInt(inputThreshold, 1, 100)
+                val repeat = readInt(inputRepeat, 0, 1440)
+                val port = readInt(inputPort, 1024, 65535)
+                if (name.isEmpty() || interval == null || threshold == null || repeat == null || port == null) {
                     return@setOnClickListener
                 }
-
                 store.deviceName = name
-                store.intervalSec = interval!!
-                store.failThreshold = threshold!!
-                store.repeatAlertMin = repeat!!
-                store.port = port!!
+                store.intervalSec = interval
+                store.failThreshold = threshold
+                store.repeatAlertMin = repeat
+                store.port = port
                 dialog.dismiss()
                 reloadService()
             }
@@ -261,12 +348,22 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    /** Lee un entero en [min, max]; si no es válido marca el error y devuelve null. */
+    private fun readInt(input: EditText, min: Int, max: Int): Int? {
+        val value = input.text.toString().trim().toIntOrNull()
+        return if (value == null || value < min || value > max) {
+            input.error = getString(R.string.error_range, min, max)
+            null
+        } else {
+            value
+        }
+    }
+
     private fun requestNotifications() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATIONS)
         } else {
             openNotificationSettings()
         }
@@ -285,6 +382,7 @@ class MainActivity : AppCompatActivity() {
     private fun isIgnoringBatteryOptimizations(): Boolean =
         getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) ?: true
 
+    @Suppress("BatteryLife")
     private fun requestBatteryExemption() {
         try {
             startActivity(
@@ -299,6 +397,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val REQUEST_NOTIFICATIONS = 10
+
         /** IPv4, IPv6 o nombre MagicDNS. */
         private val HOST_REGEX = Regex("^[A-Za-z0-9.:\\-]+$")
     }
