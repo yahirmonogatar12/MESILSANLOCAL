@@ -1279,7 +1279,7 @@
     setLoading(true);
     try {
       await ensureSheetJs();
-      const headers = ["PART NO", "PART SYS", "ITEM", "SPEC", "QTY", "COSTO", "TOTAL"];
+      const headers = ["PART NO", "PART SYS", "ITEM", "QTY", "UNIDAD", "COSTO", "TOTAL"];
       if (!esSoloDocumental()) headers.unshift("TARIMA");
       const wb = window.XLSX.utils.book_new();
       window.XLSX.utils.book_append_sheet(
