@@ -1,6 +1,6 @@
 (function () {
   const STYLE_ID = "material-invoices-css";
-  const STYLE_VERSION = "20260728manual1";
+  const STYLE_VERSION = "20261008sinpallet";
   const STYLE_HREF = `/static/css/material_invoices.css?v=${STYLE_VERSION}`;
 
   const state = {
@@ -487,8 +487,8 @@
         : statusBadge(estadoVisual);
       const fila = `<tr class="${diff ? "mat-invoice-row-diff" : ""}">
       <td>${toggle}${numberText(row.line_no)}</td>
-      <td>${escapeHtml(row.pallet_no_original)}</td>
-      <td>${escapeHtml(row.pallet_no)}</td>
+      <td data-field="pallet_no_original">${escapeHtml(row.pallet_no_original)}</td>
+      <td data-field="pallet_no">${escapeHtml(row.pallet_no)}</td>
       <td title="${escapeHtml(row.numero_parte_sistema)}">${escapeHtml(row.numero_parte_sistema)}</td>
       <td>${numberText(row.cantidad_packing)}</td>
       <td>${numberText(row.entradas_recibidas)}</td>
@@ -520,8 +520,8 @@
       }
       return `<tr class="mat-invoice-lote-row${palletDistinto ? " mat-invoice-row-diff" : ""}" data-lotes-of="${escapeHtml(parentId)}" hidden>
         <td></td>
-        <td></td>
-        <td>${palletCell}</td>
+        <td data-field="pallet_no_original"></td>
+        <td data-field="pallet_no">${palletCell}</td>
         <td colspan="2" title="${escapeHtml(l.codigo_material_recibido)}">↳ ${escapeHtml(l.codigo_material_recibido)}</td>
         <td></td>
         <td></td>
@@ -723,7 +723,7 @@
       const diff = row.estado_match === "SIN_ALIAS";
       return `<tr class="${diff ? "mat-invoice-row-diff" : ""}">
         <td>${escapeHtml(row.line_no)}</td>
-        <td>${escapeHtml(row.pallet_no)}</td>
+        <td data-field="pallet_no">${escapeHtml(row.pallet_no)}</td>
         <td>${escapeHtml(row.raw_part_num)}</td>
         <td>${escapeHtml(row.numero_parte_sistema)}</td>
         <td title="${escapeHtml(row.descripcion)}">${escapeHtml(row.descripcion)}</td>
@@ -1238,7 +1238,11 @@
     try {
       await ensureSheetJs();
       // Convierte (columns, rows) en una matriz [encabezados, ...filas].
-      const toAoa = (columns, dataRows) => {
+      const toAoa = (allColumns, dataRows) => {
+        // Embarques no maneja tarima: sin columnas de pallet en el Excel.
+        const columns = esSoloDocumental()
+          ? allColumns.filter(([title]) => !/pallet/i.test(title))
+          : allColumns;
         const aoa = [columns.map(([title]) => title)];
         (dataRows || []).forEach((row) => {
           aoa.push(columns.map(([, accessor]) => {
@@ -1264,6 +1268,26 @@
       window.XLSX.writeFile(wb, `${safeFileName(def.file())}_${fecha}.xlsx`);
     } catch (err) {
       setMessage("mat-invoice-detail-message", `No se pudo exportar: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Plantilla vacia con el formato que lee el parser: hoja INVOICE(CONVERTED),
+  // A1 = numero de invoice, fila 2 = encabezados. Embarques no lleva TARIMA.
+  async function downloadTemplate() {
+    setLoading(true);
+    try {
+      await ensureSheetJs();
+      const headers = ["PART NO", "PART SYS", "ITEM", "SPEC", "QTY", "COSTO", "TOTAL"];
+      if (!esSoloDocumental()) headers.unshift("TARIMA");
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(
+        wb, window.XLSX.utils.aoa_to_sheet([["NUMERO DE INVOICE"], headers]), "INVOICE(CONVERTED)"
+      );
+      window.XLSX.writeFile(wb, `plantilla_invoice_${ambitoActual().toLowerCase()}.xlsx`);
+    } catch (err) {
+      setMessage("mat-invoice-upload-message", `No se pudo generar la plantilla: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -1497,6 +1521,11 @@
       if (target.closest("#mat-invoice-clear-filters")) {
         event.preventDefault();
         clearFilters();
+        return;
+      }
+      if (target.closest("#mat-invoice-template")) {
+        event.preventDefault();
+        downloadTemplate();
         return;
       }
       const exportBtn = target.closest("[data-export]");

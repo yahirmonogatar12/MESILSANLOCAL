@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
@@ -238,17 +239,17 @@ class _UploadCursor:
         self.lastrowid = 73
         self._row = None
         self._select_count = 0
+        self.select_params = []
         self.closed = False
 
     def execute(self, query, params=None):
         normalized = " ".join(query.split())
-        if normalized.startswith("SELECT id, ambito FROM material_invoices"):
+        if normalized.startswith("SELECT id FROM material_invoices"):
             self._select_count += 1
+            self.select_params.append(params)
             # Las dos consultas preventivas no encuentran nada. Tras el 1062,
             # la consulta de recuperacion ya ve la invoice de la otra solicitud.
-            self._row = (
-                {"id": 91, "ambito": "ALMACEN"} if self._select_count >= 3 else None
-            )
+            self._row = {"id": 91} if self._select_count >= 3 else None
             return
         if normalized == "START TRANSACTION":
             self.events.append("transaction")
@@ -258,7 +259,7 @@ class _UploadCursor:
             if self.duplicate_on_insert:
                 raise Exception(
                     1062,
-                    "Duplicate entry 'IM20260601-V38' for key 'material_invoices.uk_invoice_numero'",
+                    "Duplicate entry 'IM20260601-V38' for key 'material_invoices.uk_invoice_numero_ambito'",
                 )
             return
         if normalized.startswith("UPDATE material_invoices"):
@@ -317,6 +318,8 @@ def test_upload_invoice_colision_concurrente_responde_409_sin_borrar_excel(monke
     }
     assert conn.rollbacks == 1
     assert "delete" not in cursor.events
+    # La unicidad es por ambito: todas las busquedas de duplicado lo filtran.
+    assert all(params[-1] == "ALMACEN" for params in cursor.select_params)
 
 
 def test_upload_invoice_guarda_excel_despues_del_insert(monkeypatch):
@@ -523,23 +526,16 @@ def test_embarques_no_aplica_a_inventario(monkeypatch, accion):
     assert conn.rollbacks == 1
 
 
-def test_mensaje_de_duplicado_aclara_el_otro_ambito():
-    """La unicidad es global: quien sube desde embarques puede chocar con un
-    invoice de almacen que nunca vera en su listado."""
-    payload, status = invoice_service._respuesta_duplicado(
-        {"id": 91, "ambito": "ALMACEN"}, "NUMERO_INVOICE", "Esta invoice ya fue cargada", "EMBARQUES"
-    )
-    assert status == 409
-    assert "ALMACEN" in payload["message"]
-    # Sin invoice_id: seria un puntero a algo que este usuario no puede abrir.
-    assert "invoice_id" not in payload
+def test_ruta_del_excel_separa_embarques_de_almacen():
+    """El mismo Excel puede cargarse en ambos ambitos: borrar uno no debe
+    borrar el archivo del otro."""
+    from app.api.control_material.invoice_core.storage import build_relative_path
 
-    # Mismo ambito: comportamiento de siempre.
-    payload, _ = invoice_service._respuesta_duplicado(
-        {"id": 91, "ambito": "ALMACEN"}, "NUMERO_INVOICE", "Esta invoice ya fue cargada", "ALMACEN"
-    )
-    assert payload["invoice_id"] == 91
-    assert payload["message"] == "Esta invoice ya fue cargada."
+    fecha = datetime(2026, 10, 8)
+    almacen = build_relative_path("IM20261002-A108", "abcdef123456", fecha)
+    embarques = build_relative_path("IM20261002-A108", "abcdef123456", fecha, "EMBARQUES")
+    assert almacen == os.path.join("2026", "10", "IM20261002-A108__abcdef12.xlsx")
+    assert embarques == os.path.join("EMBARQUES", almacen)
 
 
 # ---------------------------------------------------------------------------

@@ -819,3 +819,8 @@
 .mat-invoice-lote-toggle:hover {
     color: #ffffff;
 }
+
+/* Embarques no maneja tarima: se ocultan las columnas de pallet. */
+.mat-invoice-sin-pallet [data-field^="pallet_no"] {
+    display: none;
+}

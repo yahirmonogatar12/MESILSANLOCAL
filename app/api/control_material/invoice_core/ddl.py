@@ -90,8 +90,8 @@ def init_material_invoice_tables():
             usuario_validacion VARCHAR(255) NULL,
             fecha_validacion DATETIME NULL,
             PRIMARY KEY (id),
-            UNIQUE KEY uk_invoice_numero (numero_invoice),
-            UNIQUE KEY uk_invoice_file_hash (archivo_hash_sha256),
+            UNIQUE KEY uk_invoice_numero_ambito (numero_invoice, ambito),
+            UNIQUE KEY uk_invoice_hash_ambito (archivo_hash_sha256, ambito),
             KEY idx_material_invoices_estado (estado),
             KEY idx_material_invoices_fecha (fecha_carga)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -126,8 +126,21 @@ def init_material_invoice_tables():
             """
         )
         execute_query("ALTER TABLE material_invoices DROP COLUMN proveedor")
-    _ensure_index("material_invoices", "uk_invoice_numero", "UNIQUE KEY uk_invoice_numero (numero_invoice)")
-    _ensure_index("material_invoices", "uk_invoice_file_hash", "UNIQUE KEY uk_invoice_file_hash (archivo_hash_sha256)")
+    # Unicidad por ambito: la misma invoice puede cargarse en Almacen y en
+    # Embarques. Se crean los indices nuevos antes de soltar los globales para
+    # no quedar ni un instante sin unicidad.
+    _ensure_index(
+        "material_invoices",
+        "uk_invoice_numero_ambito",
+        "UNIQUE KEY uk_invoice_numero_ambito (numero_invoice, ambito)",
+    )
+    _ensure_index(
+        "material_invoices",
+        "uk_invoice_hash_ambito",
+        "UNIQUE KEY uk_invoice_hash_ambito (archivo_hash_sha256, ambito)",
+    )
+    _drop_index_if_exists("material_invoices", "uk_invoice_numero")
+    _drop_index_if_exists("material_invoices", "uk_invoice_file_hash")
 
     execute_query(
         """

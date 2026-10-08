@@ -27,6 +27,7 @@
                     <input id="mat-invoice-upload-file" name="file" type="file" accept=".xlsx,.xlsm,.xltx,.xltm">
                 </label>
                 <button class="mat-invoice-btn primary" type="submit">Cargar</button>
+                <button id="mat-invoice-template" class="mat-invoice-btn" type="button">Descargar plantilla</button>
             </form>
             <div id="mat-invoice-upload-message" class="mat-invoice-message" hidden></div>
         </section>
@@ -109,7 +110,7 @@
                 <button class="mat-invoice-btn success small" type="button" data-export="packing">Exportar Excel</button>
             </div>
             <div class="mat-invoice-table-wrap">
-                <table class="mat-invoice-table">
+                <table class="mat-invoice-table{{ ' mat-invoice-sin-pallet' if ambito == 'EMBARQUES' }}">
                     <thead id="mat-invoice-packing-head"></thead>
                     <tbody id="mat-invoice-packing-body"></tbody>
                 </table>
@@ -183,11 +184,11 @@
             </div>
             <div id="mat-invoice-preview-message" class="mat-invoice-message" hidden></div>
             <div class="mat-invoice-viewer-body">
-                <table class="mat-invoice-table">
+                <table class="mat-invoice-table{{ ' mat-invoice-sin-pallet' if ambito == 'EMBARQUES' }}">
                     <thead>
                         <tr>
                             <th>No.</th>
-                            <th>Pallet</th>
+                            <th data-field="pallet_no">Pallet</th>
                             <th>Parte raw</th>
                             <th>Parte sistema</th>
                             <th>Descripcion</th>
@@ -303,4 +304,4 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/material_column_filters.js', v='20260707a') }}"></script>
-<script src="{{ url_for('static', filename='js/material_invoices.js', v='20260930a') }}"></script>
+<script src="{{ url_for('static', filename='js/material_invoices.js', v='20261008b') }}"></script>

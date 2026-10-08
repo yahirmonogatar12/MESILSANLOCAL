@@ -31,13 +31,18 @@ def _safe_slug(value, fallback="invoice"):
     return text or fallback
 
 
-def build_relative_path(numero_invoice, file_hash, fecha):
-    """Ruta relativa AAAA/MM/<numero>__<hash8>.xlsx (estable y unica)."""
+def build_relative_path(numero_invoice, file_hash, fecha, ambito="ALMACEN"):
+    """Ruta relativa AAAA/MM/<numero>__<hash8>.xlsx (estable y unica).
+
+    Fuera de ALMACEN se antepone la carpeta del ambito: el mismo Excel puede
+    cargarse en ambos ambitos y borrar uno no debe borrar el archivo del otro.
+    """
     year = fecha.strftime("%Y")
     month = fecha.strftime("%m")
     slug = _safe_slug(numero_invoice)
     short_hash = (file_hash or "")[:8] or "nohash"
-    return os.path.join(year, month, f"{slug}__{short_hash}.xlsx")
+    prefix = [] if ambito == "ALMACEN" else [_safe_slug(ambito)]
+    return os.path.join(*prefix, year, month, f"{slug}__{short_hash}.xlsx")
 
 
 def absolute_path(relative_path):

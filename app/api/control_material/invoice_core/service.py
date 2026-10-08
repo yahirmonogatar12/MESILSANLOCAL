@@ -73,28 +73,16 @@ def _db():
     return conn, dict_cursor(conn), None
 
 
-def _mensaje_duplicado(base, ambito_existente, ambito_actual):
-    """Aclara el ambito cuando el duplicado esta en el OTRO ambito.
-
-    La unicidad de numero_invoice y del hash es global, asi que quien sube
-    desde embarques puede chocar con un invoice de almacen que no vera nunca
-    en su listado. Sin esta aclaracion el mensaje resulta incomprensible.
-    """
-    if ambito_existente and ambito_actual and ambito_existente != ambito_actual:
-        return f"{base} en el ambito {ambito_existente}.".replace("..", ".")
-    return base
-
-
-def _respuesta_duplicado(existing, motivo, base, ambito):
-    """409 de duplicado, aclarando el ambito si el choque es con el otro."""
-    ambito_existente = (existing or {}).get("ambito")
+def _respuesta_duplicado(existing, motivo, base):
+    """409 de duplicado. La unicidad es por ambito: `existing` siempre es del
+    mismo ambito que la carga, asi que su id se puede exponer."""
     payload = {
         "success": False,
         "duplicado": True,
         "motivo": motivo,
-        "message": _mensaje_duplicado(f"{base}.", ambito_existente, ambito),
+        "message": f"{base}.",
     }
-    if existing and (not ambito or ambito_existente == ambito):
+    if existing:
         payload["invoice_id"] = existing["id"]
     return payload, 409
 
@@ -105,34 +93,21 @@ def _duplicate_upload_result(cursor, numero_invoice, file_hash, exc, ambito=None
     if not args or args[0] != 1062:
         return None
 
-    error_text = str(exc)
-    if "uk_invoice_file_hash" in error_text:
+    if "uk_invoice_hash_ambito" in str(exc):
         motivo = "ARCHIVO_HASH"
-        message = "Este archivo parece ya cargado."
-        query = "SELECT id, ambito FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1"
+        message = "Este archivo parece ya cargado"
+        query = "SELECT id FROM material_invoices WHERE archivo_hash_sha256 = %s AND ambito = %s LIMIT 1"
         value = file_hash
     else:
-        # uk_invoice_numero es la colision habitual. Si el driver no incluye el
-        # nombre del indice, el numero sigue siendo la respuesta mas util.
+        # uk_invoice_numero_ambito es la colision habitual. Si el driver no
+        # incluye el nombre del indice, el numero sigue siendo lo mas util.
         motivo = "NUMERO_INVOICE"
-        message = "Esta invoice ya fue cargada."
-        query = "SELECT id, ambito FROM material_invoices WHERE numero_invoice = %s LIMIT 1"
+        message = "Esta invoice ya fue cargada"
+        query = "SELECT id FROM material_invoices WHERE numero_invoice = %s AND ambito = %s LIMIT 1"
         value = numero_invoice
 
-    cursor.execute(query, (value,))
-    existing = cursor.fetchone()
-    ambito_existente = (existing or {}).get("ambito")
-    payload = {
-        "success": False,
-        "duplicado": True,
-        "motivo": motivo,
-        "message": _mensaje_duplicado(message, ambito_existente, ambito),
-    }
-    # El id solo se expone si el invoice es del mismo ambito: si no, seria un
-    # puntero a algo que este usuario no puede abrir.
-    if existing and (not ambito or ambito_existente == ambito):
-        payload["invoice_id"] = existing["id"]
-    return payload, 409
+    cursor.execute(query, (value, ambito or AMBITO_ALMACEN))
+    return _respuesta_duplicado(cursor.fetchone(), motivo, message)
 
 
 def list_invoices(args, ambito=None):
@@ -212,6 +187,8 @@ def preview_invoice(files, form, ambito=None):
     if not uploaded:
         return {"success": False, "error": "Archivo requerido."}, 400
 
+    # La unicidad es por ambito: la misma invoice puede estar en Almacen y en Embarques.
+    ambito = ambito or AMBITO_ALMACEN
     filename = secure_filename(uploaded.filename or "invoice.xlsx")
     file_bytes = uploaded.read()
     if not file_bytes:
@@ -243,27 +220,20 @@ def preview_invoice(files, form, ambito=None):
         # Detecta duplicado por numero o por hash de archivo.
         duplicado = None
         cursor.execute(
-            "SELECT id, ambito FROM material_invoices WHERE numero_invoice = %s LIMIT 1",
-            (numero_invoice,),
+            "SELECT id FROM material_invoices WHERE numero_invoice = %s AND ambito = %s LIMIT 1",
+            (numero_invoice, ambito),
         )
         row = cursor.fetchone()
         motivo_dup = "NUMERO_INVOICE"
         if not row:
             cursor.execute(
-                "SELECT id, ambito FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1",
-                (file_hash,),
+                "SELECT id FROM material_invoices WHERE archivo_hash_sha256 = %s AND ambito = %s LIMIT 1",
+                (file_hash, ambito),
             )
             row = cursor.fetchone()
             motivo_dup = "ARCHIVO_HASH"
         if row:
-            duplicado = {"motivo": motivo_dup}
-            ambito_existente = row.get("ambito")
-            if not ambito or ambito_existente == ambito:
-                duplicado["invoice_id"] = row["id"]
-            else:
-                # Existe en el otro ambito: este usuario no lo vera en su
-                # listado, asi que hay que decirselo.
-                duplicado["ambito"] = ambito_existente
+            duplicado = {"motivo": motivo_dup, "invoice_id": row["id"]}
 
         total_monto = sum((r.get("costo_total") or Decimal("0.0000")) for r in parsed["invoice_lines"])
         sin_parte = sum(1 for r in parsed["invoice_lines"] if r.get("estado_match") == "SIN_ALIAS")
@@ -313,6 +283,9 @@ def upload_invoice(files, form, ambito=None):
     if not uploaded:
         return {"success": False, "error": "Archivo requerido."}, 400
 
+    # El ambito lo fija la ruta por la que se subio, no el usuario. La
+    # unicidad es por ambito: la misma invoice puede estar en ambos.
+    ambito = ambito or AMBITO_ALMACEN
     filename = secure_filename(uploaded.filename or "invoice.xlsx")
     file_bytes = uploaded.read()
     if not file_bytes:
@@ -343,20 +316,20 @@ def upload_invoice(files, form, ambito=None):
     archivo_guardado = False
     try:
         cursor.execute(
-            "SELECT id, ambito FROM material_invoices WHERE numero_invoice = %s LIMIT 1",
-            (numero_invoice,),
+            "SELECT id FROM material_invoices WHERE numero_invoice = %s AND ambito = %s LIMIT 1",
+            (numero_invoice, ambito),
         )
         existing = cursor.fetchone()
         if existing:
-            return _respuesta_duplicado(existing, "NUMERO_INVOICE", "Esta invoice ya fue cargada", ambito)
+            return _respuesta_duplicado(existing, "NUMERO_INVOICE", "Esta invoice ya fue cargada")
 
         cursor.execute(
-            "SELECT id, ambito FROM material_invoices WHERE archivo_hash_sha256 = %s LIMIT 1",
-            (file_hash,),
+            "SELECT id FROM material_invoices WHERE archivo_hash_sha256 = %s AND ambito = %s LIMIT 1",
+            (file_hash, ambito),
         )
         existing = cursor.fetchone()
         if existing:
-            return _respuesta_duplicado(existing, "ARCHIVO_HASH", "Este archivo parece ya cargado", ambito)
+            return _respuesta_duplicado(existing, "ARCHIVO_HASH", "Este archivo parece ya cargado")
 
         usuario = _usuario_actual()
         fecha = obtener_fecha_hora_mexico()
@@ -364,7 +337,7 @@ def upload_invoice(files, form, ambito=None):
         # La ruta se calcula antes del INSERT, pero el archivo se escribe solo
         # despues de ganar los indices unicos. Asi una carga concurrente que
         # pierda la carrera no sobrescribe ni borra el Excel de la ganadora.
-        archivo_ruta = build_relative_path(numero_invoice, file_hash, fecha)
+        archivo_ruta = build_relative_path(numero_invoice, file_hash, fecha, ambito)
         archivo_size = len(file_bytes)
 
         cursor.execute("START TRANSACTION")
@@ -386,8 +359,7 @@ def upload_invoice(files, form, ambito=None):
             """,
             (
                 numero_invoice,
-                # El ambito lo fija la ruta por la que se subio, no el usuario.
-                ambito or AMBITO_ALMACEN,
+                ambito,
                 tipo or None,
                 filename,
                 archivo_ruta,
