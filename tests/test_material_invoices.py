@@ -129,6 +129,26 @@ def test_parse_invoice_workbook_lee_hoja_converted():
     assert parsed["packing_lines"][2]["pallet_no"] == "2"
 
 
+def test_parse_plantilla_embarques_solo_part_sys():
+    """La plantilla de embarques no trae TARIMA ni PART NO: PART SYS es la parte."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "INVOICE(CONVERTED)"
+    ws.append(["IM20261002-A108"])
+    ws.append(["PART SYS", "ITEM", "QTY", "UNIDAD", "COSTO", "TOTAL"])
+    ws.append(["EAX69542803", "PCB MAIN", 5100, "EA", 3.2553, None])
+    out = BytesIO()
+    wb.save(out)
+
+    parsed = parse_invoice_workbook(out.getvalue(), "x.xlsx")
+
+    linea = parsed["invoice_lines"][0]
+    assert parsed["numero_invoice_sugerido"] == "IM20261002-A108"
+    assert (linea["raw_part_num"], linea["numero_parte_sistema"], linea["uom"]) == ("EAX69542803", "EAX69542803", "EA")
+    assert str(linea["costo_total"]) == "16602.0300"
+    assert parsed["packing_lines"][0]["pallet_no"] == ""
+
+
 def test_material_invoice_blueprints_registran_rutas(app):
     rules = {str(rule) for rule in app.url_map.iter_rules()}
 

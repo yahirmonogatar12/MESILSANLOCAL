@@ -1,11 +1,11 @@
 (function () {
     const CONTROL_BOM_STYLESHEET_ID = 'control-bom-css';
-    const CONTROL_BOM_STYLESHEET_HREF = '/static/css/control_bom.css?v=20260522a';
+    const CONTROL_BOM_STYLESHEET_HREF = '/static/css/control_bom.css?v=20261009e';
 
     function ensureControlBomStyles() {
         const stylesheet = document.getElementById(CONTROL_BOM_STYLESHEET_ID);
         if (stylesheet) {
-            if (!stylesheet.getAttribute('href')?.includes('20260522a')) {
+            if (!stylesheet.getAttribute('href')?.includes('20261009e')) {
                 stylesheet.setAttribute('href', CONTROL_BOM_STYLESHEET_HREF);
             }
             return;
@@ -22,9 +22,363 @@
         return document.getElementById('controlBomModule');
     }
 
+    // ========== FILTROS POR COLUMNA (mismo patron que ICT) ==========
+    // Filtran en el navegador las filas ya cargadas; se reaplican cada vez que
+    // se vuelve a llenar la tabla. Estado en memoria por columna (cellIndex).
+    const bomColumnFilters = {};
+
+    function renderBomColumnFilterHeaders() {
+        document.querySelectorAll('#bomDataTable th[data-bom-filter]').forEach(header => {
+            if (header.dataset.bomFilterReady === 'true') return;
+            const col = header.cellIndex;
+            const label = header.textContent.trim();
+            const value = bomColumnFilters[col] || '';
+            header.classList.add('bom-column-filterable');
+            header.dataset.bomFilterReady = 'true';
+            header.innerHTML = `
+                <div class="bom-column-header">
+                    <span>${escapeHtml(label)}</span>
+                    <button class="bom-column-filter-btn${value ? ' active' : ''}" type="button"
+                            aria-label="Filtrar ${escapeHtml(label)}" aria-expanded="false" title="Filtrar ${escapeHtml(label)}">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v5l-4 2v-7L3 5z"></path></svg>
+                    </button>
+                </div>
+                <div class="bom-column-filter-popover">
+                    <input class="bom-column-filter-input" data-bom-filter-col="${col}" value="${escapeHtml(value)}"
+                           placeholder="Buscar..." aria-label="Buscar en ${escapeHtml(label)}" autocomplete="off">
+                    <div class="bom-column-filter-actions">
+                        <button class="bom-column-filter-clear" type="button">Limpiar</button>
+                        <button class="bom-column-filter-clear-all" type="button">Todos</button>
+                    </div>
+                </div>`;
+        });
+    }
+
+    function cerrarFiltrosColumnaBOM(excepto) {
+        document.querySelectorAll('#bomDataTable .bom-column-filter-popover.open').forEach(popover => {
+            if (popover === excepto) return;
+            popover.classList.remove('open');
+            const header = popover.closest('th');
+            header?.classList.remove('filter-open');
+            const button = header?.querySelector('.bom-column-filter-btn');
+            button?.classList.remove('open');
+            button?.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function alternarFiltroColumnaBOM(button) {
+        const header = button.closest('th');
+        const popover = header?.querySelector('.bom-column-filter-popover');
+        if (!popover) return;
+        const abrir = !popover.classList.contains('open');
+        cerrarFiltrosColumnaBOM(popover);
+        popover.classList.toggle('open', abrir);
+        header.classList.toggle('filter-open', abrir);
+        button.classList.toggle('open', abrir);
+        button.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        if (abrir) popover.querySelector('.bom-column-filter-input')?.focus();
+    }
+
+    function setFiltroColumnaBOM(col, value) {
+        const texto = String(value || '').trim();
+        if (texto) {
+            bomColumnFilters[col] = texto;
+        } else {
+            delete bomColumnFilters[col];
+        }
+    }
+
+    function limpiarFiltrosColumnaBOM(col) {
+        if (col === undefined) {
+            Object.keys(bomColumnFilters).forEach(key => delete bomColumnFilters[key]);
+        } else {
+            delete bomColumnFilters[col];
+        }
+        document.querySelectorAll('#bomDataTable .bom-column-filter-input').forEach(input => {
+            input.value = bomColumnFilters[input.dataset.bomFilterCol] || '';
+        });
+        aplicarFiltrosColumnaBOM();
+    }
+
+    // Texto comparable de una celda; el checkbox de "Material original" vale CHECKED/UNCHECKED.
+    function valorColumnaBOM(row, col) {
+        const cell = row.cells[col];
+        if (!cell) return '';
+        const checkbox = cell.querySelector('input[type="checkbox"]');
+        if (checkbox) return checkbox.checked ? 'CHECKED' : 'UNCHECKED';
+        return (cell.dataset.fullText || cell.textContent || '').trim();
+    }
+
+    function aplicarFiltrosColumnaBOM() {
+        const activos = Object.entries(bomColumnFilters).map(([col, value]) => [Number(col), value.toLowerCase()]);
+        let total = 0;
+        let visibles = 0;
+        document.querySelectorAll('#bomTableBody tr').forEach(row => {
+            if (row.cells.length <= 1) return; // fila de mensaje (sin datos / cargando)
+            total++;
+            const coincide = activos.every(([col, value]) => valorColumnaBOM(row, col).toLowerCase().includes(value));
+            row.classList.toggle('bom-col-filtered', !coincide);
+            if (coincide) visibles++;
+        });
+        document.querySelectorAll('#bomDataTable th[data-bom-filter]').forEach(header => {
+            header.querySelector('.bom-column-filter-btn')?.classList.toggle('active', Boolean(bomColumnFilters[header.cellIndex]));
+        });
+        const contador = document.getElementById('bomResultCounter');
+        if (contador) {
+            contador.style.display = '';
+            contador.textContent = activos.length ? `${visibles} de ${total} registros` : `${total} registros`;
+        }
+    }
+
+    // ========== MODALES (WF_008) ==========
+    // Los modales se crean por JS directamente en document.body (no viven en
+    // el fragmento AJAX), una sola vez; ensureControlBomModals() es idempotente.
+    const PERMISO_CREAR_ECO_ATTRS = 'data-permiso-pagina="LISTA_INFORMACIONBASICA" data-permiso-seccion="Control de produccion" data-permiso-boton="Crear ECO"';
+    const PERMISO_APROBAR_ECO_ATTRS = 'data-permiso-pagina="LISTA_INFORMACIONBASICA" data-permiso-seccion="Control de produccion" data-permiso-boton="Aprobar ECO"';
+    const BOM_ICON_PATHS = {
+        close: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>',
+        eco: '<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>',
+        list: '<path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"></path>',
+        detail: '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>',
+        sync: '<polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"></path>',
+        info: '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'
+    };
+
+    function bomSvg(name, cls) {
+        return `<svg class="${cls || ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">${BOM_ICON_PATHS[name]}</svg>`;
+    }
+
+    function bomModalHeader(icon, titleId, title, subtitle, closeId) {
+        return `
+            <div class="bom-modal-header">
+                <div class="bom-modal-title-group">
+                    ${bomSvg(icon, 'bom-modal-icon')}
+                    <div>
+                        <h3 id="${titleId}">${title}</h3>
+                        ${subtitle ? `<span class="bom-modal-subtitle">${subtitle}</span>` : ''}
+                    </div>
+                </div>
+                <button type="button" class="bom-modal-close" id="${closeId}" aria-label="Cerrar">${bomSvg('close')}</button>
+            </div>`;
+    }
+
+    function bomFilterGroup(id, label, control) {
+        return `<div class="bom-filter-group"><label for="${id}">${label}</label>${control}</div>`;
+    }
+
+    const CONTROL_BOM_MODALS = {
+        controlBomAlertModal: () => `
+            <div id="controlBomAlertDialog" tabindex="0" role="alertdialog" aria-modal="true" aria-describedby="controlBomAlertMessage">
+                ${bomSvg('info', 'bom-alert-icon')}
+                <div id="controlBomAlertMessage"></div>
+                <button type="button" id="controlBomAlertOkBtn" class="bom-btn consultar">OK</button>
+            </div>`,
+        controlBomLoadingModal: () => `
+            <div id="controlBomLoadingDialog" role="dialog" aria-modal="true" aria-labelledby="controlBomLoadingTitle">
+                <div id="controlBomLoadingTitle">Cargando BOM</div>
+                <div id="controlBomLoadingMessage">Procesando archivo Excel...</div>
+                <div id="controlBomLoadingProgressContainer">
+                    <div id="controlBomLoadingProgressBar"><div id="controlBomLoadingProgressFill"></div></div>
+                    <div id="controlBomLoadingProgressText">0% completado</div>
+                    <div id="controlBomLoadingTimeEstimate">Estimando tiempo...</div>
+                </div>
+                <div id="controlBomLoadingSpinner"></div>
+            </div>`,
+        ecoModal: () => `
+            <div class="bom-modal-content" role="dialog" aria-modal="true" aria-labelledby="ecoModalTitle">
+                ${bomModalHeader('eco', 'ecoModalTitle', 'Crear ECO / Cambio de ingenieria', 'Descargar BOM, modificarlo y aprobar el cambio', 'btnCerrarEcoModal')}
+                <div class="bom-modal-filters bom-eco-steps">
+                    <div id="ecoStepIndicator1" class="bom-eco-step active">1. Descargar BOM</div>
+                    <div id="ecoStepIndicator2" class="bom-eco-step">2. Subir Excel modificado</div>
+                    <div id="ecoStepIndicator3" class="bom-eco-step">3. Revisar y aprobar</div>
+                </div>
+                <div class="bom-modal-body">
+                    <div id="ecoStep1">
+                        <div class="bom-scope-options">
+                            <label class="bom-scope-option">
+                                <input type="radio" name="ecoScopeKind" value="SINGLE" id="ecoScopeSingle" checked>
+                                <span><b>ECO individual</b><br><small>Un solo modelo</small></span>
+                            </label>
+                            <label class="bom-scope-option">
+                                <input type="radio" name="ecoScopeKind" value="FAMILY" id="ecoScopeFamily">
+                                <span><b>ECO de familia</b><br><small>Aplicar a varios modelos de una familia</small></span>
+                            </label>
+                            <label class="bom-scope-option">
+                                <input type="radio" name="ecoScopeKind" value="NEW_BOM" id="ecoScopeNewBom">
+                                <span><b>Nuevo BOM</b><br><small>Primera carga para un modelo</small></span>
+                            </label>
+                        </div>
+                        <div class="bom-form-grid">
+                            <label class="bom-modal-field">ECO <input id="ecoNoInput" type="text"></label>
+                            <label id="ecoPartNoLabel" class="bom-modal-field">Numero de parte / modelo <input id="ecoPartNoInput" type="text"></label>
+                            <label class="bom-modal-field">Revision BOM nueva <input id="ecoRevisionInput" type="text" value="Automatica" readonly title="MES asigna la siguiente revision disponible"></label>
+                            <label class="bom-modal-field">Fecha efectiva <input id="ecoEffectiveAtInput" type="datetime-local"></label>
+                        </div>
+                        <div id="ecoFamilyFields" class="bom-family-fields" style="display:none;">
+                            <div class="bom-form-grid is-family">
+                                <label class="bom-modal-field">Familia (prefijo) <input id="ecoFamilyInput" type="text" placeholder="Ej: EBR239662"></label>
+                                <label class="bom-modal-field">Sufijos <input id="ecoSuffixesInput" type="text" placeholder="Ej: 01,05,14"></label>
+                                <button id="btnResolverFamilia" class="bom-btn consultar" type="button">Resolver</button>
+                            </div>
+                            <div id="ecoFamilyResolveBox" class="bom-info-box" style="display:none;"></div>
+                        </div>
+                        <label class="bom-modal-field is-spaced">Nombre del modelo (item_name)
+                            <input id="ecoItemNameInput" type="text" placeholder="Opcional: si esta vacio se autocompleta desde KS catalog">
+                        </label>
+                        <label class="bom-modal-field is-spaced">Notas <textarea id="ecoNotesInput" rows="3"></textarea></label>
+                        <div id="ecoStatusBox" class="bom-info-box">
+                            Llene los datos y descargue el BOM actual. Modifique el Excel y suba el archivo en el paso 2. No edite la columna oculta __row_id.
+                        </div>
+                        <div class="bom-modal-footer is-end">
+                            <button id="btnDescargarBomExcel" class="bom-btn exportar" type="button">Descargar BOM como Excel</button>
+                            <button id="btnIrPaso2" class="bom-btn consultar" type="button">Siguiente: subir Excel &rarr;</button>
+                        </div>
+                    </div>
+                    <div id="ecoStep2" style="display:none;">
+                        <div id="ecoStep2Help" class="bom-info-box">
+                            Suba el Excel modificado. El sistema validara y mostrara los cambios detectados (anadidos, eliminados, modificados).
+                        </div>
+                        <label class="bom-modal-field is-spaced">Archivo Excel <input type="file" id="ecoExcelInput" accept=".xlsx,.xls"></label>
+                        <div id="ecoValidationBox" class="bom-info-box" style="display:none;"></div>
+                        <div class="bom-modal-footer">
+                            <button id="btnVolverPaso1" class="bom-btn" type="button">&larr; Volver</button>
+                            <button id="btnValidarExcel" class="bom-btn registrar" type="button">Validar y crear borrador</button>
+                        </div>
+                    </div>
+                    <div id="ecoStep3" style="display:none;">
+                        <div id="ecoDiffSummary" class="bom-info-box">Resumen de cambios</div>
+                        <div id="ecoDiffDetails" class="bom-diff-details"></div>
+                        <div class="bom-modal-footer">
+                            <button id="btnCancelarEcoDraft" class="bom-btn eliminar" type="button" ${PERMISO_CREAR_ECO_ATTRS}>Cancelar borrador</button>
+                            <button id="btnAprobarEco" class="bom-btn consultar" type="button" ${PERMISO_APROBAR_ECO_ATTRS}>Aprobar ECO y aplicar cambios</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`,
+        ecoListModal: () => `
+            <div class="bom-modal-content is-wide" role="dialog" aria-modal="true" aria-labelledby="ecoListModalTitle">
+                ${bomModalHeader('list', 'ecoListModalTitle', 'ECOs / Cambios de ingenieria', 'Historial unificado MES + K-system', 'btnCerrarEcoListModal')}
+                <div class="bom-modal-filters">
+                    ${bomFilterGroup('ecoListOrigenFilter', 'Tipo', `<select id="ecoListOrigenFilter"><option value="">TODOS</option><option value="MES">MES</option><option value="KS">KS</option></select>`)}
+                    ${bomFilterGroup('ecoListStatusFilter', 'Estatus', `<select id="ecoListStatusFilter"><option value="">TODOS</option><option value="DRAFT">DRAFT</option><option value="APPROVED">APPROVED</option><option value="CANCELLED">CANCELLED</option></select>`)}
+                    ${bomFilterGroup('ecoListPartFilter', 'Modelo', '<input id="ecoListPartFilter" type="text" placeholder="Opcional">')}
+                    ${bomFilterGroup('ecoListEcoFilter', 'ECO / ID', '<input id="ecoListEcoFilter" type="text" placeholder="02 o KS#28695">')}
+                    ${bomFilterGroup('ecoListDateFromFilter', 'Desde', '<input id="ecoListDateFromFilter" type="date">')}
+                    ${bomFilterGroup('ecoListDateToFilter', 'Hasta', '<input id="ecoListDateToFilter" type="date">')}
+                    <button id="btnRefrescarEcoList" class="bom-btn consultar" type="button">Refrescar</button>
+                    <button id="btnExportarEcoList" class="bom-btn exportar" type="button">Exportar Excel</button>
+                </div>
+                <div class="bom-modal-body">
+                    <div id="ecoListStatusBox" class="bom-info-box">Cargando ECOs...</div>
+                    <div class="bom-table-wrap bom-eco-list-wrap">
+                        <table class="bom-subtable">
+                            <thead>
+                                <tr>
+                                    <th>ECO</th><th>Modelo(s)</th><th>Revision</th><th>Fecha efectiva</th>
+                                    <th>Estatus</th><th>Aprobado por</th><th class="is-center">Accion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ecoListTableBody">
+                                <tr class="bom-empty-row"><td colspan="7">Sin datos</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="ecoListPaginationBox" class="bom-pagination">
+                        <button id="btnEcoListPrevPage" class="bom-btn bom-btn-sm" type="button">Anterior</button>
+                        <span id="ecoListPageInfo"></span>
+                        <button id="btnEcoListNextPage" class="bom-btn bom-btn-sm" type="button">Siguiente</button>
+                    </div>
+                </div>
+            </div>`,
+        ecoDetailBox: () => `
+            <div class="bom-modal-content is-wide" role="dialog" aria-modal="true" aria-labelledby="ecoDetailTitle">
+                ${bomModalHeader('detail', 'ecoDetailTitle', 'Detalle ECO', '', 'btnCerrarEcoDetailModal')}
+                <div id="ecoDetailContent" class="bom-modal-body">Cargando...</div>
+            </div>`,
+        ecnKsDetailModal: () => `
+            <div class="bom-modal-content" role="dialog" aria-modal="true" aria-labelledby="ecnKsDetailTitle">
+                ${bomModalHeader('sync', 'ecnKsDetailTitle', 'Detalle ECN K-system', '', 'btnCerrarEcnKsModal')}
+                <div id="ecnKsDetailContent" class="bom-modal-body">Cargando...</div>
+            </div>`
+    };
+
+    // Se cierran con clic fuera o Escape, del de arriba hacia abajo (z-index).
+    // El asistente de ECO no, para no perder lo capturado por un clic accidental.
+    const BOM_MODALES_CERRABLES = ['ecoDetailBox', 'ecnKsDetailModal', 'ecoListModal'];
+    let controlBomModalKeysAttached = false;
+
+    function ensureControlBomModals() {
+        Object.keys(CONTROL_BOM_MODALS).forEach(id => {
+            if (document.getElementById(id)) return;
+            const modal = document.createElement('div');
+            modal.id = id;
+            modal.className = 'bom-modal';
+            modal.innerHTML = CONTROL_BOM_MODALS[id]();
+            if (BOM_MODALES_CERRABLES.includes(id)) {
+                modal.addEventListener('click', event => {
+                    if (event.target === modal) cerrarModalBom(id);
+                });
+            }
+            if (id === 'controlBomAlertModal') {
+                modal.querySelector('#controlBomAlertOkBtn').addEventListener('click', () => window.hideCustomAlert());
+            }
+            document.body.appendChild(modal);
+        });
+        if (!controlBomModalKeysAttached) {
+            controlBomModalKeysAttached = true;
+            document.addEventListener('keydown', onControlBomModalKeydown);
+        }
+    }
+
+    function bomModalVisible(id) {
+        const modal = document.getElementById(id);
+        return Boolean(modal) && modal.style.display === 'flex';
+    }
+
+    function onControlBomModalKeydown(event) {
+        if (bomModalVisible('controlBomAlertModal')) {
+            if (event.key === 'Escape' || event.key === 'Enter') {
+                event.preventDefault();
+                window.hideCustomAlert();
+            }
+            return;
+        }
+        if (event.key !== 'Escape') return;
+        if (bomModalVisible('ecoFilesViewer')) {
+            cerrarVisorPapeleria();
+            return;
+        }
+        const abierto = BOM_MODALES_CERRABLES.find(bomModalVisible);
+        if (abierto === 'ecoListModal') {
+            cerrarModalEcoList();
+        } else if (abierto) {
+            cerrarModalBom(abierto);
+        }
+    }
+
+    function abrirModalBom(id) {
+        ensureControlBomModals();
+        const modal = document.getElementById(id);
+        if (!modal) return null;
+        modal.style.display = 'flex';
+        modal.style.opacity = '1';
+        modal.style.visibility = 'visible';
+        return modal;
+    }
+
+    function cerrarModalBom(id) {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.style.display = 'none';
+        modal.style.opacity = '0';
+        modal.style.visibility = 'hidden';
+    }
+
     // ========== EVENT DELEGATION PARA AJAX ==========
     function initializeControlBOMEventListeners() {
         ensureControlBomStyles();
+        ensureControlBomModals();
+        renderBomColumnFilterHeaders();
         console.log('🎯 Inicializando Event Listeners para Control BOM');
         
         // Protección contra inicialización múltiple
@@ -34,6 +388,28 @@
             document.body.addEventListener('click', function(e) {
                 const target = e.target;
                 
+                // Filtros por columna de la tabla (estilo ICT)
+                const columnFilterButton = target.closest('.bom-column-filter-btn');
+                if (columnFilterButton) {
+                    e.preventDefault();
+                    alternarFiltroColumnaBOM(columnFilterButton);
+                    return;
+                }
+                const columnFilterClear = target.closest('.bom-column-filter-clear');
+                if (columnFilterClear) {
+                    e.preventDefault();
+                    limpiarFiltrosColumnaBOM(columnFilterClear.closest('th').cellIndex);
+                    return;
+                }
+                if (target.closest('.bom-column-filter-clear-all')) {
+                    e.preventDefault();
+                    limpiarFiltrosColumnaBOM();
+                    return;
+                }
+                if (!target.closest('.bom-column-filter-popover')) {
+                    cerrarFiltrosColumnaBOM();
+                }
+
                 // Botón Consultar
                 if (target.id === 'btnConsultarBOM' || target.closest('#btnConsultarBOM')) {
                     e.preventDefault();
@@ -179,6 +555,37 @@
                     return;
                 }
 
+                if (target.closest('#btnPapeleriaBOM')) {
+                    e.preventDefault();
+                    verArchivosModelo();
+                    return;
+                }
+
+                const fileTab = target.closest('[data-eco-file-tab]');
+                if (fileTab) {
+                    e.preventDefault();
+                    abrirArchivoModelo(fileTab.dataset.ecoFileTab);
+                    return;
+                }
+
+                const fileViewButton = target.closest('[data-eco-file-view]');
+                if (fileViewButton) {
+                    e.preventDefault();
+                    verPapeleriaEco(
+                        fileViewButton.dataset.ecoFileView,
+                        fileViewButton.dataset.ecoFileExt,
+                        fileViewButton.dataset.ecoFileName
+                    );
+                    return;
+                }
+
+                const fileDeleteButton = target.closest('[data-eco-file-delete]');
+                if (fileDeleteButton) {
+                    e.preventDefault();
+                    borrarPapeleriaEco(fileDeleteButton.dataset.ecoFileDelete, fileDeleteButton.dataset.ecoFileName);
+                    return;
+                }
+
                 const deleteButton = target.closest('[data-eco-delete-id]');
                 if (deleteButton) {
                     e.preventDefault();
@@ -198,6 +605,19 @@
                 }
             });
             
+            document.body.addEventListener('input', function(e) {
+                if (e.target.matches('.bom-column-filter-input')) {
+                    setFiltroColumnaBOM(e.target.dataset.bomFilterCol, e.target.value);
+                    aplicarFiltrosColumnaBOM();
+                }
+            });
+
+            document.body.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && e.target.matches('.bom-column-filter-input')) {
+                    cerrarFiltrosColumnaBOM();
+                }
+            });
+
             // Event delegation para input en el buscador
             document.body.addEventListener('keyup', function(e) {
                 if (e.target.id === 'bomModeloSearch') {
@@ -220,11 +640,16 @@
                     const box = document.getElementById('ecoValidationBox');
                     if (box && fileName) {
                         box.style.display = 'block';
-                        box.innerHTML = `<span style="color:#b8c7d9;">Archivo seleccionado: ${escapeHtml(fileName)}</span>`;
+                        box.innerHTML = `<span class="bom-msg">Archivo seleccionado: ${escapeHtml(fileName)}</span>`;
                     }
                     if (ecoScopeKind === 'NEW_BOM') {
                         inferPartNoFromSelectedFile();
                     }
+                    return;
+                }
+
+                if (e.target.id === 'ecoFileInput') {
+                    subirPapeleriaEco(e.target.files);
                     return;
                 }
 
@@ -382,8 +807,8 @@
 
     function statusBadge(status) {
         const value = String(status || '').toUpperCase();
-        const color = value === 'APPROVED' ? '#27ae60' : value === 'DRAFT' ? '#f39c12' : '#95a5a6';
-        return `<span style="display:inline-block; padding:3px 7px; border-radius:999px; color:#fff; background:${color}; font-weight:700; font-size:11px;">${escapeHtml(value || '-')}</span>`;
+        const variante = value === 'APPROVED' ? ' is-approved' : value === 'DRAFT' ? ' is-draft' : '';
+        return `<span class="bom-badge${variante}">${escapeHtml(value || '-')}</span>`;
     }
 
     function formatFechaEfectiva(value) {
@@ -431,7 +856,7 @@
 
     function abrirModalECO() {
         if (!requierePermisoCrearEco()) return;
-        const modal = document.getElementById('ecoModal');
+        ensureControlBomModals();
         const selectedModel = (document.getElementById('bomModeloSearch')?.value || '').trim().toUpperCase();
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -464,26 +889,7 @@
         syncEcoModeText();
         irPasoEco(1);
         cargarRevisionEcoAutomatica({ partNo: selectedModel });
-
-        if (modal) {
-            if (modal.parentNode !== document.body) {
-                document.body.appendChild(modal);
-            }
-            modal.style.cssText = `
-                display: flex !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                background: rgba(0,0,0,0.72) !important;
-                justify-content: center !important;
-                align-items: center !important;
-                z-index: 10002 !important;
-                opacity: 1 !important;
-                visibility: visible !important;
-            `;
-        }
+        abrirModalBom('ecoModal');
     }
 
     function irPasoEco(paso) {
@@ -492,16 +898,8 @@
             const indicator = document.getElementById('ecoStepIndicator' + i);
             if (step) step.style.display = (i === paso) ? 'block' : 'none';
             if (indicator) {
-                if (i === paso) {
-                    indicator.style.background = '#27ae60';
-                    indicator.style.color = '#fff';
-                } else if (i < paso) {
-                    indicator.style.background = '#2c3e50';
-                    indicator.style.color = '#5dade2';
-                } else {
-                    indicator.style.background = '#34495e';
-                    indicator.style.color = '#aaa';
-                }
+                indicator.classList.toggle('active', i === paso);
+                indicator.classList.toggle('done', i < paso);
             }
         }
         syncEcoApprovalControls();
@@ -539,17 +937,17 @@
         const box = document.getElementById('ecoFamilyResolveBox');
         box.style.display = 'block';
         if (!family || !suffixes) {
-            box.innerHTML = `<span style="color:#e74c3c;">Familia y sufijos son requeridos.</span>`;
+            box.innerHTML = `<span class="bom-msg is-error">Familia y sufijos son requeridos.</span>`;
             ecoScopeParts = [];
             return;
         }
-        box.innerHTML = `<span style="color:#b8c7d9;">Resolviendo...</span>`;
+        box.innerHTML = `<span class="bom-msg">Resolviendo...</span>`;
         try {
             const params = new URLSearchParams({ family, suffixes });
             const response = await fetch(`/api/bom/resolve-family?${params.toString()}`);
             const data = await response.json();
             if (!data.success) {
-                box.innerHTML = `<span style="color:#e74c3c;">${escapeHtml(data.error || 'Error')}</span>`;
+                box.innerHTML = `<span class="bom-msg is-error">${escapeHtml(data.error || 'Error')}</span>`;
                 ecoScopeParts = [];
                 return;
             }
@@ -559,14 +957,14 @@
             ecoScopeParts = parts.map(p => p.part_no);
             cargarRevisionEcoAutomatica({ scopeParts: ecoScopeParts });
             const partsList = parts.map(p => `<li><b>${escapeHtml(p.part_no)}</b> ${p.item_name ? '— ' + escapeHtml(p.item_name) : ''}</li>`).join('');
-            const missingNote = missing.length ? `<div style="color:#e74c3c; margin-top:6px;">Sufijos no encontrados en KS: ${missing.map(escapeHtml).join(', ')}</div>` : '';
+            const missingNote = missing.length ? `<span class="bom-msg is-error is-title">Sufijos no encontrados en KS: ${missing.map(escapeHtml).join(', ')}</span>` : '';
             box.innerHTML = `
-                <div style="color:#27ae60; font-weight:700; margin-bottom:6px;">${parts.length} modelo(s) resuelto(s):</div>
-                <ul style="margin:0; padding-left:20px;">${partsList}</ul>
+                <span class="bom-msg is-ok is-title">${parts.length} modelo(s) resuelto(s):</span>
+                <ul class="bom-msg-list">${partsList}</ul>
                 ${missingNote}
             `;
         } catch (err) {
-            box.innerHTML = `<span style="color:#e74c3c;">Error: ${escapeHtml(err.message || String(err))}</span>`;
+            box.innerHTML = `<span class="bom-msg is-error">Error: ${escapeHtml(err.message || String(err))}</span>`;
             ecoScopeParts = [];
         }
     }
@@ -633,15 +1031,15 @@
         box.style.display = 'block';
 
         if (!ecoNo || !effectiveAt) {
-            box.innerHTML = `<span style="color:#e74c3c;">Faltan campos requeridos (paso 1): ECO y Fecha efectiva.</span>`;
+            box.innerHTML = `<span class="bom-msg is-error">Faltan campos requeridos (paso 1): ECO y Fecha efectiva.</span>`;
             return;
         }
         if (!file) {
-            box.innerHTML = `<span style="color:#e74c3c;">Seleccione el archivo Excel modificado.</span>`;
+            box.innerHTML = `<span class="bom-msg is-error">Seleccione el archivo Excel modificado.</span>`;
             return;
         }
 
-        box.innerHTML = `<span style="color:#b8c7d9;">Validando Excel...</span>`;
+        box.innerHTML = `<span class="bom-msg">Validando Excel...</span>`;
         const fd = new FormData();
         fd.append('file', file);
         fd.append('eco_no', ecoNo);
@@ -656,11 +1054,11 @@
         if (ecoScopeKind === 'FAMILY') {
             const family = (document.getElementById('ecoFamilyInput')?.value || '').trim().toUpperCase();
             if (!family) {
-                box.innerHTML = `<span style="color:#e74c3c;">Familia requerida.</span>`;
+                box.innerHTML = `<span class="bom-msg is-error">Familia requerida.</span>`;
                 return;
             }
             if (!ecoScopeParts.length) {
-                box.innerHTML = `<span style="color:#e74c3c;">No hay modelos resueltos. Vuelva al paso 1 y resuelva la familia.</span>`;
+                box.innerHTML = `<span class="bom-msg is-error">No hay modelos resueltos. Vuelva al paso 1 y resuelva la familia.</span>`;
                 return;
             }
             fd.append('family_prefix', family);
@@ -670,7 +1068,7 @@
             const inferredPartNo = ecoScopeKind === 'NEW_BOM' ? inferPartNoFromSelectedFile() : '';
             const partNo = ((document.getElementById('ecoPartNoInput')?.value || inferredPartNo || '')).trim().toUpperCase();
             if (!partNo) {
-                box.innerHTML = `<span style="color:#e74c3c;">Numero de parte requerido.</span>`;
+                box.innerHTML = `<span class="bom-msg is-error">Numero de parte requerido.</span>`;
                 return;
             }
             fd.append('part_no', partNo);
@@ -682,7 +1080,7 @@
             const data = await response.json();
             if (!data.success) {
                 const errors = data.errors || [data.error || 'Error desconocido'];
-                box.innerHTML = `<div style="color:#e74c3c; font-weight:700; margin-bottom:6px;">Validacion fallida:</div><ul style="margin:0; padding-left:20px; color:#e74c3c;">${errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>`;
+                box.innerHTML = `<span class="bom-msg is-error is-title">Validacion fallida:</span><ul class="bom-msg-list bom-msg is-error">${errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>`;
                 return;
             }
             ecoActualId = data.eco_id;
@@ -690,19 +1088,19 @@
                 setRevisionEcoAutomatica(data.bom_revision);
             }
             const revisionTexto = data.bom_revision ? ` - BOM rev ${escapeHtml(data.bom_revision)}` : '';
-            box.innerHTML = `<span style="color:#27ae60; font-weight:700;">Borrador creado (ECO ${escapeHtml(ecoNo)}${revisionTexto}). Avanzando al paso 3...</span>`;
+            box.innerHTML = `<span class="bom-msg is-ok">Borrador creado (ECO ${escapeHtml(ecoNo)}${revisionTexto}). Avanzando al paso 3...</span>`;
             await cargarPreviewDiff(data.eco_id);
             irPasoEco(3);
         } catch (err) {
-            box.innerHTML = `<span style="color:#e74c3c;">Error de red: ${escapeHtml(err.message || String(err))}</span>`;
+            box.innerHTML = `<span class="bom-msg is-error">Error de red: ${escapeHtml(err.message || String(err))}</span>`;
         }
     }
 
     // Fechas, remark, clase, proveedor y proceso: se aplican al aprobar pero no son cambio de ingenieria.
     function renderAdminChanges(rows, render) {
         if (!rows || !rows.length) return '';
-        return `<details style="margin-top:8px;">
-            <summary style="cursor:pointer; padding:8px 12px; color:#8b98a8; font-size:12px;">Ver ${rows.length} cambios de datos administrativos (fechas, remark, clase, proveedor, proceso)</summary>
+        return `<details class="bom-admin-details">
+            <summary>Ver ${rows.length} cambios de datos administrativos (fechas, remark, clase, proveedor, proceso)</summary>
             ${render(rows)}
         </details>`;
     }
@@ -710,7 +1108,47 @@
     // Aviso (no bloquea) cuando el ECO elimina mas de la mitad del BOM: casi siempre es el Excel de otro modelo.
     function renderBigChangeWarning(warning) {
         if (!warning) return '';
-        return `<div style="margin-top:10px; padding:8px 12px; background:#3d3212; border:1px solid #9a7d0a; border-radius:5px; color:#f5c542; font-weight:700;">&#9888; ${escapeHtml(warning)}</div>`;
+        return `<div class="bom-warning">&#9888; ${escapeHtml(warning)}</div>`;
+    }
+
+    // Seccion del diff (anadidos / modificados / eliminados / administrativos),
+    // compartida por el paso 3 del asistente y el detalle del ECO.
+    function renderDiffSection(title, rows, accion, showPart, defaultPart) {
+        if (!rows || !rows.length) return '';
+        const variante = { ADD: 'is-add', MODIFY: 'is-mod', REMOVE: 'is-del' }[accion] || 'is-admin';
+        const esModificacion = accion === 'MODIFY' || accion === 'ADMIN';
+        const value = v => String(v ?? '').trim() || '-';
+        const cell = (v, cls) => `<td class="${cls || ''}">${escapeHtml(value(v))}</td>`;
+        const headers = (showPart ? ['Modelo'] : []).concat(esModificacion
+            ? ['Nivel', 'Item', 'Campo', 'Antes', 'Despues']
+            : ['Nivel', 'Item', 'Nombre', 'Qty', 'Ubicacion', 'Maker / proveedor']);
+        const body = rows.map(r => {
+            const part = showPart ? cell(r.part_no || defaultPart, 'c-part') : '';
+            if (esModificacion) {
+                return `<tr>${part}${cell(r.bom_level, 'c-muted')}${cell(r.item_no, 'c-strong')}${cell(r.field_changed, 'c-field')}${cell(r.old_value, 'c-old')}${cell(r.new_value, 'c-new')}</tr>`;
+            }
+            const qtyUnit = [value(r.eco_qty), value(r.eco_unit)].filter(v => v !== '-').join(' ');
+            const makerSupplier = [value(r.eco_maker), value(r.eco_supplier)].filter(v => v !== '-').join(' / ');
+            return `<tr>${part}${cell(r.bom_level, 'c-muted')}${cell(r.item_no, 'c-strong')}${cell(r.eco_item_name, 'c-wide')}${cell(qtyUnit, 'c-qty')}${cell(r.eco_location_text, 'c-wrap')}${cell(makerSupplier, 'c-wide')}</tr>`;
+        }).join('');
+        return `
+            <div class="bom-section ${variante}">
+                <div class="bom-section-title">${escapeHtml(title)} (${rows.length})</div>
+                <table class="bom-subtable ${esModificacion ? 'is-diff-mod' : 'is-diff-full'}">
+                    <thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+                    <tbody>${body}</tbody>
+                </table>
+            </div>`;
+    }
+
+    function renderDiffChips(counts) {
+        return `
+            <div class="bom-chips">
+                <span class="bom-chip is-add">+ ${escapeHtml(counts.added || 0)} anadidos</span>
+                <span class="bom-chip is-mod">~ ${escapeHtml(counts.modified || 0)} modificados</span>
+                <span class="bom-chip is-del">- ${escapeHtml(counts.removed || 0)} eliminados</span>
+                ${counts.modified_admin ? `<span class="bom-chip">${escapeHtml(counts.modified_admin)} datos administrativos</span>` : ''}
+            </div>`;
     }
 
     async function cargarPreviewDiff(ecoId) {
@@ -722,107 +1160,32 @@
             const response = await fetch(`/api/ecos/${ecoId}/diff`);
             const data = await response.json();
             if (!data.success) {
-                summary.innerHTML = `<span style="color:#e74c3c;">${escapeHtml(data.error || 'Error cargando diff')}</span>`;
+                summary.innerHTML = `<span class="bom-msg is-error">${escapeHtml(data.error || 'Error cargando diff')}</span>`;
                 return;
             }
             const d = data.data || {};
-            const counts = d.counts || {};
             const perPart = d.per_part || {};
             const perPartKeys = Object.keys(perPart).filter(k => k);
-            const perPartHtml = perPartKeys.length > 1
-                ? `<div style="margin-top:10px; padding-top:10px; border-top:1px solid #34495e; font-size:11px; color:#8b98a8;">
-                    <div style="margin-bottom:4px;"><b>Cambios por modelo:</b></div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            const showPart = perPartKeys.length > 1;
+            const perPartHtml = showPart
+                ? `<div class="bom-per-part">
+                    <b>Cambios por modelo:</b>
+                    <div class="bom-chips">
                         ${perPartKeys.sort().map(pn => {
                             const c = perPart[pn];
-                            return `<span style="background:#2c3e50; padding:4px 8px; border-radius:3px;"><b>${escapeHtml(pn)}</b>: +${c.added} ~${c.modified} -${c.removed}</span>`;
+                            return `<span class="bom-chip"><b>${escapeHtml(pn)}</b>: +${escapeHtml(c.added)} ~${escapeHtml(c.modified)} -${escapeHtml(c.removed)}</span>`;
                         }).join('')}
                     </div>
                 </div>`
                 : '';
-            summary.innerHTML = `
-                <div style="display:flex; gap:14px; flex-wrap:wrap;">
-                    <span style="background:#1e3a2f; color:#52be80; padding:6px 12px; border-radius:5px; font-weight:700;">+ ${counts.added || 0} anadidos</span>
-                    <span style="background:#3a2c1e; color:#f5b041; padding:6px 12px; border-radius:5px; font-weight:700;">~ ${counts.modified || 0} modificados</span>
-                    <span style="background:#3a1e1e; color:#e74c3c; padding:6px 12px; border-radius:5px; font-weight:700;">- ${counts.removed || 0} eliminados</span>
-                    ${counts.modified_admin ? `<span style="background:#2c3e50; color:#8b98a8; padding:6px 12px; border-radius:5px;">${counts.modified_admin} datos administrativos</span>` : ''}
-                </div>
-                ${renderBigChangeWarning(d.warning)}
-                ${perPartHtml}
-            `;
-            const showPart = perPartKeys.length > 1;
-            const previewValue = value => {
-                const text = String(value ?? '').trim();
-                return text || '-';
-            };
-            const previewCell = (value, extraStyle = '') =>
-                `<td style="padding:6px 10px; border-bottom:1px solid #283747; ${extraStyle}">${escapeHtml(previewValue(value))}</td>`;
-            const headerCell = label =>
-                `<th style="padding:6px 10px; border-bottom:1px solid #34495e; color:#9fb3c8; font-size:11px; text-align:left; font-weight:700;">${escapeHtml(label)}</th>`;
-            const renderSection = (title, rows, color, accion) => {
-                if (!rows || !rows.length) return '';
-                const tableMinWidth = accion !== 'MODIFY' ? '1080px' : '760px';
-                const partHeader = showPart ? headerCell('Modelo') : '';
-                const headers = accion !== 'MODIFY'
-                    ? `${partHeader}${headerCell('Nivel')}${headerCell('Item')}${headerCell('Nombre')}${headerCell('Qty')}${headerCell('Ubicacion')}${headerCell('Maker / proveedor')}`
-                    : accion === 'MODIFY'
-                        ? `${partHeader}${headerCell('Nivel')}${headerCell('Item')}${headerCell('Campo')}${headerCell('Antes')}${headerCell('Despues')}`
-                        : `${partHeader}${headerCell('Nivel')}${headerCell('Item')}`;
-                return `
-                    <div style="padding:10px 14px; background:#2c3e50; color:${color}; font-weight:700; font-size:12px; border-top:1px solid #1a1b26;">${escapeHtml(title)} (${rows.length})</div>
-                    <table style="width:100%; min-width:${tableMinWidth}; border-collapse:collapse; font-size:12px;">
-                        <thead><tr>${headers}</tr></thead>
-                        <tbody>
-                            ${rows.map(r => {
-                                const partCell = showPart
-                                    ? `<td style="padding:6px 10px; border-bottom:1px solid #283747; color:#5dade2; font-weight:700;">${escapeHtml(r.part_no || '-')}</td>`
-                                    : '';
-                                if (accion !== 'MODIFY') {
-                                    const qtyUnit = [
-                                        previewValue(r.eco_qty),
-                                        previewValue(r.eco_unit)
-                                    ].filter(v => v !== '-').join(' ') || '-';
-                                    const makerSupplier = [
-                                        previewValue(r.eco_maker),
-                                        previewValue(r.eco_supplier)
-                                    ].filter(v => v !== '-').join(' / ') || '-';
-                                    return `<tr>
-                                        ${partCell}
-                                        ${previewCell(r.bom_level, 'color:#8b98a8;')}
-                                        ${previewCell(r.item_no, 'font-weight:700; color:#ffffff;')}
-                                        ${previewCell(r.eco_item_name, 'color:#d7dde5; min-width:150px;')}
-                                        ${previewCell(qtyUnit, `color:${color}; font-weight:700; white-space:nowrap;`)}
-                                        ${previewCell(r.eco_location_text, 'color:#d7dde5; min-width:220px; white-space:normal;')}
-                                        ${previewCell(makerSupplier, 'color:#d7dde5; min-width:160px;')}
-                                    </tr>`;
-                                }
-                                if (accion === 'MODIFY') {
-                                    return `<tr>
-                                        ${partCell}
-                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#8b98a8;">${escapeHtml(r.bom_level || '-')}</td>
-                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(r.item_no || '-')}</td>
-                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#f5b041;">${escapeHtml(r.field_changed || '')}</td>
-                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#e74c3c; text-decoration:line-through;">${escapeHtml(r.old_value || '')}</td>
-                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#52be80;">${escapeHtml(r.new_value || '')}</td>
-                                    </tr>`;
-                                }
-                                return `<tr>
-                                    ${partCell}
-                                    <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#8b98a8;">${escapeHtml(r.bom_level || '-')}</td>
-                                    <td style="padding:6px 10px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(r.item_no || '-')}</td>
-                                </tr>`;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                `;
-            };
+            summary.innerHTML = renderDiffChips(d.counts || {}) + renderBigChangeWarning(d.warning) + perPartHtml;
             details.innerHTML =
-                renderSection('Añadidos', d.added, '#52be80', 'ADD') +
-                renderSection('Modificados', d.modified, '#f5b041', 'MODIFY') +
-                renderSection('Eliminados', d.removed, '#e74c3c', 'REMOVE') +
-                renderAdminChanges(d.modified_admin, rows => renderSection('Datos administrativos', rows, '#8b98a8', 'MODIFY'));
+                renderDiffSection('Anadidos', d.added, 'ADD', showPart) +
+                renderDiffSection('Modificados', d.modified, 'MODIFY', showPart) +
+                renderDiffSection('Eliminados', d.removed, 'REMOVE', showPart) +
+                renderAdminChanges(d.modified_admin, rows => renderDiffSection('Datos administrativos', rows, 'ADMIN', showPart));
         } catch (err) {
-            summary.innerHTML = `<span style="color:#e74c3c;">Error: ${escapeHtml(err.message || String(err))}</span>`;
+            summary.innerHTML = `<span class="bom-msg is-error">Error: ${escapeHtml(err.message || String(err))}</span>`;
         }
     }
 
@@ -843,110 +1206,47 @@
     }
 
     function cerrarModalECO() {
-        const modal = document.getElementById('ecoModal');
-        if (modal) modal.style.cssText = 'display: none !important;';
+        cerrarModalBom('ecoModal');
     }
 
     function abrirModalEcoList() {
-        const modal = document.getElementById('ecoListModal');
+        ensureControlBomModals();
         const selectedModel = (document.getElementById('bomModeloSearch')?.value || '').trim().toUpperCase();
         const partFilter = document.getElementById('ecoListPartFilter');
         if (partFilter && selectedModel) partFilter.value = selectedModel;
         cerrarModalEcoDetalle();
-        if (modal) {
-            if (modal.parentNode !== document.body) {
-                document.body.appendChild(modal);
-            }
-            modal.style.cssText = `
-                display: flex !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                background: rgba(0,0,0,0.72) !important;
-                justify-content: center !important;
-                align-items: center !important;
-                z-index: 10003 !important;
-                opacity: 1 !important;
-                visibility: visible !important;
-            `;
-        }
+        abrirModalBom('ecoListModal');
         cargarEcoList(1);
     }
 
     function cerrarModalEcoList() {
         cerrarModalEcoDetalle();
-        const modal = document.getElementById('ecoListModal');
-        if (modal) modal.style.cssText = 'display: none !important;';
+        cerrarModalBom('ecoListModal');
     }
 
     function abrirModalEcoDetalle() {
-        const modal = document.getElementById('ecoDetailBox');
-        if (!modal) return;
-        if (modal.parentNode !== document.body) {
-            document.body.appendChild(modal);
-        }
-        modal.style.cssText = `
-            display: flex !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            background: rgba(0,0,0,0.72) !important;
-            justify-content: center !important;
-            align-items: center !important;
-            z-index: 10005 !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-        `;
+        abrirModalBom('ecoDetailBox');
     }
 
     function cerrarModalEcoDetalle() {
-        const modal = document.getElementById('ecoDetailBox');
-        if (modal) modal.style.cssText = 'display: none !important;';
+        cerrarModalBom('ecoDetailBox');
     }
 
     function abrirModalEcnKs() {
-        const modal = document.getElementById('ecnKsDetailModal');
-        if (!modal) return;
-        if (modal.parentNode !== document.body) {
-            document.body.appendChild(modal);
-        }
-        modal.style.cssText = `
-            display: flex !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            background: rgba(0,0,0,0.72) !important;
-            justify-content: center !important;
-            align-items: center !important;
-            z-index: 10004 !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-        `;
+        abrirModalBom('ecnKsDetailModal');
     }
 
     function cerrarModalEcnKs() {
-        const modal = document.getElementById('ecnKsDetailModal');
-        if (modal) modal.style.cssText = 'display: none !important;';
+        cerrarModalBom('ecnKsDetailModal');
     }
 
     function renderEcnKsField(label, value, opts) {
         opts = opts || {};
         const v = (value === null || value === undefined || value === '') ? '-' : String(value);
-        const pre = opts.pre
-            ? `<pre style="margin:4px 0 0; padding:10px; background:#0f1117; border:1px solid #2c3e50; border-radius:4px; white-space:pre-wrap; word-break:break-word; max-height:240px; overflow:auto; font-family:Consolas, monospace; font-size:12px; color:#dce4ec;">${escapeHtml(v)}</pre>`
-            : `<div style="color:#dce4ec; word-break:break-word;">${escapeHtml(v)}</div>`;
-        return `
-            <div style="margin-bottom:10px;">
-                <div style="color:#8b98a8; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">${escapeHtml(label)}</div>
-                ${pre}
-            </div>
-        `;
+        const valor = opts.pre
+            ? `<pre class="bom-field-pre">${escapeHtml(v)}</pre>`
+            : `<div class="bom-field-value">${escapeHtml(v)}</div>`;
+        return `<div class="bom-field"><div class="bom-field-label">${escapeHtml(label)}</div>${valor}</div>`;
     }
 
     async function verEcnKs(histSeq) {
@@ -954,18 +1254,18 @@
         const content = document.getElementById('ecnKsDetailContent');
         const title = document.getElementById('ecnKsDetailTitle');
         title.textContent = `ECN KS#${histSeq}`;
-        content.innerHTML = '<div style="color:#aaa;">Cargando...</div>';
+        content.innerHTML = '<div class="bom-msg">Cargando...</div>';
         try {
             const response = await fetch(`/api/ecn-ks/${encodeURIComponent(histSeq)}`);
             const data = await response.json();
             if (!data.success) {
-                content.innerHTML = `<div style="color:#e74c3c;">Error: ${escapeHtml(data.error || 'No se pudo cargar')}</div>`;
+                content.innerHTML = `<div class="bom-msg is-error">Error: ${escapeHtml(data.error || 'No se pudo cargar')}</div>`;
                 return;
             }
             const e = data.data || {};
             title.textContent = `ECN KS#${e.hist_seq} - ${e.family_prefix || ''}`;
             content.innerHTML = `
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px 18px; margin-bottom:14px;">
+                <div class="bom-field-grid">
                     ${renderEcnKsField('Family prefix', e.family_prefix)}
                     ${renderEcnKsField('Hist seq', e.hist_seq)}
                     ${renderEcnKsField('Item no', e.item_no)}
@@ -989,7 +1289,7 @@
             `;
         } catch (err) {
             console.error('Error cargando ECN KS:', err);
-            content.innerHTML = `<div style="color:#e74c3c;">Error de red: ${escapeHtml(err.message || String(err))}</div>`;
+            content.innerHTML = `<div class="bom-msg is-error">Error de red: ${escapeHtml(err.message || String(err))}</div>`;
         }
     }
 
@@ -1032,8 +1332,6 @@
         info.textContent = `Pagina ${page} de ${totalPages} · ${total} ECOs`;
         prev.disabled = page <= 1;
         next.disabled = page >= totalPages;
-        prev.style.opacity = prev.disabled ? '0.45' : '1';
-        next.style.opacity = next.disabled ? '0.45' : '1';
     }
 
     function exportarEcoList() {
@@ -1045,7 +1343,7 @@
         const tbody = document.getElementById('ecoListTableBody');
         ecoListPage = Math.max(1, Number(page || ecoListPage || 1));
 
-        tbody.innerHTML = '<tr><td colspan="7" style="padding:12px; color:#aaa; text-align:center;">Cargando...</td></tr>';
+        tbody.innerHTML = '<tr class="bom-empty-row"><td colspan="7">Cargando...</td></tr>';
         setEcoListStatus('Consultando ECOs...');
 
         try {
@@ -1059,7 +1357,7 @@
 
             const rows = data.data || [];
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="7" style="padding:12px; color:#aaa; text-align:center;">No hay ECOs con esos filtros.</td></tr>';
+                tbody.innerHTML = '<tr class="bom-empty-row"><td colspan="7">No hay ECOs con esos filtros.</td></tr>';
                 ecoListMeta = data.meta || ecoListMeta;
                 updateEcoListPagination(ecoListMeta);
                 setEcoListStatus('Sin ECOs para mostrar.');
@@ -1071,18 +1369,19 @@
                 const statusValue = String(row.status || '').toUpperCase();
                 const canDelete = !isKs && statusValue !== 'APPROVED';
                 const canApprove = !isKs && statusValue === 'DRAFT';
+                // Sin permiso de Crear ECO no se ofrece Borrar (WF_009); el backend lo valida igual.
                 const deleteControl = canDelete
-                    ? `<button type="button" class="bom-btn eliminar" data-eco-delete-id="${escapeHtml(row.id)}" data-eco-no="${escapeHtml(row.eco_no)}" style="padding:4px 8px; font-size:11px;">Borrar</button>`
-                    : `<span style="color:#8b98a8; font-size:11px;">${isKs ? 'KS sync' : 'Inmutable'}</span>`;
+                    ? (puedeCrearEco ? `<button type="button" class="bom-btn eliminar" data-eco-delete-id="${escapeHtml(row.id)}" data-eco-no="${escapeHtml(row.eco_no)}" ${PERMISO_CREAR_ECO_ATTRS}>Borrar</button>` : '')
+                    : `<span class="bom-msg">${isKs ? 'KS sync' : 'Inmutable'}</span>`;
                 const approveControl = canApprove && puedeAprobarEco
-                    ? `<button type="button" class="bom-btn registrar" data-eco-approve-id="${escapeHtml(row.id)}" data-eco-no="${escapeHtml(row.eco_no)}" data-permiso-pagina="LISTA_INFORMACIONBASICA" data-permiso-seccion="Control de produccion" data-permiso-boton="Aprobar ECO" style="padding:4px 8px; font-size:11px;">Aprobar</button>`
+                    ? `<button type="button" class="bom-btn registrar" data-eco-approve-id="${escapeHtml(row.id)}" data-eco-no="${escapeHtml(row.eco_no)}" ${PERMISO_APROBAR_ECO_ATTRS}>Aprobar</button>`
                     : '';
                 const viewControl = isKs
-                    ? `<button type="button" class="bom-btn consultar" data-ecn-ks-id="${escapeHtml(String(row.id).replace(/^ks-/, ''))}" style="padding:4px 8px; font-size:11px;">Ver</button>`
-                    : `<button type="button" class="bom-btn consultar" data-eco-detail-id="${escapeHtml(row.id)}" style="padding:4px 8px; font-size:11px;">Ver</button>`;
+                    ? `<button type="button" class="bom-btn consultar" data-ecn-ks-id="${escapeHtml(String(row.id).replace(/^ks-/, ''))}">Ver</button>`
+                    : `<button type="button" class="bom-btn consultar" data-eco-detail-id="${escapeHtml(row.id)}">Ver</button>`;
                 const origenBadge = isKs
-                    ? `<span style="background:#2c3e50; color:#5dade2; padding:2px 6px; border-radius:3px; font-size:10px; margin-left:6px;">KS</span>`
-                    : `<span style="background:#1e3a2f; color:#52be80; padding:2px 6px; border-radius:3px; font-size:10px; margin-left:6px;">MES</span>`;
+                    ? '<span class="bom-badge is-ks">KS</span>'
+                    : '<span class="bom-badge is-mes">MES</span>';
                 const scopeCount = Number(row.scope_count || 0);
                 const scopeParts = String(row.scope_parts || '').trim();
                 const scopePartList = scopeParts.split(',').map(function(part) {
@@ -1102,23 +1401,19 @@
                 }).filter(Boolean).join(', ');
                 const modeloCell = isFamilyEco
                     ? `<div title="${escapeHtml(scopeParts)}">
-                           <div style="font-weight:700;">${escapeHtml(familyLabel || scopeParts)}</div>
-                           <div style="margin-top:3px; color:#8b98a8; font-size:11px;">Trabajo: ${escapeHtml(jobSuffixes || scopeParts)}</div>
+                           <b>${escapeHtml(familyLabel || scopeParts)}</b>
+                           <div class="bom-family-sub">Trabajo: ${escapeHtml(jobSuffixes || scopeParts)}</div>
                        </div>`
                     : escapeHtml(row.part_no || '-');
                 return `
                     <tr>
-                        <td style="padding:8px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(row.eco_no)}${origenBadge}</td>
-                        <td style="padding:8px; border-bottom:1px solid #283747;">${modeloCell}</td>
-                        <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(row.bom_revision)}</td>
-                        <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(formatFechaEfectiva(row.effective_at))}</td>
-                        <td style="padding:8px; border-bottom:1px solid #283747;">${statusBadge(row.status)}</td>
-                        <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(row.approved_by || '-')}</td>
-                        <td style="padding:8px; border-bottom:1px solid #283747; text-align:center;">
-                            ${viewControl}
-                            ${approveControl}
-                            ${deleteControl}
-                        </td>
+                        <td class="c-strong">${escapeHtml(row.eco_no)}${origenBadge}</td>
+                        <td>${modeloCell}</td>
+                        <td>${escapeHtml(row.bom_revision)}</td>
+                        <td>${escapeHtml(formatFechaEfectiva(row.effective_at))}</td>
+                        <td>${statusBadge(row.status)}</td>
+                        <td>${escapeHtml(row.approved_by || '-')}</td>
+                        <td><div class="bom-actions-cell">${viewControl}${approveControl}${deleteControl}</div></td>
                     </tr>
                 `;
             }).join('');
@@ -1135,7 +1430,7 @@
             }
         } catch (error) {
             console.error('Error cargando ECOs:', error);
-            tbody.innerHTML = '<tr><td colspan="7" style="padding:12px; color:#e74c3c; text-align:center;">Error cargando ECOs.</td></tr>';
+            tbody.innerHTML = '<tr class="bom-empty-row"><td colspan="7" class="bom-msg is-error">Error cargando ECOs.</td></tr>';
             updateEcoListPagination({ filters_active: false });
             setEcoListStatus(`Error: ${escapeHtml(error.message)}`);
         }
@@ -1186,11 +1481,11 @@
     }
 
     async function cargarDetalleEco(ecoId) {
+        abrirModalEcoDetalle();
         const title = document.getElementById('ecoDetailTitle');
         const content = document.getElementById('ecoDetailContent');
-        abrirModalEcoDetalle();
         title.textContent = 'Cargando detalle...';
-        content.innerHTML = '<div style="color:#aaa;">Cargando...</div>';
+        content.innerHTML = '<div class="bom-msg">Cargando...</div>';
 
         try {
             const [detailResponse, diffResponse] = await Promise.all([
@@ -1208,109 +1503,29 @@
 
             const eco = data.data || {};
             const diff = diffData.data || {};
-            const cambios = []
-                .concat((diff.added || []).map(row => Object.assign({}, row, { action: 'ADD' })))
-                .concat((diff.modified || []).map(row => Object.assign({}, row, { action: 'MODIFY' })))
-                .concat((diff.removed || []).map(row => Object.assign({}, row, { action: 'REMOVE' })));
-            const counts = diff.counts || { added: 0, modified: 0, removed: 0 };
-            const totalCambios = cambios.length;
+            const totalCambios = (diff.added || []).length + (diff.modified || []).length + (diff.removed || []).length;
             const scopeParts = String(eco.scope_parts || '').trim();
             const scopeList = Array.isArray(eco.scope)
                 ? eco.scope.map(row => row.part_no).filter(Boolean)
                 : [];
             const modelScope = scopeParts || scopeList.join(', ') || eco.part_no || '-';
             const isFamily = String(eco.scope_kind || '').toUpperCase() === 'FAMILY' || scopeList.length > 1;
-            title.innerHTML = `ECO MES ${escapeHtml(eco.eco_no || eco.id || '')} - ${statusBadge(eco.status)} - ${totalCambios} cambios`;
-
-            const actionBadge = function(action) {
-                const value = String(action || '').toUpperCase();
-                const styles = {
-                    ADD: 'background:#123d2a;color:#58d68d;border:1px solid #1f7a4c;',
-                    MODIFY: 'background:#3d3212;color:#f5c542;border:1px solid #9a7d0a;',
-                    REMOVE: 'background:#4a1717;color:#ff7675;border:1px solid #943126;'
-                };
-                return `<span style="${styles[value] || 'background:#2c3e50;color:#bdc3c7;border:1px solid #34495e;'} padding:2px 7px; border-radius:10px; font-size:10px; font-weight:700;">${escapeHtml(value || '-')}</span>`;
-            };
-
-            const detailValue = value => {
-                const text = String(value ?? '').trim();
-                return text || '-';
-            };
-            const detailCell = (value, style = '') =>
-                `<td style="padding:7px; border-bottom:1px solid #283747; ${style}">${escapeHtml(detailValue(value))}</td>`;
-            const detailHeader = label =>
-                `<th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left; color:#9fb3c8;">${escapeHtml(label)}</th>`;
-
-            const renderChangeSection = function(label, rows, action) {
-                const color = action === 'ADD' ? '#58d68d' : action === 'MODIFY' ? '#f5c542' : '#ff7675';
-                if (!rows.length) {
-                    return '';
-                }
-                const header = action !== 'MODIFY'
-                    ? `${detailHeader('Modelo')}${detailHeader('Nivel')}${detailHeader('Item')}${detailHeader('Nombre')}${detailHeader('Qty')}${detailHeader('Ubicacion')}${detailHeader('Maker / proveedor')}`
-                    : action === 'MODIFY'
-                        ? `${detailHeader('Modelo')}${detailHeader('Nivel')}${detailHeader('Item')}${detailHeader('Campo')}${detailHeader('Antes')}${detailHeader('Despues')}`
-                        : `${detailHeader('Modelo')}${detailHeader('Nivel')}${detailHeader('Item')}`;
-                const body = rows.map(function(row) {
-                    if (action !== 'MODIFY') {
-                        const qtyUnit = [
-                            detailValue(row.eco_qty),
-                            detailValue(row.eco_unit)
-                        ].filter(v => v !== '-').join(' ') || '-';
-                        const makerSupplier = [
-                            detailValue(row.eco_maker),
-                            detailValue(row.eco_supplier)
-                        ].filter(v => v !== '-').join(' / ') || '-';
-                        return `<tr>
-                            ${detailCell(row.part_no || eco.part_no, 'color:#5dade2; font-weight:700;')}
-                            ${detailCell(row.bom_level, 'color:#8b98a8;')}
-                            ${detailCell(row.item_no, 'font-weight:700; color:#ffffff;')}
-                            ${detailCell(row.eco_item_name, 'min-width:150px;')}
-                            ${detailCell(qtyUnit, `color:${color}; font-weight:700; white-space:nowrap;`)}
-                            ${detailCell(row.eco_location_text, 'min-width:220px; white-space:normal;')}
-                            ${detailCell(makerSupplier, 'min-width:160px;')}
-                        </tr>`;
-                    }
-                    if (action === 'MODIFY') {
-                        return `<tr>
-                            ${detailCell(row.part_no || eco.part_no, 'color:#5dade2; font-weight:700;')}
-                            ${detailCell(row.bom_level, 'color:#8b98a8;')}
-                            ${detailCell(row.item_no, 'font-weight:700; color:#ffffff;')}
-                            ${detailCell(row.field_changed, 'color:#f5c542;')}
-                            ${detailCell(row.old_value, 'color:#ffb4b4; text-decoration:line-through; min-width:180px;')}
-                            ${detailCell(row.new_value, 'color:#b7f7c8; min-width:180px;')}
-                        </tr>`;
-                    }
-                    return `<tr>
-                        ${detailCell(row.part_no || eco.part_no, 'color:#5dade2; font-weight:700;')}
-                        ${detailCell(row.bom_level, 'color:#8b98a8;')}
-                        ${detailCell(row.item_no, 'font-weight:700; color:#ffffff;')}
-                    </tr>`;
-                }).join('');
-                return `
-                    <div style="margin-top:12px; border:1px solid #34495e; border-radius:6px; overflow:auto;">
-                        <div style="padding:9px 12px; background:#2c3e50; color:${color}; font-weight:700; font-size:12px;">${escapeHtml(label)} (${rows.length})</div>
-                        <table style="width:100%; min-width:${action !== 'MODIFY' ? '1080px' : '820px'}; border-collapse:collapse; font-size:12px;">
-                            <thead><tr style="background:#111827;">${header}</tr></thead>
-                            <tbody>${body}</tbody>
-                        </table>
-                    </div>
-                `;
-            };
+            const status = String(eco.status || '').toUpperCase();
+            title.innerHTML = `ECO MES ${escapeHtml(eco.eco_no || eco.id || '')} ${statusBadge(eco.status)} <span class="bom-modal-subtitle">${totalCambios} cambios</span>`;
 
             const actionButtons = `
-                <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:14px;">
-                    ${String(eco.status || '').toUpperCase() === 'DRAFT' && puedeAprobarEco
-                        ? `<button type="button" class="bom-btn registrar" data-eco-approve-id="${escapeHtml(eco.id)}" data-eco-no="${escapeHtml(eco.eco_no || '')}" data-permiso-pagina="LISTA_INFORMACIONBASICA" data-permiso-seccion="Control de produccion" data-permiso-boton="Aprobar ECO">Aprobar ECO</button>`
+                <div class="bom-modal-footer is-end">
+                    ${status === 'DRAFT' && puedeAprobarEco
+                        ? `<button type="button" class="bom-btn registrar" data-eco-approve-id="${escapeHtml(eco.id)}" data-eco-no="${escapeHtml(eco.eco_no || '')}" ${PERMISO_APROBAR_ECO_ATTRS}>Aprobar ECO</button>`
                         : ''}
-                    ${String(eco.status || '').toUpperCase() !== 'APPROVED'
-                        ? `<button type="button" class="bom-btn eliminar" data-eco-delete-id="${escapeHtml(eco.id)}" data-eco-no="${escapeHtml(eco.eco_no || '')}">Borrar borrador</button>`
+                    ${status !== 'APPROVED' && puedeCrearEco
+                        ? `<button type="button" class="bom-btn eliminar" data-eco-delete-id="${escapeHtml(eco.id)}" data-eco-no="${escapeHtml(eco.eco_no || '')}" ${PERMISO_CREAR_ECO_ATTRS}>Borrar borrador</button>`
                         : ''}
                 </div>
             `;
 
             content.innerHTML = `
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px 18px; margin-bottom:14px;">
+                <div class="bom-field-grid">
                     ${renderEcnKsField('Origen', 'MES')}
                     ${renderEcnKsField('ECO', eco.eco_no || eco.id)}
                     ${renderEcnKsField(isFamily ? 'Familia' : 'Modelo', isFamily ? (eco.family_prefix || modelScope) : (eco.part_no || modelScope))}
@@ -1325,29 +1540,318 @@
                     ${renderEcnKsField('Actualizado', eco.updated_at)}
                 </div>
                 ${renderEcnKsField('Notas', eco.notes, { pre: true })}
-                <div style="margin-top:12px; padding:10px; background:#111827; border:1px solid #34495e; border-radius:6px;">
-                    <div style="color:#8b98a8; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:7px;">Resumen de cambios</div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <span style="background:#123d2a; color:#58d68d; padding:4px 9px; border-radius:10px;">${actionBadge('ADD')} ${escapeHtml(counts.added || 0)}</span>
-                        <span style="background:#3d3212; color:#f5c542; padding:4px 9px; border-radius:10px;">${actionBadge('MODIFY')} ${escapeHtml(counts.modified || 0)}</span>
-                        <span style="background:#4a1717; color:#ff7675; padding:4px 9px; border-radius:10px;">${actionBadge('REMOVE')} ${escapeHtml(counts.removed || 0)}</span>
-                        ${counts.modified_admin ? `<span style="background:#2c3e50; color:#8b98a8; padding:4px 9px; border-radius:10px;">${escapeHtml(counts.modified_admin)} datos administrativos</span>` : ''}
-                    </div>
+                <div class="bom-summary-box">
+                    <div class="bom-field-label">Resumen de cambios</div>
+                    ${renderDiffChips(diff.counts || {})}
                     ${renderBigChangeWarning(diff.warning)}
                 </div>
                 ${totalCambios
-                    ? renderChangeSection('Anadidos', diff.added || [], 'ADD') +
-                      renderChangeSection('Modificados', diff.modified || [], 'MODIFY') +
-                      renderChangeSection('Eliminados', diff.removed || [], 'REMOVE') +
-                      renderAdminChanges(diff.modified_admin, rows => renderChangeSection('Datos administrativos', rows, 'MODIFY'))
+                    ? renderDiffSection('Anadidos', diff.added, 'ADD', true, eco.part_no) +
+                      renderDiffSection('Modificados', diff.modified, 'MODIFY', true, eco.part_no) +
+                      renderDiffSection('Eliminados', diff.removed, 'REMOVE', true, eco.part_no) +
+                      renderAdminChanges(diff.modified_admin, rows => renderDiffSection('Datos administrativos', rows, 'ADMIN', true, eco.part_no))
                     : renderEcnKsField('Cambios registrados', 'Este ECO no tiene cambios registrados en el diff.')}
+                <div id="ecoFilesBox"></div>
                 ${actionButtons}
             `;
+            cargarPapeleriaEco(eco.id, eco.status);
         } catch (error) {
             console.error('Error detalle ECO:', error);
             title.textContent = 'Error cargando detalle';
-            content.innerHTML = `<div style="padding:12px; color:#e74c3c;">${escapeHtml(error.message)}</div>`;
+            content.innerHTML = `<div class="bom-msg is-error">${escapeHtml(error.message)}</div>`;
         }
+    }
+
+    // ===== Archivos del ECO: HTML / PPT / PDF (look del modulo ICT) =====
+    let ecoPapeleriaActual = { id: null, status: '' };
+    const ECO_FILES_ACCEPT = '.html,.htm,.ppt,.pptx,.pdf';
+    const ECO_FILES_ICONS = {
+        clip: '<path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>',
+        doc: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline>',
+        eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>',
+        download: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>',
+        trash: '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m5 0V4a2 2 0 012-2h0a2 2 0 012 2v2"></path>',
+        upload: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line>',
+        close: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>'
+    };
+
+    function ecoFilesIcon(name, cls) {
+        return `<svg class="${cls || ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">${ECO_FILES_ICONS[name]}</svg>`;
+    }
+
+    function ecoFileUrl(ecoId, fileId) {
+        return `/api/ecos/${encodeURIComponent(ecoId)}/files/${encodeURIComponent(fileId)}`;
+    }
+
+    // fetch + JSON con los casos de WF_007: sesion vencida (el redirect a login
+    // devuelve HTML), 403 sin permiso, 404/500 y JSON invalido.
+    async function fetchJsonArchivos(url, options) {
+        const response = await fetch(url, options);
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (error) {
+            data = null;
+        }
+        if (!data) {
+            throw new Error(response.redirected || response.status === 401
+                ? 'La sesion expiro; vuelve a iniciar sesion.'
+                : `Respuesta invalida del servidor (HTTP ${response.status}).`);
+        }
+        if (!response.ok || !data.success) {
+            if (response.status === 403) throw new Error(data.error || 'No tienes permiso para esta accion.');
+            throw new Error(data.error || `Error del servidor (HTTP ${response.status}).`);
+        }
+        return data;
+    }
+
+    async function cargarPapeleriaEco(ecoId, status) {
+        ecoPapeleriaActual = { id: ecoId, status: status };
+        const box = document.getElementById('ecoFilesBox');
+        if (!box) return;
+        box.innerHTML = '<div class="eco-files-card"><div class="eco-files-empty">Cargando archivos...</div></div>';
+        try {
+            const data = await fetchJsonArchivos(`/api/ecos/${encodeURIComponent(ecoId)}/files`);
+            const files = data.data || [];
+            // Un ECO aprobado es inmutable: se puede seguir adjuntando, pero no borrar.
+            const puedeBorrar = puedeCrearEco && String(status || '').toUpperCase() !== 'APPROVED';
+            const rows = files.map(f => `
+                <tr>
+                    <td class="eco-files-name">${escapeHtml(f.nombre_original)}</td>
+                    <td><span class="eco-files-ext">${escapeHtml(String(f.extension || '').replace('.', ''))}</span></td>
+                    <td>${escapeHtml(f.created_by || '-')}</td>
+                    <td>${escapeHtml(f.created_at || '-')}</td>
+                    <td>
+                        <div class="eco-files-actions">
+                            <button type="button" class="eco-files-btn eco-files-btn-primary" data-eco-file-view="${escapeHtml(f.id)}" data-eco-file-ext="${escapeHtml(f.extension)}" data-eco-file-name="${escapeHtml(f.nombre_original)}">${ecoFilesIcon('eye')}Ver</button>
+                            <a class="eco-files-btn eco-files-btn-export" href="${escapeHtml(ecoFileUrl(ecoId, f.id))}?download=1">${ecoFilesIcon('download')}Descargar</a>
+                            ${puedeBorrar ? `<button type="button" class="eco-files-btn eco-files-btn-danger" data-eco-file-delete="${escapeHtml(f.id)}" data-eco-file-name="${escapeHtml(f.nombre_original)}" ${PERMISO_CREAR_ECO_ATTRS}>${ecoFilesIcon('trash')}Borrar</button>` : ''}
+                        </div>
+                    </td>
+                </tr>`).join('');
+            const upload = puedeCrearEco
+                ? `<label class="eco-files-btn eco-files-btn-primary" id="ecoFileUploadLabel" ${PERMISO_CREAR_ECO_ATTRS}>
+                       ${ecoFilesIcon('upload')}Adjuntar archivo
+                       <input type="file" id="ecoFileInput" accept="${ECO_FILES_ACCEPT}" multiple hidden>
+                   </label>`
+                : '';
+            box.innerHTML = `
+                <div class="eco-files-card">
+                    <div class="eco-files-card-header">
+                        ${ecoFilesIcon('clip', 'eco-files-card-icon')}
+                        <h3>Archivos</h3>
+                        <span class="eco-files-count" id="ecoFilesCount">${files.length} archivo(s)</span>
+                        ${upload}
+                    </div>
+                    ${files.length
+                        ? `<div class="eco-files-table-wrap"><table class="eco-files-table">
+                               <thead><tr><th>Archivo</th><th>Tipo</th><th>Subido por</th><th>Fecha</th><th></th></tr></thead>
+                               <tbody>${rows}</tbody>
+                           </table></div>`
+                        : '<div class="eco-files-empty">Sin archivos. Formatos: HTML, PPT/PPTX o PDF.</div>'}
+                </div>`;
+        } catch (error) {
+            box.innerHTML = `<div class="eco-files-card"><div class="eco-files-empty is-error">${escapeHtml(error.message)}</div></div>`;
+        }
+    }
+
+    async function subirPapeleriaEco(files) {
+        const { id, status } = ecoPapeleriaActual;
+        const lista = Array.from(files || []);
+        if (!id || !lista.length) return;
+        const label = document.getElementById('ecoFileUploadLabel');
+        const count = document.getElementById('ecoFilesCount');
+        if (label) label.setAttribute('aria-disabled', 'true');
+        try {
+            for (let i = 0; i < lista.length; i++) {
+                if (count) count.textContent = `Subiendo ${i + 1} de ${lista.length}...`;
+                const form = new FormData();
+                form.append('file', lista[i]);
+                try {
+                    await fetchJsonArchivos(`/api/ecos/${encodeURIComponent(id)}/files`, { method: 'POST', body: form });
+                } catch (error) {
+                    ecoAlert(`No se pudo subir ${escapeHtml(lista[i].name)}:<br>${escapeHtml(error.message)}`);
+                    break;
+                }
+            }
+        } finally {
+            cargarPapeleriaEco(id, status);
+        }
+    }
+
+    async function borrarPapeleriaEco(fileId, nombre) {
+        const { id, status } = ecoPapeleriaActual;
+        if (!id || !confirm(`Borrar el archivo ${nombre}?`)) return;
+        try {
+            await fetchJsonArchivos(ecoFileUrl(id, fileId), { method: 'DELETE' });
+        } catch (error) {
+            ecoAlert(`No se pudo borrar:<br>${escapeHtml(error.message)}`);
+        }
+        cargarPapeleriaEco(id, status);
+    }
+
+    function cargarScript(src) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
+            document.head.appendChild(script);
+        });
+    }
+
+    async function ensurePptxPreview() {
+        if (window.pptxPreview) return;
+        try {
+            await cargarScript('/static/js/lib/pptx-preview.umd.js');
+        } catch (error) {
+            await cargarScript('https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.js');
+        }
+    }
+
+    // WF_008: el visor se crea por JS en document.body (no vive en el
+    // fragmento AJAX) y es idempotente; Escape lo maneja onControlBomModalKeydown.
+    function ensureEcoFilesViewer() {
+        let modal = document.getElementById('ecoFilesViewer');
+        if (modal) return modal;
+        modal = document.createElement('div');
+        modal.id = 'ecoFilesViewer';
+        modal.className = 'eco-files-modal';
+        modal.innerHTML = `
+            <div class="eco-files-dialog" role="dialog" aria-modal="true" aria-labelledby="ecoFilesViewerTitle">
+                <div class="eco-files-header">
+                    <div class="eco-files-title-group">
+                        ${ecoFilesIcon('doc', 'eco-files-modal-icon')}
+                        <div>
+                            <h3 id="ecoFilesViewerTitle">Archivos</h3>
+                            <span class="eco-files-subtitle" id="ecoFilesViewerSubtitle"></span>
+                        </div>
+                    </div>
+                    <button type="button" class="eco-files-close" data-eco-files-close aria-label="Cerrar">${ecoFilesIcon('close')}</button>
+                </div>
+                <div class="eco-files-toolbar" id="ecoFilesViewerTabs" hidden></div>
+                <div class="eco-files-body" id="ecoFilesViewerBody"></div>
+            </div>`;
+        modal.addEventListener('click', event => {
+            if (event.target === modal || event.target.closest('[data-eco-files-close]')) {
+                cerrarVisorPapeleria();
+            }
+        });
+        document.body.appendChild(modal);
+        return modal;
+    }
+
+    function abrirVisorPapeleria(titulo, subtitulo) {
+        const modal = ensureEcoFilesViewer();
+        modal.style.display = 'flex';
+        modal.style.opacity = '1';
+        modal.style.visibility = 'visible';
+        document.getElementById('ecoFilesViewerTitle').textContent = titulo || 'Archivos';
+        document.getElementById('ecoFilesViewerSubtitle').textContent = subtitulo || '';
+        return document.getElementById('ecoFilesViewerBody');
+    }
+
+    function cerrarVisorPapeleria() {
+        const modal = document.getElementById('ecoFilesViewer');
+        if (!modal) return;
+        modal.style.display = 'none';
+        modal.style.opacity = '0';
+        modal.style.visibility = 'hidden';
+        // Vacia el cuerpo para soltar el iframe o el render del PPTX.
+        document.getElementById('ecoFilesViewerBody').innerHTML = '';
+    }
+
+    // Desde el detalle del ECO: un solo archivo, sin pestanas.
+    function verPapeleriaEco(fileId, extension, nombre) {
+        const ecoId = ecoPapeleriaActual.id;
+        abrirVisorPapeleria(nombre, `ECO ${ecoId}`);
+        renderTabsPapeleria(ecoId, [], fileId);
+        mostrarArchivoEco(ecoId, fileId, extension, nombre);
+    }
+
+    // Boton "Archivos" de la barra: los del ultimo ECO del numero de parte
+    // que tenga archivos (cuando se actualiza el dibujo, el nuevo ECO manda).
+    let archivosModelo = { ecoId: null, files: [] };
+
+    async function verArchivosModelo() {
+        const partNo = (document.getElementById('bomModeloSearch')?.value || '').trim().toUpperCase();
+        if (!partNo) {
+            ecoAlert('Selecciona un modelo para ver sus archivos.');
+            return;
+        }
+        try {
+            const data = await fetchJsonArchivos(`/api/bom/papeleria?part_no=${encodeURIComponent(partNo)}`);
+            if (!data.eco || !(data.files || []).length) {
+                ecoAlert(`El modelo ${escapeHtml(data.part_no)} no tiene archivos en ningun ECO.`);
+                return;
+            }
+            const eco = data.eco;
+            abrirVisorPapeleria(
+                `Archivos - ${data.part_no}`,
+                `ECO ${eco.eco_no} · ${eco.status} · ${formatFechaEfectiva(eco.effective_at)}`
+            );
+            archivosModelo = { ecoId: eco.id, files: data.files };
+            abrirArchivoModelo(data.files[0].id);
+        } catch (error) {
+            ecoAlert(`Error cargando archivos:<br>${escapeHtml(error.message)}`);
+        }
+    }
+
+    function abrirArchivoModelo(fileId) {
+        const file = archivosModelo.files.find(f => String(f.id) === String(fileId));
+        if (!file) return;
+        renderTabsPapeleria(archivosModelo.ecoId, archivosModelo.files, file.id);
+        mostrarArchivoEco(archivosModelo.ecoId, file.id, file.extension, file.nombre_original);
+    }
+
+    function renderTabsPapeleria(ecoId, files, activeId) {
+        const tabs = document.getElementById('ecoFilesViewerTabs');
+        if (!tabs) return;
+        tabs.hidden = !activeId;
+        tabs.innerHTML = files.map(f => `
+            <button type="button" class="eco-files-tab${String(f.id) === String(activeId) ? ' active' : ''}" data-eco-file-tab="${escapeHtml(f.id)}">${escapeHtml(f.nombre_original)}</button>
+        `).join('') + (activeId
+            ? `<a class="eco-files-btn eco-files-btn-export" href="${escapeHtml(ecoFileUrl(ecoId, activeId))}?download=1">${ecoFilesIcon('download')}Descargar</a>`
+            : '');
+    }
+
+    // Dibuja un archivo en el cuerpo del visor ya abierto.
+    async function mostrarArchivoEco(ecoId, fileId, extension, nombre) {
+        const body = document.getElementById('ecoFilesViewerBody');
+        if (!body) return;
+        const url = ecoFileUrl(ecoId, fileId);
+        if (extension === '.ppt') {
+            body.innerHTML = `<div class="eco-files-empty">
+                    El formato PPT antiguo no se puede mostrar en el navegador.<br>
+                    Guardalo como PPTX en PowerPoint para verlo aqui, o
+                    <a href="${escapeHtml(url)}?download=1">descargalo</a>.
+                </div>`;
+            return;
+        }
+        if (extension === '.pptx') {
+            body.innerHTML = '<div class="eco-files-loading"><div class="eco-files-spinner"></div><span>Cargando presentacion...</span></div>';
+            try {
+                await ensurePptxPreview();
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const buffer = await response.arrayBuffer();
+                body.innerHTML = '';
+                const width = Math.max(320, Math.min(body.clientWidth - 40, 1200));
+                const height = Math.max(300, body.clientHeight - 40);
+                await window.pptxPreview.init(body, { width: width, height: height, mode: 'list' }).preview(buffer);
+                // La barra vertical de la libreria le resta ancho a la lamina
+                // (sale scroll horizontal): se ensancha el contenedor lo mismo.
+                const wrapper = body.querySelector('.pptx-preview-wrapper');
+                if (wrapper) wrapper.style.width = `${width + wrapper.offsetWidth - wrapper.clientWidth}px`;
+            } catch (error) {
+                body.innerHTML = `<div class="eco-files-empty is-error">No se pudo mostrar la presentacion: ${escapeHtml(error.message)}</div>`;
+            }
+            return;
+        }
+        // El HTML va en un iframe sandbox sin permisos (sin scripts ni acceso al
+        // MES); el PDF usa el visor nativo, que no funciona dentro de sandbox.
+        const sandbox = extension === '.pdf' ? '' : ' sandbox=""';
+        body.innerHTML = `<iframe src="${escapeHtml(url)}"${sandbox} title="${escapeHtml(nombre)}"></iframe>`;
     }
 
     async function aprobarEcoPorId(ecoId, ecoNo, btn, onSuccess) {
@@ -1495,6 +1999,7 @@
 
         if (!datos || datos.length === 0) {
             tbody.innerHTML = '<tr><td colspan="12" class="no-data">No hay datos de BOM registrados. Use el botón "Registrar" para añadir nuevos elementos.</td></tr>';
+            aplicarFiltrosColumnaBOM();
             return;
         }
         
@@ -1517,17 +2022,16 @@
                 return valor.toString();
             }
             
-            // Crear checkbox selector
-            const selectorCheckbox = `<input type="checkbox" onchange="seleccionarFilaBOM(${index}, this.checked)">`;
+            // Checkbox selector (sin handler inline: la seleccion aun no tiene acciones).
+            const selectorCheckbox = '<input type="checkbox" aria-label="Seleccionar fila">';
             
             // Función para crear celda con tooltip si es necesario
             function crearCelda(valor) {
-                const textoLimpio = (valor || '').toString().trim();
+                const textoLimpio = escapeHtml((valor || '').toString().trim());
                 if (textoLimpio.length > 20) {
-                    return `<td data-full-text="${textoLimpio.replace(/"/g, '&quot;')}" title="${textoLimpio.replace(/"/g, '&quot;')}">${textoLimpio}</td>`;
-                } else {
-                    return `<td>${textoLimpio}</td>`;
+                    return `<td data-full-text="${textoLimpio}" title="${textoLimpio}">${textoLimpio}</td>`;
                 }
+                return `<td>${textoLimpio}</td>`;
             }
 
             // Función para crear celda con checkbox para CHECKED/UNCHECKED
@@ -1536,13 +2040,8 @@
                 if (textoLimpio === 'CHECKED' || textoLimpio === 'UNCHECKED') {
                     const isChecked = textoLimpio === 'CHECKED';
                     const checkboxId = `checkbox_${rowIndex}_${columnName}`;
-                    return `<td style="text-align: center;">
-                        <input type="checkbox" 
-                               id="${checkboxId}" 
-                               ${isChecked ? 'checked' : ''} 
-                               disabled
-                               readonly
-                               style="transform: scale(1.2); cursor: not-allowed; accent-color: ${isChecked ? '#27ae60' : '#95a5a6'}; pointer-events: none;">
+                    return `<td>
+                        <input type="checkbox" id="${checkboxId}" ${isChecked ? 'checked' : ''} disabled readonly>
                     </td>`;
                 } else {
                     // Si no es CHECKED/UNCHECKED, usar la función normal
@@ -1566,6 +2065,7 @@
             `;
             tbody.appendChild(row);
         });
+        aplicarFiltrosColumnaBOM();
     }
 
     function consultarBOM() {
@@ -2205,18 +2705,6 @@
         
         // Los modelos se cargan desde el servidor directamente en el HTML
         
-        // Agregar botón de prueba temporal
-        setTimeout(() => {
-            const toolbar = document.querySelector('.bom-toolbar');
-            if (toolbar) {
-                const testBtn = document.createElement('button');
-                testBtn.textContent = 'TEST CARGAR MODELOS';
-                testBtn.onclick = testCargarModelos;
-                testBtn.style.cssText = 'background: red; color: white; padding: 5px; margin: 5px;';
-                toolbar.appendChild(testBtn);
-            }
-        }, 500);
-        
         // Modal: cerrar con Escape/Enter y bloquear tabulación fuera del modal
         document.addEventListener('keydown', function(e) {
             const modal = document.getElementById('controlBomAlertModal');
@@ -2275,31 +2763,25 @@
 
     // Modal personalizado
     window.showCustomAlert = function(message) {
-        const modal = document.getElementById('controlBomAlertModal');
-        const msg = document.getElementById('controlBomAlertMessage');
-        msg.innerHTML = message;
-        modal.style.display = 'flex';
+        abrirModalBom('controlBomAlertModal');
+        document.getElementById('controlBomAlertMessage').innerHTML = message;
         setTimeout(() => {
             const okBtn = document.getElementById('controlBomAlertOkBtn');
             if (okBtn) okBtn.focus();
         }, 50);
     }
     window.hideCustomAlert = function() {
-        document.getElementById('controlBomAlertModal').style.display = 'none';
+        cerrarModalBom('controlBomAlertModal');
     }
 
     // Modal de carga con progreso
     window.showLoadingModal = function() {
-        const modal = document.getElementById('controlBomLoadingModal');
-        modal.style.display = 'flex';
-        modal.style.zIndex = '10001'; // Más alto que el modal de posición (10000)
+        abrirModalBom('controlBomLoadingModal');
         updateLoadingProgress(0, "Iniciando...", "");
     }
 
     window.hideLoadingModal = function() {
-        const modal = document.getElementById('controlBomLoadingModal');
-        modal.style.display = 'none';
-        modal.style.zIndex = '2147483647'; // Restaurar z-index original
+        cerrarModalBom('controlBomLoadingModal');
     }
 
     window.updateLoadingProgress = function(percentage, message, timeEstimate) {
@@ -2347,8 +2829,8 @@
         const modalAlert = document.getElementById('controlBomAlertModal');
         const modalLoading = document.getElementById('controlBomLoadingModal');
         
-        if (modalAlert) modalAlert.style.display = 'none';
-        if (modalLoading) modalLoading.style.display = 'none';
+        if (modalAlert) cerrarModalBom('controlBomAlertModal');
+        if (modalLoading) cerrarModalBom('controlBomLoadingModal');
         
         // Limpiar dropdown
         const dropdown = document.getElementById('bomDropdownList');

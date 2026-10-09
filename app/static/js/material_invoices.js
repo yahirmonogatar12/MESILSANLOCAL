@@ -1279,8 +1279,10 @@
     setLoading(true);
     try {
       await ensureSheetJs();
-      const headers = ["PART NO", "PART SYS", "ITEM", "QTY", "UNIDAD", "COSTO", "TOTAL"];
-      if (!esSoloDocumental()) headers.unshift("TARIMA");
+      // Embarques no lleva TARIMA ni PART NO: el parser toma PART SYS como parte.
+      const headers = esSoloDocumental()
+        ? ["PART SYS", "ITEM", "QTY", "UNIDAD", "COSTO", "TOTAL"]
+        : ["TARIMA", "PART NO", "PART SYS", "ITEM", "QTY", "UNIDAD", "COSTO", "TOTAL"];
       const wb = window.XLSX.utils.book_new();
       window.XLSX.utils.book_append_sheet(
         wb, window.XLSX.utils.aoa_to_sheet([["NUMERO DE INVOICE"], headers]), "INVOICE(CONVERTED)"

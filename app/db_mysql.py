@@ -80,8 +80,10 @@ def init_db():
         # Crear tablas/vista para ECOs de cambios de ingenieria.
         logger.info(" Inicializando tablas de ECOs...")
         from .api.informacion_basica.control_bom_data import crear_tablas_ecos
+        from .api.informacion_basica.eco_files import crear_tabla_eco_files
 
         crear_tablas_ecos()
+        crear_tabla_eco_files()
         
         logger.info(" Base de datos MySQL inicializada correctamente")
         return True

@@ -1,311 +1,121 @@
-<!-- Control de BOM - Módulo AJAX Compatible -->
+<!-- Control de BOM - Fragmento AJAX (WF_001..WF_008).
+     CSS: control_bom.css en MainTemplate.html + ensureControlBomStyles() del JS (WF_004).
+     Modales (alerta, carga, ECO, lista, detalle, ECN KS, archivos): los crea
+     control_bom.js en document.body (WF_008), no viven en este fragmento. -->
 <div id="controlBomModule" class="bom-container" data-puede-crear-eco="{{ 'true' if puede_crear_eco|default(false) else 'false' }}" data-puede-aprobar-eco="{{ 'true' if puede_aprobar_eco|default(false) else 'false' }}">
-    <!-- Botonera -->
-    <div class="bom-toolbar">
-        <div class="bom-search-container">
-            <input type="text" class="bom-search-dropdown" id="bomModeloSearch" placeholder="Seleccione un modelo" />
-            <div class="bom-dropdown-list" id="bomDropdownList" style="display: none;">
-                {% if modelos %}
-                    {% for modelo in modelos %}
-                    <div class="bom-dropdown-item" data-value="{{ modelo.modelo }}">{{ modelo.modelo }}</div>
-                    {% endfor %}
-                {% endif %}
-            </div>
-        </div>
+<div class="bom-page">
 
-        <div class="bom-revision-container">
-            <label for="bomRevisionFilter">Revision BOM</label>
-            <select id="bomRevisionFilter" class="bom-revision-filter" data-modelo="">
-                <option value="">Vigente</option>
-            </select>
-            <span id="bomRevisionStatus" class="bom-revision-status">KS vigente</span>
-        </div>
-
-        <!-- Filtro por Classification -->
-        <div class="bom-filter-container" style="display: flex; align-items: center; gap: 6px; margin-left: 15px;">
-            <label style="font-weight: 600; color: #ffffff; font-size: 0.85em;">Filtrar:</label>
-            <select id="bomClassificationFilter" class="bom-classification-filter" style="
-                padding: 4px 8px;
-                border: 2px solid #3498db;
-                border-radius: 5px;
-                font-size: 0.65em;
-                background: white;
-                cursor: pointer;
-                transition: all 0.2s;
-                min-width: 90px;
-            ">
-                <option value="TODOS">TODOS</option>
-                <option value="IMD">IMD</option>
-                <option value="SMD">SMD</option>
-                <option value="MAIN">MAIN</option>
-            </select>
-        </div>
-        
-        <button class="bom-btn consultar" id="btnConsultarBOM">
-            Consultar
-        </button>
-        {% if puede_crear_eco|default(false) %}
-        <button class="bom-btn registrar" id="btnCrearECO">
-            Crear ECO
-        </button>
-        {% endif %}
-        <button class="bom-btn consultar" id="btnVerECOS">
-            Ver ECOs
-        </button>
-        <button class="bom-btn exportar" id="btnExportarExcelBOM">
-            Exportar al excel
-        </button>
-    </div>
-
-    <!-- Tabla de BOM -->
-    <div class="bom-table-container">
-        <table class="bom-table" id="bomDataTable">
-            <thead>
-                <tr>
-                    <th title="Selector de fila para acciones múltiples">Selector</th>
-                    <th class="col-numero-parte" title="Número de parte del componente">Número de parte</th>
-                    <th class="col-tipo" title="Tipo o categoría del material">Tipo de material</th>
-                    <th class="col-clasificacion" title="Clasificación del componente">Classification</th>
-                    <th class="col-especificacion" title="Especificación técnica del material">Especificación de material</th>
-                    <th class="col-vender" title="Fabricante registrado en KS">Maker</th>
-                    <th class="col-cantidad-total" title="Cantidad total requerida">Cantidad total</th>
-                    <th class="col-ubicacion" title="Ubicación física del material">Ubicación</th>
-                    <th class="col-material-sustituto" title="Material sustituto">Material sustituto</th>
-                    <th class="col-material-original" title="Estado de material original (solo lectura)">Material original</th>
-                    <th class="col-registrador" title="Usuario que registró el elemento">Registrador</th>
-                    <th class="col-fecha" title="Fecha y hora de registro">Fecha de registro</th>
-                </tr>
-            </thead>
-            <tbody id="bomTableBody">
-                <!-- Tabla vacía inicialmente -->
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Modal personalizado para mensajes -->
-<div id="controlBomAlertModal" style="display:none;">
-    <div id="controlBomAlertDialog" tabindex="0">
-        <div id="controlBomAlertMessage"></div>
-        <button onclick="hideCustomAlert()" id="controlBomAlertOkBtn">OK</button>
-    </div>
-</div>
-
-<!-- Modal de carga con progreso -->
-<div id="controlBomLoadingModal" style="display:none;">
-    <div id="controlBomLoadingDialog">
-        <div id="controlBomLoadingTitle">Cargando BOM</div>
-        <div id="controlBomLoadingMessage">Procesando archivo Excel...</div>
-        <div id="controlBomLoadingProgressContainer">
-            <div id="controlBomLoadingProgressText">0% completado</div>
-            <div id="controlBomLoadingProgressBar">
-                <div id="controlBomLoadingProgressFill"></div>
-            </div>
-            <div id="controlBomLoadingTimeEstimate">Estimando tiempo...</div>
-        </div>
-        <div id="controlBomLoadingSpinner"></div>
-    </div>
-</div>
-
-<!-- Modal para crear/importar/aprobar ECOs -->
-<div id="ecoModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10002; align-items:center; justify-content:center;">
-    <div style="background:#1a1b26; border:1px solid #3498db; border-radius:8px; width:min(900px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
-            <h3 style="margin:0; color:#3498db; font-size:16px;">Crear ECO / Cambio de ingenieria</h3>
-            <button id="btnCerrarEcoModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
-        </div>
-
-        <!-- Indicador de pasos -->
-        <div style="display:flex; gap:8px; padding:12px 18px; border-bottom:1px solid #2c3e50;">
-            <div id="ecoStepIndicator1" class="eco-step active" style="flex:1; padding:8px 10px; border-radius:5px; background:#27ae60; color:#fff; font-size:12px; font-weight:700;">1. Descargar BOM</div>
-            <div id="ecoStepIndicator2" class="eco-step" style="flex:1; padding:8px 10px; border-radius:5px; background:#34495e; color:#aaa; font-size:12px; font-weight:700;">2. Subir Excel modificado</div>
-            <div id="ecoStepIndicator3" class="eco-step" style="flex:1; padding:8px 10px; border-radius:5px; background:#34495e; color:#aaa; font-size:12px; font-weight:700;">3. Revisar y aprobar</div>
-        </div>
-
-        <!-- Paso 1: metadatos + descargar -->
-        <div id="ecoStep1" style="padding:18px;">
-            <!-- Toggle alcance -->
-            <div style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
-                <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px;">
-                    <input type="radio" name="ecoScopeKind" value="SINGLE" id="ecoScopeSingle" checked>
-                    <span><b>ECO individual</b><br><span style="color:#8b98a8; font-size:11px;">Un solo modelo</span></span>
+    <!-- Tarjeta de filtros -->
+    <div class="bom-card">
+        <div class="bom-toolbar">
+            <div class="bom-filter-group bom-search-container">
+                <label for="bomModeloSearch">
+                    <svg class="bom-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    Modelo
                 </label>
-                <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px;">
-                    <input type="radio" name="ecoScopeKind" value="FAMILY" id="ecoScopeFamily">
-                    <span><b>ECO de familia</b><br><span style="color:#8b98a8; font-size:11px;">Aplicar a varios modelos de una familia</span></span>
-                </label>
-                <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px; min-width:210px;">
-                    <input type="radio" name="ecoScopeKind" value="NEW_BOM" id="ecoScopeNewBom">
-                    <span><b>Nuevo BOM</b><br><span style="color:#8b98a8; font-size:11px;">Primera carga para un modelo</span></span>
-                </label>
-            </div>
-
-            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;">
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">ECO
-                    <input id="ecoNoInput" type="text" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
-                </label>
-                <label id="ecoPartNoLabel" style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Numero de parte / modelo
-                    <input id="ecoPartNoInput" type="text" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
-                </label>
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Revision BOM nueva
-                    <input id="ecoRevisionInput" type="text" value="Automatica" readonly title="MES asigna la siguiente revision disponible" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
-                </label>
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Fecha efectiva
-                    <input id="ecoEffectiveAtInput" type="datetime-local" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
-                </label>
-            </div>
-
-            <!-- Campos solo para FAMILY -->
-            <div id="ecoFamilyFields" style="display:none; margin-top:12px;">
-                <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:end;">
-                    <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Familia (prefijo)
-                        <input id="ecoFamilyInput" type="text" placeholder="Ej: EBR239662" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
-                    </label>
-                    <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Sufijos
-                        <input id="ecoSuffixesInput" type="text" placeholder="Ej: 01,05,14" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
-                    </label>
-                    <button id="btnResolverFamilia" class="bom-btn consultar" type="button" style="padding:9px 14px;">Resolver</button>
+                <input type="text" class="bom-search-dropdown" id="bomModeloSearch" placeholder="Seleccione un modelo" autocomplete="off">
+                <div class="bom-dropdown-list" id="bomDropdownList" style="display: none;">
+                    {% if modelos %}
+                        {% for modelo in modelos %}
+                        <div class="bom-dropdown-item" data-value="{{ modelo.modelo }}">{{ modelo.modelo }}</div>
+                        {% endfor %}
+                    {% endif %}
                 </div>
-                <div id="ecoFamilyResolveBox" style="margin-top:10px; padding:10px; border:1px solid #34495e; background:#0f1117; border-radius:6px; font-size:12px; color:#b8c7d9; display:none;"></div>
             </div>
 
-            <label style="display:flex; flex-direction:column; gap:5px; font-size:12px; margin-top:12px;">Nombre del modelo (item_name)
-                <input id="ecoItemNameInput" type="text" placeholder="Opcional: si esta vacio se autocompleta desde KS catalog" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
-            </label>
-            <label style="display:flex; flex-direction:column; gap:5px; font-size:12px; margin-top:12px;">Notas
-                <textarea id="ecoNotesInput" rows="3" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; resize:vertical;"></textarea>
-            </label>
-            <div id="ecoStatusBox" style="margin-top:12px; padding:10px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9;">
-                Llene los datos y descargue el BOM actual. Modifique el Excel y suba el archivo en el paso 2. No edite la columna oculta __row_id.
+            <div class="bom-filter-group bom-revision-container">
+                <label for="bomRevisionFilter">
+                    <svg class="bom-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Revisión BOM
+                </label>
+                <select id="bomRevisionFilter" class="bom-revision-filter" data-modelo="">
+                    <option value="">Vigente</option>
+                </select>
             </div>
-            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap;">
-                <button id="btnDescargarBomExcel" class="bom-btn exportar" type="button">Descargar BOM como Excel</button>
-                <button id="btnIrPaso2" class="bom-btn consultar" type="button">Siguiente: subir Excel &rarr;</button>
-            </div>
-        </div>
+            <span id="bomRevisionStatus" class="bom-revision-status">KS vigente</span>
 
-        <!-- Paso 2: upload + validacion -->
-        <div id="ecoStep2" style="display:none; padding:18px;">
-            <div id="ecoStep2Help" style="padding:12px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:14px;">
-                Suba el Excel modificado. El sistema validara y mostrara los cambios detectados (anadidos, eliminados, modificados).
+            <div class="bom-filter-group bom-filter-container">
+                <label for="bomClassificationFilter">
+                    <svg class="bom-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M4 6h16M4 12h10M4 18h6"></path>
+                    </svg>
+                    Classification
+                </label>
+                <select id="bomClassificationFilter" class="bom-classification-filter">
+                    <option value="TODOS">TODOS</option>
+                    <option value="IMD">IMD</option>
+                    <option value="SMD">SMD</option>
+                    <option value="MAIN">MAIN</option>
+                </select>
             </div>
-            <input type="file" id="ecoExcelInput" accept=".xlsx,.xls" style="display:block; padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; width:100%;">
-            <div id="ecoValidationBox" style="margin-top:12px; padding:10px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; display:none;"></div>
-            <div style="display:flex; gap:10px; justify-content:space-between; margin-top:16px; flex-wrap:wrap;">
-                <button id="btnVolverPaso1" class="bom-btn" type="button" style="background:#34495e;">&larr; Volver</button>
-                <button id="btnValidarExcel" class="bom-btn registrar" type="button">Validar y crear borrador</button>
-            </div>
-        </div>
 
-        <!-- Paso 3: preview diff + aprobar -->
-        <div id="ecoStep3" style="display:none; padding:18px;">
-            <div id="ecoDiffSummary" style="padding:12px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:14px;">
-                Resumen de cambios
-            </div>
-            <div id="ecoDiffDetails" style="max-height:380px; overflow:auto; border:1px solid #34495e; border-radius:6px;"></div>
-            <div style="display:flex; gap:10px; justify-content:space-between; margin-top:16px; flex-wrap:wrap;">
-                <button id="btnCancelarEcoDraft" class="bom-btn eliminar" type="button">Cancelar borrador</button>
-                <button id="btnAprobarEco" class="bom-btn consultar" type="button" data-permiso-pagina="LISTA_INFORMACIONBASICA" data-permiso-seccion="Control de produccion" data-permiso-boton="Aprobar ECO">Aprobar ECO y aplicar cambios</button>
+            <div class="bom-toolbar-actions">
+                <button type="button" class="bom-btn consultar" id="btnConsultarBOM">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    Consultar
+                </button>
+                {% if puede_crear_eco|default(false) %}
+                <button type="button" class="bom-btn registrar" id="btnCrearECO">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+                    Crear ECO
+                </button>
+                {% endif %}
+                <button type="button" class="bom-btn" id="btnVerECOS">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"></path></svg>
+                    Ver ECOs
+                </button>
+                <button type="button" class="bom-btn" id="btnPapeleriaBOM" title="Archivos del ultimo ECO del modelo seleccionado">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path></svg>
+                    Archivos
+                </button>
+                <button type="button" class="bom-btn exportar" id="btnExportarExcelBOM">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
+                    Exportar Excel
+                </button>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Modal para consultar ECOs creados -->
-<div id="ecoListModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10003; align-items:center; justify-content:center;">
-    <div style="background:#1a1b26; border:1px solid #3498db; border-radius:8px; width:min(1080px, 96vw); max-height:88vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
-            <h3 style="margin:0; color:#3498db; font-size:16px;">ECOs / Cambios de ingenieria</h3>
-            <button id="btnCerrarEcoListModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
+    <!-- Tarjeta de resultados -->
+    <div class="bom-card bom-results-card">
+        <div class="bom-card-header">
+            <svg class="bom-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <h3>Lista de Materiales</h3>
+            <span id="bomResultCounter" class="bom-record-count">0 registros</span>
         </div>
-        <div style="padding:16px 18px;">
-            <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:12px;">
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Tipo
-                    <select id="ecoListOrigenFilter" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:110px;">
-                        <option value="">TODOS</option>
-                        <option value="MES">MES</option>
-                        <option value="KS">KS</option>
-                    </select>
-                </label>
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Estatus
-                    <select id="ecoListStatusFilter" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:150px;">
-                        <option value="">TODOS</option>
-                        <option value="DRAFT">DRAFT</option>
-                        <option value="APPROVED">APPROVED</option>
-                        <option value="CANCELLED">CANCELLED</option>
-                    </select>
-                </label>
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Modelo
-                    <input id="ecoListPartFilter" type="text" placeholder="Opcional" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:180px;">
-                </label>
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">ECO / ID
-                    <input id="ecoListEcoFilter" type="text" placeholder="02 o KS#28695" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:150px;">
-                </label>
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Desde
-                    <input id="ecoListDateFromFilter" type="date" style="padding:7px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:140px;">
-                </label>
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Hasta
-                    <input id="ecoListDateToFilter" type="date" style="padding:7px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:140px;">
-                </label>
-                <button id="btnRefrescarEcoList" class="bom-btn consultar" type="button">Refrescar</button>
-                <button id="btnExportarEcoList" class="bom-btn exportar" type="button">Exportar Excel</button>
-            </div>
-            <div id="ecoListStatusBox" style="padding:9px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:12px;">
-                Cargando ECOs...
-            </div>
-            <div style="overflow:auto; border:1px solid #34495e; border-radius:6px;">
-                <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                    <thead>
-                        <tr style="background:#2c3e50;">
-                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">ECO</th>
-                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Modelo(s)</th>
-                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Revision</th>
-                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Fecha efectiva</th>
-                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Estatus</th>
-                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Aprobado por</th>
-                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:center;">Accion</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ecoListTableBody">
-                        <tr><td colspan="7" style="padding:12px; color:#aaa; text-align:center;">Sin datos</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div id="ecoListPaginationBox" style="display:none; margin-top:10px; align-items:center; justify-content:flex-end; gap:8px; font-size:12px; color:#b8c7d9;">
-                <button id="btnEcoListPrevPage" class="bom-btn" type="button" style="padding:5px 10px; background:#34495e;">Anterior</button>
-                <span id="ecoListPageInfo"></span>
-                <button id="btnEcoListNextPage" class="bom-btn" type="button" style="padding:5px 10px; background:#34495e;">Siguiente</button>
-            </div>
+        <div class="bom-table-container">
+            <table class="bom-table" id="bomDataTable">
+                <thead>
+                    <tr>
+                        <th title="Selector de fila para acciones múltiples">Selector</th>
+                        <th class="col-numero-parte" data-bom-filter title="Número de parte del componente">Número de parte</th>
+                        <th class="col-tipo" data-bom-filter title="Tipo o categoría del material">Tipo de material</th>
+                        <th class="col-clasificacion" data-bom-filter title="Clasificación del componente">Classification</th>
+                        <th class="col-especificacion" data-bom-filter title="Especificación técnica del material">Especificación de material</th>
+                        <th class="col-vender" data-bom-filter title="Fabricante registrado en KS">Maker</th>
+                        <th class="col-cantidad-total" data-bom-filter title="Cantidad total requerida">Cantidad total</th>
+                        <th class="col-ubicacion" data-bom-filter title="Ubicación física del material">Ubicación</th>
+                        <th class="col-material-sustituto" data-bom-filter title="Material sustituto">Material sustituto</th>
+                        <th class="col-material-original" data-bom-filter title="Estado de material original (solo lectura)">Material original</th>
+                        <th class="col-registrador" data-bom-filter title="Usuario que registró el elemento">Registrador</th>
+                        <th class="col-fecha" data-bom-filter title="Fecha y hora de registro">Fecha de registro</th>
+                    </tr>
+                </thead>
+                <tbody id="bomTableBody">
+                    <!-- Tabla vacía inicialmente -->
+                </tbody>
+            </table>
         </div>
     </div>
+
+</div>
 </div>
 
-<!-- Modal detalle ECO MES -->
-<div id="ecoDetailBox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10004; align-items:center; justify-content:center;">
-    <div style="background:#1a1b26; border:1px solid #5dade2; border-radius:8px; width:min(1120px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
-            <h3 id="ecoDetailTitle" style="margin:0; color:#5dade2; font-size:16px;">Detalle ECO</h3>
-            <button id="btnCerrarEcoDetailModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
-        </div>
-        <div id="ecoDetailContent" style="padding:16px 18px; font-size:13px; line-height:1.55;">
-            Cargando...
-        </div>
-    </div>
-</div>
-
-<!-- Modal detalle ECN K-system -->
-<div id="ecnKsDetailModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10004; align-items:center; justify-content:center;">
-    <div style="background:#1a1b26; border:1px solid #5dade2; border-radius:8px; width:min(900px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
-            <h3 id="ecnKsDetailTitle" style="margin:0; color:#5dade2; font-size:16px;">Detalle ECN K-system</h3>
-            <button id="btnCerrarEcnKsModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
-        </div>
-        <div id="ecnKsDetailContent" style="padding:16px 18px; font-size:13px; line-height:1.55;">
-            Cargando...
-        </div>
-    </div>
-</div>
-
-<!-- Fin del módulo Control de BOM -->
-
-<script defer src="{{ url_for('static', filename='js/control_bom.js', v='20260527d') }}"></script>
+<script defer src="{{ url_for('static', filename='js/control_bom.js', v='20261009g') }}"></script>

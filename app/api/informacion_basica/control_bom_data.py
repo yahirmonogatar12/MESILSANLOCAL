@@ -2767,6 +2767,9 @@ def eliminar_eco(eco_id):
         "DELETE FROM engineering_changes WHERE id = %s AND status <> 'APPROVED'",
         (eco_id,)
     )
+    if result:
+        from .eco_files import eliminar_de_eco
+        eliminar_de_eco(eco_id)
     return {"success": bool(result)}
 
 

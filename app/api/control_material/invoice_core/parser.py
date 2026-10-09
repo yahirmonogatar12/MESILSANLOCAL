@@ -364,7 +364,8 @@ def _converted_invoice_number(sheet):
 def _find_converted_header(sheet):
     for row in sheet.iter_rows(min_row=1, max_row=min(sheet.max_row or 1, 20)):
         mapped = _map_header(row, CONVERTED_HEADER_ALIASES)
-        if "raw_part_num" in mapped and "qty" in mapped:
+        # La plantilla de embarques trae solo PART SYS (sin PART NO).
+        if ("raw_part_num" in mapped or "part_sys" in mapped) and "qty" in mapped:
             mapped["row_number"] = row[0].row
             return mapped
     return None
@@ -394,7 +395,9 @@ def _parse_converted_sheet(sheet):
         if pallet_marker:
             current_pallet_raw = pallet_marker
 
-        part_raw = raw_text(_cell(row, header.get("raw_part_num")))
+        part_raw = raw_text(_cell(row, header.get("raw_part_num"))) or raw_text(
+            _cell(row, header.get("part_sys"))
+        )
         qty_raw = raw_text(_cell(row, header.get("qty")))
         if not part_raw and not qty_raw and not pallet_marker:
             blank_streak += 1

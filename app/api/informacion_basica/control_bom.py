@@ -8,6 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from functools import wraps
 import io
+import os
 import re
 import tempfile
 import traceback
@@ -18,8 +19,10 @@ from flask import Blueprint, jsonify, render_template, request, send_file, sessi
 from app.api.shared import auth_system, execute_query, login_requerido, obtener_fecha_hora_mexico
 from app.auth_system import ECO_APPROVE_PERMISSION, ECO_CREATE_PERMISSION
 from app.db_mysql import get_connection
+from . import eco_files
 from .control_bom_data import (
     _eco_excel_row_ref,
+    _eco_get_by_id,
     _ks_fetch_current_bom_items,
     _ks_fetch_bom_items_multi,
     aprobar_eco,
@@ -1249,6 +1252,91 @@ def api_ecos_delete(eco_id):
         logger.error(f"Error borrando ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# --- Papeleria del ECO (HTML / PPT / PDF) ---
+
+@bp.route("/api/bom/papeleria", methods=["GET"])
+@login_requerido
+def api_bom_papeleria():
+    """Archivos vigentes del numero de parte: los del ultimo ECO que tenga."""
+    part_no = (request.args.get("part_no") or "").strip().upper()
+    if not part_no:
+        return jsonify({"success": False, "error": "Selecciona un modelo."}), 400
+    eco = eco_files.ultimo_eco_con_papeleria(part_no)
+    return jsonify({
+        "success": True,
+        "part_no": part_no,
+        "eco": _serialize_eco_row(eco),
+        "files": [_serialize_eco_row(r) for r in eco_files.listar(eco["id"])] if eco else [],
+    })
+
+
+@bp.route("/api/ecos/<int:eco_id>/files", methods=["GET"])
+@login_requerido
+def api_eco_files_list(eco_id):
+    return jsonify({"success": True, "data": [_serialize_eco_row(r) for r in eco_files.listar(eco_id)]})
+
+
+@bp.route("/api/ecos/<int:eco_id>/files", methods=["POST"])
+@login_requerido
+@requiere_permiso_crear_eco
+def api_eco_files_upload(eco_id):
+    if not _eco_get_by_id(eco_id):
+        return jsonify({"success": False, "error": "ECO no encontrado"}), 404
+    uploaded = request.files.get("file")
+    if not uploaded:
+        return jsonify({"success": False, "error": "Archivo requerido."}), 400
+    usuario = session.get("usuario", "desconocido")
+    # Lee como maximo un byte de mas: basta para detectar que excede el limite.
+    error = eco_files.guardar(eco_id, uploaded.filename, uploaded.read(eco_files.MAX_BYTES + 1), usuario)
+    if error:
+        return jsonify({"success": False, "error": error}), 400
+    auth_system.registrar_auditoria(
+        usuario=usuario, modulo="control_bom", accion="eco_archivo_subir",
+        descripcion=f"Archivo '{uploaded.filename}' adjuntado al ECO {eco_id}",
+    )
+    return jsonify({"success": True}), 201
+
+
+@bp.route("/api/ecos/<int:eco_id>/files/<int:file_id>", methods=["GET"])
+@login_requerido
+def api_eco_files_get(eco_id, file_id):
+    row = eco_files.obtener(eco_id, file_id)
+    full = eco_files.ruta_absoluta(row) if row else None
+    if not full or not os.path.isfile(full):
+        return jsonify({"success": False, "error": "Archivo no encontrado"}), 404
+    response = send_file(
+        full,
+        mimetype=eco_files.TIPOS[row["extension"]],
+        as_attachment=request.args.get("download") == "1",
+        download_name=row["nombre_original"],
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    if row["extension"] in eco_files.EXTENSIONES_HTML:
+        # HTML subido por usuarios: CSP sandbox lo deja en un origen opaco y
+        # sin scripts, aunque se abra directo en una pestana.
+        response.headers["Content-Security-Policy"] = "sandbox"
+    return response
+
+
+@bp.route("/api/ecos/<int:eco_id>/files/<int:file_id>", methods=["DELETE"])
+@login_requerido
+@requiere_permiso_crear_eco
+def api_eco_files_delete(eco_id, file_id):
+    eco = _eco_get_by_id(eco_id)
+    row = eco_files.obtener(eco_id, file_id)
+    if not eco or not row:
+        return jsonify({"success": False, "error": "Archivo no encontrado"}), 404
+    if eco.get("status") == "APPROVED":
+        return jsonify({"success": False, "error": "Un ECO aprobado es inmutable; sus archivos no se pueden borrar"}), 400
+    eco_files.eliminar(row)
+    auth_system.registrar_auditoria(
+        usuario=session.get("usuario", "desconocido"), modulo="control_bom", accion="eco_archivo_borrar",
+        descripcion=f"Archivo '{row['nombre_original']}' borrado del ECO {eco_id}",
+        datos_antes={"id": row["id"], "archivo_ruta": row["archivo_ruta"], "created_by": row.get("created_by")},
+    )
+    return jsonify({"success": True})
 
 def exportar_bom_a_excel(modelo=None, classification=None, bom_revision=None):
     """
