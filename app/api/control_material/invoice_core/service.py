@@ -529,6 +529,14 @@ def get_invoice_detail(invoice_id, ambito=None):
             (invoice_id, invoice_id),
         )
         lines = [row_to_json(r) for r in (cursor.fetchall() or [])]
+        # Se excluyen las cajas hijas de una division (lot_division.new_code):
+        # heredan invoice y pallet del padre, pero su cantidad ya esta contada
+        # en el lote padre y sumarlas inflaria la cantidad recibida.
+        # Las entradas se parean con el packing por parte+pallet. El packing trae
+        # la parte base (EAX66726315) y la entrada la version (EAX66726315-1.1),
+        # asi que la parte del lote se corta en el primer guion; sin ese corte
+        # los PCB salian con 0 entradas y pendiente completo aunque estuvieran
+        # aplicados. Mismo criterio que material_admin.py y que el auto-apply.
         cursor.execute(
             """
             SELECT
@@ -559,7 +567,7 @@ def get_invoice_detail(invoice_id, ambito=None):
                 SELECT
                   cma.numero_invoice,
                   cma.pallet_no,
-                  COALESCE(il.numero_parte, cma.numero_parte) AS numero_parte_sistema,
+                  SUBSTRING_INDEX(COALESCE(il.numero_parte, cma.numero_parte), '-', 1) AS numero_parte_sistema,
                   COUNT(DISTINCT cma.codigo_material_recibido) AS entradas_recibidas,
                   SUM(COALESCE(il.total_entrada, cma.cantidad_actual, 0)) AS cantidad_recibida
                 FROM control_material_almacen cma
@@ -567,7 +575,12 @@ def get_invoice_detail(invoice_id, ambito=None):
                   ON il.codigo_material_recibido = cma.codigo_material_recibido
                 WHERE cma.numero_invoice = %s
                   AND (cma.cancelado = 0 OR cma.cancelado IS NULL)
-                GROUP BY cma.numero_invoice, cma.pallet_no, COALESCE(il.numero_parte, cma.numero_parte)
+                  AND NOT EXISTS (
+                    SELECT 1 FROM lot_division ld
+                    WHERE ld.new_code = cma.codigo_material_recibido
+                  )
+                GROUP BY cma.numero_invoice, cma.pallet_no,
+                         SUBSTRING_INDEX(COALESCE(il.numero_parte, cma.numero_parte), '-', 1)
             ) entradas
               ON entradas.numero_invoice = %s
              AND entradas.pallet_no = mipl.pallet_no
@@ -675,6 +688,10 @@ def get_invoice_detail(invoice_id, ambito=None):
                 WHERE mipl.invoice_id = %s
                   AND mipl.numero_parte_sistema = SUBSTRING_INDEX(cma.numero_parte, '-', 1)
                   AND mipl.pallet_no <=> cma.pallet_no
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM lot_division ld
+                WHERE ld.new_code = cma.codigo_material_recibido
               )
             GROUP BY numero_parte_sistema, cma.pallet_no, cma.pallet_no_original
             ORDER BY numero_parte_sistema, cma.pallet_no

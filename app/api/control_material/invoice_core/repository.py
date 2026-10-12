@@ -164,6 +164,9 @@ def candidate_lots_for_packing(cursor, invoice, packing):
     # llevan guion (en ese caso packing.numero_parte_sistema ya es el codigo
     # completo y la igualdad exacta funciona). El pallet debe coincidir: los
     # lotes con pallet distinto se reportan aparte (mismatched_pallet_lots).
+    # Se excluyen las cajas hijas de una division (lot_division.new_code):
+    # heredan invoice y pallet del padre para conservar la trazabilidad, pero
+    # la recepcion ya esta contada en el lote padre; aplicarlas duplicaria.
     base = packing.get("numero_parte_sistema") or ""
     cursor.execute(
         """
@@ -177,6 +180,10 @@ def candidate_lots_for_packing(cursor, invoice, packing):
           AND (cma.numero_parte = %s OR cma.numero_parte LIKE %s)
           AND active.id IS NULL
           AND (cma.cancelado = 0 OR cma.cancelado IS NULL)
+          AND NOT EXISTS (
+            SELECT 1 FROM lot_division ld
+            WHERE ld.new_code = cma.codigo_material_recibido
+          )
         ORDER BY cma.fecha_recibo ASC, cma.id ASC
         """,
         (invoice["numero_invoice"], packing.get("pallet_no"), base, f"{base}-%"),
@@ -206,6 +213,10 @@ def mismatched_pallet_lots_for_packing(cursor, invoice, packing):
           AND active.id IS NULL
           AND (cma.cancelado = 0 OR cma.cancelado IS NULL)
           AND (cma.pallet_no IS NULL OR cma.pallet_no = '' OR cma.pallet_no <> %s)
+          AND NOT EXISTS (
+            SELECT 1 FROM lot_division ld
+            WHERE ld.new_code = cma.codigo_material_recibido
+          )
         ORDER BY cma.fecha_recibo ASC, cma.id ASC
         """,
         (invoice["numero_invoice"], base, f"{base}-%", pallet),

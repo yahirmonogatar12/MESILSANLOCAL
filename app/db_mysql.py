@@ -366,7 +366,7 @@ def guardar_material(data, usuario_registro=None):
                     params[1] = str(valor)[:max_len]
                     params = tuple(params)
                     logger.info(f"🔧 Campo '{campo}' truncado a: {params[1]}")
-        
+
         result = execute_query(query, params)
         
         if result and result > 0:
