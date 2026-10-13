@@ -28,6 +28,14 @@ def fetch_lot_row(cursor, codigo, for_update=False):
         LEFT JOIN inventario_lotes il
           ON il.codigo_material_recibido = cma.codigo_material_recibido
         WHERE cma.codigo_material_recibido = %s
+        -- Una etiqueta puede tener varias filas en inventario_lotes: al
+        -- cambiarle el numero de lote, el trigger crea la del lote nuevo y deja
+        -- la vieja en 0. Sin orden, LIMIT 1 podia tomar la vieja (cantidad 0)
+        -- y al reaplicar el lote quedaba fuera ("Cantidad aplicada invalida").
+        -- Se prefiere la del lote actual, luego la de mas entrada, luego la
+        -- mas reciente.
+        ORDER BY (il.numero_lote = cma.numero_lote_material) DESC,
+                 il.total_entrada DESC, il.id DESC
         LIMIT 1{suffix}
         """,
         (codigo,),

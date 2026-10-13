@@ -130,8 +130,16 @@ def _ict_pass_fail_real_counts(intentos, ok_count, ng_count, fue_reparacion):
     }
 
 
-def _build_history_ict_pass_fail_summary_query():
-    """Construir query para resumen Pass/Fail de ICT por jornada, turno, linea y numero de parte."""
+def _fetch_ict_pass_fail_summary_rows():
+    """Resumen Pass/Fail de ICT por jornada, turno, linea, ICT y numero de parte.
+
+    Mismo resultado que agrupar por barcode y reclasificar, pero sin agrupar
+    ~1M barcodes por año (39s, tronaba el read_timeout de 10s del pool):
+    solo los barcodes en defect_data con NG cambian su aporte, asi que se
+    suma crudo y se corrige con un 2do query chico sobre esos barcodes.
+    piezas_unicas / piezas_repetidas / piezas_sin_defecto ya no se calculan
+    en el resumen (nadie los consumia; el detalle por fila si los trae).
+    """
     fecha_desde = (
         request.args.get("fecha_desde", "").strip()
         or request.args.get("fecha", "").strip()
@@ -154,77 +162,29 @@ def _build_history_ict_pass_fail_summary_query():
     ict_expr = "COALESCE(h.ict, 0)"
     numero_parte_expr = "COALESCE(NULLIF(TRIM(h.no_parte), ''), 'SIN NUMERO DE PARTE')"
 
-    sql = (
-        "SELECT resumen.fecha, resumen.linea, resumen.ict, resumen.turno, resumen.numero_parte, "
-        "MIN(resumen.primer_test) AS primer_test, MAX(resumen.ultimo_test) AS ultimo_test, "
-        "SUM(resumen.total_real) AS total, "
-        "SUM(resumen.correcto_real) AS ok_count, "
-        "SUM(resumen.falla_real) AS ng_count, "
-        "SUM(resumen.ok_real) AS ok_real, "
-        "SUM(resumen.defectos_detectados) AS defectos_detectados, "
-        "SUM(resumen.falsos_negativos) AS falsos_negativos, "
-        "SUM(resumen.falsos_fail) AS falsos_fail, "
-        "SUM(resumen.piezas_con_defecto) AS piezas_con_defecto, "
-        "SUM(resumen.piezas_sin_defecto) AS piezas_sin_defecto, "
-        "SUM(resumen.intentos_sin_defecto) AS intentos_sin_defecto, "
-        "SUM(resumen.intentos) AS total_intentos, "
-        "SUM(resumen.ok_count) AS ok_count_raw, "
-        "SUM(resumen.ng_count) AS ng_count_raw, "
-        "COUNT(*) AS piezas_unicas, "
-        "SUM(CASE WHEN resumen.intentos > 1 THEN 1 ELSE 0 END) AS piezas_repetidas, "
-        "SUM(resumen.fue_reparacion) AS piezas_reparacion "
-        "FROM ("
-        " SELECT por_barcode.*, "
-        # Reparacion con ng_count = 0 se ignora: se trata como pieza sin
-        # defecto (OK_REAL). Solo cuenta como "con defecto" si el ICT la
-        # marco NG (defect_count > 0 AND ng_count > 0).
-        " CASE WHEN por_barcode.defect_count > 0 AND por_barcode.ng_count > 0 THEN 1 ELSE por_barcode.intentos END AS total_real, "
-        " CASE WHEN por_barcode.defect_count > 0 AND por_barcode.ng_count > 0 THEN 0 ELSE por_barcode.ok_count END AS ok_real, "
-        " CASE WHEN por_barcode.defect_count > 0 AND por_barcode.ng_count > 0 THEN 1 ELSE 0 END AS defectos_detectados, "
-        " 0 AS falsos_negativos, "
-        " CASE WHEN NOT (por_barcode.defect_count > 0 AND por_barcode.ng_count > 0) THEN por_barcode.ng_count ELSE 0 END AS falsos_fail, "
-        " CASE WHEN por_barcode.defect_count > 0 AND por_barcode.ng_count > 0 THEN 1 ELSE 0 END AS piezas_con_defecto, "
-        " CASE WHEN por_barcode.defect_count > 0 AND por_barcode.ng_count > 0 THEN 0 ELSE 1 END AS piezas_sin_defecto, "
-        " CASE WHEN NOT (por_barcode.defect_count > 0 AND por_barcode.ng_count > 0) THEN por_barcode.intentos ELSE 0 END AS intentos_sin_defecto, "
-        " CASE "
-        "  WHEN por_barcode.defect_count > 0 AND por_barcode.ng_count > 0 THEN 1 "
-        "  ELSE por_barcode.ok_count "
-        " END AS correcto_real, "
-        " CASE "
-        "  WHEN por_barcode.defect_count > 0 AND por_barcode.ng_count > 0 THEN 0 "
-        "  ELSE por_barcode.ng_count "
-        " END AS falla_real "
-        " FROM ("
-        "  SELECT "
-        f"{fecha_jornada_expr} AS fecha, "
-        f"{linea_expr} AS linea, "
-        f"{ict_expr} AS ict, "
-        f"{turno_expr} AS turno, "
-        f"{numero_parte_expr} AS numero_parte, "
-        "h.barcode AS barcode, "
-        "MIN(h.ts) AS primer_test, MAX(h.ts) AS ultimo_test, "
+    select_keys = (
+        f"SELECT {fecha_jornada_expr} AS fecha, {linea_expr} AS linea, "
+        f"{ict_expr} AS ict, {turno_expr} AS turno, {numero_parte_expr} AS numero_parte, "
+    )
+    counts = (
         "COUNT(*) AS intentos, "
         "SUM(CASE WHEN UPPER(COALESCE(h.resultado, '')) = 'OK' THEN 1 ELSE 0 END) AS ok_count, "
-        "SUM(CASE WHEN UPPER(COALESCE(h.resultado, '')) = 'NG' THEN 1 ELSE 0 END) AS ng_count, "
-        "COALESCE(MAX(reparacion.defect_count), 0) AS defect_count, "
-        "CASE WHEN MAX(reparacion.defect_count) IS NULL THEN 0 ELSE 1 END AS fue_reparacion "
-        "  FROM history_ict h "
-        "  LEFT JOIN ("
-        "   SELECT codigo, COUNT(*) AS defect_count "
-        "   FROM defect_data GROUP BY codigo"
-        "  ) reparacion ON reparacion.codigo = h.barcode "
-        "  WHERE 1=1"
+        "SUM(CASE WHEN UPPER(COALESCE(h.resultado, '')) = 'NG' THEN 1 ELSE 0 END) AS ng_count "
     )
+    sql = ""
     params = []
 
+    windows = [()]
     if fecha_desde:
-        start_date = datetime.strptime(fecha_desde, "%Y-%m-%d").date()
-        params.append(datetime.combine(start_date, dt_time(7, 30)))
-        sql += " AND h.ts >= %s"
-    if fecha_hasta:
-        end_date = datetime.strptime(fecha_hasta, "%Y-%m-%d").date()
-        params.append(datetime.combine(end_date + timedelta(days=1), dt_time(7, 30)))
-        sql += " AND h.ts < %s"
+        dia = datetime.strptime(fecha_desde, "%Y-%m-%d").date()
+        fin = datetime.strptime(fecha_hasta, "%Y-%m-%d").date() + timedelta(days=1)
+        # ponytail: ventanas de 31 jornadas cortadas a las 07:30 (frontera de
+        # jornada, ningun grupo se parte) -> cada query < 1s aunque pidan el año.
+        windows = []
+        while dia < fin:
+            sig = min(dia + timedelta(days=31), fin)
+            windows.append((datetime.combine(dia, dt_time(7, 30)), datetime.combine(sig, dt_time(7, 30))))
+            dia = sig
     if numeros_parte:
         placeholders = " OR ".join(["h.no_parte LIKE %s"] * len(numeros_parte))
         sql += f" AND ({placeholders})"
@@ -239,22 +199,65 @@ def _build_history_ict_pass_fail_summary_query():
         sql += f" AND {turno_expr}=%s"
         params.append(turno)
 
-    sql += (
-        f" GROUP BY {fecha_jornada_expr},"
-        f" {linea_expr},"
-        f" {ict_expr},"
-        f" {turno_expr},"
-        f" {numero_parte_expr},"
-        " h.barcode"
-        " ) por_barcode"
-        ") resumen "
-        "GROUP BY resumen.fecha, resumen.linea, resumen.ict, resumen.turno, resumen.numero_parte "
-        "ORDER BY resumen.fecha ASC, resumen.linea ASC, resumen.ict ASC, "
-        "FIELD(resumen.turno, 'DIA', 'TIEMPO EXTRA', 'NOCHE'), "
-        "total DESC, resumen.numero_parte ASC"
-    )
+    rows, reparados = [], []
+    for w in windows:
+        where = (" WHERE h.ts >= %s AND h.ts < %s" if w else " WHERE 1=1") + sql
+        p = (*w, *params) or None
+        # GROUP BY posicional: los alias fecha/linea chocan con columnas reales
+        # de history_ict y MySQL resolveria la columna cruda en GROUP BY.
+        rows += execute_query(
+            select_keys + counts + ", MIN(h.ts) AS primer_test, MAX(h.ts) AS ultimo_test "
+            "FROM history_ict h" + where + " GROUP BY 1, 2, 3, 4, 5",
+            p, fetch="all",
+        ) or []
+        reparados += execute_query(
+            select_keys + counts + "FROM history_ict h "
+            "JOIN (SELECT DISTINCT codigo FROM defect_data) reparacion "
+            "ON reparacion.codigo = h.barcode" + where + " GROUP BY 1, 2, 3, 4, 5, h.barcode",
+            p, fetch="all",
+        ) or []
 
-    return sql, tuple(params) if params else None
+    def _key(r):
+        return (r["fecha"], r["linea"], r["ict"], r["turno"], r["numero_parte"])
+
+    by_key = {}
+    for r in rows:
+        n, ok, ng = int(r["intentos"]), int(r["ok_count"] or 0), int(r["ng_count"] or 0)
+        r.update(
+            total=n, ok_count=ok, ng_count=ng, ok_real=ok,
+            defectos_detectados=0, falsos_negativos=0, falsos_fail=ng,
+            piezas_con_defecto=0, intentos_sin_defecto=n,
+            total_intentos=n, ok_count_raw=ok, ng_count_raw=ng, piezas_reparacion=0,
+        )
+        by_key[_key(r)] = r
+
+    # Reparacion con ng_count = 0 se ignora: se trata como pieza sin defecto
+    # (OK_REAL). Solo cuenta "con defecto" si el ICT la marco NG: entonces la
+    # pieza aporta 1 total / 1 correcto / 0 NG en vez de sus intentos crudos.
+    for b in reparados:
+        r = by_key.get(_key(b))
+        if r is None:
+            continue
+        r["piezas_reparacion"] += 1
+        ng_b = int(b["ng_count"] or 0)
+        if not ng_b:
+            continue
+        n_b, ok_b = int(b["intentos"]), int(b["ok_count"] or 0)
+        r["total"] += 1 - n_b
+        r["ok_count"] += 1 - ok_b
+        r["ok_real"] -= ok_b
+        r["ng_count"] -= ng_b
+        r["falsos_fail"] -= ng_b
+        r["defectos_detectados"] += 1
+        r["piezas_con_defecto"] += 1
+        r["intentos_sin_defecto"] -= n_b
+
+    turnos = {"DIA": 0, "TIEMPO EXTRA": 1, "NOCHE": 2}
+    rows.sort(key=lambda r: (
+        r["fecha"], r["linea"], r["ict"], turnos.get(r["turno"], 3),
+        -r["total"], r["numero_parte"],
+    ))
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -290,8 +293,7 @@ def alias_legacy_pass_fail():
 def ict_pass_fail_api():
     """Obtener resumen Pass/Fail de ICT con el mismo formato que Vision."""
     try:
-        sql, params = _build_history_ict_pass_fail_summary_query()
-        rows = execute_query(sql, params, fetch="all") or []
+        rows = _fetch_ict_pass_fail_summary_rows()
 
         # Sesiones (operadores + ajustes) para enriquecer cada fila por su
         # rango [primer_test, ultimo_test]. Carga unica por todo el resultado.
@@ -573,8 +575,7 @@ def ict_pass_fail_consolidado_export():
     numero de parte igual que el modal: intentos crudos sumados sobre el rango.
     """
     try:
-        sql, params = _build_history_ict_pass_fail_summary_query()
-        rows = execute_query(sql, params, fetch="all") or []
+        rows = _fetch_ict_pass_fail_summary_rows()
 
         grupos = {}
         for row in rows:
@@ -661,8 +662,7 @@ def ict_pass_fail_export():
         modo = request.args.get("modo", "").strip().lower()
         modo = "detallado" if modo == "detallado" else "normal"
 
-        sql, params = _build_history_ict_pass_fail_summary_query()
-        rows = execute_query(sql, params, fetch="all") or []
+        rows = _fetch_ict_pass_fail_summary_rows()
 
         _ts = [r.get("primer_test") for r in rows if r.get("primer_test")]
         _ts += [r.get("ultimo_test") for r in rows if r.get("ultimo_test")]
