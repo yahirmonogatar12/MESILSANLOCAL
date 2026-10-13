@@ -6,7 +6,13 @@ from app.api.control_material.invoice_core.normalizers import (
 )
 
 
-def validate_system_parts(cursor, records, part_key="numero_parte_sistema", estado_ok="DIRECTO"):
+def validate_system_parts(
+    cursor,
+    records,
+    part_key="numero_parte_sistema",
+    estado_ok="DIRECTO",
+    conservar_numero_excel=False,
+):
     """Valida numero_parte_sistema (ya resuelto en el Excel) contra materiales.
 
     No usa la tabla de aliases: la hoja INVOICE(CONVERTED) ya trae Part Sys.
@@ -56,7 +62,8 @@ def validate_system_parts(cursor, records, part_key="numero_parte_sistema", esta
             record["estado_match"] = "SIN_ALIAS"
             record["mensaje_match"] = "Sin numero de parte"
         elif match:
-            record["numero_parte_sistema"] = match
+            if not conservar_numero_excel:
+                record["numero_parte_sistema"] = match
             record["estado_match"] = estado_ok
             record["mensaje_match"] = (
                 "Parte encontrada" if match == raw_part
@@ -67,7 +74,8 @@ def validate_system_parts(cursor, records, part_key="numero_parte_sistema", esta
                 record["uom"] = uom_por_parte[match] or record.get("uom") or ""
         else:
             # Sin match: se conserva la base (primer segmento) como referencia.
-            record["numero_parte_sistema"] = prefijos[-1] if prefijos else raw_part
+            if not conservar_numero_excel:
+                record["numero_parte_sistema"] = prefijos[-1] if prefijos else raw_part
             record["estado_match"] = "SIN_ALIAS"
             record["mensaje_match"] = "La parte no existe en materiales"
 

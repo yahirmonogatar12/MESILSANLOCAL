@@ -371,7 +371,7 @@ def _find_converted_header(sheet):
     return None
 
 
-def _parse_converted_sheet(sheet):
+def _parse_converted_sheet(sheet, conservar_part_sys=False):
     """Parsea INVOICE(CONVERTED): una sola tabla con parte, costo y tarima.
 
     Devuelve (invoice_lines, packing_lines). La TARIMA actua como pallet y se
@@ -429,7 +429,11 @@ def _parse_converted_sheet(sheet):
         # resuelve la base real probando los prefijos por guion. La version queda
         # disponible aparte y en raw_part_num.
         sys_raw = raw_text(_cell(row, header.get("part_sys")))
-        system_part = normalizar_numero_parte(sys_raw) or invoice_part
+        system_part = (
+            sys_raw or invoice_part
+            if conservar_part_sys
+            else normalizar_numero_parte(sys_raw) or invoice_part
+        )
         parte_version = version_parte(sys_raw) or version_parte(part_raw)
         item = raw_text(_cell(row, header.get("item")))
         spec = raw_text(_cell(row, header.get("spec")))
@@ -516,8 +520,10 @@ def parse_invoice_workbook(file_bytes, filename="", ambito=None):
         None,
     )
     if converted_sheet is not None:
-        invoice_lines, packing_lines = _parse_converted_sheet(converted_sheet)
-        _ajustar_pallets_por_ambito(packing_lines, ambito)
+        invoice_lines, packing_lines = _parse_converted_sheet(
+            converted_sheet,
+            conservar_part_sys=str(ambito or "").strip().upper() == "EMBARQUES",
+        )
         numero_invoice = (
             _converted_invoice_number(converted_sheet)
             or _guess_invoice_number(wb, filename)
@@ -572,8 +578,6 @@ def parse_invoice_workbook(file_bytes, filename="", ambito=None):
     if not invoice_sheet_found:
         warnings.append("No se encontro la hoja INVOICE(CONVERTED) ni INVOICE(total).")
 
-    _ajustar_pallets_por_ambito(packing_lines, ambito)
-
     return {
         "numero_invoice_sugerido": _guess_invoice_number(wb, filename),
         "invoice_lines": invoice_lines,
@@ -581,14 +585,6 @@ def parse_invoice_workbook(file_bytes, filename="", ambito=None):
         "warnings": warnings,
         "fuente_hoja": INVOICE_TOTAL_SHEET_NAME,
     }
-
-
-def _ajustar_pallets_por_ambito(packing_lines, ambito):
-    """Embarques conserva la tarima exactamente como aparece en el Excel."""
-    if str(ambito or "").strip().upper() != "EMBARQUES":
-        return
-    for packing in packing_lines:
-        packing["pallet_no"] = packing.get("pallet_no_original") or ""
 
 
 # Compatibilidad con tests/imports antiguos.

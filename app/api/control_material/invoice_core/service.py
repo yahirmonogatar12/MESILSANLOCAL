@@ -19,6 +19,7 @@ from app.api.control_material.costing_core.resolver import (
 from app.api.control_material.invoice_core.constants import (
     AMBITOS_SOLO_DOCUMENTAL,
     AMBITO_ALMACEN,
+    AMBITO_EMBARQUES,
     ERROR_INTERNO,
     ESTADOS_INVOICE,
     MONEDA_DEFAULT,
@@ -215,7 +216,13 @@ def preview_invoice(files, form, ambito=None):
         return error
     try:
         # Valida partes contra materiales (UOM + existencia) sin persistir.
-        validate_system_parts(cursor, parsed["invoice_lines"], "numero_parte_sistema", "DIRECTO")
+        validate_system_parts(
+            cursor,
+            parsed["invoice_lines"],
+            "numero_parte_sistema",
+            "DIRECTO",
+            conservar_numero_excel=ambito == AMBITO_EMBARQUES,
+        )
 
         # Detecta duplicado por numero o por hash de archivo.
         duplicado = None
@@ -344,8 +351,21 @@ def upload_invoice(files, form, ambito=None):
         # El Excel ya trae el numero de parte en sistema (Part Sys); solo se
         # valida su existencia en materiales (ya no se usa la tabla de aliases).
         # invoice_lines usa estado 'DIRECTO'; packing_lines usa 'MATCH' (ENUMs distintos).
-        validate_system_parts(cursor, parsed["invoice_lines"], "numero_parte_sistema", "DIRECTO")
-        validate_system_parts(cursor, parsed["packing_lines"], "numero_parte_sistema", "MATCH")
+        conservar_part_sys = ambito == AMBITO_EMBARQUES
+        validate_system_parts(
+            cursor,
+            parsed["invoice_lines"],
+            "numero_parte_sistema",
+            "DIRECTO",
+            conservar_numero_excel=conservar_part_sys,
+        )
+        validate_system_parts(
+            cursor,
+            parsed["packing_lines"],
+            "numero_parte_sistema",
+            "MATCH",
+            conservar_numero_excel=conservar_part_sys,
+        )
 
         total_monto = sum((r.get("costo_total") or Decimal("0.0000")) for r in parsed["invoice_lines"])
         cursor.execute(
