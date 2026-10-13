@@ -195,7 +195,7 @@ def preview_invoice(files, form, ambito=None):
         return {"success": False, "error": "El archivo esta vacio."}, 400
 
     try:
-        parsed = parse_invoice_workbook(file_bytes, filename)
+        parsed = parse_invoice_workbook(file_bytes, filename, ambito=ambito)
     except Exception as exc:
         logger.exception("Error leyendo invoice (preview) desde %s: %s", filename, exc)
         return {"success": False, "error": "No se pudo leer el Excel de la invoice."}, 400
@@ -292,7 +292,7 @@ def upload_invoice(files, form, ambito=None):
         return {"success": False, "error": "El archivo esta vacio."}, 400
 
     try:
-        parsed = parse_invoice_workbook(file_bytes, filename)
+        parsed = parse_invoice_workbook(file_bytes, filename, ambito=ambito)
     except Exception as exc:
         logger.exception("Error leyendo invoice desde %s: %s", filename, exc)
         return {"success": False, "error": "No se pudo leer el Excel de la invoice."}, 400

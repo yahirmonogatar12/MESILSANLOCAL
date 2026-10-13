@@ -496,7 +496,7 @@ def _guess_invoice_number(wb, filename):
     return sanitizar_texto(Path(filename or "invoice").stem, 255) or "SIN_NUMERO"
 
 
-def parse_invoice_workbook(file_bytes, filename=""):
+def parse_invoice_workbook(file_bytes, filename="", ambito=None):
     """Parsea invoice/packing usando openpyxl data_only=True.
 
     Devuelve datos normalizados y conserva raw values para depuracion.
@@ -517,6 +517,7 @@ def parse_invoice_workbook(file_bytes, filename=""):
     )
     if converted_sheet is not None:
         invoice_lines, packing_lines = _parse_converted_sheet(converted_sheet)
+        _ajustar_pallets_por_ambito(packing_lines, ambito)
         numero_invoice = (
             _converted_invoice_number(converted_sheet)
             or _guess_invoice_number(wb, filename)
@@ -571,6 +572,8 @@ def parse_invoice_workbook(file_bytes, filename=""):
     if not invoice_sheet_found:
         warnings.append("No se encontro la hoja INVOICE(CONVERTED) ni INVOICE(total).")
 
+    _ajustar_pallets_por_ambito(packing_lines, ambito)
+
     return {
         "numero_invoice_sugerido": _guess_invoice_number(wb, filename),
         "invoice_lines": invoice_lines,
@@ -578,6 +581,14 @@ def parse_invoice_workbook(file_bytes, filename=""):
         "warnings": warnings,
         "fuente_hoja": INVOICE_TOTAL_SHEET_NAME,
     }
+
+
+def _ajustar_pallets_por_ambito(packing_lines, ambito):
+    """Embarques conserva la tarima exactamente como aparece en el Excel."""
+    if str(ambito or "").strip().upper() != "EMBARQUES":
+        return
+    for packing in packing_lines:
+        packing["pallet_no"] = packing.get("pallet_no_original") or ""
 
 
 # Compatibilidad con tests/imports antiguos.
