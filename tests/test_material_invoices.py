@@ -299,14 +299,14 @@ def _patch_upload_dependencies(monkeypatch, cursor, conn, save_file):
         "warnings": [],
         "numero_invoice_sugerido": "IM20260601-V38",
     }
-    monkeypatch.setattr(invoice_service, "parse_invoice_workbook", lambda *_: parsed)
+    monkeypatch.setattr(invoice_service, "parse_invoice_workbook", lambda *_, **__: parsed)
     monkeypatch.setattr(invoice_service, "_db", lambda: (conn, cursor, None))
     monkeypatch.setattr(invoice_service, "_usuario_actual", lambda: "TEST")
     monkeypatch.setattr(invoice_service, "obtener_fecha_hora_mexico", lambda: datetime(2026, 6, 29, 13, 46))
     monkeypatch.setattr(invoice_service, "build_relative_path", lambda *_: "2026/06/invoice.xlsx")
     monkeypatch.setattr(invoice_service, "save_file", save_file)
     monkeypatch.setattr(invoice_service, "delete_file", lambda path: cursor.events.append("delete"))
-    monkeypatch.setattr(invoice_service, "validate_system_parts", lambda *_: None)
+    monkeypatch.setattr(invoice_service, "validate_system_parts", lambda *_, **__: None)
     monkeypatch.setattr(invoice_service, "_insert_invoice_lines", lambda *_: cursor.events.append("lines"))
     monkeypatch.setattr(invoice_service, "_insert_packing_lines", lambda *_: cursor.events.append("packing"))
     monkeypatch.setattr(invoice_service, "assign_packing_lines", lambda *_: cursor.events.append("assign"))

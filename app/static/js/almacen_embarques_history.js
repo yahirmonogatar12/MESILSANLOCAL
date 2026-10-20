@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260824b";
+  const ASSET_VERSION = "20260824g";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
   const adjustmentState = {};
   const movementBoxesState = {
@@ -8,6 +8,14 @@
     config: null,
     folio: "",
     rows: [],
+  };
+  const invoiceEntryState = {
+    sourceButton: null,
+    config: null,
+    rows: [],
+    detailRows: [],
+    summary: {},
+    selectedInvoiceId: null,
   };
   const returnPrintState = {
     exitRows: [],
@@ -335,6 +343,525 @@
     movementBoxesState.config = null;
     movementBoxesState.folio = "";
     movementBoxesState.rows = [];
+    if (restoreFocus && sourceButton && document.body.contains(sourceButton)) {
+      requestAnimationFrame(() => sourceButton.focus());
+    }
+  }
+
+  function getInvoiceEntryModal() {
+    let modal = document.getElementById("ae-invoice-entry-modal");
+    if (modal) {
+      return modal;
+    }
+
+    modal = document.createElement("div");
+    modal.id = "ae-invoice-entry-modal";
+    modal.className = "ae-movement-boxes-modal";
+    modal.innerHTML = `
+      <div class="ae-movement-boxes-modal__backdrop" data-action="close-invoice-entry-modal"></div>
+      <div class="ae-movement-boxes-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ae-invoice-entry-modal-title">
+        <div class="ae-movement-boxes-modal__header">
+          <div>
+            <h4 id="ae-invoice-entry-modal-title">Entrada Invoice</h4>
+            <p data-role="invoice-subtitle">Invoices de Embarques</p>
+          </div>
+          <button type="button" class="ae-movement-boxes-modal__close" data-action="close-invoice-entry-modal" aria-label="Cerrar">
+            &times;
+          </button>
+        </div>
+        <div class="ae-movement-boxes-modal__summary">
+          <span data-role="invoice-count">0 invoices</span>
+          <span data-role="invoice-parts">0 números de parte</span>
+          <span data-role="invoice-quantity">0 piezas</span>
+          <span data-role="invoice-status"></span>
+          <span data-role="invoice-action-status"></span>
+          <span class="ae-invoice-confirm-total" data-role="invoice-confirm-total">Total a confirmar: 0 piezas</span>
+        </div>
+        <div class="ae-movement-boxes-modal__body">
+          <div class="ae-movement-boxes-table-wrap">
+            <table class="ae-history-table ae-movement-boxes-table">
+              <colgroup data-role="invoice-colgroup"></colgroup>
+              <thead>
+                <tr data-role="invoice-head"></tr>
+              </thead>
+              <tbody data-role="invoice-tbody">
+                <tr>
+                  <td colspan="5" class="ae-empty-cell">Cargando invoices...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="ae-movement-boxes-modal__actions">
+          <button type="button" class="ae-btn-secondary" data-action="back-invoice-list" data-role="invoice-back" hidden>Ver invoices</button>
+          <button type="button" class="ae-btn-success" data-action="confirm-invoice-entry" data-role="invoice-confirm" hidden>Confirmar</button>
+          <button type="button" class="ae-btn-secondary" data-action="close-invoice-entry-modal">Cerrar</button>
+        </div>
+      </div>
+    `;
+
+    modal.addEventListener("click", (event) => {
+      const invoiceButton = event.target.closest('[data-action="select-invoice"]');
+      if (invoiceButton) {
+        showInvoiceEntryDetail(invoiceButton.dataset.invoiceId);
+        return;
+      }
+      if (event.target.closest('[data-action="back-invoice-list"]')) {
+        showInvoiceEntryList();
+        return;
+      }
+      if (event.target.closest('[data-action="confirm-invoice-entry"]')) {
+        confirmInvoiceEntry();
+        return;
+      }
+      const lineCheckbox = event.target.closest('[data-role="invoice-complete-line"]');
+      if (lineCheckbox) {
+        const row = lineCheckbox.closest("tr");
+        const diffInput = row?.querySelector('[data-role="invoice-diff-line"]');
+        if (lineCheckbox.checked && diffInput) {
+          diffInput.value = "";
+        }
+        syncInvoiceEntryConfirmationState();
+        return;
+      }
+      if (event.target.closest('[data-action="close-invoice-entry-modal"]')) {
+        closeInvoiceEntryModal({ restoreFocus: true });
+      }
+    });
+    modal.addEventListener("input", (event) => {
+      if (!event.target.matches('[data-role="invoice-diff-line"]')) {
+        return;
+      }
+      const row = event.target.closest("tr");
+      const completeCheckbox = row?.querySelector('[data-role="invoice-complete-line"]');
+      if (event.target.value.trim() && completeCheckbox) {
+        completeCheckbox.checked = false;
+      }
+      syncInvoiceEntryConfirmationState();
+    });
+    modal.addEventListener("change", (event) => {
+      if (!event.target.matches('[data-role="invoice-confirm-all"]')) {
+        return;
+      }
+      const completeCheckboxes = modal.querySelectorAll('[data-role="invoice-complete-line"]');
+      const diffInputs = modal.querySelectorAll('[data-role="invoice-diff-line"]');
+      completeCheckboxes.forEach((checkbox) => {
+        checkbox.checked = event.target.checked;
+      });
+      if (event.target.checked) {
+        diffInputs.forEach((input) => {
+          input.value = "";
+        });
+      }
+      syncInvoiceEntryConfirmationState();
+    });
+    modal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeInvoiceEntryModal({ restoreFocus: true });
+      }
+    });
+
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function setInvoiceEntryStatus(message = "", isError = false, isSuccess = false) {
+    const modal = getInvoiceEntryModal();
+    const statusLabel = modal.querySelector('[data-role="invoice-action-status"]')
+      || modal.querySelector('[data-role="invoice-status"]');
+    if (statusLabel) {
+      statusLabel.textContent = message;
+      statusLabel.style.color = isError ? "#ff9a9a" : isSuccess ? "#75e0a1" : "#8fb8ff";
+    }
+  }
+
+  function setInvoiceEntrySummary(summary = {}, invoice = null, rows = []) {
+    const modal = getInvoiceEntryModal();
+    const countLabel = modal.querySelector('[data-role="invoice-count"]');
+    const partsLabel = modal.querySelector('[data-role="invoice-parts"]');
+    const quantityLabel = modal.querySelector('[data-role="invoice-quantity"]');
+    const statusLabel = modal.querySelector('[data-role="invoice-status"]');
+
+    if (invoice) {
+      if (countLabel) countLabel.textContent = invoice.numero_invoice || "Invoice";
+      if (partsLabel) {
+        const totalParts = rows.length;
+        partsLabel.textContent = `${formatNumber(totalParts)} ${totalParts === 1 ? "número de parte" : "números de parte"}`;
+      }
+      if (quantityLabel) {
+        quantityLabel.textContent = getQuantityTotalLabel(sumQuantity(rows, (row) => row.quantity));
+      }
+      if (statusLabel) {
+        statusLabel.textContent = invoice.estado || "-";
+        statusLabel.style.color = "#8fb8ff";
+      }
+      return;
+    }
+
+    const totalInvoices = Number(summary.total_invoices ?? 0) || 0;
+    const totalParts = Number(summary.total_parts ?? 0) || 0;
+    if (countLabel) {
+      countLabel.textContent = `${formatNumber(totalInvoices)} ${totalInvoices === 1 ? "invoice" : "invoices"}`;
+    }
+    if (partsLabel) {
+      partsLabel.textContent = `${formatNumber(totalParts)} ${totalParts === 1 ? "número de parte" : "números de parte"}`;
+    }
+    if (quantityLabel) {
+      quantityLabel.textContent = getQuantityTotalLabel(summary.total_quantity || 0);
+    }
+    if (statusLabel) {
+      statusLabel.textContent = "";
+    }
+  }
+
+  function updateInvoiceEntryConfirmationTotal() {
+    const modal = getInvoiceEntryModal();
+    const totalLabel = modal.querySelector('[data-role="invoice-confirm-total"]');
+    if (!totalLabel) {
+      return;
+    }
+
+    let total = 0;
+    invoiceEntryState.detailRows.forEach((row, index) => {
+      const tableRow = modal.querySelector(`[data-invoice-line-index="${index}"]`);
+      const complete = tableRow?.querySelector('[data-role="invoice-complete-line"]')?.checked;
+      const diffValue = tableRow?.querySelector('[data-role="invoice-diff-line"]')?.value.trim() || "";
+      if (complete) {
+        total += getNumericValue(row.quantity);
+      } else if (diffValue) {
+        const diff = Number(diffValue.replace(/,/g, ""));
+        if (Number.isFinite(diff) && diff >= 0) {
+          total += diff;
+        }
+      }
+    });
+    totalLabel.textContent = `Total a confirmar: ${getQuantityTotalLabel(total)}`;
+  }
+
+  function renderInvoiceEntryRows(rows) {
+    if (!rows.length) {
+      return '<tr><td colspan="5" class="ae-empty-cell">No hay invoices de embarques para mostrar.</td></tr>';
+    }
+
+    const invoices = new Map();
+    rows.forEach((row) => {
+      const key = String(row.invoice_id ?? row.numero_invoice ?? "");
+      if (!invoices.has(key)) {
+        invoices.set(key, {
+          invoice_id: row.invoice_id,
+          numero_invoice: row.numero_invoice,
+          estado: row.estado,
+          fecha_carga: row.fecha_carga,
+          parts: 0,
+          quantity: 0,
+        });
+      }
+      const invoice = invoices.get(key);
+      invoice.parts += 1;
+      invoice.quantity += getNumericValue(row.quantity);
+    });
+
+    return Array.from(invoices.values())
+      .map(
+        (invoice) => `
+          <tr>
+            <td>
+              <button type="button" class="ae-folio-link" data-action="select-invoice" data-invoice-id="${escapeHtml(invoice.invoice_id)}">
+                ${escapeHtml(invoice.numero_invoice || "-")}
+              </button>
+            </td>
+            <td>${escapeHtml(invoice.estado || "-")}</td>
+            <td>${escapeHtml(invoice.fecha_carga || "-")}</td>
+            <td>${formatNumber(invoice.parts)}</td>
+            <td>${formatNumber(invoice.quantity)}</td>
+          </tr>
+        `,
+      )
+      .join("");
+  }
+
+  function renderInvoiceEntryDetailRows(rows) {
+    if (!rows.length) {
+      return '<tr><td colspan="4" class="ae-empty-cell">No hay números de parte en este invoice.</td></tr>';
+    }
+
+    return rows
+      .map(
+        (row, index) => `
+          <tr data-invoice-line-index="${index}">
+            <td>${escapeHtml(row.part_number || "-")}</td>
+            <td>${formatNumber(row.quantity)}</td>
+            <td>
+              <input type="checkbox" data-role="invoice-complete-line" aria-label="Confirmar ${escapeHtml(row.part_number || "número de parte")}">
+            </td>
+            <td>
+              <input type="text" class="ae-invoice-diff-input" data-role="invoice-diff-line" inputmode="decimal" placeholder="Cantidad diferente" aria-label="Cantidad diferente de ${escapeHtml(row.part_number || "número de parte")}">
+            </td>
+          </tr>
+        `,
+      )
+      .join("");
+  }
+
+  function setInvoiceEntryTableHead(mode) {
+    const modal = getInvoiceEntryModal();
+    const tableHead = modal.querySelector('[data-role="invoice-head"]');
+    const colGroup = modal.querySelector('[data-role="invoice-colgroup"]');
+    if (!tableHead) {
+      return;
+    }
+
+    if (mode === "detail") {
+      tableHead.innerHTML = `
+        <th>No. de parte</th>
+        <th>Cantidad</th>
+        <th>
+          <label class="ae-invoice-confirm-all-label">
+            <input type="checkbox" data-role="invoice-confirm-all">
+            Confirmar todos
+          </label>
+        </th>
+        <th>Diff</th>
+      `;
+      if (colGroup) {
+        colGroup.innerHTML = `
+          <col style="width: 38%;">
+          <col style="width: 18%;">
+          <col style="width: 22%;">
+          <col style="width: 22%;">
+        `;
+      }
+      return;
+    }
+
+    tableHead.innerHTML = "<th>No. invoice</th><th>Estado</th><th>Fecha de carga</th><th>Números de parte</th><th>Cantidad</th>";
+    if (colGroup) {
+      colGroup.innerHTML = `
+        <col style="width: 24%;">
+        <col style="width: 25%;">
+        <col style="width: 16%;">
+        <col style="width: 17%;">
+        <col style="width: 18%;">
+      `;
+    }
+  }
+
+  function showInvoiceEntryList() {
+    const modal = getInvoiceEntryModal();
+    const tableBody = modal.querySelector('[data-role="invoice-tbody"]');
+    const subtitle = modal.querySelector('[data-role="invoice-subtitle"]');
+    const backButton = modal.querySelector('[data-role="invoice-back"]');
+    const confirmButton = modal.querySelector('[data-role="invoice-confirm"]');
+
+    invoiceEntryState.selectedInvoiceId = null;
+    invoiceEntryState.detailRows = [];
+    setInvoiceEntrySummary(invoiceEntryState.summary);
+    setInvoiceEntryTableHead("list");
+    if (tableBody) {
+      tableBody.innerHTML = renderInvoiceEntryRows(invoiceEntryState.rows);
+    }
+    if (subtitle) {
+      subtitle.textContent = "Invoices de Embarques";
+    }
+    if (backButton) {
+      backButton.hidden = true;
+    }
+    if (confirmButton) {
+      confirmButton.hidden = true;
+    }
+    updateInvoiceEntryConfirmationTotal();
+  }
+
+  function showInvoiceEntryDetail(invoiceId) {
+    const modal = getInvoiceEntryModal();
+    const tableBody = modal.querySelector('[data-role="invoice-tbody"]');
+    const subtitle = modal.querySelector('[data-role="invoice-subtitle"]');
+    const backButton = modal.querySelector('[data-role="invoice-back"]');
+    const confirmButton = modal.querySelector('[data-role="invoice-confirm"]');
+    const selectedRows = invoiceEntryState.rows.filter(
+      (row) => String(row.invoice_id ?? row.numero_invoice ?? "") === String(invoiceId),
+    );
+    const selectedInvoice = selectedRows[0];
+
+    if (!selectedInvoice) {
+      return;
+    }
+
+    invoiceEntryState.selectedInvoiceId = invoiceId;
+    invoiceEntryState.detailRows = selectedRows;
+    setInvoiceEntrySummary(invoiceEntryState.summary, selectedInvoice, selectedRows);
+    setInvoiceEntryTableHead("detail");
+    if (tableBody) {
+      tableBody.innerHTML = renderInvoiceEntryDetailRows(selectedRows);
+    }
+    if (subtitle) {
+      subtitle.textContent = `Detalle del invoice ${selectedInvoice.numero_invoice || "-"}`;
+    }
+    if (backButton) {
+      backButton.hidden = false;
+    }
+    if (confirmButton) {
+      confirmButton.hidden = false;
+      confirmButton.disabled = false;
+    }
+    setInvoiceEntryStatus(`${selectedRows.length} líneas por confirmar`);
+    updateInvoiceEntryConfirmationTotal();
+  }
+
+  function syncInvoiceEntryConfirmationState() {
+    const modal = getInvoiceEntryModal();
+    const masterCheckbox = modal.querySelector('[data-role="invoice-confirm-all"]');
+    if (!masterCheckbox) {
+      return;
+    }
+    const completeCheckboxes = [...modal.querySelectorAll('[data-role="invoice-complete-line"]')];
+    const diffInputs = [...modal.querySelectorAll('[data-role="invoice-diff-line"]')];
+    const hasDiff = diffInputs.some((input) => input.value.trim() !== "");
+    masterCheckbox.checked = !hasDiff
+      && completeCheckboxes.length > 0
+      && completeCheckboxes.every((checkbox) => checkbox.checked);
+    updateInvoiceEntryConfirmationTotal();
+  }
+
+  async function confirmInvoiceEntry() {
+    const modal = getInvoiceEntryModal();
+    const invoiceId = invoiceEntryState.selectedInvoiceId;
+    const config = invoiceEntryState.config;
+    const confirmButton = modal.querySelector('[data-role="invoice-confirm"]');
+    if (!invoiceId || !config?.invoiceEntryConfirmUrl || !invoiceEntryState.detailRows.length) {
+      return;
+    }
+
+    const lines = [];
+    for (const [index, row] of invoiceEntryState.detailRows.entries()) {
+      const tableRow = modal.querySelector(`[data-invoice-line-index="${index}"]`);
+      const complete = tableRow?.querySelector('[data-role="invoice-complete-line"]')?.checked;
+      const diffValue = tableRow?.querySelector('[data-role="invoice-diff-line"]')?.value.trim() || "";
+      if (!complete && !diffValue) {
+        setInvoiceEntryStatus(`Confirma la línea ${row.part_number || index + 1} o captura un Diff.`, true);
+        return;
+      }
+
+      const confirmedQuantity = complete
+        ? getNumericValue(row.quantity)
+        : Number(diffValue.replace(/,/g, ""));
+      const originalQuantity = getNumericValue(row.quantity);
+      if (!Number.isFinite(confirmedQuantity) || confirmedQuantity < 0 || confirmedQuantity > originalQuantity) {
+        setInvoiceEntryStatus(`La cantidad de ${row.part_number || "la línea"} debe estar entre 0 y ${formatNumber(originalQuantity)}.`, true);
+        return;
+      }
+      lines.push({
+        part_number: row.part_number || "",
+        packing_line_ids: row.packing_line_ids || [],
+        cantidad_confirmada: confirmedQuantity,
+      });
+    }
+
+    confirmButton.disabled = true;
+    setInvoiceEntryStatus("Guardando confirmación...");
+    try {
+      const response = await fetch(
+        `${config.invoiceEntryConfirmUrl}/${encodeURIComponent(invoiceId)}/manual-receipts/bulk?ambito=EMBARQUES`,
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lines,
+            comentario: "Entrada Invoice Embarques",
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+      setInvoiceEntryStatus("Confirmación guardada correctamente.", false, true);
+    } catch (error) {
+      console.error("Error confirmando entrada invoice:", error);
+      setInvoiceEntryStatus(error.message || "No fue posible guardar la confirmación.", true);
+    } finally {
+      confirmButton.disabled = false;
+    }
+  }
+
+  async function openInvoiceEntryModal(config, sourceButton = null) {
+    const modal = getInvoiceEntryModal();
+    invoiceEntryState.sourceButton = sourceButton;
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+    modal.tabIndex = -1;
+
+    const countLabel = modal.querySelector('[data-role="invoice-count"]');
+    const partsLabel = modal.querySelector('[data-role="invoice-parts"]');
+    const quantityLabel = modal.querySelector('[data-role="invoice-quantity"]');
+    const tableBody = modal.querySelector('[data-role="invoice-tbody"]');
+    invoiceEntryState.config = config;
+    invoiceEntryState.rows = [];
+    invoiceEntryState.detailRows = [];
+    invoiceEntryState.summary = {};
+    invoiceEntryState.selectedInvoiceId = null;
+    setInvoiceEntryTableHead("list");
+    setInvoiceEntrySummary({});
+    if (tableBody) {
+      tableBody.innerHTML = '<tr><td colspan="5" class="ae-empty-cell">Cargando invoices...</td></tr>';
+    }
+    setInvoiceEntryStatus("Consultando invoices...");
+
+    try {
+      const response = await fetch(config.invoiceEntryUrl, { credentials: "same-origin" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+
+      const rows = payload.rows || [];
+      invoiceEntryState.rows = rows;
+      const summary = payload.summary || {};
+      invoiceEntryState.summary = summary;
+      setInvoiceEntrySummary(summary);
+      if (tableBody) {
+        tableBody.innerHTML = renderInvoiceEntryRows(rows);
+      }
+      if (countLabel) {
+        const totalInvoices = Number(summary.total_invoices ?? 0) || 0;
+        countLabel.textContent = `${formatNumber(totalInvoices)} ${totalInvoices === 1 ? "invoice" : "invoices"}`;
+      }
+      if (partsLabel) {
+        const totalParts = Number(summary.total_parts ?? rows.length) || 0;
+        partsLabel.textContent = `${formatNumber(totalParts)} ${totalParts === 1 ? "número de parte" : "números de parte"}`;
+      }
+      if (quantityLabel) {
+        quantityLabel.textContent = getQuantityTotalLabel(summary.total_quantity || 0);
+      }
+      setInvoiceEntryStatus(rows.length ? "Actualizado" : "Sin invoices para embarques");
+    } catch (error) {
+      console.error("Error consultando invoices de entradas:", error);
+      if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="5" class="ae-empty-cell">No fue posible cargar los invoices.</td></tr>';
+      }
+      setInvoiceEntryStatus(error.message || "Error al consultar invoices", true);
+    }
+
+    requestAnimationFrame(() => modal.focus());
+  }
+
+  function closeInvoiceEntryModal({ restoreFocus = false } = {}) {
+    const modal = document.getElementById("ae-invoice-entry-modal");
+    if (!modal) {
+      return;
+    }
+
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+    const sourceButton = invoiceEntryState.sourceButton;
+    invoiceEntryState.sourceButton = null;
+    invoiceEntryState.config = null;
+    invoiceEntryState.rows = [];
+    invoiceEntryState.detailRows = [];
+    invoiceEntryState.summary = {};
+    invoiceEntryState.selectedInvoiceId = null;
     if (restoreFocus && sourceButton && document.body.contains(sourceButton)) {
       requestAnimationFrame(() => sourceButton.focus());
     }
@@ -3264,6 +3791,12 @@
       adjustmentElements.resetBtn.dataset.bound = "true";
     }
 
+    const invoiceEntryButton = document.getElementById(`${config.prefix}-invoice-open-btn`);
+    if (config.invoiceEntryUrl && invoiceEntryButton && invoiceEntryButton.dataset.bound !== "true") {
+      invoiceEntryButton.addEventListener("click", () => openInvoiceEntryModal(config, invoiceEntryButton));
+      invoiceEntryButton.dataset.bound = "true";
+    }
+
     if (config.prefix === "almacen-embarques-exits" && elements.tableBody.dataset.departureBound !== "true") {
       elements.tableBody.addEventListener("keydown", (event) => {
         if (!event.target.classList.contains("ae-departure-input")) {
@@ -3348,6 +3881,8 @@
       exportUrl: "/api/almacen-embarques/entradas/export",
       boxDetailUrl: "/api/almacen-embarques/entradas/cajas",
       boxDetailExportUrl: "/api/almacen-embarques/entradas/cajas/export",
+      invoiceEntryUrl: "/api/almacen-embarques/entradas/invoices",
+      invoiceEntryConfirmUrl: "/api/material_admin/invoices",
       adjustmentModule: "entradas",
       adjustmentLabel: "Entrada",
       colspan: 10,

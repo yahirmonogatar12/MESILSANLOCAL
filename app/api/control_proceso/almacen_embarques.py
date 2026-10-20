@@ -595,6 +595,71 @@ def _obtener_cajas_movimiento_almacen_embarques(movement_type, folio, limit=2000
     }
 
 
+def _obtener_invoices_entrada_almacen_embarques(limit=5000):
+    """Listar partes y cantidades de invoices cargadas para embarques."""
+    limit = min(max(int(limit or 5000), 1), 10000)
+    rows = execute_query(
+        """
+        SELECT
+            i.id AS invoice_id,
+            i.numero_invoice,
+            i.estado,
+            i.fecha_carga,
+            p.numero_parte_sistema AS part_number,
+            SUM(p.cantidad_packing) AS quantity,
+            GROUP_CONCAT(p.id ORDER BY p.id SEPARATOR ',') AS packing_line_ids
+        FROM material_invoices i
+        INNER JOIN material_invoice_packing_lines p
+            ON p.invoice_id = i.id
+        WHERE i.ambito = 'EMBARQUES'
+          AND i.estado <> 'CANCELADA'
+          AND p.cantidad_packing > 0
+        GROUP BY
+            i.id,
+            i.numero_invoice,
+            i.estado,
+            i.fecha_carga,
+            p.numero_parte_sistema
+        ORDER BY i.fecha_carga DESC, i.id DESC, p.numero_parte_sistema ASC
+        LIMIT %s
+        """,
+        (limit,),
+        fetch="all",
+    ) or []
+
+    result_rows = [
+        {
+            "invoice_id": row.get("invoice_id"),
+            "numero_invoice": _normalizar_texto_embarques_historial(
+                row.get("numero_invoice")
+            ),
+            "estado": _normalizar_texto_embarques_historial(row.get("estado")),
+            "fecha_carga": _normalizar_texto_embarques_historial(
+                row.get("fecha_carga")
+            ),
+            "part_number": _normalizar_texto_embarques_historial(
+                row.get("part_number")
+            ),
+            "quantity": _normalizar_numero_embarques_historial(row.get("quantity")),
+            "packing_line_ids": [
+                int(value)
+                for value in str(row.get("packing_line_ids") or "").split(",")
+                if value.strip().isdigit()
+            ],
+        }
+        for row in rows
+    ]
+
+    return {
+        "rows": result_rows,
+        "summary": {
+            "total_invoices": len({row["invoice_id"] for row in result_rows}),
+            "total_parts": len(result_rows),
+            "total_quantity": sum(row["quantity"] or 0 for row in result_rows),
+        },
+    }
+
+
 def _exportar_cajas_movimiento_almacen_embarques(
     movement_type,
     folio,
@@ -4167,6 +4232,24 @@ def api_almacen_embarques_entradas():
     except Exception as e:
         logger.error(f"Error API entradas almacén embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/almacen-embarques/entradas/invoices")
+@login_requerido
+def api_almacen_embarques_entradas_invoices():
+    """Consultar partes y cantidades de invoices para entradas de embarques."""
+    try:
+        return jsonify(
+            {
+                "success": True,
+                **_obtener_invoices_entrada_almacen_embarques(limit=5000),
+            }
+        )
+    except Exception as e:
+        logger.error(
+            f"Error API invoices entrada almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @bp.route("/api/almacen-embarques/entradas/export")

@@ -298,3 +298,41 @@ def test_exportar_cajas_movimiento_embarques_usa_datos_del_folio():
         payload["rows"],
     )
     assert result == "excel-response"
+
+
+def test_invoices_entrada_embarques_agrupa_partes_y_resume():
+    rows = [
+        {
+            "invoice_id": 83,
+            "numero_invoice": "SLISEMM260903",
+            "estado": "CON_DIFERENCIAS",
+            "fecha_carga": datetime(2026, 10, 16, 10, 39, 23),
+            "part_number": "EBR123456",
+            "quantity": 20,
+        },
+        {
+            "invoice_id": 82,
+            "numero_invoice": "IM20260906-V59",
+            "estado": "CON_DIFERENCIAS",
+            "fecha_carga": datetime(2026, 10, 15, 9, 20, 11),
+            "part_number": "EBR999999",
+            "quantity": 5,
+        },
+    ]
+
+    with patch.object(ae, "execute_query", return_value=rows) as mocked_query:
+        payload = ae._obtener_invoices_entrada_almacen_embarques(limit=10)
+
+    sql, params = mocked_query.call_args.args[:2]
+    assert "material_invoices" in sql
+    assert "material_invoice_packing_lines" in sql
+    assert "i.ambito = 'EMBARQUES'" in sql
+    assert params == (10,)
+    assert payload["summary"] == {
+        "total_invoices": 2,
+        "total_parts": 2,
+        "total_quantity": 25,
+    }
+    assert payload["rows"][0]["numero_invoice"] == "SLISEMM260903"
+    assert payload["rows"][0]["part_number"] == "EBR123456"
+    assert payload["rows"][0]["quantity"] == 20

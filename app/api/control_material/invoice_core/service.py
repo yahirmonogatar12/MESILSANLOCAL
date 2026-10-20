@@ -2029,6 +2029,141 @@ def set_manual_receipt(invoice_id, packing_line_id, data, ambito=None):
         conn.close()
 
 
+def confirm_invoice_entry(invoice_id, data, ambito=None):
+    """Registrar confirmaciones documentales de entrada para un invoice.
+
+    Embarques no aplica estas cantidades a inventario. Cada número de parte
+    puede representar varias líneas de packing; la cantidad confirmada se
+    distribuye en esas líneas y se guarda como eventos RECIBIDO.
+    """
+    conn, cursor, error = _db()
+    if error:
+        return error
+
+    def to_decimal(value):
+        try:
+            amount = Decimal(str(value).replace(",", "").strip())
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValueError("La cantidad confirmada no es válida.")
+        if amount < 0:
+            raise ValueError("La cantidad confirmada no puede ser negativa.")
+        return amount
+
+    try:
+        invoice_id = int(invoice_id)
+        requested_lines = data.get("lines") if isinstance(data, dict) else None
+        if not requested_lines or not isinstance(requested_lines, list):
+            return {"success": False, "error": "Debes confirmar al menos una línea."}, 400
+
+        usuario = _usuario_actual()
+        comentario = sanitizar_texto(
+            data.get("comentario") if isinstance(data, dict) else None,
+            500,
+        ) or "Entrada Invoice Embarques"
+
+        cursor.execute("START TRANSACTION")
+        invoice = fetch_invoice(cursor, invoice_id, for_update=True, ambito=ambito)
+        if not invoice:
+            conn.rollback()
+            return {"success": False, "error": "Invoice no encontrada."}, 404
+        if invoice.get("estado") == "CANCELADA":
+            conn.rollback()
+            return {"success": False, "error": "La invoice está cancelada."}, 409
+
+        cursor.execute(
+            """
+            SELECT id, numero_parte_sistema, cantidad_packing
+            FROM material_invoice_packing_lines
+            WHERE invoice_id = %s
+            ORDER BY id
+            FOR UPDATE
+            """,
+            (invoice_id,),
+        )
+        packing_rows = cursor.fetchall() or []
+        packing_by_id = {int(row["id"]): row for row in packing_rows}
+        if not packing_by_id:
+            conn.rollback()
+            return {"success": False, "error": "La invoice no tiene líneas de packing."}, 409
+
+        inserted = 0
+        used_line_ids = set()
+        for requested in requested_lines:
+            if not isinstance(requested, dict):
+                raise ValueError("Formato de línea inválido.")
+            line_ids = requested.get("packing_line_ids") or []
+            line_ids = [int(value) for value in line_ids]
+            if used_line_ids.intersection(line_ids):
+                raise ValueError("Una línea de packing fue enviada más de una vez.")
+            used_line_ids.update(line_ids)
+            line_rows = [packing_by_id.get(line_id) for line_id in line_ids]
+            if not line_rows or any(row is None for row in line_rows):
+                raise ValueError("Una línea de packing no pertenece a la invoice.")
+
+            confirmed = to_decimal(requested.get("cantidad_confirmada"))
+            available = sum(
+                (Decimal(str(row.get("cantidad_packing") or 0)) for row in line_rows),
+                Decimal("0"),
+            )
+            if confirmed > available:
+                raise ValueError(
+                    f"La cantidad confirmada no puede exceder {available} para "
+                    f"{requested.get('part_number') or 'el número de parte'}."
+                )
+
+            remaining = confirmed
+            for row in line_rows:
+                line_total = Decimal(str(row.get("cantidad_packing") or 0))
+                line_confirmed = min(remaining, line_total)
+                remaining -= line_confirmed
+                cursor.execute(
+                    """
+                    SELECT accion, cantidad_confirmada
+                    FROM material_invoice_manual_receipts
+                    WHERE invoice_id = %s AND packing_line_id = %s
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (invoice_id, int(row["id"])),
+                )
+                previous = cursor.fetchone() or {}
+                same_value = (
+                    previous.get("accion") == "RECIBIDO"
+                    and Decimal(str(previous.get("cantidad_confirmada") or 0)) == line_confirmed
+                )
+                if same_value:
+                    continue
+                cursor.execute(
+                    """
+                    INSERT INTO material_invoice_manual_receipts (
+                        invoice_id, packing_line_id, accion, cantidad_confirmada,
+                        usuario, comentario
+                    ) VALUES (%s, %s, 'RECIBIDO', %s, %s, %s)
+                    """,
+                    (invoice_id, int(row["id"]), line_confirmed, usuario, comentario),
+                )
+                inserted += 1
+
+        estado = recalculate_invoice_state(cursor, invoice_id)
+        conn.commit()
+        return {
+            "success": True,
+            "invoice_id": invoice_id,
+            "lineas_confirmadas": inserted,
+            "invoice_estado": estado,
+        }, 200
+    except ValueError as exc:
+        conn.rollback()
+        return {"success": False, "error": str(exc)}, 400
+    except Exception as exc:
+        conn.rollback()
+        logger.exception("Error confirmando entrada invoice=%s: %s", invoice_id, exc)
+        return {"success": False, "error": ERROR_INTERNO}, 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def set_invoice_closed(invoice_id, cerrado, ambito=None):
     """Marca/desmarca el cierre manual de un invoice parcial.
 

@@ -79,13 +79,19 @@ def recalculate_invoice_state(cursor, invoice_id):
             LEAST(
               p.cantidad_packing,
               CASE
-                WHEN manual.accion = 'RECIBIDO' THEN p.cantidad_packing
+                WHEN manual.accion = 'RECIBIDO' THEN LEAST(
+                  p.cantidad_packing,
+                  COALESCE(manual.cantidad_confirmada, p.cantidad_packing)
+                )
                 ELSE COALESCE(aplicado.cantidad_aplicada, 0)
               END
             )
           ), 0) AS total_aplicado,
           COALESCE(SUM(CASE WHEN aplicado.cantidad_aplicada > 0 THEN 1 ELSE 0 END), 0)
-            + COALESCE(SUM(CASE WHEN manual.accion = 'RECIBIDO' THEN 1 ELSE 0 END), 0)
+            + COALESCE(SUM(CASE
+                WHEN manual.accion = 'RECIBIDO'
+                 AND COALESCE(manual.cantidad_confirmada, 0) > 0
+                THEN 1 ELSE 0 END), 0)
             AS links_activos
         FROM material_invoice_packing_lines p
         LEFT JOIN (
@@ -95,7 +101,7 @@ def recalculate_invoice_state(cursor, invoice_id):
           GROUP BY packing_line_id
         ) aplicado ON aplicado.packing_line_id = p.id
         LEFT JOIN (
-          SELECT r.packing_line_id, r.accion
+          SELECT r.packing_line_id, r.accion, r.cantidad_confirmada
           FROM material_invoice_manual_receipts r
           JOIN (
             SELECT packing_line_id, MAX(id) AS ultimo_id

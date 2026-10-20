@@ -11,6 +11,7 @@ from flask import Blueprint, g, jsonify, render_template, request, send_file
 from app.api.control_material.invoice_core.export import export_invoice
 from app.api.control_material.invoice_core.service import (
     apply_invoice,
+    confirm_invoice_entry,
     delete_invoice,
     delete_invoice_line,
     get_invoice_candidates,
@@ -181,6 +182,23 @@ def api_manual_receipt(invoice_id, packing_line_id):
         set_manual_receipt(
             invoice_id,
             packing_line_id,
+            request.get_json(silent=True) or {},
+            g.ambito_invoice,
+        )
+    )
+
+
+@bp.route(
+    "/api/material_admin/invoices/<int:invoice_id>/manual-receipts/bulk",
+    methods=["POST"],
+)
+@login_requerido
+@requiere_permiso_ambito
+def api_confirm_invoice_entry(invoice_id):
+    """Confirmar cantidades recibidas de un invoice documental."""
+    return _json_result(
+        confirm_invoice_entry(
+            invoice_id,
             request.get_json(silent=True) or {},
             g.ambito_invoice,
         )
