@@ -275,9 +275,8 @@ def init_material_invoice_tables():
         )
     _ensure_index("material_invoice_lot_links", "uk_lote_link_activo", "UNIQUE KEY uk_lote_link_activo (activo_key)")
 
-    # Confirmaciones de recepción para artículos de otras áreas que no tienen
-    # Part System. No crean inventario: únicamente registran el avance del
-    # invoice y conservan una bitácora append-only.
+    # Confirmaciones de recepción por invoice. Conservan una bitácora
+    # append-only y sirven como fuente de la entrada real de embarques.
     execute_query(
         """
         CREATE TABLE IF NOT EXISTS material_invoice_manual_receipts (
@@ -292,6 +291,31 @@ def init_material_invoice_tables():
             PRIMARY KEY (id),
             KEY idx_mimr_invoice_fecha (invoice_id, fecha, id),
             KEY idx_mimr_packing_ultimo (packing_line_id, id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+
+    # Relaciona la confirmación única de un invoice de embarques con las
+    # entradas reales generadas en el inventario general. Se mantiene aparte
+    # de la bitácora para que la idempotencia sea verificable por invoice y
+    # número de parte sin alterar los eventos históricos.
+    execute_query(
+        """
+        CREATE TABLE IF NOT EXISTS material_invoice_entry_movements (
+            id BIGINT NOT NULL AUTO_INCREMENT,
+            invoice_id BIGINT NOT NULL,
+            numero_parte VARCHAR(64) NOT NULL,
+            movement_id BIGINT UNSIGNED NULL,
+            movement_folio VARCHAR(40) NULL,
+            cantidad_confirmada DECIMAL(18,4) NOT NULL DEFAULT 0,
+            usuario VARCHAR(255) NOT NULL DEFAULT 'SISTEMA',
+            fecha_confirmacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_miem_invoice_part (invoice_id, numero_parte),
+            UNIQUE KEY uk_miem_movement_id (movement_id),
+            UNIQUE KEY uk_miem_movement_folio (movement_folio),
+            KEY idx_miem_invoice (invoice_id),
+            KEY idx_miem_fecha (fecha_confirmacion)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
     )

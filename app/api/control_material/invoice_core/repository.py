@@ -76,23 +76,23 @@ def recalculate_invoice_state(cursor, invoice_id):
         SELECT
           COALESCE(SUM(p.cantidad_packing), 0) AS total_packing,
           COALESCE(SUM(
-            LEAST(
-              p.cantidad_packing,
-              CASE
-                WHEN manual.accion = 'RECIBIDO' THEN LEAST(
-                  p.cantidad_packing,
-                  COALESCE(manual.cantidad_confirmada, p.cantidad_packing)
-                )
-                ELSE COALESCE(aplicado.cantidad_aplicada, 0)
-              END
-            )
+            CASE
+              WHEN manual.accion = 'RECIBIDO' THEN
+                COALESCE(manual.cantidad_confirmada, p.cantidad_packing)
+              ELSE COALESCE(aplicado.cantidad_aplicada, 0)
+            END
           ), 0) AS total_aplicado,
           COALESCE(SUM(CASE WHEN aplicado.cantidad_aplicada > 0 THEN 1 ELSE 0 END), 0)
             + COALESCE(SUM(CASE
                 WHEN manual.accion = 'RECIBIDO'
                  AND COALESCE(manual.cantidad_confirmada, 0) > 0
                 THEN 1 ELSE 0 END), 0)
-            AS links_activos
+            AS links_activos,
+          COALESCE(SUM(CASE
+            WHEN manual.accion = 'RECIBIDO'
+             AND COALESCE(manual.cantidad_confirmada, p.cantidad_packing)
+                 <> p.cantidad_packing
+            THEN 1 ELSE 0 END), 0) AS manual_diferencias
         FROM material_invoice_packing_lines p
         LEFT JOIN (
           SELECT packing_line_id, SUM(cantidad_aplicada) AS cantidad_aplicada
@@ -118,8 +118,11 @@ def recalculate_invoice_state(cursor, invoice_id):
     total_packing = Decimal(str(totals.get("total_packing") or 0))
     total_aplicado = Decimal(str(totals.get("total_aplicado") or 0))
     links_activos = int(totals.get("links_activos") or 0)
+    manual_diferencias = int(totals.get("manual_diferencias") or 0)
 
-    if total_packing > 0 and total_aplicado >= total_packing:
+    if manual_diferencias > 0:
+        estado = "CON_DIFERENCIAS"
+    elif total_packing > 0 and total_aplicado >= total_packing:
         estado = "APLICADA"
     elif links_activos > 0 or total_aplicado > 0:
         estado = "PARCIALMENTE_APLICADA"

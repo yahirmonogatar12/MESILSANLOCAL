@@ -546,6 +546,65 @@ def test_embarques_no_aplica_a_inventario(monkeypatch, accion):
     assert conn.rollbacks == 1
 
 
+def test_invoice_entry_distribuye_sobrante_sin_recortarlo():
+    allocations = invoice_service._allocate_invoice_confirmations(
+        [
+            {"id": 11, "cantidad_packing": "60"},
+            {"id": 12, "cantidad_packing": "40"},
+        ],
+        Decimal("125"),
+    )
+
+    assert [quantity for _row, quantity in allocations] == [Decimal("60"), Decimal("65")]
+
+
+def test_invoice_entry_rechaza_segunda_confirmacion(monkeypatch):
+    class DuplicateEntryCursor:
+        def __init__(self):
+            self.query = ""
+
+        def execute(self, query, params=None):
+            self.query = " ".join(query.split())
+
+        def fetchall(self):
+            if "material_invoice_entry_movements" in self.query:
+                return [{
+                    "numero_parte": "PART-1",
+                    "movement_id": 81,
+                    "movement_folio": "EMB-ENT-1",
+                    "cantidad_confirmada": Decimal("125"),
+                }]
+            return []
+
+        def fetchone(self):
+            return None
+
+        def close(self):
+            pass
+
+    cursor = DuplicateEntryCursor()
+    conn = _AmbitoConnection()
+    _patch_db(monkeypatch, cursor, conn)
+    monkeypatch.setattr(
+        invoice_service,
+        "fetch_invoice",
+        lambda *a, **k: {"id": 1, "estado": "VALIDADA", "ambito": "EMBARQUES"},
+    )
+    monkeypatch.setattr(invoice_service, "_usuario_actual", lambda: "TEST")
+
+    payload, status = invoice_service.confirm_invoice_entry(
+        1,
+        {"lines": [{}]},
+        "EMBARQUES",
+    )
+
+    assert status == 409
+    assert payload["duplicado"] is True
+    assert payload["entradas"][0]["movement_folio"] == "EMB-ENT-1"
+    assert conn.commits == 0
+    assert conn.rollbacks == 1
+
+
 def test_ruta_del_excel_separa_embarques_de_almacen():
     """El mismo Excel puede cargarse en ambos ambitos: borrar uno no debe
     borrar el archivo del otro."""

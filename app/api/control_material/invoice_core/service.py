@@ -59,6 +59,14 @@ from app.api.shared import (
     obtener_fecha_hora_mexico,
     sanitizar_texto,
 )
+from app.api.pda.shipping_material import (
+    SHIPPING_TABLES,
+    ensure_inventory_record,
+    generate_movement_folio,
+    normalize_part_number,
+    resolve_available_layer_quantity,
+    update_inventory_snapshot,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -2029,12 +2037,180 @@ def set_manual_receipt(invoice_id, packing_line_id, data, ambito=None):
         conn.close()
 
 
-def confirm_invoice_entry(invoice_id, data, ambito=None):
-    """Registrar confirmaciones documentales de entrada para un invoice.
+def _ensure_invoice_inventory_record(cursor, part_number, description, invoice_id):
+    """Obtiene el registro de inventario y crea el catálogo mínimo si falta."""
+    inventory = ensure_inventory_record(cursor, part_number)
+    if inventory:
+        return inventory
 
-    Embarques no aplica estas cantidades a inventario. Cada número de parte
-    puede representar varias líneas de packing; la cantidad confirmada se
-    distribuye en esas líneas y se guarda como eventos RECIBIDO.
+    cursor.execute(
+        f"""
+        SELECT id
+        FROM `{SHIPPING_TABLES['catalog']}`
+        WHERE part_number = %s
+        LIMIT 1
+        FOR UPDATE
+        """,
+        (part_number,),
+    )
+    catalog = cursor.fetchone()
+    if not catalog:
+        short_description = str(description or "").strip()[:255] or None
+        cursor.execute(
+            f"""
+            INSERT INTO `{SHIPPING_TABLES['catalog']}` (
+              part_number,
+              product_model,
+              product_status,
+              description,
+              standard_pack,
+              customer,
+              zone_code,
+              source_file
+            ) VALUES (%s, %s, 'activo', %s, 1, NULL, 'pending', %s)
+            """,
+            (
+                part_number,
+                (short_description or "Material de invoice")[:180],
+                short_description,
+                f"material_invoice:{invoice_id}",
+            ),
+        )
+
+    inventory = ensure_inventory_record(cursor, part_number)
+    if not inventory:
+        raise ValueError(
+            f"No fue posible preparar el número de parte {part_number} en el inventario de embarques."
+        )
+    return inventory
+
+
+def _create_invoice_inventory_entry(
+    cursor,
+    invoice,
+    part_number,
+    quantity,
+    description,
+    usuario,
+    movement_at,
+):
+    """Crea una capa de entrada por parte para una confirmación de invoice."""
+    if quantity <= 0:
+        return None
+    if quantity != quantity.to_integral_value():
+        raise ValueError(
+            f"La cantidad confirmada de {part_number} debe ser un número entero."
+        )
+
+    quantity_int = int(quantity)
+    inventory = _ensure_invoice_inventory_record(
+        cursor,
+        part_number,
+        description,
+        invoice["id"],
+    )
+    previous_quantity = int(inventory.get("current_quantity") or 0)
+    new_quantity = previous_quantity + quantity_int
+    available_quantity = resolve_available_layer_quantity(
+        previous_quantity,
+        quantity_int,
+    )
+    entry_folio = generate_movement_folio("EMB-ENT")
+    invoice_reference = normalize_part_number(invoice.get("numero_invoice"))[:80]
+    note = f"Entrada invoice {invoice_reference}"
+
+    update_inventory_snapshot(
+        cursor,
+        inventory["id"],
+        {
+            "current_quantity": new_quantity,
+            "zone_code": inventory.get("zone_code")
+            or inventory.get("catalog_zone_code")
+            or "pending",
+            "last_entry_at": movement_at,
+        },
+    )
+
+    cursor.execute(
+        f"""
+        INSERT INTO `{SHIPPING_TABLES['entries']}` (
+          entry_folio,
+          inventory_id,
+          catalog_id,
+          part_number,
+          quantity,
+          available_quantity,
+          is_fifo_layer_only,
+          previous_quantity,
+          new_quantity,
+          product_model,
+          description,
+          customer,
+          zone_code,
+          location_code,
+          reference_code,
+          batch_no,
+          notes,
+          registered_by,
+          movement_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, 0, %s, %s, %s, %s, %s, %s, NULL, %s, %s, %s, %s, %s)
+        """,
+        (
+            entry_folio,
+            inventory["id"],
+            inventory.get("catalog_id") or inventory.get("catalog_ref_id"),
+            part_number,
+            quantity_int,
+            available_quantity,
+            previous_quantity,
+            new_quantity,
+            inventory.get("product_model")
+            or inventory.get("catalog_model")
+            or description,
+            inventory.get("description")
+            or inventory.get("catalog_description")
+            or description,
+            inventory.get("customer") or inventory.get("catalog_customer"),
+            inventory.get("zone_code")
+            or inventory.get("catalog_zone_code")
+            or "pending",
+            invoice_reference,
+            f"INVOICE:{invoice['id']}",
+            note,
+            usuario,
+            movement_at,
+        ),
+    )
+    return {
+        "id": cursor.lastrowid,
+        "folio": entry_folio,
+        "part_number": part_number,
+        "quantity": quantity_int,
+        "current_quantity": new_quantity,
+    }
+
+
+def _allocate_invoice_confirmations(line_rows, confirmed):
+    """Distribuye la cantidad real entre líneas de packing del mismo parte."""
+    remaining = confirmed
+    allocations = []
+    for index, row in enumerate(line_rows):
+        line_total = Decimal(str(row.get("cantidad_packing") or 0))
+        if index == len(line_rows) - 1:
+            line_confirmed = max(remaining, Decimal("0"))
+        else:
+            line_confirmed = min(max(remaining, Decimal("0")), line_total)
+        remaining -= line_confirmed
+        allocations.append((row, line_confirmed))
+    return allocations
+
+
+def confirm_invoice_entry(invoice_id, data, ambito=None):
+    """Confirma una invoice de embarques y genera entradas reales de inventario.
+
+    Cada número de parte genera un folio independiente. La cantidad confirmada
+    es la cantidad real recibida y puede ser menor, igual o mayor que el
+    packing del invoice. La operación es única por invoice y transaccional.
     """
     conn, cursor, error = _db()
     if error:
@@ -2072,7 +2248,43 @@ def confirm_invoice_entry(invoice_id, data, ambito=None):
 
         cursor.execute(
             """
-            SELECT id, numero_parte_sistema, cantidad_packing
+            SELECT numero_parte, movement_id, movement_folio, cantidad_confirmada
+            FROM material_invoice_entry_movements
+            WHERE invoice_id = %s
+            ORDER BY id
+            FOR UPDATE
+            """,
+            (invoice_id,),
+        )
+        existing_entries = cursor.fetchall() or []
+        if existing_entries:
+            conn.rollback()
+            return {
+                "success": False,
+                "duplicado": True,
+                "error": "La invoice ya fue confirmada como entrada.",
+                "entradas": existing_entries,
+            }, 409
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM material_invoice_manual_receipts
+            WHERE invoice_id = %s AND accion = 'RECIBIDO'
+            """,
+            (invoice_id,),
+        )
+        if int((cursor.fetchone() or {}).get("total") or 0) > 0:
+            conn.rollback()
+            return {
+                "success": False,
+                "duplicado": True,
+                "error": "La invoice ya tiene una confirmación de recepción.",
+            }, 409
+
+        cursor.execute(
+            """
+            SELECT id, numero_parte_sistema, descripcion, cantidad_packing
             FROM material_invoice_packing_lines
             WHERE invoice_id = %s
             ORDER BY id
@@ -2086,13 +2298,16 @@ def confirm_invoice_entry(invoice_id, data, ambito=None):
             conn.rollback()
             return {"success": False, "error": "La invoice no tiene líneas de packing."}, 409
 
-        inserted = 0
+        movement_at = obtener_fecha_hora_mexico()
         used_line_ids = set()
+        requested_by_part = {}
         for requested in requested_lines:
             if not isinstance(requested, dict):
                 raise ValueError("Formato de línea inválido.")
-            line_ids = requested.get("packing_line_ids") or []
-            line_ids = [int(value) for value in line_ids]
+            try:
+                line_ids = [int(value) for value in (requested.get("packing_line_ids") or [])]
+            except (TypeError, ValueError):
+                raise ValueError("Una línea de packing no es válida.")
             if used_line_ids.intersection(line_ids):
                 raise ValueError("Una línea de packing fue enviada más de una vez.")
             used_line_ids.update(line_ids)
@@ -2100,56 +2315,101 @@ def confirm_invoice_entry(invoice_id, data, ambito=None):
             if not line_rows or any(row is None for row in line_rows):
                 raise ValueError("Una línea de packing no pertenece a la invoice.")
 
-            confirmed = to_decimal(requested.get("cantidad_confirmada"))
-            available = sum(
-                (Decimal(str(row.get("cantidad_packing") or 0)) for row in line_rows),
-                Decimal("0"),
-            )
-            if confirmed > available:
-                raise ValueError(
-                    f"La cantidad confirmada no puede exceder {available} para "
-                    f"{requested.get('part_number') or 'el número de parte'}."
-                )
+            row_parts = {normalizar_numero_parte(row.get("numero_parte_sistema")) for row in line_rows}
+            part_number = normalizar_numero_parte(requested.get("part_number"))
+            if not part_number:
+                part_number = next(iter(row_parts), "")
+            if not part_number or row_parts != {part_number}:
+                raise ValueError("El número de parte no coincide con sus líneas de packing.")
+            if len(part_number) > 64:
+                raise ValueError(f"El número de parte {part_number} excede la longitud permitida.")
+            if part_number in requested_by_part:
+                raise ValueError("Un número de parte fue enviado más de una vez.")
 
-            remaining = confirmed
-            for row in line_rows:
-                line_total = Decimal(str(row.get("cantidad_packing") or 0))
-                line_confirmed = min(remaining, line_total)
-                remaining -= line_confirmed
-                cursor.execute(
-                    """
-                    SELECT accion, cantidad_confirmada
-                    FROM material_invoice_manual_receipts
-                    WHERE invoice_id = %s AND packing_line_id = %s
-                    ORDER BY id DESC
-                    LIMIT 1
-                    """,
-                    (invoice_id, int(row["id"])),
-                )
-                previous = cursor.fetchone() or {}
-                same_value = (
-                    previous.get("accion") == "RECIBIDO"
-                    and Decimal(str(previous.get("cantidad_confirmada") or 0)) == line_confirmed
-                )
-                if same_value:
-                    continue
+            confirmed = to_decimal(requested.get("cantidad_confirmada"))
+            requested_by_part[part_number] = {
+                "rows": line_rows,
+                "confirmed": confirmed,
+            }
+
+        if used_line_ids != set(packing_by_id):
+            raise ValueError("Debes confirmar todas las líneas de packing del invoice.")
+
+        entries = []
+        manual_rows = []
+        for part_number, item in requested_by_part.items():
+            line_rows = item["rows"]
+            confirmed = item["confirmed"]
+            line_allocations = _allocate_invoice_confirmations(line_rows, confirmed)
+
+            for row, line_confirmed in line_allocations:
                 cursor.execute(
                     """
                     INSERT INTO material_invoice_manual_receipts (
                         invoice_id, packing_line_id, accion, cantidad_confirmada,
-                        usuario, comentario
-                    ) VALUES (%s, %s, 'RECIBIDO', %s, %s, %s)
+                        usuario, comentario, fecha
+                    ) VALUES (%s, %s, 'RECIBIDO', %s, %s, %s, %s)
                     """,
-                    (invoice_id, int(row["id"]), line_confirmed, usuario, comentario),
+                    (
+                        invoice_id,
+                        int(row["id"]),
+                        line_confirmed,
+                        usuario,
+                        comentario,
+                        movement_at,
+                    ),
                 )
-                inserted += 1
+                manual_rows.append({
+                    "packing_line_id": int(row["id"]),
+                    "cantidad_confirmada": line_confirmed,
+                })
+
+            description = next(
+                (row.get("descripcion") for row in line_rows if row.get("descripcion")),
+                None,
+            )
+            entry = _create_invoice_inventory_entry(
+                cursor,
+                invoice,
+                part_number,
+                confirmed,
+                description,
+                usuario,
+                movement_at,
+            )
+            entries.append(entry or {
+                "id": None,
+                "folio": None,
+                "part_number": part_number,
+                "quantity": 0,
+                "current_quantity": None,
+            })
+            cursor.execute(
+                """
+                INSERT INTO material_invoice_entry_movements (
+                    invoice_id, numero_parte, movement_id, movement_folio,
+                    cantidad_confirmada, usuario, fecha_confirmacion
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    invoice_id,
+                    part_number,
+                    entry.get("id") if entry else None,
+                    entry.get("folio") if entry else None,
+                    confirmed,
+                    usuario,
+                    movement_at,
+                ),
+            )
 
         estado = recalculate_invoice_state(cursor, invoice_id)
         conn.commit()
         return {
             "success": True,
             "invoice_id": invoice_id,
-            "lineas_confirmadas": inserted,
+            "lineas_confirmadas": len(manual_rows),
+            "entradas": entries,
+            "fecha_confirmacion": movement_at.strftime("%Y-%m-%d %H:%M:%S"),
             "invoice_estado": estado,
         }, 200
     except ValueError as exc:

@@ -26,8 +26,8 @@ PERMISOS_POR_AMBITO = {
     AMBITO_EMBARQUES: ("LISTA_DE_MATERIALES", "Control de material", "Invoice Embarques"),
 }
 
-# Los invoices de embarques son solo documentales: se suben, consultan,
-# exportan y cierran, pero no aplican a inventario ni generan costos.
+# La aplicación estándar de lotes/costos no se usa para embarques. La entrada
+# de invoice se confirma por separado y genera movimientos en su inventario.
 AMBITOS_SOLO_DOCUMENTAL = {AMBITO_EMBARQUES}
 
 

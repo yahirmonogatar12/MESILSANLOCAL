@@ -607,10 +607,15 @@ def _obtener_invoices_entrada_almacen_embarques(limit=5000):
             i.fecha_carga,
             p.numero_parte_sistema AS part_number,
             SUM(p.cantidad_packing) AS quantity,
-            GROUP_CONCAT(p.id ORDER BY p.id SEPARATOR ',') AS packing_line_ids
+            GROUP_CONCAT(p.id ORDER BY p.id SEPARATOR ',') AS packing_line_ids,
+            CASE WHEN eim.invoice_id IS NULL THEN 0 ELSE 1 END AS entrada_confirmada
         FROM material_invoices i
         INNER JOIN material_invoice_packing_lines p
             ON p.invoice_id = i.id
+        LEFT JOIN (
+            SELECT DISTINCT invoice_id
+            FROM material_invoice_entry_movements
+        ) eim ON eim.invoice_id = i.id
         WHERE i.ambito = 'EMBARQUES'
           AND i.estado <> 'CANCELADA'
           AND p.cantidad_packing > 0
@@ -619,7 +624,8 @@ def _obtener_invoices_entrada_almacen_embarques(limit=5000):
             i.numero_invoice,
             i.estado,
             i.fecha_carga,
-            p.numero_parte_sistema
+            p.numero_parte_sistema,
+            eim.invoice_id
         ORDER BY i.fecha_carga DESC, i.id DESC, p.numero_parte_sistema ASC
         LIMIT %s
         """,
@@ -646,6 +652,7 @@ def _obtener_invoices_entrada_almacen_embarques(limit=5000):
                 for value in str(row.get("packing_line_ids") or "").split(",")
                 if value.strip().isdigit()
             ],
+            "entrada_confirmada": bool(row.get("entrada_confirmada")),
         }
         for row in rows
     ]
