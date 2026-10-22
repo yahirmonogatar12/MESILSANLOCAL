@@ -608,14 +608,73 @@ def _obtener_invoices_entrada_almacen_embarques(limit=5000):
             p.numero_parte_sistema AS part_number,
             SUM(p.cantidad_packing) AS quantity,
             GROUP_CONCAT(p.id ORDER BY p.id SEPARATOR ',') AS packing_line_ids,
-            CASE WHEN eim.invoice_id IS NULL THEN 0 ELSE 1 END AS entrada_confirmada
+            CASE
+                WHEN eim.id IS NOT NULL
+                  OR MAX(mr.receipt_id) IS NOT NULL
+                  OR MAX(legacy_entry.id) IS NOT NULL
+                THEN 1 ELSE 0
+            END AS entrada_confirmada,
+            COALESCE(
+                eim.cantidad_confirmada,
+                SUM(mr.cantidad_confirmada),
+                MAX(legacy_entry.quantity),
+                0
+            ) AS cantidad_confirmada,
+            COALESCE(eim.movement_folio, MAX(legacy_entry.entry_folio)) AS folio_entrada
         FROM material_invoices i
         INNER JOIN material_invoice_packing_lines p
             ON p.invoice_id = i.id
+        LEFT JOIN material_invoice_entry_movements eim
+            ON eim.invoice_id = i.id
+           AND REGEXP_REPLACE(
+                   UPPER(CONVERT(COALESCE(eim.numero_parte, '') USING utf8mb4)),
+                   '[[:space:]]+',
+                   ''
+               ) COLLATE utf8mb4_unicode_ci
+               = REGEXP_REPLACE(
+                   UPPER(CONVERT(COALESCE(p.numero_parte_sistema, '') USING utf8mb4)),
+                   '[[:space:]]+',
+                   ''
+               ) COLLATE utf8mb4_unicode_ci
         LEFT JOIN (
-            SELECT DISTINCT invoice_id
-            FROM material_invoice_entry_movements
-        ) eim ON eim.invoice_id = i.id
+            SELECT
+                r.invoice_id,
+                r.packing_line_id,
+                CASE WHEN r.accion = 'RECIBIDO' THEN r.id ELSE NULL END AS receipt_id,
+                CASE WHEN r.accion = 'RECIBIDO' THEN r.cantidad_confirmada ELSE 0 END
+                    AS cantidad_confirmada
+            FROM material_invoice_manual_receipts r
+            INNER JOIN (
+                SELECT packing_line_id, MAX(id) AS ultimo_id
+                FROM material_invoice_manual_receipts
+                GROUP BY packing_line_id
+            ) ultimo ON ultimo.ultimo_id = r.id
+        ) mr
+            ON mr.invoice_id = i.id
+           AND mr.packing_line_id = p.id
+        LEFT JOIN (
+            SELECT e.id, e.entry_folio, e.batch_no, e.part_number, e.quantity
+            FROM embarques_entrada_material e
+            INNER JOIN (
+                SELECT batch_no, part_number, MAX(id) AS ultimo_id
+                FROM embarques_entrada_material
+                WHERE COALESCE(is_fifo_layer_only, 0) = 0
+                  AND batch_no LIKE 'INVOICE:%%'
+                GROUP BY batch_no, part_number
+            ) ultimo ON ultimo.ultimo_id = e.id
+        ) legacy_entry
+            ON legacy_entry.batch_no COLLATE utf8mb4_unicode_ci
+               = CONCAT('INVOICE:', i.id) COLLATE utf8mb4_unicode_ci
+           AND REGEXP_REPLACE(
+                   UPPER(CONVERT(COALESCE(legacy_entry.part_number, '') USING utf8mb4)),
+                   '[[:space:]]+',
+                   ''
+               ) COLLATE utf8mb4_unicode_ci
+               = REGEXP_REPLACE(
+                   UPPER(CONVERT(COALESCE(p.numero_parte_sistema, '') USING utf8mb4)),
+                   '[[:space:]]+',
+                   ''
+               ) COLLATE utf8mb4_unicode_ci
         WHERE i.ambito = 'EMBARQUES'
           AND i.estado <> 'CANCELADA'
           AND p.cantidad_packing > 0
@@ -625,7 +684,9 @@ def _obtener_invoices_entrada_almacen_embarques(limit=5000):
             i.estado,
             i.fecha_carga,
             p.numero_parte_sistema,
-            eim.invoice_id
+            eim.id,
+            eim.cantidad_confirmada,
+            eim.movement_folio
         ORDER BY i.fecha_carga DESC, i.id DESC, p.numero_parte_sistema ASC
         LIMIT %s
         """,
@@ -653,6 +714,12 @@ def _obtener_invoices_entrada_almacen_embarques(limit=5000):
                 if value.strip().isdigit()
             ],
             "entrada_confirmada": bool(row.get("entrada_confirmada")),
+            "cantidad_confirmada": _normalizar_numero_embarques_historial(
+                row.get("cantidad_confirmada")
+            ),
+            "folio_entrada": _normalizar_texto_embarques_historial(
+                row.get("folio_entrada")
+            ),
         }
         for row in rows
     ]

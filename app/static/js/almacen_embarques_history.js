@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260824h";
+  const ASSET_VERSION = "20260824i";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
   const adjustmentState = {};
   const movementBoxesState = {
@@ -17,6 +17,8 @@
     summary: {},
     selectedInvoiceId: null,
     selectedInvoiceConfirmed: false,
+    confirmedNoticeTimer: null,
+    confirmedNoticeExitTimer: null,
   };
   const returnPrintState = {
     exitRows: [],
@@ -378,6 +380,10 @@
           <span data-role="invoice-action-status"></span>
           <span class="ae-invoice-confirm-total" data-role="invoice-confirm-total">Total a confirmar: 0 piezas</span>
         </div>
+        <div class="ae-invoice-confirmed-notice" data-role="invoice-confirmed-notice" hidden role="status">
+          <span data-role="invoice-confirmed-notice-message"></span>
+          <button type="button" data-action="close-invoice-confirmed-notice" aria-label="Cerrar notificación">&times;</button>
+        </div>
         <div class="ae-movement-boxes-modal__body">
           <div class="ae-movement-boxes-table-wrap">
             <table class="ae-history-table ae-movement-boxes-table">
@@ -413,6 +419,10 @@
       }
       if (event.target.closest('[data-action="confirm-invoice-entry"]')) {
         confirmInvoiceEntry();
+        return;
+      }
+      if (event.target.closest('[data-action="close-invoice-confirmed-notice"]')) {
+        hideInvoiceConfirmedNotice();
         return;
       }
       const lineCheckbox = event.target.closest('[data-role="invoice-complete-line"]');
@@ -477,6 +487,58 @@
     }
   }
 
+  function hideInvoiceConfirmedNotice() {
+    const modal = getInvoiceEntryModal();
+    const notice = modal.querySelector('[data-role="invoice-confirmed-notice"]');
+    if (invoiceEntryState.confirmedNoticeTimer) {
+      window.clearTimeout(invoiceEntryState.confirmedNoticeTimer);
+      invoiceEntryState.confirmedNoticeTimer = null;
+    }
+    if (invoiceEntryState.confirmedNoticeExitTimer) {
+      window.clearTimeout(invoiceEntryState.confirmedNoticeExitTimer);
+      invoiceEntryState.confirmedNoticeExitTimer = null;
+    }
+    if (notice && !notice.hidden) {
+      notice.classList.add("is-leaving");
+      invoiceEntryState.confirmedNoticeExitTimer = window.setTimeout(() => {
+        notice.hidden = true;
+        notice.classList.remove("is-leaving");
+        invoiceEntryState.confirmedNoticeExitTimer = null;
+      }, 220);
+    }
+  }
+
+  function showInvoiceConfirmedNotice(
+    message = "Este invoice ya fue confirmado como entrada.",
+    autoHide = true,
+  ) {
+    const modal = getInvoiceEntryModal();
+    const notice = modal.querySelector('[data-role="invoice-confirmed-notice"]');
+    const messageLabel = modal.querySelector('[data-role="invoice-confirmed-notice-message"]');
+    if (!notice) {
+      return;
+    }
+    if (messageLabel) {
+      messageLabel.textContent = message;
+    }
+    if (invoiceEntryState.confirmedNoticeTimer) {
+      window.clearTimeout(invoiceEntryState.confirmedNoticeTimer);
+      invoiceEntryState.confirmedNoticeTimer = null;
+    }
+    if (invoiceEntryState.confirmedNoticeExitTimer) {
+      window.clearTimeout(invoiceEntryState.confirmedNoticeExitTimer);
+      invoiceEntryState.confirmedNoticeExitTimer = null;
+    }
+    notice.classList.remove("is-leaving");
+    notice.hidden = false;
+    if (autoHide) {
+      // La salida animada completa los dos segundos visibles de la notificación.
+      invoiceEntryState.confirmedNoticeTimer = window.setTimeout(() => {
+        hideInvoiceConfirmedNotice();
+      }, 1780);
+    }
+  }
+
   function setInvoiceEntrySummary(summary = {}, invoice = null, rows = []) {
     const modal = getInvoiceEntryModal();
     const countLabel = modal.querySelector('[data-role="invoice-count"]');
@@ -524,6 +586,11 @@
     }
 
     let total = 0;
+    if (invoiceEntryState.selectedInvoiceConfirmed) {
+      total = sumQuantity(invoiceEntryState.detailRows, (row) => row.cantidad_confirmada);
+      totalLabel.textContent = `Total confirmado: ${getQuantityTotalLabel(total)}`;
+      return;
+    }
     invoiceEntryState.detailRows.forEach((row, index) => {
       const tableRow = modal.querySelector(`[data-invoice-line-index="${index}"]`);
       const complete = tableRow?.querySelector('[data-role="invoice-complete-line"]')?.checked;
@@ -582,9 +649,25 @@
       .join("");
   }
 
-  function renderInvoiceEntryDetailRows(rows) {
+  function renderInvoiceEntryDetailRows(rows, confirmed = false) {
     if (!rows.length) {
-      return '<tr><td colspan="4" class="ae-empty-cell">No hay números de parte en este invoice.</td></tr>';
+      return '<tr><td colspan="5" class="ae-empty-cell">No hay números de parte en este invoice.</td></tr>';
+    }
+
+    if (confirmed) {
+      return rows
+        .map(
+          (row) => `
+            <tr>
+              <td>${escapeHtml(row.part_number || "-")}</td>
+              <td>${formatNumber(row.quantity)}</td>
+              <td>${formatNumber(row.cantidad_confirmada ?? 0)}</td>
+              <td>${escapeHtml(row.folio_entrada || "-")}</td>
+              <td>${escapeHtml(row.fecha_carga || "-")}</td>
+            </tr>
+          `,
+        )
+        .join("");
     }
 
     return rows
@@ -605,7 +688,7 @@
       .join("");
   }
 
-  function setInvoiceEntryTableHead(mode) {
+  function setInvoiceEntryTableHead(mode, confirmed = false) {
     const modal = getInvoiceEntryModal();
     const tableHead = modal.querySelector('[data-role="invoice-head"]');
     const colGroup = modal.querySelector('[data-role="invoice-colgroup"]');
@@ -614,9 +697,29 @@
     }
 
     if (mode === "detail") {
+      if (confirmed) {
+        tableHead.innerHTML = `
+          <th>No. de parte</th>
+          <th>Cantidad invoice</th>
+          <th>Cantidad confirmada</th>
+          <th>Folio de entrada</th>
+          <th>Fecha de carga</th>
+        `;
+        if (colGroup) {
+          colGroup.innerHTML = `
+            <col style="width: 28%;">
+            <col style="width: 20%;">
+            <col style="width: 22%;">
+            <col style="width: 28%;">
+            <col style="width: 20%;">
+          `;
+        }
+        return;
+      }
       tableHead.innerHTML = `
         <th>No. de parte</th>
-        <th>Cantidad</th>
+        <th>Cantidad invoice</th>
+        <th>Cantidad confirmada</th>
         <th>
           <label class="ae-invoice-confirm-all-label">
             <input type="checkbox" data-role="invoice-confirm-all">
@@ -627,10 +730,11 @@
       `;
       if (colGroup) {
         colGroup.innerHTML = `
-          <col style="width: 38%;">
+          <col style="width: 30%;">
           <col style="width: 18%;">
-          <col style="width: 22%;">
-          <col style="width: 22%;">
+          <col style="width: 18%;">
+          <col style="width: 17%;">
+          <col style="width: 17%;">
         `;
       }
       return;
@@ -658,6 +762,7 @@
     invoiceEntryState.selectedInvoiceId = null;
     invoiceEntryState.selectedInvoiceConfirmed = false;
     invoiceEntryState.detailRows = [];
+    hideInvoiceConfirmedNotice();
     setInvoiceEntrySummary(invoiceEntryState.summary);
     setInvoiceEntryTableHead("list");
     if (tableBody) {
@@ -693,13 +798,16 @@
 
     invoiceEntryState.selectedInvoiceId = invoiceId;
     invoiceEntryState.detailRows = selectedRows;
-    invoiceEntryState.selectedInvoiceConfirmed = selectedRows.some(
-      (row) => Boolean(row.entrada_confirmada),
-    );
+    invoiceEntryState.selectedInvoiceConfirmed = selectedRows.length > 0
+      && selectedRows.every((row) => Boolean(row.entrada_confirmada));
+    hideInvoiceConfirmedNotice();
     setInvoiceEntrySummary(invoiceEntryState.summary, selectedInvoice, selectedRows);
-    setInvoiceEntryTableHead("detail");
+    setInvoiceEntryTableHead("detail", invoiceEntryState.selectedInvoiceConfirmed);
     if (tableBody) {
-      tableBody.innerHTML = renderInvoiceEntryDetailRows(selectedRows);
+      tableBody.innerHTML = renderInvoiceEntryDetailRows(
+        selectedRows,
+        invoiceEntryState.selectedInvoiceConfirmed,
+      );
     }
     if (subtitle) {
       subtitle.textContent = `Detalle del invoice ${selectedInvoice.numero_invoice || "-"}`;
@@ -708,12 +816,18 @@
       backButton.hidden = false;
     }
     if (confirmButton) {
-      confirmButton.hidden = false;
-      confirmButton.disabled = invoiceEntryState.selectedInvoiceConfirmed;
+      confirmButton.hidden = invoiceEntryState.selectedInvoiceConfirmed;
+      confirmButton.disabled = false;
+    }
+    if (invoiceEntryState.selectedInvoiceConfirmed) {
+      showInvoiceConfirmedNotice(
+        "Este invoice ya fue confirmado como entrada.",
+        false,
+      );
     }
     setInvoiceEntryStatus(
       invoiceEntryState.selectedInvoiceConfirmed
-        ? "Este invoice ya fue confirmado como entrada."
+        ? "Consulta de confirmación"
         : `${selectedRows.length} líneas por confirmar`,
       false,
       invoiceEntryState.selectedInvoiceConfirmed,
@@ -793,9 +907,34 @@
       if (!response.ok || payload.success === false) {
         throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
       }
-      setInvoiceEntryStatus("Confirmación guardada correctamente.", false, true);
+
+      const entriesByPart = new Map(
+        (payload.entradas || []).map((entry) => [String(entry.part_number || ""), entry]),
+      );
+      const updateConfirmedRow = (row) => {
+        const entry = entriesByPart.get(String(row.part_number || ""));
+        return {
+          ...row,
+          entrada_confirmada: true,
+          cantidad_confirmada: entry?.quantity ?? 0,
+          folio_entrada: entry?.folio || "",
+        };
+      };
+      invoiceEntryState.rows = invoiceEntryState.rows.map((row) => (
+        String(row.invoice_id) === String(invoiceId) ? updateConfirmedRow(row) : row
+      ));
+      invoiceEntryState.detailRows = invoiceEntryState.detailRows.map(updateConfirmedRow);
       invoiceEntryState.selectedInvoiceConfirmed = true;
-      confirmButton.disabled = true;
+      setInvoiceEntryTableHead("detail", true);
+      const tableBody = modal.querySelector('[data-role="invoice-tbody"]');
+      if (tableBody) {
+        tableBody.innerHTML = renderInvoiceEntryDetailRows(invoiceEntryState.detailRows, true);
+      }
+      confirmButton.hidden = true;
+      confirmButton.disabled = false;
+      setInvoiceEntryStatus("Confirmación guardada correctamente.", false, true);
+      showInvoiceConfirmedNotice("Invoice confirmado correctamente como entrada.");
+      updateInvoiceEntryConfirmationTotal();
     } catch (error) {
       console.error("Error confirmando entrada invoice:", error);
       setInvoiceEntryStatus(error.message || "No fue posible guardar la confirmación.", true);
@@ -873,6 +1012,7 @@
 
     modal.classList.remove("is-open");
     modal.setAttribute("aria-hidden", "true");
+    hideInvoiceConfirmedNotice();
     const sourceButton = invoiceEntryState.sourceButton;
     invoiceEntryState.sourceButton = null;
     invoiceEntryState.config = null;

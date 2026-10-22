@@ -1868,6 +1868,61 @@ body.ae-column-resizing * {
     white-space: nowrap;
 }
 
+.ae-invoice-confirmed-notice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 18px;
+    color: #d8ffe6;
+    background: rgba(39, 174, 96, 0.18);
+    border-bottom: 1px solid rgba(117, 224, 161, 0.24);
+    font-size: 0.78rem;
+    font-weight: 700;
+    animation: ae-invoice-notice-enter 180ms ease-out both;
+}
+
+.ae-invoice-confirmed-notice[hidden] {
+    display: none;
+}
+
+.ae-invoice-confirmed-notice button {
+    margin-left: auto;
+    border: 0;
+    padding: 0 4px;
+    color: inherit;
+    background: transparent;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ae-invoice-confirmed-notice.is-leaving {
+    animation: ae-invoice-notice-leave 220ms ease-in both;
+    pointer-events: none;
+}
+
+@keyframes ae-invoice-notice-enter {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes ae-invoice-notice-leave {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
 .ae-return-print-modal {
     position: fixed;
     inset: 0;

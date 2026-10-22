@@ -2298,7 +2298,9 @@ def confirm_invoice_entry(invoice_id, data, ambito=None):
             conn.rollback()
             return {"success": False, "error": "La invoice no tiene líneas de packing."}, 409
 
-        movement_at = obtener_fecha_hora_mexico()
+        # La entrada de embarques debe conservar la fecha operativa del invoice,
+        # no la fecha posterior en que el usuario confirmó la recepción.
+        movement_at = invoice.get("fecha_carga") or obtener_fecha_hora_mexico()
         used_line_ids = set()
         requested_by_part = {}
         for requested in requested_lines:
