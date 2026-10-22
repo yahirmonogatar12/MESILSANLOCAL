@@ -60,6 +60,13 @@ def _lqc_ventana_operativa(fecha_inicio, fecha_fin):
     return inicio, fin
 
 
+def _lqc_serial_key(value):
+    # box_scans.serial es utf8mb4_unicode_ci: MySQL trata `i2026...;main;...` y
+    # `I2026...;MAIN;...` como el mismo serial (escaner con mayusculas apagadas).
+    # Python tiene que agruparlos igual o el historico no encuentra la variante.
+    return str(value or "").strip().upper()
+
+
 # ---------------------------------------------------------------------------
 # Render template + aliases
 # ---------------------------------------------------------------------------
@@ -294,11 +301,7 @@ def lqc_datos_api():
 
             historico_por_serial = {}
             seriales = sorted(
-                {
-                    str(r.get("serial") or "").strip()
-                    for r in rows
-                    if str(r.get("serial") or "").strip()
-                }
+                {_lqc_serial_key(r.get("serial")) for r in rows} - {""}
             )
             for i in range(0, len(seriales), 1000):
                 serial_chunk = seriales[i : i + 1000]
@@ -314,7 +317,7 @@ def lqc_datos_api():
                     serial_chunk,
                 )
                 for h in cursor.fetchall():
-                    serial = str(h.get("serial") or "").strip()
+                    serial = _lqc_serial_key(h.get("serial"))
                     if serial:
                         historico_por_serial[serial] = []
 
@@ -339,8 +342,8 @@ def lqc_datos_api():
                     serial_chunk,
                 )
                 for h in cursor.fetchall():
-                    serial = str(h.get("serial") or "").strip()
-                    if not serial:
+                    serial = _lqc_serial_key(h.get("serial"))
+                    if serial not in historico_por_serial:
                         continue
                     historico_por_serial[serial].append(
                         {
@@ -357,7 +360,7 @@ def lqc_datos_api():
             records = []
             for r in rows:
                 serial = r["serial"] or ""
-                historico = historico_por_serial.get(serial, [])
+                historico = historico_por_serial.get(_lqc_serial_key(serial), [])
                 scan_id = r.get("scan_id")
                 otros_escaneos = [
                     h

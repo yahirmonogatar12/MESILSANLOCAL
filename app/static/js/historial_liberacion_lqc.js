@@ -408,11 +408,17 @@
       .then(function (r) { return r.json(); })
       .then(function (d) {
         state.records = d.success ? (d.records || []) : [];
+        state.loadError = d.success ? '' : (d.error || 'el servidor no devolvio datos');
         state.page = 1;
         updateStats();
         renderContentArea();
       })
-      .catch(function () { state.records = []; updateStats(); renderContentArea(); });
+      .catch(function () {
+        state.records = [];
+        state.loadError = 'no se pudo consultar el servidor';
+        updateStats();
+        renderContentArea();
+      });
   }
 
   function updateStats() {
@@ -428,6 +434,10 @@
   function renderContentArea() {
     var area = document.getElementById('lqcs-content-area');
     if (!area) return;
+    if (state.loadError) {
+      area.innerHTML = '<div class="lqcs-empty" style="color:#f87171">Error al cargar los registros: ' + esc(state.loadError) + '</div>';
+      return;
+    }
     var allLines = isAllLinesMode();
 
     var filtered = state.records;
