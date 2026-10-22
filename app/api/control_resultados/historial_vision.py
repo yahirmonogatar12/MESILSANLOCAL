@@ -38,10 +38,13 @@ from app.api.shared.vision_helpers import (
     _build_vision_stops_count_query,
     _build_vision_stops_query,
     _fetch_ajustes_for_stops,
+    _get_history_vision_defects,
     _get_history_vision_record,
     _resolve_history_vision_image,
+    _vision_defect_columns,
     _vision_format_value,
     _vision_is_safe_path,
+    _vision_parse_fallas,
 )
 
 import logging
@@ -134,9 +137,24 @@ def _serialize_history_vision(rows):
             "qr": _vision_format_value(row.get("qr", "")) or "",
             "barcode": _vision_format_value(row.get("barcode", "")) or "",
             "resultado": _vision_format_value(row.get("resultado", "")) or "",
+            # [{componente, tipo_falla, valor, unidad}] por cada falla de una pieza NG
+            "fallas": _vision_parse_fallas(row.get("fallas")),
         }
         for row in rows
     ]
+
+
+def _serialize_vision_defects(rows):
+    """Fallas de una pieza NG para el panel de la imagen (mismas columnas que la tabla)."""
+    defects = []
+    for row in rows:
+        columns = _vision_defect_columns(
+            row.get("test_name"), row.get("position"), row.get("sub_test"),
+            row.get("value_text"), row.get("value_num"),
+        )
+        columns["detalle"] = str(row.get("value_text") or "")
+        defects.append(columns)
+    return defects
 
 
 @bp.route("/api/vision/stops")
@@ -302,8 +320,18 @@ def vision_image_info_api():
             "searched_paths": resolution.get("searched_paths", []),
             "source_file": _vision_format_value(record.get("source_file", "")) or "",
             "machine_ip": _vision_format_value(record.get("machine_ip", "")) or "",
+            "match_type": resolution.get("match_type", ""),
+            "defects": [],
             "image_url": "",
         }
+        if str(record.get("result") or "").strip().upper() == "NG":
+            try:
+                response_payload["defects"] = _serialize_vision_defects(
+                    _get_history_vision_defects(record.get("source_uid"))
+                )
+            except Exception:
+                # El detalle es informativo: sin el, la imagen se muestra igual.
+                logger.warning("No se pudo leer el detalle de NG del registro %s", record_id, exc_info=True)
 
         if resolution.get("resolved_path"):
             response_payload["image_url"] = url_for(
@@ -391,17 +419,23 @@ def export_vision_excel():
         sql, params = _build_history_vision_query()
         rows = execute_query(sql, params, fetch="all") or []
 
-        keys = ["linea", "fecha", "hora", "numero_parte", "qr", "barcode", "resultado"]
-        items = [
-            {key: _vision_format_value(row.get(key, "")) or "" for key in keys}
-            for row in rows
-        ]
+        piece_keys = ["linea", "fecha", "hora", "numero_parte", "qr", "barcode", "resultado"]
+        defect_keys = ["componente", "tipo_falla", "valor", "unidad"]
+        # Una fila por falla (la pieza se repite): asi una tabla dinamica cuenta fallas por
+        # componente / tipo. Piezas OK o NG sin detalle: una fila con esas columnas vacias.
+        items = []
+        for row in rows:
+            piece = {key: _vision_format_value(row.get(key, "")) or "" for key in piece_keys}
+            defects = _vision_parse_fallas(row.get("fallas")) or [dict.fromkeys(defect_keys, "")]
+            items.extend({**piece, **defect} for defect in defects)
+        keys = piece_keys + defect_keys
         headers = [
             "Linea", "Fecha", "Hora", "Numero de parte", "QR", "Barcode", "Resultado",
+            "Componente", "Tipo de falla", "Valor", "Unidad",
         ]
         filename = f"historial_vision_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         return excel_response_ict(
-            items, headers, keys, widths=[22, 14, 14, 28, 36, 24, 14],
+            items, headers, keys, widths=[22, 14, 14, 28, 36, 24, 14, 24, 28, 12, 9],
             sheet="Historial Vision", filename=filename,
         )
     except Exception as e:

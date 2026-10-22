@@ -7,7 +7,9 @@ from app.api.shared import vision_helpers
 from app.api.control_resultados import historial_vision
 
 
-def test_build_history_vision_query_supports_pagination_and_column_filters(app):
+def test_build_history_vision_query_supports_pagination_and_column_filters(app, monkeypatch):
+    # Sin tocar MySQL: la existencia de history_vision_defects se consulta en vivo.
+    monkeypatch.setattr(vision_helpers, "_vision_defects_table_available", lambda: False)
     with app.test_request_context(
         "/api/vision/data?fecha_desde=2026-06-26&cf_numero_parte=EBR4103"
         "&cf_resultado=OK"
@@ -282,7 +284,7 @@ def test_history_vision_template_contains_stops_tab(app):
     assert html.count('<option value="1000" selected>1000</option>') == 2
     assert 'id="vision-preview-qr"' in html
     assert 'id="vision-preview-barcode"' in html
-    assert html.count("data-vision-filter-field=") == 14
+    assert html.count("data-vision-filter-field=") == 16  # + Componente y Tipo de falla
     assert 'data-vision-filter-table="records"' in html
     assert 'data-vision-filter-table="stops"' in html
     stops_panel = html.split('id="vision-paros-panel"', 1)[1].split(

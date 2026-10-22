@@ -18,8 +18,10 @@ compatibilidad.
 NOTA anti-circular: importa execute_query directo de app.db_mysql.
 """
 
+import json
 import os
 import re
+import time
 from datetime import date, datetime, timedelta
 from datetime import time as dt_time
 from pathlib import Path
@@ -135,6 +137,17 @@ def _vision_reference_datetime(record):
             return parsed_value
 
     return None
+
+
+def _vision_record_source(record):
+    """'SHT' si el registro vino del .txt de resultados de la vision, 'shlog' si del log.
+
+    Importa para la imagen: en el SHT log_datetime es el inicio de la inspeccion y es
+    exactamente el sello de la foto (al milisegundo); en el .shlog es el fin (csZone.Run),
+    0.2-0.4 s despues de la foto.
+    """
+    source_file = str(record.get("source_file") or "").strip().lower()
+    return "SHT" if source_file.endswith(".txt") else "shlog"
 
 
 # ---------------------------------------------------------------------------
@@ -296,14 +309,56 @@ def _get_history_vision_record(record_id):
     return execute_query(sql, (record_id,), fetch="one")
 
 
+# Tolerancias de la busqueda de imagen (segundos).
+_VISION_EXACT_SECONDS = 0.01  # SHT: el sello de la foto es log_datetime al milisegundo
+_VISION_NEAREST_SECONDS = 1.0  # shlog: la foto es 0.2-0.4 s anterior al fin de la inspeccion
+
+
+def _vision_record_codes(record):
+    """QR y barcode de la pieza, normalizados, para compararlos con el nombre de la foto."""
+    return {
+        str(value).strip().upper()
+        for value in (record.get("qr_payload"), record.get("serial_qr"), record.get("barcode"))
+        if str(value or "").strip()
+    }
+
+
+def _vision_pick_image_candidate(candidates, source):
+    """Elegir la foto segun de donde viene el registro (source_file).
+    Devuelve (candidato, tipo_de_coincidencia) o (None, "").
+
+    - SHT (.txt): log_datetime ES el sello de la foto, al milisegundo -> hora exacta. Si el
+      nombre trae codigo debe ser el de la pieza (el del SHT es exacto: distinto = otra pieza).
+    - shlog: log_datetime es el fin de la inspeccion, 0.2-0.4 s despues de la foto, y sus
+      codigos vienen del escaner de mano (pueden ser de la pieza vecina) -> la foto mas
+      cercana en hora, sin mirar el codigo.
+    """
+    if source == "SHT":
+        exact = [
+            c for c in candidates
+            if c["delta_seconds"] <= _VISION_EXACT_SECONDS and c["code_consistent"]
+        ]
+        if not exact:
+            return None, ""
+        best = min(exact, key=lambda c: c["delta_seconds"])
+        return best, "exacta (hora y codigo)" if best["code_match"] else "exacta (hora)"
+
+    nearest = [c for c in candidates if c["delta_seconds"] <= _VISION_NEAREST_SECONDS]
+    if not nearest:
+        return None, ""
+    return min(nearest, key=lambda c: c["delta_seconds"]), "por hora mas cercana"
+
+
 def _resolve_history_vision_image(record):
-    """Resolver la imagen mas cercana a un registro de history_vision."""
+    """Resolver la imagen de un registro de history_vision segun su fuente (SHT o shlog)."""
     image_extensions = {".jpg", ".jpeg", ".png", ".bmp"}
     expected_result = str(record.get("result") or "").strip().upper()
     part_code = str(record.get("part_code") or "").strip()
     part_code_prefix = part_code.upper()[:11]
     reference_dt = _vision_reference_datetime(record)
     share_roots = _vision_candidate_share_roots(record)
+    source = _vision_record_source(record)
+    record_codes = _vision_record_codes(record)
 
     result_payload = {
         "record_id": record.get("id"),
@@ -314,6 +369,8 @@ def _resolve_history_vision_image(record):
         "searched_paths": [],
         "reference_datetime": _vision_format_value(reference_dt) if reference_dt else "",
         "share_roots": [str(root) for root in share_roots],
+        "fuente": source,
+        "match_type": "",
     }
 
     if not part_code:
@@ -333,12 +390,15 @@ def _resolve_history_vision_image(record):
         return result_payload
 
     filename_part_prefix = part_code_prefix or part_code.upper()
+    # <Modelo>_<Zona>_[<ultimo codigo leido>_]<AAAAMMDD>_<HHMMSSmmm>_<OK|NG>.jpg
+    # Las recetas que leen QR/DataMatrix meten ese codigo en el nombre; las que no, no.
     filename_pattern = re.compile(
-        rf"^{re.escape(filename_part_prefix)}(?:[^_]*)_(?P<side>[^_]+)_(?P<stamp>\d{{8}}_\d{{9}})_(?P<result>OK|NG)\.(?P<ext>jpg|jpeg|png|bmp)$",
+        rf"^{re.escape(filename_part_prefix)}(?:[^_]*)_(?P<side>[^_]+)_(?:(?P<code>[^_]*)_)?"
+        rf"(?P<stamp>\d{{8}}_\d{{9}})_(?P<result>OK|NG)\.(?P<ext>jpg|jpeg|png|bmp)$",
         re.IGNORECASE,
     )
 
-    best_candidate = None
+    candidates = []
     searched_paths = []
     seen_search_paths = set()
 
@@ -395,37 +455,169 @@ def _resolve_history_vision_image(record):
                     except ValueError:
                         continue
 
-                    delta_seconds = abs((file_dt - reference_dt).total_seconds())
-                    candidate = {
+                    file_code = (match.group("code") or "").strip().upper()
+                    code_match = bool(file_code) and file_code in record_codes
+                    candidates.append({
                         "path": image_path,
                         "share_name": _vision_share_name(share_root),
                         "side_folder": side_dir.name,
-                        "delta_seconds": delta_seconds,
-                    }
-
-                    if best_candidate is None or delta_seconds < best_candidate["delta_seconds"]:
-                        best_candidate = candidate
+                        "delta_seconds": abs((file_dt - reference_dt).total_seconds()),
+                        "code_match": code_match,
+                        # Un codigo distinto en el nombre es otra pieza (aunque la hora sea cercana).
+                        "code_consistent": code_match or not file_code or not record_codes,
+                    })
 
     result_payload["searched_paths"] = searched_paths
 
-    if best_candidate and best_candidate["delta_seconds"] <= 1.0:
+    best_candidate, match_type = _vision_pick_image_candidate(candidates, source)
+    if best_candidate:
         result_payload.update(
             {
                 "resolved_path": str(best_candidate["path"]),
                 "share_name": best_candidate["share_name"],
                 "side_folder": best_candidate["side_folder"],
                 "delta_seconds": round(best_candidate["delta_seconds"], 3),
+                "match_type": match_type,
             }
         )
         return result_payload
 
-    result_payload["error"] = "No se encontro una imagen dentro del umbral de 1 segundo."
+    result_payload["error"] = (
+        "No se encontro la foto con la misma hora (registro SHT)."
+        if source == "SHT"
+        else "No se encontro una foto dentro de 1 segundo (registro shlog)."
+    )
     return result_payload
+
+
+# ---------------------------------------------------------------------------
+# Detalle de NG (history_vision_defects, lo llena el watcher de Vision desde el SHT)
+# ---------------------------------------------------------------------------
+
+_VISION_DEFECTS_RECHECK_SECONDS = 300
+_vision_defects_state = {"available": False, "checked_at": None}
+
+# Fallas de una pieza NG como arreglo JSON (una entrada por posicion / sub-prueba); la app
+# las separa en Componente / Tipo de falla / Valor. Subconsulta por fila sobre
+# idx_source_uid, solo en las NG.
+_VISION_FALLAS_SQL = (
+    "(CASE WHEN result = 'NG' THEN ("
+    "SELECT JSON_ARRAYAGG(JSON_OBJECT("
+    "'test_name', d.test_name, 'position', d.position, 'sub_test', d.sub_test, "
+    "'value_text', d.value_text, 'value_num', d.value_num)) "
+    "FROM history_vision_defects d WHERE d.source_uid = history_vision.source_uid"
+    ") END)"
+)
+
+
+def _vision_defect_columns(test_name, position, sub_test, value_text, value_num):
+    """Una falla en las columnas del historial / Excel:
+    componente "Switch 2", tipo de falla "Maker_Axis", valor 75.46 (numero) y unidad "%".
+
+    Lecturas de codigo NG no tienen sub-prueba: el tipo es el motivo ("no leyo la etiqueta").
+    Valores sin un solo numero (color "95,89,24") quedan como texto.
+    """
+    value_text = str(value_text or "")
+    componente = " ".join(part for part in (str(test_name or ""), str(position or "")) if part)
+    if value_num is not None:
+        valor = round(float(value_num), 2)
+        unidad = "%" if "%" in value_text else ""
+    else:
+        valor = value_text
+        unidad = ""
+    tipo = str(sub_test or "")
+    if not tipo:
+        # Lectura de codigo: "no leyo la etiqueta" o "etiqueta no corresponde al modelo: <codigo>".
+        # El tipo queda corto (para agrupar en graficas) y el codigo leido va en el valor.
+        motivo, _, codigo = value_text.partition(": ")
+        tipo, valor = motivo, codigo
+    return {"componente": componente, "tipo_falla": tipo, "valor": valor, "unidad": unidad}
+
+
+def _vision_parse_fallas(raw):
+    """Columna `fallas` (arreglo JSON de la subconsulta) -> lista de columnas por falla."""
+    if not raw:
+        return []
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8", errors="replace")
+    try:
+        items = json.loads(raw) if isinstance(raw, str) else raw
+    except ValueError:
+        return []
+    return [
+        _vision_defect_columns(
+            item.get("test_name"), item.get("position"), item.get("sub_test"),
+            item.get("value_text"), item.get("value_num"),
+        )
+        for item in (items or [])
+        if isinstance(item, dict)
+    ]
+
+
+def _vision_defects_table_available():
+    """True si existe history_vision_defects. La crea el watcher de Vision con el primer NG
+    del SHT; mientras no exista, el historial funciona igual pero sin detalle de falla."""
+    if _vision_defects_state["available"]:
+        return True
+    now = time.monotonic()
+    checked_at = _vision_defects_state["checked_at"]
+    if checked_at is not None and now - checked_at < _VISION_DEFECTS_RECHECK_SECONDS:
+        return False
+    _vision_defects_state["checked_at"] = now
+    row = execute_query(
+        "SELECT COUNT(*) AS n FROM information_schema.tables "
+        "WHERE table_schema = DATABASE() AND table_name = %s",
+        ("history_vision_defects",),
+        fetch="one",
+    ) or {}
+    _vision_defects_state["available"] = bool(row.get("n"))
+    return _vision_defects_state["available"]
+
+
+def _get_history_vision_defects(source_uid):
+    """Posiciones que fallaron en una pieza NG del SHT (vacio si vino del .shlog)."""
+    if not source_uid or not _vision_defects_table_available():
+        return []
+    sql = (
+        "SELECT test_name, position, sub_test, value_text, value_num "
+        "FROM history_vision_defects WHERE source_uid=%s ORDER BY id LIMIT 50"
+    )
+    return execute_query(sql, (source_uid,), fetch="all") or []
 
 
 # ---------------------------------------------------------------------------
 # Builders de query SQL
 # ---------------------------------------------------------------------------
+
+
+def _vision_date_filter_sql(fecha_desde, fecha_hasta):
+    """Filtro de fechas de history_vision que usa idx_result_datetime (result, log_datetime).
+
+    Filtrar por log_date (sin indice) recorria la tabla completa: 1.8M filas, ~1 s por
+    consulta y creciendo. Con result IN ('OK','NG') + rango de log_datetime MySQL lee solo
+    ese rango del indice (~20 ms). Es equivalente: log_date = DATE(log_datetime) en toda la
+    tabla y el watcher de Vision solo escribe OK/NG.
+    """
+    if not fecha_desde and not fecha_hasta:
+        return "", []
+
+    sql = " AND result IN ('OK','NG')"
+    params = []
+    if fecha_desde:
+        sql += " AND log_datetime >= %s"
+        params.append(fecha_desde)
+    if fecha_hasta:
+        try:
+            next_day = (date.fromisoformat(fecha_hasta) + timedelta(days=1)).isoformat()
+        except ValueError:
+            next_day = None
+        if next_day:
+            sql += " AND log_datetime < %s"
+            params.append(next_day)
+        else:  # fecha rara: se respeta tal cual, aunque sea lento
+            sql += " AND log_date <= %s"
+            params.append(fecha_hasta)
+    return sql, params
 
 
 def _build_history_vision_where():
@@ -441,12 +633,9 @@ def _build_history_vision_where():
     sql = " FROM history_vision WHERE 1=1"
     params = []
 
-    if fecha_desde:
-        sql += " AND log_date >= %s"
-        params.append(fecha_desde)
-    if fecha_hasta:
-        sql += " AND log_date <= %s"
-        params.append(fecha_hasta)
+    date_sql, date_params = _vision_date_filter_sql(fecha_desde, fecha_hasta)
+    sql += date_sql
+    params.extend(date_params)
     if linea:
         sql += " AND machine_name LIKE %s"
         params.append(f"%{linea}%")
@@ -472,6 +661,16 @@ def _build_history_vision_where():
         "barcode": "barcode LIKE %s",
         "resultado": "result LIKE %s",
     }
+    if _vision_defects_table_available():
+        # Semi-join contra la tabla de fallas (chica): piezas con alguna falla que coincida.
+        column_filter_sql["componente"] = (
+            "source_uid IN (SELECT d.source_uid FROM history_vision_defects d "
+            "WHERE CONCAT_WS(' ', d.test_name, NULLIF(d.position, '')) LIKE %s)"
+        )
+        column_filter_sql["tipo_falla"] = (
+            "source_uid IN (SELECT d.source_uid FROM history_vision_defects d "
+            "WHERE IF(d.sub_test <> '', d.sub_test, d.value_text) LIKE %s)"
+        )
     for key, clause in column_filter_sql.items():
         value = request.args.get(f"cf_{key}", "").strip()
         if value:
@@ -484,6 +683,7 @@ def _build_history_vision_where():
 def _build_history_vision_query(limit=None, offset=0):
     """Query de registros; sin ``limit`` devuelve todo para exportacion/compatibilidad."""
     where_sql, params = _build_history_vision_where()
+    fallas_sql = _VISION_FALLAS_SQL if _vision_defects_table_available() else "NULL"
     sql = (
         "SELECT "
         "id, "
@@ -493,7 +693,8 @@ def _build_history_vision_query(limit=None, offset=0):
         "part_code AS numero_parte, "
         "qr_payload AS qr, "
         "barcode, "
-        "result AS resultado"
+        "result AS resultado, "
+        f"{fallas_sql} AS fallas"
         + where_sql
         + " ORDER BY COALESCE(log_datetime, created_at) DESC, id DESC"
     )
@@ -527,12 +728,9 @@ def _build_history_vision_pass_fail_summary_query():
     )
     params = []
 
-    if fecha_desde:
-        sql += " AND log_date >= %s"
-        params.append(fecha_desde)
-    if fecha_hasta:
-        sql += " AND log_date <= %s"
-        params.append(fecha_hasta)
+    date_sql, date_params = _vision_date_filter_sql(fecha_desde, fecha_hasta)
+    sql += date_sql
+    params.extend(date_params)
     if numero_parte:
         sql += " AND part_code LIKE %s"
         params.append(f"%{numero_parte}%")

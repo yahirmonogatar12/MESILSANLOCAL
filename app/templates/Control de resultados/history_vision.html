@@ -136,6 +136,9 @@
               <th data-vision-filter-table="records" data-vision-filter-field="qr">QR</th>
               <th data-vision-filter-table="records" data-vision-filter-field="barcode">Barcode</th>
               <th data-vision-filter-table="records" data-vision-filter-field="resultado">Resultado</th>
+              <th data-vision-filter-table="records" data-vision-filter-field="componente" title="Componente que fallo en las piezas NG">Componente</th>
+              <th data-vision-filter-table="records" data-vision-filter-field="tipo_falla">Tipo de falla</th>
+              <th>Valor</th>
             </tr>
           </thead>
           <tbody id="vision-body"></tbody>
@@ -298,6 +301,11 @@
                 </div>
               </div>
 
+              <div class="vision-preview-section" id="vision-preview-defects-section" hidden>
+                <label>Falla (NG)</label>
+                <ul id="vision-preview-defects" class="vision-preview-defects"></ul>
+              </div>
+
               <div class="vision-preview-section">
                 <label>Estado</label>
                 <div id="vision-preview-status" class="vision-preview-status">
@@ -317,4 +325,4 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/history_vision.js', v='20260629j') }}"></script>
+<script src="{{ url_for('static', filename='js/history_vision.js', v='20261022b') }}"></script>

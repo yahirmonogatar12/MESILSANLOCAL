@@ -3,7 +3,7 @@
   const sheets = [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
     { id: "ict-css", href: "/static/css/ict.css?v=20260630a" },
-    { id: "history-vision-css", href: "/static/css/history_vision.css?v=20260629f" },
+    { id: "history-vision-css", href: "/static/css/history_vision.css?v=20261022b" },
   ];
   sheets.forEach(({ id, href }) => {
     let link = document.getElementById(id);
@@ -556,7 +556,7 @@ function renderHistorialVisionTable(data) {
 
   if (sourceRows.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="7" class="vision-table-empty">No se encontraron registros.</td></tr>';
+      '<tr><td colspan="10" class="vision-table-empty">No se encontraron registros.</td></tr>';
     return;
   }
 
@@ -570,6 +570,14 @@ function renderHistorialVisionTable(data) {
             ? "vision-result-ng"
             : "";
       const recordId = row.id ?? "";
+      const fallas = Array.isArray(row.fallas) ? row.fallas : [];
+      // Una linea por falla dentro de cada columna (una pieza NG puede tener varias).
+      const fallaCell = (field) => {
+        const values = fallas.map((falla) => formatVisionFallaField(falla, field));
+        return `<td class="vision-falla-cell" title="${escapeVisionHtml(values.join("\n"))}">${values
+          .map((value) => escapeVisionHtml(value))
+          .join("<br>")}</td>`;
+      };
 
       return `
         <tr class="vision-row-interactive" data-record-id="${escapeVisionHtml(recordId)}" title="Doble click para ver imagen">
@@ -580,6 +588,9 @@ function renderHistorialVisionTable(data) {
           <td title="${escapeVisionHtml(row.qr ?? "")}">${escapeVisionHtml(row.qr ?? "")}</td>
           <td title="${escapeVisionHtml(row.barcode ?? "")}">${escapeVisionHtml(row.barcode ?? "")}</td>
           <td class="${resultClass}">${escapeVisionHtml(resultado)}</td>
+          ${fallaCell("componente")}
+          ${fallaCell("tipo_falla")}
+          ${fallaCell("valor")}
         </tr>
       `;
     })
@@ -1030,9 +1041,59 @@ function buildVisionRowFallback(recordId) {
     numero_parte: row.numero_parte ?? "",
     qr: row.qr ?? "",
     barcode: row.barcode ?? "",
+    fallas: Array.isArray(row.fallas) ? row.fallas : [],
     fecha_hora:
       row.fecha && row.hora ? `${row.fecha} ${row.hora}` : row.fecha ?? row.hora ?? "",
   };
+}
+
+// Valor de una falla para mostrar: el numero con su unidad ("75.46%") o el texto tal cual.
+function formatVisionFallaField(falla, field) {
+  if (!falla) {
+    return "";
+  }
+  if (field === "valor") {
+    const valor = falla.valor ?? "";
+    return valor === "" ? "" : `${valor}${falla.unidad ?? ""}`;
+  }
+  return String(falla[field] ?? "");
+}
+
+// Lista de fallas de la pieza NG (componente, tipo y valor). Mientras llega image-info se
+// muestran las de la tabla; si no hay (pieza OK o del .shlog) la seccion se oculta.
+function renderVisionPreviewDefects(defects, fallbackFallas = []) {
+  const section = document.getElementById("vision-preview-defects-section");
+  const list = document.getElementById("vision-preview-defects");
+  if (!section || !list) {
+    return;
+  }
+
+  const items =
+    Array.isArray(defects) && defects.length > 0
+      ? defects
+      : Array.isArray(fallbackFallas)
+        ? fallbackFallas
+        : [];
+  if (items.length === 0) {
+    list.innerHTML = "";
+    section.hidden = true;
+    return;
+  }
+
+  list.innerHTML = items
+    .map((falla) => {
+      const what = [falla.tipo_falla, formatVisionFallaField(falla, "valor")]
+        .filter(Boolean)
+        .join(" ");
+      // Plantillas traen detalle util (coincidencia, posicion x/y...): se muestra abajo.
+      const detail =
+        falla.detalle && falla.detalle !== String(falla.valor ?? "")
+          ? `<small>${escapeVisionHtml(falla.detalle)}</small>`
+          : "";
+      return `<li><strong>${escapeVisionHtml(falla.componente || "")}</strong>${what ? `: ${escapeVisionHtml(what)}` : ""}${detail}</li>`;
+    })
+    .join("");
+  section.hidden = false;
 }
 
 function populateVisionPreviewInfo(data = {}, fallback = {}) {
@@ -1054,6 +1115,7 @@ function populateVisionPreviewInfo(data = {}, fallback = {}) {
     "vision-preview-barcode",
     data.barcode ?? fallback.barcode,
   );
+  renderVisionPreviewDefects(data.defects, fallback.fallas);
   setVisionPreviewCode("vision-preview-path", data.resolved_path);
 
   const subtitle = document.getElementById("vision-preview-subtitle");
@@ -1184,7 +1246,12 @@ async function openVisionPreviewModal(recordId) {
       return;
     }
 
-    setVisionPreviewStatus("Imagen cargada correctamente.", "success");
+    setVisionPreviewStatus(
+      data.match_type
+        ? `Imagen cargada: coincidencia ${data.match_type}.`
+        : "Imagen cargada correctamente.",
+      "success",
+    );
   } catch (error) {
     if (requestToken !== currentVisionPreviewToken) {
       return;

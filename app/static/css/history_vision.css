@@ -911,3 +911,39 @@
         flex: 1 0 auto;
     }
 }
+
+/* Fallas de las piezas NG: Componente / Tipo de falla / Valor (una linea por falla) */
+#vision-table td.vision-falla-cell {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #ffcccc;
+    cursor: help;
+}
+
+.vision-preview-defects {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vision-preview-defects li {
+    background: rgba(255, 80, 80, 0.08);
+    border: 1px solid rgba(255, 80, 80, 0.25);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--ilsan-text-light);
+    font-size: 0.85rem;
+}
+
+.vision-preview-defects li small {
+    display: block;
+    margin-top: 2px;
+    color: var(--ilsan-text-gray);
+    font-size: 0.72rem;
+    word-break: break-all;
+}
