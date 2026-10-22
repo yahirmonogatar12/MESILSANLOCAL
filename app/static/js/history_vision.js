@@ -3,7 +3,7 @@
   const sheets = [
     { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
     { id: "ict-css", href: "/static/css/ict.css?v=20260630a" },
-    { id: "history-vision-css", href: "/static/css/history_vision.css?v=20261022b" },
+    { id: "history-vision-css", href: "/static/css/history_vision.css?v=20261022c" },
   ];
   sheets.forEach(({ id, href }) => {
     let link = document.getElementById(id);
@@ -38,6 +38,8 @@ let visionStopsTotalSeconds = 0;
 let visionStopsRequestToken = 0;
 let visionStopsFilterTimer = null;
 let currentVisionPreviewToken = 0;
+let currentVisionPreviewRecordId = null;
+let visionParamsToken = 0;
 const visionPreviewState = {
   scale: 1,
   minScale: 1,
@@ -947,6 +949,7 @@ function closeVisionPreviewModal(options = {}) {
   currentVisionPreviewToken += 1;
   hideVisionImageLoading();
   resetVisionPreviewZoom();
+  closeVisionParamsPanel();
 
   modal.classList.remove("active");
   modal.setAttribute("aria-hidden", "true");
@@ -1116,6 +1119,7 @@ function populateVisionPreviewInfo(data = {}, fallback = {}) {
     data.barcode ?? fallback.barcode,
   );
   renderVisionPreviewDefects(data.defects, fallback.fallas);
+  setVisionParamsButton(Boolean(data.parametros_disponibles));
   setVisionPreviewCode("vision-preview-path", data.resolved_path);
 
   const subtitle = document.getElementById("vision-preview-subtitle");
@@ -1207,6 +1211,140 @@ function handleVisionPreviewError(error, recordId) {
   );
 }
 
+// ====== Parametros de la pieza (solo SHT): todas sus pruebas, leidas del .txt ======
+function setVisionParamsButton(visible) {
+  const section = document.getElementById("vision-preview-params-section");
+  if (section) {
+    section.hidden = !visible;
+  }
+}
+
+function isVisionParamsPanelOpen() {
+  const panel = document.getElementById("vision-params-panel");
+  return Boolean(panel && !panel.hidden);
+}
+
+function closeVisionParamsPanel() {
+  visionParamsToken += 1;
+  const panel = document.getElementById("vision-params-panel");
+  if (panel) {
+    panel.hidden = true;
+  }
+}
+
+// Filas de una prueba: una por posicion. Sin posiciones (lectura de codigo, prueba no
+// ejecutada, grupo de una sola posicion) va una sola fila.
+function buildVisionParamLines(prueba) {
+  if (!prueba.ejecutada) {
+    return [{ posicion: "", resultado: "No ejecutada", detalle: "" }];
+  }
+  if (prueba.es_lectura) {
+    return [{
+      posicion: "",
+      resultado: prueba.resultado,
+      detalle: prueba.lectura || "no leyo la etiqueta",
+    }];
+  }
+  const posiciones = Array.isArray(prueba.posiciones) ? prueba.posiciones : [];
+  return posiciones.length > 0
+    ? posiciones
+    : [{ posicion: "", resultado: prueba.resultado, detalle: "" }];
+}
+
+function visionParamRowClass(resultado) {
+  if (resultado === "NG") {
+    return "is-ng";
+  }
+  return resultado === "No ejecutada" ? "is-untested" : "";
+}
+
+function renderVisionParams(data) {
+  const summary = document.getElementById("vision-params-summary");
+  const status = document.getElementById("vision-params-status");
+  const table = document.getElementById("vision-params-table");
+  const rows = document.getElementById("vision-params-rows");
+  if (!summary || !status || !table || !rows) {
+    return;
+  }
+
+  const resumen = data.resumen || {};
+  summary.textContent =
+    `${data.fecha || ""} · ${resumen.pruebas ?? 0} pruebas · ` +
+    `${resumen.posiciones ?? 0} posiciones · ${resumen.ng ?? 0} NG`;
+
+  rows.innerHTML = (data.pruebas || [])
+    .map((prueba) => {
+      const lines = buildVisionParamLines(prueba);
+      const hasLimits =
+        prueba.limite_inferior && prueba.limite_superior &&
+        !(prueba.limite_inferior === "0" && prueba.limite_superior === "0");
+      const limits = hasLimits
+        ? `<small>lim. ${escapeVisionHtml(prueba.limite_inferior)} - ${escapeVisionHtml(prueba.limite_superior)}</small>`
+        : "";
+      const testClass = visionParamRowClass(prueba.ejecutada ? prueba.resultado : "No ejecutada");
+      return lines
+        .map((line, index) => {
+          const testCell =
+            index === 0
+              ? `<td rowspan="${lines.length}" class="vision-params-test ${testClass}">${escapeVisionHtml(prueba.prueba)}${limits}</td>`
+              : "";
+          return `<tr class="${visionParamRowClass(line.resultado)}">
+            ${testCell}
+            <td>${escapeVisionHtml(line.posicion || "-")}</td>
+            <td class="vision-params-result">${escapeVisionHtml(line.resultado || "-")}</td>
+            <td class="vision-params-detail">${escapeVisionHtml(line.detalle || "")}</td>
+          </tr>`;
+        })
+        .join("");
+    })
+    .join("");
+
+  status.hidden = true;
+  table.hidden = false;
+}
+
+async function openVisionParamsPanel() {
+  const panel = document.getElementById("vision-params-panel");
+  const status = document.getElementById("vision-params-status");
+  const table = document.getElementById("vision-params-table");
+  const summary = document.getElementById("vision-params-summary");
+  if (!panel || !status || !table || !currentVisionPreviewRecordId) {
+    return;
+  }
+
+  visionParamsToken += 1;
+  const token = visionParamsToken;
+  panel.hidden = false;
+  table.hidden = true;
+  if (summary) {
+    summary.textContent = "";
+  }
+  status.hidden = false;
+  status.textContent = "Leyendo el archivo de resultados de la maquina...";
+
+  try {
+    const response = await fetch(
+      `/api/vision/parameters?id=${encodeURIComponent(currentVisionPreviewRecordId)}&_=${Date.now()}`,
+      { credentials: "same-origin" },
+    );
+    const data = await response.json();
+    if (token !== visionParamsToken) {
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(data?.error || "No se pudieron leer los parametros.");
+    }
+    renderVisionParams(data);
+  } catch (error) {
+    if (token !== visionParamsToken) {
+      return;
+    }
+    console.error(error);
+    status.hidden = false;
+    status.textContent = error?.message || "No se pudieron leer los parametros.";
+  }
+}
+
 async function openVisionPreviewModal(recordId) {
   const modal = openVisionPreviewModalContainer();
   if (!modal || !recordId) {
@@ -1215,6 +1353,8 @@ async function openVisionPreviewModal(recordId) {
 
   currentVisionPreviewToken += 1;
   const requestToken = currentVisionPreviewToken;
+  currentVisionPreviewRecordId = recordId;
+  closeVisionParamsPanel();
   prepareVisionPreview(recordId);
 
   try {
@@ -1434,6 +1574,21 @@ function initializeHistorialVisionEventListeners() {
     }
 
     if (
+      target.id === "vision-preview-params-btn" ||
+      target.closest("#vision-preview-params-btn")
+    ) {
+      e.preventDefault();
+      openVisionParamsPanel();
+      return;
+    }
+
+    if (target.id === "vision-params-close" || target.closest("#vision-params-close")) {
+      e.preventDefault();
+      closeVisionParamsPanel();
+      return;
+    }
+
+    if (
       target.id === "vision-preview-close" ||
       target.closest("#vision-preview-close")
     ) {
@@ -1490,7 +1645,12 @@ function initializeHistorialVisionEventListeners() {
     const modal = document.getElementById("vision-preview-modal");
     if (e.key === "Escape" && modal?.classList.contains("active")) {
       e.preventDefault();
-      closeVisionPreviewModal();
+      // Primero cierra los parametros y vuelve a la imagen; el segundo Escape cierra todo.
+      if (isVisionParamsPanelOpen()) {
+        closeVisionParamsPanel();
+      } else {
+        closeVisionPreviewModal();
+      }
       return;
     }
 

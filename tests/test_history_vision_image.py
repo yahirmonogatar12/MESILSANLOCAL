@@ -289,3 +289,106 @@ def test_image_info_lists_ng_failures(client, monkeypatch):
         "valor": 84.26, "unidad": "", "detalle": "84.2645",
     }
     assert payload["defects"][1]["tipo_falla"] == "no leyo la etiqueta"
+    assert payload["parametros_disponibles"] is True  # registro SHT: boton "Ver parametros"
+
+
+# ── Parametros de la pieza (solo SHT), leidos del .txt ─────────────────────────────
+
+STAMP = "2026-10-22 16:03:13.412"
+SHT_ROW = "\t".join([
+    "CAM1", STAMP, "NG", "I20261021-019-00260;MAIN;EBR30299370;1;",
+    "Conector", "OK", "0", "0", "1:OK,2:OK,3:OK", "TESTED",
+    "Switch", "NG", "0", "0",
+    "1:OK,2:NG>Maker_Axis:NG>갯수:1,일치율:75.46468% ← NG,위치:1909.995,-614.8686,각도:0˚,크기:100,100%",
+    "TESTED",
+    "Condenser_Left", "OK", "0", "0", "OK", "TESTED",
+    "Conector J", "NG", "0", "0", "CON1:OK,CON202:NG>FALTANTE:NG>43.52654, INVERTIDO:NG>48.89709", "TESTED",
+    "DC Relay", "NG", "0", "0", "", "UNTESTED",
+    "Barcode (ASSY)", "NG", "0", "0", "", "TESTED",
+    "Barcode (SMD)", "OK", "0", "0", "I20261021-019-00260;MAIN;EBR30299370;1;", "TESTED",
+])
+
+
+def test_parse_sht_parameters_lists_every_test_and_position():
+    params = vision_helpers._parse_sht_parameters(SHT_ROW.split("\t"))
+    by_name = {t["prueba"]: t for t in params["pruebas"]}
+
+    assert params["fecha"] == STAMP and params["resultado"] == "NG"
+    assert [p["posicion"] for p in by_name["Conector"]["posiciones"]] == ["1", "2", "3"]
+    switch = by_name["Switch"]["posiciones"]
+    assert [(p["posicion"], p["resultado"]) for p in switch] == [("1", "OK"), ("2", "NG")]
+    assert switch[1]["detalle"].startswith("Maker_Axis > cantidad:1,coincidencia:75.46468% <- NG,posicion:1909.995")
+    # Grupo de una sola posicion.
+    assert by_name["Condenser_Left"]["posiciones"] == [{"posicion": "", "resultado": "OK", "detalle": ""}]
+    # Dos sub-pruebas de la misma posicion quedan en una sola fila.
+    assert by_name["Conector J"]["posiciones"][1] == {
+        "posicion": "CON202", "resultado": "NG", "detalle": "FALTANTE > 43.52654; INVERTIDO > 48.89709",
+    }
+    # Grupo que nunca corre.
+    assert by_name["DC Relay"]["ejecutada"] is False and by_name["DC Relay"]["posiciones"] == []
+    # Lecturas de codigo: el codigo leido; vacio = no leyo la etiqueta.
+    assert by_name["Barcode (SMD)"]["es_lectura"] and by_name["Barcode (SMD)"]["lectura"].startswith("I2026")
+    assert by_name["Barcode (ASSY)"]["es_lectura"] and by_name["Barcode (ASSY)"]["lectura"] == ""
+    # 1+3 +2 +1 +2 posiciones; NG: Switch 2, CON202 y la lectura ASSY (DC Relay no cuenta).
+    assert params["resumen"] == {"pruebas": 7, "posiciones": 8, "ng": 3}
+
+
+def test_read_sht_row_by_exact_stamp_utf8_and_cp949(tmp_path):
+    path = tmp_path / "EBR30299370_상부_20261022.txt"
+    other = SHT_ROW.replace(STAMP, "2026-10-22 16:03:00.100")
+    cp949_line = "CAM1\t2026-10-22 16:04:00.000\tNG\tx\tSwitch\tNG\t0\t0\t2:NG>Maker_Axis:NG>일치율:70%\tTESTED"
+    path.write_bytes(
+        b"[NAME-ZONE]\t[DATE]\t[JUDGE]\t[ID]\n"
+        + other.encode("utf-8") + b"\r\n"
+        + SHT_ROW.encode("utf-8") + b"\r\n"
+        + cp949_line.encode("cp949") + b"\n"
+    )
+
+    assert vision_helpers._read_sht_row(str(path), STAMP)[2] == "NG"
+    assert vision_helpers._read_sht_row(str(path), STAMP)[3].startswith("I20261021-019-00260")
+    cp949 = vision_helpers._read_sht_row(str(path), "2026-10-22 16:04:00.000")
+    assert "일치율:70%" in cp949[8]
+    assert vision_helpers._read_sht_row(str(path), "2026-10-22 23:59:59.999") is None
+
+
+def _params_client(client, monkeypatch, tmp_path, source_file, roots):
+    record = _record(source_file, datetime(2026, 10, 22, 16, 3, 13, 412000), id=9, result="NG")
+    monkeypatch.setattr(historial_vision, "_get_history_vision_record", lambda _id: record)
+    monkeypatch.setattr(historial_vision, "_vision_candidate_share_roots", lambda _r: roots)
+    with client.session_transaction() as session:
+        session["usuario"] = "test"
+        session["_last_activity_touch_ts"] = int(time.time())
+    return client.get("/api/vision/parameters?id=9")
+
+
+def test_parameters_api_reads_the_piece_row(client, monkeypatch, tmp_path):
+    root = tmp_path / "Result M3"
+    folder = root / "EBR30299370" / "Data" / "2026" / "10" / "상부"
+    folder.mkdir(parents=True)
+    txt = folder / "EBR30299370_상부_20261022.txt"
+    txt.write_bytes(SHT_ROW.encode("utf-8") + b"\r\n")
+
+    response = _params_client(client, monkeypatch, tmp_path, str(txt), [root])
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["resumen"]["ng"] == 3
+    assert payload["archivo"] == txt.name
+    assert [t["prueba"] for t in payload["pruebas"]][:2] == ["Conector", "Switch"]
+
+
+def test_parameters_api_only_for_sht_and_inside_share(client, monkeypatch, tmp_path):
+    root = tmp_path / "Result M3"
+    root.mkdir()
+    # Registro del .shlog: no tiene fila de pruebas.
+    shlog = _params_client(client, monkeypatch, tmp_path, r"\\h\Log\2026\10\20261022.shlog", [root])
+    assert shlog.status_code == 400
+    # .txt fuera del share de resultados de la maquina: no se lee.
+    outside = tmp_path / "otro" / "x.txt"
+    outside.parent.mkdir()
+    outside.write_text("x")
+    assert _params_client(client, monkeypatch, tmp_path, str(outside), [root]).status_code == 403
+    # Dentro del share pero sin la fila de esa pieza.
+    txt = root / "f.txt"
+    txt.write_text("[NAME-ZONE]\t[DATE]\n")
+    assert _params_client(client, monkeypatch, tmp_path, str(txt), [root]).status_code == 404

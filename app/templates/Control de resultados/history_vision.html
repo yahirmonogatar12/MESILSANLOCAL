@@ -306,6 +306,10 @@
                 <ul id="vision-preview-defects" class="vision-preview-defects"></ul>
               </div>
 
+              <div class="vision-preview-section" id="vision-preview-params-section" hidden>
+                <button type="button" id="vision-preview-params-btn" class="vision-preview-params-btn">Ver parametros</button>
+              </div>
+
               <div class="vision-preview-section">
                 <label>Estado</label>
                 <div id="vision-preview-status" class="vision-preview-status">
@@ -320,9 +324,29 @@
             </div>
           </div>
         </div>
+
+        <!-- Todas las pruebas de la pieza (solo SHT), encima de la imagen -->
+        <div id="vision-params-panel" class="vision-params-panel" hidden>
+          <div class="vision-params-header">
+            <div>
+              <strong>Parametros de la pieza</strong>
+              <span id="vision-params-summary" class="vision-params-summary"></span>
+            </div>
+            <button type="button" id="vision-params-close" class="vision-params-close">Volver a la imagen</button>
+          </div>
+          <div class="vision-params-body">
+            <div id="vision-params-status" class="vision-params-status"></div>
+            <table id="vision-params-table" class="vision-params-table" hidden>
+              <thead>
+                <tr><th>Prueba</th><th>Posicion</th><th>Resultado</th><th>Detalle</th></tr>
+              </thead>
+              <tbody id="vision-params-rows"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/history_vision.js', v='20261022b') }}"></script>
+<script src="{{ url_for('static', filename='js/history_vision.js', v='20261022c') }}"></script>

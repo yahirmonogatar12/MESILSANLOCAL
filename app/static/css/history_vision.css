@@ -947,3 +947,130 @@
     font-size: 0.72rem;
     word-break: break-all;
 }
+
+/* .vision-preview-section usa display:flex, que le gana al atributo hidden: sin esto la
+   seccion de fallas y el boton de parametros se veian aunque no aplicaran. */
+.vision-preview-section[hidden] {
+    display: none;
+}
+
+/* Parametros de la pieza (solo SHT): panel encima de la imagen, dentro del mismo modal */
+#vision-preview-modal .vision-preview-modal-content {
+    position: relative;
+}
+
+.vision-preview-params-btn {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(52, 152, 219, 0.5);
+    border-radius: 8px;
+    background: rgba(52, 152, 219, 0.15);
+    color: var(--ilsan-text-light);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.vision-preview-params-btn:hover {
+    background: rgba(52, 152, 219, 0.3);
+}
+
+.vision-params-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(145deg, #1d2230 0%, #171b25 100%);
+    border-radius: inherit;
+}
+
+.vision-params-panel[hidden] {
+    display: none;
+}
+
+.vision-params-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--ilsan-text-light);
+}
+
+.vision-params-summary {
+    display: block;
+    margin-top: 2px;
+    color: var(--ilsan-text-gray);
+    font-size: 0.8rem;
+}
+
+.vision-params-close {
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ilsan-text-light);
+    cursor: pointer;
+}
+
+.vision-params-body {
+    flex: 1;
+    overflow: auto;
+    padding: 12px 18px 18px;
+}
+
+.vision-params-status {
+    padding: 18px;
+    color: var(--ilsan-text-gray);
+    text-align: center;
+}
+
+.vision-params-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    color: var(--ilsan-text-light);
+}
+
+.vision-params-table th {
+    position: sticky;
+    top: 0;
+    background: var(--ilsan-dark-header);
+    padding: 8px 6px;
+    text-align: left;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+}
+
+.vision-params-table td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 6px;
+    vertical-align: top;
+}
+
+.vision-params-test {
+    font-weight: 600;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vision-params-test small {
+    display: block;
+    color: var(--ilsan-text-gray);
+    font-weight: 400;
+}
+
+.vision-params-detail {
+    word-break: break-word;
+}
+
+.vision-params-table tr.is-ng td,
+.vision-params-table td.vision-params-test.is-ng {
+    background: rgba(255, 80, 80, 0.12);
+    color: #ffcccc;
+}
+
+.vision-params-table tr.is-untested td {
+    color: var(--ilsan-text-gray);
+    font-style: italic;
+}

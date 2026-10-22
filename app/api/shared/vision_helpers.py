@@ -586,6 +586,126 @@ def _get_history_vision_defects(source_uid):
 
 
 # ---------------------------------------------------------------------------
+# Parametros completos de una pieza SHT: se leen del .txt de resultados al momento
+# (no se guardan en la base). Una fila por pieza, TAB: [NAME-ZONE] [DATE] [JUDGE] [ID] y
+# bloques de 6 por prueba: [NAME] [JUDGE] [LOWER] [UPPER] [VALUE] [TESTED].
+# ---------------------------------------------------------------------------
+
+# Posiciones dentro del [VALUE] de un grupo: "CON1:OK,CON4:NG>FALTANTE:NG>77.8". Las
+# plantillas meten comas en su valor ("posicion:-214.5,-19.9"): solo se corta antes de algo
+# con forma "nombre:OK" / "nombre:NG".
+_VISION_SHT_ITEM_SPLIT_RE = re.compile(r",\s*(?=[^,:>]+:(?:OK|NG)\b)")
+_VISION_SHT_CODE_TOOL_RE = re.compile(r"Barcode|QR|DataMatrix", re.IGNORECASE)
+_VISION_SHT_TERMS = {
+    "갯수": "cantidad",
+    "일치율": "coincidencia",
+    "위치": "posicion",
+    "각도": "angulo",
+    "크기": "escala",
+    "←": "<-",
+}
+
+
+def _vision_sht_translate(text):
+    """Textos coreanos de las plantillas (Maker_Axis, Direction-Marker...) al espanol."""
+    for korean, spanish in _VISION_SHT_TERMS.items():
+        text = text.replace(korean, spanish)
+    return text
+
+
+def _vision_sht_stamp(record):
+    """[DATE] de la fila SHT de la pieza: es log_datetime al milisegundo."""
+    reference = _vision_reference_datetime(record)
+    if not reference:
+        return ""
+    return reference.strftime("%Y-%m-%d %H:%M:%S.") + f"{reference.microsecond // 1000:03d}"
+
+
+def _read_sht_row(path, stamp):
+    """Columnas de la fila de la pieza (por su [DATE] exacto), o None si no esta.
+
+    open() de Python comparte lectura y escritura: no bloquea a la maquina, que sigue
+    agregando filas. Algunas recetas guardan el coreano en CP949 y no en UTF-8.
+    """
+    needle = f"\t{stamp}\t".encode("ascii")
+    with open(path, "rb") as handle:
+        for raw in handle:
+            if needle not in raw:
+                continue
+            try:
+                line = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                line = raw.decode("cp949", errors="replace")
+            columns = line.rstrip("\r\n").split("\t")
+            if len(columns) >= 4 and columns[1].strip() == stamp:
+                return columns
+    return None
+
+
+def _vision_sht_positions(value):
+    """[VALUE] de un grupo -> [{posicion, resultado, detalle}]. La maquina solo guarda el
+    detalle medido de lo que fallo; de las posiciones OK solo dice "OK"."""
+    value = value.strip()
+    if not value:
+        return []
+    if value in ("OK", "NG"):  # grupo de una sola posicion
+        return [{"posicion": "", "resultado": value, "detalle": ""}]
+
+    positions = []
+    for item in _VISION_SHT_ITEM_SPLIT_RE.split(value):
+        item = item.strip()
+        head, _, rest = item.partition(":")
+        if rest == "OK":
+            positions.append({"posicion": head, "resultado": "OK", "detalle": ""})
+        elif rest.startswith("NG>"):
+            failure = rest[3:]
+            detail = _vision_sht_translate(failure).replace(":NG>", " > ")
+            previous = positions[-1] if positions else None
+            if previous and previous["resultado"] == "NG" and previous["detalle"] and ":NG>" not in failure:
+                # Otra sub-prueba de la misma posicion: "CON202:NG>FALTANTE:NG>43.5, INVERTIDO:NG>48.9"
+                previous["detalle"] += f"; {head} > {detail}"
+            else:
+                positions.append({"posicion": head, "resultado": "NG", "detalle": detail})
+        else:
+            positions.append({"posicion": "", "resultado": "", "detalle": _vision_sht_translate(item)})
+    return positions
+
+
+def _parse_sht_parameters(columns):
+    """Fila SHT -> todas las pruebas de la pieza con sus posiciones, y un resumen."""
+    tests = []
+    total_positions = 0
+    total_ng = 0
+    for i in range(4, len(columns) - 5, 6):
+        name, judge, lower, upper, value, tested = (c.strip() for c in columns[i:i + 6])
+        executed = tested.upper() != "UNTESTED"
+        # Lecturas de codigo sueltas: [VALUE] es el codigo leido (vacio = no leyo la etiqueta).
+        is_code = bool(_VISION_SHT_CODE_TOOL_RE.search(name)) and value not in ("OK", "NG") \
+            and not re.search(r":(OK|NG)", value)
+        positions = [] if is_code or not executed else _vision_sht_positions(value)
+        tests.append({
+            "prueba": name,
+            "resultado": judge.upper(),
+            "ejecutada": executed,
+            "limite_inferior": lower,
+            "limite_superior": upper,
+            "es_lectura": is_code,
+            "lectura": value if is_code else "",
+            "posiciones": positions,
+        })
+        if executed:
+            total_positions += len(positions)
+            ng_positions = sum(1 for p in positions if p["resultado"] == "NG")
+            total_ng += ng_positions or (1 if judge.upper() == "NG" else 0)
+    return {
+        "fecha": columns[1].strip(),
+        "resultado": columns[2].strip().upper(),
+        "pruebas": tests,
+        "resumen": {"pruebas": len(tests), "posiciones": total_positions, "ng": total_ng},
+    }
+
+
+# ---------------------------------------------------------------------------
 # Builders de query SQL
 # ---------------------------------------------------------------------------
 

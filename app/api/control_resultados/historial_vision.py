@@ -40,11 +40,16 @@ from app.api.shared.vision_helpers import (
     _fetch_ajustes_for_stops,
     _get_history_vision_defects,
     _get_history_vision_record,
+    _parse_sht_parameters,
+    _read_sht_row,
     _resolve_history_vision_image,
+    _vision_candidate_share_roots,
     _vision_defect_columns,
     _vision_format_value,
     _vision_is_safe_path,
     _vision_parse_fallas,
+    _vision_record_source,
+    _vision_sht_stamp,
 )
 
 import logging
@@ -321,6 +326,8 @@ def vision_image_info_api():
             "source_file": _vision_format_value(record.get("source_file", "")) or "",
             "machine_ip": _vision_format_value(record.get("machine_ip", "")) or "",
             "match_type": resolution.get("match_type", ""),
+            # Boton "Ver parametros": solo las piezas del SHT tienen su fila de pruebas.
+            "parametros_disponibles": _vision_record_source(record) == "SHT",
             "defects": [],
             "image_url": "",
         }
@@ -345,6 +352,44 @@ def vision_image_info_api():
         return jsonify(response_payload), 404
     except Exception as e:
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
+@bp.route("/api/vision/parameters")
+@login_requerido
+def vision_parameters_api():
+    """Todas las pruebas de una pieza SHT, leidas al momento de su .txt de resultados."""
+    record_id = request.args.get("id", "").strip()
+    if not re.fullmatch(r"\d+", record_id):
+        return jsonify({"error": "ID de registro invalido."}), 400
+
+    record = _get_history_vision_record(int(record_id))
+    if not record:
+        return jsonify({"error": "Registro de vision no encontrado."}), 404
+    if _vision_record_source(record) != "SHT":
+        return jsonify({"error": "Los parametros solo existen para piezas con resultados SHT."}), 400
+
+    path = str(record.get("source_file") or "").strip()
+    # Igual que las imagenes: solo se lee dentro del share de resultados de esa maquina.
+    if not _vision_is_safe_path(path, _vision_candidate_share_roots(record)):
+        return jsonify({"error": "La ruta del archivo de resultados no es valida."}), 403
+
+    stamp = _vision_sht_stamp(record)
+    try:
+        columns = _read_sht_row(path, stamp) if stamp else None
+    except OSError as exc:
+        logger.warning("No se pudo leer %s: %s", path, exc)
+        return jsonify({"error": "No se pudo leer el archivo de resultados de la maquina."}), 503
+    if columns is None:
+        return jsonify({"error": "No se encontro la pieza en el archivo de resultados."}), 404
+
+    payload = _parse_sht_parameters(columns)
+    payload.update({
+        "record_id": record.get("id"),
+        "linea": _vision_format_value(record.get("machine_name", "")) or "",
+        "numero_parte": _vision_format_value(record.get("part_code", "")) or "",
+        "archivo": Path(path).name,
+    })
+    return jsonify(payload)
 
 
 @bp.route("/api/vision/image-file")
