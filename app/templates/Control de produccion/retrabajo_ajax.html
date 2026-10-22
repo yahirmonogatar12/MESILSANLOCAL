@@ -1,0 +1,140 @@
+<!-- Solicitud de retrabajo - fragmento AJAX con el lenguaje visual de Historial ICT.
+     WF_001: LISTA_CONTROLDEPRODUCCION / Retrabajo / Solicitud de retrabajo.
+     WF_002: container retrabajo-unique-container, IDs con prefijo rtb-.
+     WF_003: consumido por app/api/control_produccion/retrabajo.py.
+     WF_004: retrabajo.css persistente en MainTemplate.html y asegurado por retrabajo.js.
+     WF_008: los modales (alta y detalle) los crea retrabajo.js en document.body. -->
+<section id="rtb-module" class="rtb-page">
+
+  <!-- Tarjeta de filtros -->
+  <div class="rtb-card">
+    <div class="rtb-card-header">
+      <svg class="rtb-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+      </svg>
+      <h3>Filtros de Búsqueda</h3>
+    </div>
+    <form id="rtb-filters" class="rtb-filters" autocomplete="off">
+      <div class="rtb-filter-group">
+        <label for="rtb-filter-desde">
+          <svg class="rtb-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Fecha desde
+        </label>
+        <input id="rtb-filter-desde" name="desde" type="date">
+      </div>
+
+      <div class="rtb-filter-group">
+        <label for="rtb-filter-hasta">
+          <svg class="rtb-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Fecha hasta
+        </label>
+        <input id="rtb-filter-hasta" name="hasta" type="date">
+      </div>
+
+      <div class="rtb-filter-group rtb-filter-group--search">
+        <label for="rtb-filter-codigo">
+          <svg class="rtb-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+          </svg>
+          Folio, NP, QR o caja
+        </label>
+        <input id="rtb-filter-codigo" name="codigo" type="search" maxlength="255"
+               placeholder="Busca en todo el historial">
+      </div>
+
+      <div class="rtb-filter-group">
+        <label for="rtb-filter-estado">
+          <svg class="rtb-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Estado
+        </label>
+        <select id="rtb-filter-estado" name="estado">
+          <option value="">Todos</option>
+          <option value="PENDIENTE">Pendiente</option>
+          <option value="EN_PROCESO">En proceso</option>
+          <option value="COMPLETADA">Completada</option>
+          <option value="CANCELADA">Cancelada</option>
+        </select>
+      </div>
+
+      <button class="rtb-btn-primary" type="submit">
+        <svg class="rtb-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        Consultar
+      </button>
+      <button class="rtb-btn-ghost" type="button" data-action="limpiar">Limpiar</button>
+    </form>
+  </div>
+
+  <!-- Tarjeta de resultados -->
+  <div class="rtb-card">
+    <div class="rtb-card-header">
+      <svg class="rtb-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <h3>Solicitudes de Retrabajo</h3>
+      <span class="rtb-record-count"><strong id="rtb-total">0</strong> solicitudes</span>
+      <span class="rtb-record-count rtb-record-count--warn"><strong id="rtb-abiertas">0</strong> abiertas</span>
+      <span class="rtb-record-count rtb-record-count--ok"><strong id="rtb-completadas">0</strong> completadas</span>
+      <button class="rtb-btn-export" type="button" data-action="exportar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Exportar Excel
+      </button>
+      <button class="rtb-btn-header" type="button" data-action="actualizar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        Actualizar
+      </button>
+      <button class="rtb-btn-export" type="button" data-action="nueva">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 4v16m8-8H4"></path>
+        </svg>
+        Nueva solicitud
+      </button>
+    </div>
+    <div class="rtb-table-wrap">
+      <div id="rtb-loading" class="rtb-table-loading" hidden>
+        <div class="rtb-spinner"></div>
+        <span>Cargando solicitudes...</span>
+      </div>
+      <table id="rtb-table" class="rtb-table" data-rtb-table="lista" aria-label="Solicitudes de retrabajo">
+        <thead>
+          <tr>
+            <th data-rtb-field="folio">Folio</th>
+            <th data-rtb-field="np_origen">NP origen</th>
+            <th data-rtb-field="np_destino">NP destino</th>
+            <th data-rtb-field="cantidad">Cant.</th>
+            <th data-rtb-field="material">Material</th>
+            <th data-rtb-field="origen">Origen</th>
+            <th data-rtb-field="areas">Áreas</th>
+            <th data-rtb-field="estado">Estado</th>
+            <th data-rtb-field="solicitado_por">Solicitó</th>
+            <th data-rtb-field="created_at">Fecha</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="rtb-tbody">
+          <tr><td colspan="11" class="rtb-empty">Sin datos cargados</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</section>
+
+<script src="{{ url_for('static', filename='js/retrabajo.js', v='20261022a') }}"></script>

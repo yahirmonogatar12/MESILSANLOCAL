@@ -2110,6 +2110,28 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
+  // Solicitud de retrabajo (Control de produccion): mismo patron que Part Planning.
+  window.mostrarRetrabajo = function () {
+    if (typeof window.prepararPanelSeccion !== "function") {
+      console.error("prepararPanelSeccion no disponible");
+      return;
+    }
+    window.prepararPanelSeccion("produccion");
+    if (typeof window.limpiarRetrabajo === "function") {
+      window.limpiarRetrabajo();
+    }
+
+    const containerId = "retrabajo-unique-container";
+    const cont = document.getElementById(containerId);
+    if (cont) cont.style.display = "block";
+
+    window.cargarContenidoDinamico(containerId, "/control_produccion/retrabajo", () => {
+      if (typeof window.inicializarRetrabajo === "function") {
+        window.inicializarRetrabajo("#rtb-module");
+      }
+    });
+  };
+
   // ========================================
   // FUNCIÓN PARA CONTROL DE PRODUCCIÓN SMT
   // ========================================
@@ -2297,6 +2319,7 @@ window.mostrarLineMaterialStatus = function () {
       "plan-smt-unique-container",
       "control-embarque-unique-container",
       "part-planning-unique-container",
+      "retrabajo-unique-container",
       "proyeccion-unique-container",
       "plan-proyectado-unique-container",
     ];
@@ -2474,6 +2497,7 @@ window.mostrarEstandaresSoldadura = function () {
       "plan-smt-unique-container",
       "control-embarque-unique-container",
       "part-planning-unique-container",
+      "retrabajo-unique-container",
       "proyeccion-unique-container",
       "plan-proyectado-unique-container",
     ];
@@ -2568,6 +2592,7 @@ window.mostrarRegistroReciboSoldadura = function () {
       "plan-smt-unique-container",
       "control-embarque-unique-container",
       "part-planning-unique-container",
+      "retrabajo-unique-container",
       "proyeccion-unique-container",
       "plan-proyectado-unique-container",
     ];
@@ -2662,6 +2687,7 @@ window.mostrarControlSalidaSoldadura = function () {
       "plan-smt-unique-container",
       "control-embarque-unique-container",
       "part-planning-unique-container",
+      "retrabajo-unique-container",
       "proyeccion-unique-container",
       "plan-proyectado-unique-container",
     ];
@@ -2756,6 +2782,7 @@ window.mostrarHistorialTensionMaskMetal = function () {
       "plan-smt-unique-container",
       "control-embarque-unique-container",
       "part-planning-unique-container",
+      "retrabajo-unique-container",
       "proyeccion-unique-container",
       "plan-proyectado-unique-container",
     ];

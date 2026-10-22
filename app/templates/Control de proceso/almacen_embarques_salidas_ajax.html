@@ -33,6 +33,10 @@
             <button id="almacen-embarques-exits-adjustment-open-btn" class="ae-btn-success" type="button">
                 Registrar Salida
             </button>
+            <!-- Salida a retrabajo: tablas propias retrabajo_salidas_embarques*, no mueve inventario de Embarques -->
+            <button id="almacen-embarques-exits-retrabajo-open-btn" class="ae-btn-success" type="button">
+                Salida Retrabajo
+            </button>
             <button id="almacen-embarques-exits-export-btn" class="ae-btn-export">
                 Exportar Excel
             </button>
@@ -209,3 +213,4 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260824h') }}"></script>
+<script src="{{ url_for('static', filename='js/retrabajo.js', v='20261022a') }}"></script>

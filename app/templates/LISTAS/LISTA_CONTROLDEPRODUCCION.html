@@ -116,6 +116,20 @@
                             onclick="window.parent.mostrarLineMaterialStatus ? window.parent.mostrarLineMaterialStatus() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/line-material-status-ajax') : window.location.href='/line-material-status-ajax')">Line Material Status_es</li>
                 </ul>
             </li>
+            <li class="sidebar-section">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarRetrabajo" aria-expanded="false">
+                    <span class="sidebar-icon"></span>
+                    Retrabajo
+                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                </button>
+                <ul class="collapse sidebar-dropdown-list" id="sidebarRetrabajo">
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION"
+                            data-permiso-seccion="Retrabajo"
+                            data-permiso-boton="Solicitud de retrabajo"
+                            onclick="window.parent.mostrarRetrabajo ? window.parent.mostrarRetrabajo() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('retrabajo-unique-container', '/control_produccion/retrabajo') : window.location.href='/control_produccion/retrabajo')">Solicitud de retrabajo</li>
+                </ul>
+            </li>
         </ul>
     </aside>
 

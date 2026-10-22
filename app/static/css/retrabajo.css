@@ -1,0 +1,966 @@
+/* Solicitud de retrabajo (rtb-) - Tema ILSAN, lenguaje visual de Historial ICT (ict.css):
+ * tarjetas con card-header e icono, filtros con iconos, botones con gradiente,
+ * tabla con encabezado sticky en gradiente y modales estilo ICT.
+ * WF_004: persistente desde MainTemplate.html y asegurado por retrabajo.js.
+ * Tambien lo usa el modal "Salida Retrabajo" de Salidas almacen embarques.
+ */
+
+/* ========== CONTENEDOR PRINCIPAL ========== */
+.rtb-page {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+}
+
+.rtb-page *,
+.rtb-modal * {
+    box-sizing: border-box;
+}
+
+/* ========== TARJETAS (CARDS) ========== */
+.rtb-card {
+    background: var(--ilsan-dark-secondary);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    width: 100%;
+    animation: rtbFadeInUp 0.5s ease;
+}
+
+@keyframes rtbFadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rtb-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    flex-wrap: wrap;
+}
+
+.rtb-card-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--ilsan-accent-blue);
+    flex-shrink: 0;
+}
+
+.rtb-card-header h3 {
+    color: var(--ilsan-text-light);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+}
+
+/* Chips de conteo en el header de resultados (record-count del ICT) */
+.rtb-record-count {
+    color: var(--ilsan-text-gray);
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px 10px;
+    border-radius: 16px;
+    white-space: nowrap;
+}
+
+.rtb-record-count strong {
+    color: var(--ilsan-text-light);
+    font-weight: 700;
+}
+
+.rtb-record-count--ok strong {
+    color: #2ecc71;
+}
+
+.rtb-record-count--warn strong {
+    color: #f39c12;
+}
+
+/* ========== FILTROS / CAMPOS ========== */
+.rtb-filters {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 10px;
+    row-gap: 10px;
+    padding: 12px 18px 16px;
+    align-items: flex-end;
+    width: 100%;
+}
+
+.rtb-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.rtb-filter-group > label,
+.rtb-filter-group > span {
+    color: var(--ilsan-text-light);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.rtb-input-icon {
+    width: 12px;
+    height: 12px;
+    color: var(--ilsan-accent-blue);
+    flex-shrink: 0;
+}
+
+.rtb-page .rtb-filter-group input,
+.rtb-page .rtb-filter-group select,
+.rtb-modal .rtb-filter-group input,
+.rtb-modal .rtb-filter-group select,
+.rtb-modal .rtb-filter-group textarea,
+.rtb-modal .rtb-table input,
+.rtb-modal .rtb-table select {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    width: 160px;
+    font-family: inherit;
+}
+
+.rtb-page .rtb-filter-group--search input {
+    width: 260px;
+}
+
+.rtb-modal .rtb-form-grid .rtb-filter-group input,
+.rtb-modal .rtb-form-grid .rtb-filter-group select,
+.rtb-modal .rtb-filter-group--full textarea,
+.rtb-modal .rtb-table input,
+.rtb-modal .rtb-table select {
+    width: 100%;
+}
+
+.rtb-modal .rtb-filter-group textarea {
+    resize: vertical;
+    min-height: 56px;
+}
+
+.rtb-page .rtb-filter-group select option,
+.rtb-modal .rtb-filter-group select option,
+.rtb-modal .rtb-table select option {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.rtb-page .rtb-filter-group input:focus,
+.rtb-page .rtb-filter-group select:focus,
+.rtb-modal .rtb-filter-group input:focus,
+.rtb-modal .rtb-filter-group select:focus,
+.rtb-modal .rtb-filter-group textarea:focus,
+.rtb-modal .rtb-table input:focus,
+.rtb-modal .rtb-table select:focus {
+    outline: none;
+    border-color: var(--ilsan-accent-blue);
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.rtb-page .rtb-filter-group input::placeholder,
+.rtb-modal .rtb-filter-group input::placeholder,
+.rtb-modal .rtb-table input::placeholder {
+    color: var(--ilsan-text-gray);
+}
+
+.rtb-modal .rtb-input-scan {
+    font-family: "Consolas", "Courier New", monospace;
+}
+
+/* Grid de formularios dentro de modales */
+.rtb-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+
+.rtb-filter-group--full {
+    margin-top: 12px;
+}
+
+.rtb-modal .rtb-filter-group--wide select {
+    width: min(100%, 460px);
+}
+
+.rtb-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0 8px;
+    color: var(--ilsan-text-light);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.rtb-section-title .rtb-input-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.rtb-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ilsan-text-light);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.03);
+    text-transform: none;
+}
+
+.rtb-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--ilsan-accent-blue);
+    cursor: pointer;
+    margin: 0;
+}
+
+.rtb-hint {
+    color: var(--ilsan-text-gray);
+    font-size: 0.75rem;
+    margin: 6px 0 0;
+}
+
+.rtb-hint strong {
+    color: var(--ilsan-text-light);
+}
+
+/* ========== BOTONES (mismos del ICT) ========== */
+.rtb-btn-primary {
+    background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    min-width: 110px;
+}
+
+.rtb-btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.rtb-btn-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* Verde de accion principal y exportar (btn-export del ICT) */
+.rtb-btn-export {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+    white-space: nowrap;
+}
+
+.rtb-btn-export:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.4);
+}
+
+.rtb-btn-export svg,
+.rtb-btn-header svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Sutil del header (Actualizar) y fantasma (Limpiar / Cancelar) */
+.rtb-btn-header,
+.rtb-btn-ghost {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.rtb-btn-ghost {
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+}
+
+.rtb-btn-header:hover:not(:disabled),
+.rtb-btn-ghost:hover:not(:disabled) {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: rgba(52, 152, 219, 0.45);
+}
+
+.rtb-btn-danger {
+    background: rgba(231, 76, 60, 0.12);
+    color: var(--ilsan-accent-red);
+    border: 1px solid rgba(231, 76, 60, 0.35);
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rtb-btn-danger:hover:not(:disabled) {
+    background: rgba(231, 76, 60, 0.22);
+    border-color: rgba(231, 76, 60, 0.55);
+}
+
+/* Boton pequeno con icono (acciones por fila, quitar) */
+.rtb-icon-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.rtb-icon-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.rtb-icon-btn:hover:not(:disabled) {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: rgba(52, 152, 219, 0.45);
+    color: var(--ilsan-accent-blue);
+}
+
+.rtb-icon-btn--danger:hover:not(:disabled) {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.45);
+    color: var(--ilsan-accent-red);
+}
+
+.rtb-page button:disabled,
+.rtb-modal button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ========== TABLA (encabezado sticky en gradiente, como #ict-table) ========== */
+.rtb-table-wrap {
+    position: relative;
+    max-height: clamp(360px, 60vh, 780px);
+    min-height: clamp(260px, 45vh, 520px);
+    overflow: auto;
+    border-radius: 0 0 16px 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ilsan-accent-blue) var(--ilsan-dark-tertiary);
+}
+
+/* min-height: deja ver el popover del filtro aunque la tabla tenga una sola fila */
+.rtb-table-wrap--compact {
+    min-height: 140px;
+    max-height: 320px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rtb-table-wrap::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.rtb-table-wrap::-webkit-scrollbar-track {
+    background: var(--ilsan-dark-tertiary);
+    border-radius: 10px;
+    margin: 4px;
+}
+
+.rtb-table-wrap::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--ilsan-accent-blue), var(--ilsan-accent-dark-blue));
+    border-radius: 10px;
+    border: 2px solid var(--ilsan-dark-tertiary);
+}
+
+.rtb-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--ilsan-dark-secondary);
+}
+
+.rtb-table th,
+.rtb-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.rtb-table thead th {
+    background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
+    color: var(--ilsan-text-light);
+    position: sticky;
+    top: 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.3px;
+    z-index: 10;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Filtro por columna (embudo del encabezado, como Historial ICT) */
+.rtb-table th.rtb-filterable {
+    overflow: visible;
+}
+
+.rtb-table th.rtb-filterable.rtb-filter-open {
+    z-index: 35;
+}
+
+.rtb-column-header {
+    display: flex;
+    min-height: 20px;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.rtb-column-header > span {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rtb-column-filter-btn {
+    display: inline-flex;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    padding: 4px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #55708a;
+    background: #203241;
+    color: #9cc8ff;
+    cursor: pointer;
+}
+
+.rtb-column-filter-btn svg {
+    width: 11px;
+    height: 11px;
+    fill: currentColor;
+    stroke: none;
+}
+
+.rtb-column-filter-btn:hover,
+.rtb-column-filter-btn:focus-visible,
+.rtb-filter-open .rtb-column-filter-btn {
+    border-color: #71b9ff;
+    background: #20688c;
+    color: #ffffff;
+    outline: none;
+}
+
+.rtb-column-filter-btn.active {
+    border-color: #71b9ff;
+    background: #2f80d8;
+    color: #ffffff;
+}
+
+.rtb-column-filter-popover {
+    position: absolute;
+    top: calc(100% - 1px);
+    left: 3px;
+    z-index: 45;
+    display: none;
+    min-width: 165px;
+    padding: 6px;
+    border: 1px solid #20688c;
+    background: #2c3e50;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+    text-align: left;
+    text-transform: none;
+    white-space: normal;
+}
+
+.rtb-table th:nth-last-child(-n+4):not(:nth-child(-n+2)) .rtb-column-filter-popover {
+    right: 3px;
+    left: auto;
+}
+
+.rtb-column-filter-popover.open {
+    display: block;
+}
+
+.rtb-column-filter-input {
+    width: 100%;
+    height: 26px;
+    padding: 4px 6px;
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: none;
+}
+
+.rtb-column-filter-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.rtb-column-filter-actions button {
+    flex: 1;
+    height: 22px;
+    padding: 0 6px;
+    border: 1px solid #5f7e9d;
+    background: #3c5066;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.rtb-column-filter-actions button:hover,
+.rtb-column-filter-actions button:focus-visible {
+    background: #4f78aa;
+    outline: none;
+}
+
+.rtb-table tbody td {
+    color: var(--ilsan-text-secondary);
+    background-color: var(--ilsan-dark-secondary);
+    transition: background-color 0.2s ease;
+}
+
+.rtb-table tbody tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+.rtb-table tbody tr:hover td {
+    background-color: var(--ilsan-hover);
+}
+
+.rtb-table tbody tr[data-id] {
+    cursor: pointer;
+}
+
+.rtb-table td.rtb-empty {
+    text-align: center;
+    padding: 3rem;
+    color: var(--ilsan-text-gray);
+    font-size: 0.9rem;
+}
+
+.rtb-table--compact td.rtb-empty {
+    padding: 1.2rem;
+}
+
+.rtb-code {
+    font-family: "Consolas", "Courier New", monospace;
+    font-weight: 600;
+    color: var(--ilsan-accent-blue);
+    word-break: break-all;
+}
+
+.rtb-nowrap {
+    white-space: nowrap;
+}
+
+/* ========== CHIPS DE ESTADO / AREAS ========== */
+.rtb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+}
+
+.rtb-chips--left {
+    justify-content: flex-start;
+}
+
+.rtb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 16px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ilsan-text-gray);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.rtb-chip--PENDIENTE {
+    background: rgba(243, 156, 18, 0.15);
+    color: #f39c12;
+    border-color: rgba(243, 156, 18, 0.35);
+}
+
+.rtb-chip--EN_PROCESO {
+    background: rgba(52, 152, 219, 0.15);
+    color: var(--ilsan-accent-blue);
+    border-color: rgba(52, 152, 219, 0.35);
+}
+
+.rtb-chip--COMPLETADA {
+    background: rgba(39, 174, 96, 0.15);
+    color: #2ecc71;
+    border-color: rgba(39, 174, 96, 0.35);
+}
+
+.rtb-chip--CANCELADA {
+    background: rgba(231, 76, 60, 0.15);
+    color: var(--ilsan-accent-red);
+    border-color: rgba(231, 76, 60, 0.35);
+}
+
+.rtb-chip .rtb-icon-btn {
+    min-width: 18px;
+    height: 18px;
+    padding: 0;
+    font-size: 0.7rem;
+}
+
+/* ========== INDICADOR DE CARGA (table-loading del ICT) ========== */
+.rtb-table-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(20, 24, 36, 0.92), rgba(28, 32, 48, 0.85));
+    backdrop-filter: blur(2px);
+    color: var(--ilsan-text-light);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.rtb-table-loading[hidden] {
+    display: none;
+}
+
+.rtb-table-loading span {
+    font-size: 0.85rem;
+}
+
+.rtb-spinner {
+    width: 36px;
+    height: 36px;
+    border: 4px solid rgba(52, 152, 219, 0.2);
+    border-top: 4px solid var(--ilsan-accent-blue);
+    border-radius: 50%;
+    animation: rtbSpin 1s linear infinite;
+}
+
+@keyframes rtbSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ========== MODALES (WF_008: creados por JS en document.body; estilo modal ICT) ========== */
+.rtb-modal {
+    display: none;
+    position: fixed;
+    z-index: 15000;
+    inset: 0;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(6px);
+    animation: rtbFadeIn 0.3s ease;
+}
+
+@keyframes rtbFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.rtb-modal-content {
+    background: linear-gradient(135deg, var(--ilsan-dark-secondary) 0%, #2d2d3f 100%);
+    margin: auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    width: 95%;
+    max-width: 1100px;
+    max-height: 90vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: rtbSlideDown 0.3s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes rtbSlideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.rtb-modal-header {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.rtb-modal-title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.rtb-modal-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--ilsan-accent-blue);
+    flex-shrink: 0;
+}
+
+.rtb-modal-title-group > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.rtb-modal-header h3 {
+    color: var(--ilsan-text-light);
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.rtb-modal-subtitle {
+    color: var(--ilsan-text-gray);
+    font-size: 0.8rem;
+}
+
+.rtb-modal-subtitle strong {
+    color: var(--ilsan-accent-blue);
+    font-weight: 600;
+}
+
+/* close-modal del ICT */
+.rtb-close-btn {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    color: #e74c3c;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.rtb-close-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.rtb-close-btn:hover,
+.rtb-close-btn:focus {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.5);
+    transform: rotate(90deg);
+}
+
+.rtb-modal-body {
+    padding: 16px 20px 20px;
+    overflow: auto;
+    color: var(--ilsan-text-light);
+}
+
+.rtb-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* Tarjetas de datos del detalle */
+.rtb-info {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.rtb-info > div {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.rtb-info small {
+    display: block;
+    color: var(--ilsan-text-gray);
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.rtb-info strong {
+    color: var(--ilsan-text-light);
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.rtb-boxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+/* ========== TOAST ========== */
+.rtb-toast {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 16000;
+    max-width: min(420px, calc(100vw - 36px));
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.82rem;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45);
+    animation: rtbFadeInUp 0.3s ease;
+}
+
+.rtb-toast--success {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+}
+
+.rtb-toast--error {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.rtb-toast--info {
+    background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .rtb-page {
+        padding: 16px 16px 32px;
+        gap: 12px;
+    }
+
+    .rtb-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .rtb-form-grid,
+    .rtb-info {
+        grid-template-columns: 1fr;
+    }
+
+    .rtb-page .rtb-filter-group input,
+    .rtb-page .rtb-filter-group select,
+    .rtb-page .rtb-filter-group--search input {
+        width: 100%;
+    }
+
+    .rtb-btn-primary,
+    .rtb-btn-ghost {
+        width: 100%;
+    }
+
+    .rtb-table-wrap {
+        max-height: 40vh;
+    }
+
+    .rtb-table th,
+    .rtb-table td {
+        font-size: 0.75rem;
+        padding: 6px 4px;
+    }
+}

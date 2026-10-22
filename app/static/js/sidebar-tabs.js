@@ -74,6 +74,9 @@
         const MOVIDAS = [
             { container: 'trazabilidad-pcb-unique-container',
               de: 'Control de resultados', a: 'Control de reporte' },
+            // 2026-10-21: Solicitud de retrabajo paso de Control de proceso -> Control de producción.
+            { container: 'retrabajo-unique-container',
+              de: 'Control de proceso', a: 'Control de producción' },
         ];
         const state = readState();
         let cambio = false;

@@ -70,6 +70,7 @@ def run_startup_init():
     from .api.control_produccion.trazabilidad import crear_tabla_trazabilidad
     from .api.control_produccion.metal_mask import init_metal_mask_tables
     from .api.informacion_basica.control_material import crear_tabla_material_costos
+    from .api.control_produccion.retrabajo import crear_tablas_retrabajo
     from .api.control_material.invoice_core.ddl import init_material_invoice_tables
     from .api.control_material.compras_core.ddl import init_lista_compras_tables
     from .api.control_produccion.part_planning import init_part_planning_tables
@@ -131,6 +132,10 @@ def run_startup_init():
     log("Iniciando crear_tabla_material_costos()")
     crear_tabla_material_costos()
     log("crear_tabla_material_costos() completado")
+
+    log("Iniciando crear_tablas_retrabajo()")
+    crear_tablas_retrabajo()
+    log("crear_tablas_retrabajo() completado")
 
     log("Iniciando init_material_invoice_tables()")
     init_material_invoice_tables()

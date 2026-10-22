@@ -69,6 +69,7 @@
          de los tres para ganar por orden de carga. -->
     <link id="planes-produccion-layout-css" rel="stylesheet" href="{{ url_for('static', filename='css/planes_produccion_layout.css', v='20260923a') }}">
     <link id="control-scrap-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_scrap.css', v='20260921g') }}">
+    <link id="retrabajo-css" rel="stylesheet" href="{{ url_for('static', filename='css/retrabajo.css', v='20261022a') }}">
     <link id="historial-operacion-proceso-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_operacion_proceso.css', v='20260921a') }}">
     <link id="material-areas-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_areas.css', v='20260921b') }}">
     <!-- WF_004: CSS persistente Inventario IMD-SMD Terminado (Control de resultados) -->
@@ -442,7 +443,7 @@
     <script src="{{ url_for('static', filename='js/lib/axios.min.js', v='20260526a') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js?v=20260917permfix"></script>
-    <script src="/static/js/scriptMain.js?v=20260902b"></script>
+    <script src="/static/js/scriptMain.js?v=20261021a"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -705,6 +706,11 @@
 
         <!-- Part Planning LG (WF_002, 2026-07-12) -->
         <div id="part-planning-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Solicitud de retrabajo (2026-10-21) -->
+        <div id="retrabajo-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
@@ -1235,7 +1241,7 @@
 
     <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
     <script src="../static/js/unified-dropdowns.js?v=20260917m"></script>
-    <script src="../static/js/sidebar-tabs.js?v=20260918electrica"></script>
+    <script src="../static/js/sidebar-tabs.js?v=20261021a"></script>
 
     <!-- MOBILE LISTS HAMBURGER MENU -->
     <script src="../static/js/mobile-lists-hamburger.js"></script>

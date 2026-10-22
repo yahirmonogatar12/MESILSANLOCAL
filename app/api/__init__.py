@@ -173,6 +173,8 @@ _MODULOS_REGISTRADOS = [
     "control_produccion.plan_imd",
     # WF_001-WF_005 (2026-07-12): Part Planning LG (import plan diario LG)
     "control_produccion.part_planning",
+    # 2026-10-21: Solicitud de retrabajo (MES define, las areas reciben)
+    "control_produccion.retrabajo",
     # Migracion 2026-05-27 + WF_001 2026-08-03: Almacen de Embarques
     "control_proceso.almacen_embarques",
     "control_proceso.almacen_embarques_oqc_pendientes",
