@@ -316,7 +316,73 @@ def test_buscar_lote_parte_en_chunks(monkeypatch):
     _buscar_lote([f"C{i}" for i in range(pt._LOTE_CHUNK + 1)])
 
     # Las dos primeras son la busqueda en Tracking: cada una recibe sus codigos
-    # dos veces (QR IN ... OR Barcode IN ...).
-    assert llamadas[:2] == [pt._LOTE_CHUNK * 2, 2]
+    # tres veces (QR IN ... OR Barcode IN ... OR Barcode_Anterior IN ...).
+    assert llamadas[:2] == [pt._LOTE_CHUNK * 3, 3]
     # Y el resto (fuentes por barcode) tampoco excede el tamaño de tanda.
-    assert llamadas and max(llamadas) <= pt._LOTE_CHUNK * 2
+    assert llamadas and max(llamadas) <= pt._LOTE_CHUNK * 3
+
+
+def _fuentes_cambio(monkeypatch):
+    """BC-OLD paso ICT antes del cambio; BC-NEW paso FCT y Vision."""
+    monkeypatch.setattr(pt, "_historial_desde_fuentes", lambda codigos: {
+        "BC-OLD": {"ICT_QA": datetime(2026, 7, 1, 8, 0)},
+        "BC-NEW": {"FCT": datetime(2026, 7, 5, 9, 0), "Vision": datetime(2026, 7, 4, 9, 0)},
+    })
+    return _fila(QR="QR-A", Barcode="BC-NEW", Barcode_Anterior="BC-OLD",
+                 SMT=1, SMT_At=datetime(2026, 6, 30, 8, 0),
+                 ICT_QA=1, ICT_QA_At=datetime(2026, 7, 1, 8, 0),
+                 Vision=1, Vision_At=datetime(2026, 7, 2, 8, 0))
+
+
+def test_cambio_de_barcode_separa_el_historial_de_cada_barcode(monkeypatch):
+    fila = _fuentes_cambio(monkeypatch)
+    anteriores = pt._separar_cambio_de_barcode([fila])
+
+    # La pieza: QR intacto, etapas por barcode solo del barcode actual.
+    assert fila["SMT"] == 1
+    assert fila["ICT_QA"] == 0 and fila["ICT_QA_At"] is None
+    assert fila["FCT"] == 1 and fila["FCT_At"] == datetime(2026, 7, 5, 9, 0)
+    # Vision tambien cruza por QR: lo que traia la fila se conserva.
+    assert fila["Vision_At"] == datetime(2026, 7, 2, 8, 0)
+    assert _fila_a_item(fila)["barcode_anterior"] == "BC-OLD"
+
+    # El barcode anterior sale aparte con su propio historial.
+    [anterior] = anteriores
+    assert anterior["Barcode"] == "BC-OLD" and anterior["QR"] is None
+    assert anterior["ICT_QA"] == 1 and anterior["FCT"] == 0
+    assert _fila_a_item(anterior)["reemplazado_por"] == "BC-NEW"
+
+
+def test_buscar_lote_encuentra_la_pieza_por_su_barcode_anterior(monkeypatch):
+    fila = _fuentes_cambio(monkeypatch)
+    monkeypatch.setattr(pt, "execute_query", lambda *a, **k: [fila])
+    monkeypatch.setattr(pt, "_retorno_exceso", lambda claves: {})
+
+    [item] = _buscar_lote(["BC-OLD"])
+    assert item["encontrado"] is True and item["reconstruido"] is False
+    assert item["qr"] == "QR-A" and item["barcode"] == "BC-NEW"
+
+
+def test_pieza_que_perdio_su_barcode_no_conserva_sus_etapas(monkeypatch):
+    """Su barcode se reasigno a otra pieza: lo que trae por barcode era de ella."""
+    monkeypatch.setattr(pt, "_historial_desde_fuentes", lambda codigos: {})
+    fila = _fila(QR="QR-B", Barcode=None, Barcode_Anterior="BC-X",
+                 SMT=1, SMT_At=datetime(2026, 6, 30, 8, 0),
+                 ICT_QA=1, ICT_QA_At=datetime(2026, 7, 1, 8, 0))
+
+    assert pt._separar_cambio_de_barcode([fila]) == []
+    item = _fila_a_item(fila)
+    assert item["barcode_anterior"] == "BC-X" and item["sin_barcode"] is True
+    assert _etapa(item, "SMT")["estado"] == "OK"
+    assert _etapa(item, "ICT")["estado"] == "BARCODE NO VINCULADO"
+
+
+def test_buscar_lote_prefiere_la_pieza_que_tiene_el_barcode_como_actual(monkeypatch):
+    perdio = _fila(QR="QR-B", Barcode=None, Barcode_Anterior="BC-X")
+    actual = _fila(QR="QR-A", Barcode="BC-X")
+    monkeypatch.setattr(pt, "execute_query", lambda *a, **k: [perdio, actual])
+    monkeypatch.setattr(pt, "_historial_desde_fuentes", lambda codigos: {})
+    monkeypatch.setattr(pt, "_retorno_exceso", lambda claves: {})
+
+    [item] = _buscar_lote(["BC-X"])
+    assert item["qr"] == "QR-A"

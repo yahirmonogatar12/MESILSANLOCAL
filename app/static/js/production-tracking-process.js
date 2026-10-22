@@ -89,7 +89,22 @@ function ptpCard(item) {
   // que cruzan por barcode, y sin QR las que cruzan por QR. Se avisa arriba
   // para que la tabla no se lea como "la pieza se quedó a medio camino".
   let aviso = "";
-  if (item.sin_barcode) {
+  if (item.reemplazado_por) {
+    aviso = `<div class="ptp-aviso">Este barcode <b>fue reemplazado por ${ptpEsc(item.reemplazado_por)}</b>
+       en Reprogramación PCB, porque no coincidía con el barcode físico de la pieza.
+       Aquí se muestra su historial propio, leído de ICT, FCT, Packing, OQC y
+       Embarques. SMT, IMD y Assy van con el QR, en la tarjeta de la pieza.</div>`;
+  } else if (item.barcode_anterior && !item.barcode) {
+    aviso = `<div class="ptp-aviso">Su barcode <b>${ptpEsc(item.barcode_anterior)}</b>
+       <b>se reasignó a otra pieza</b> en Reprogramación PCB: era el barcode físico de
+       esa pieza. Busca ${ptpEsc(item.barcode_anterior)} para ver su historial. Esta
+       pieza queda sin barcode vinculado.</div>`;
+  } else if (item.barcode_anterior) {
+    aviso = `<div class="ptp-aviso">Hubo <b>cambio de barcode</b>: antes
+       <b>${ptpEsc(item.barcode_anterior)}</b>, ahora <b>${ptpEsc(item.barcode)}</b>.
+       ICT, FCT, Packing QA, Releases OQC y Embarques son los del barcode actual; el
+       historial del anterior se muestra en la siguiente tarjeta.</div>`;
+  } else if (item.sin_barcode) {
     aviso = `<div class="ptp-aviso">A esta pieza <b>no se le vinculó un barcode</b>: en ASSY
        solo se registró el QR. Lo más probable es que el barcode exista y tenga su
        propio historial de ICT, FCT, Packing QA, Releases OQC y Embarques — lo que
@@ -112,6 +127,7 @@ function ptpCard(item) {
       <div class="ptp-card-head">
         <div class="ptp-field"><span class="ptp-k">QR</span>${campo(item.sin_qr ? "NO VINCULADO" : item.qr, item.sin_qr)}</div>
         <div class="ptp-field"><span class="ptp-k">Barcode</span>${campo(item.sin_barcode ? "NO VINCULADO" : item.barcode, item.sin_barcode)}</div>
+        ${item.barcode_anterior ? `<div class="ptp-field"><span class="ptp-k">Barcode anterior</span>${campo(item.barcode_anterior)}</div>` : ""}
         <div class="ptp-field"><span class="ptp-k">Etapas registradas</span><span class="ptp-v">${item.registradas} / ${item.total}</span></div>
         <div class="ptp-field"><span class="ptp-k">Última etapa</span><span class="ptp-v">${ultima}</span></div>
         <div class="ptp-field"><span class="ptp-k">Estado</span>

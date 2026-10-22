@@ -140,11 +140,13 @@ def _buscar_filas(codigo, limit):
     """Busca la(s) pieza(s) del codigo dado. Exacto primero, prefijo despues.
 
     Exacto cubre el caso normal (pistola de codigo de barras) y resuelve con
-    index_merge de PRIMARY + idx_tracking_barcode: 2 filas leidas.
+    index_merge de PRIMARY + idx_tracking_barcode (+ idx_tracking_barcode_anterior,
+    para encontrar la pieza tambien por el barcode que se le reemplazo).
     """
     rows = execute_query(
-        f"SELECT * FROM Tracking WHERE QR = %s OR Barcode = %s LIMIT {int(limit)}",
-        [codigo, codigo],
+        f"SELECT * FROM Tracking WHERE QR = %s OR Barcode = %s OR Barcode_Anterior = %s"
+        f" LIMIT {int(limit)}",
+        [codigo, codigo, codigo],
         fetch="all",
     ) or []
 
@@ -384,6 +386,50 @@ def _aplicar_retorno(filas):
     return filas
 
 
+# --- Cambio de barcode ---------------------------------------------------------
+#
+# Reprogramacion PCB (Control_produccion) reemplaza Tracking.Barcode cuando el
+# barcode fisico escaneado no coincide con el vinculado, y guarda el anterior en
+# Barcode_Anterior. Las etapas que cruzan solo por barcode que trae la fila
+# pueden ser del barcode anterior (de antes del cambio), y las del barcode nuevo
+# anteriores al cambio nunca llegaron a la fila (el trigger no lo encontro).
+# Por eso se separan: la pieza toma esas etapas del barcode actual, leidas de
+# las fuentes, y el anterior sale aparte con su propio historial.
+
+
+def _separar_cambio_de_barcode(filas):
+    """Corrige en sitio las filas con Barcode_Anterior y devuelve una fila
+    sintetica por cada barcode anterior, con su historial propio."""
+    for f in filas:
+        if f.get("Barcode_Anterior") and not f.get("Barcode"):
+            # Su barcode era de otra pieza y se le reasigno: lo que la fila trae
+            # por barcode era de esa pieza, no de esta.
+            for col, col_at, _ in _ETAPAS:
+                if col in _ETAPAS_POR_BARCODE:
+                    f[col], f[col_at] = (None if col == "Embarques" else 0), None
+
+    cambiadas = [f for f in filas if f.get("Barcode_Anterior") and f.get("Barcode")]
+    if not cambiadas:
+        return []
+
+    fuentes = _historial_desde_fuentes(list(dict.fromkeys(
+        c for f in cambiadas for c in (f["Barcode"], f["Barcode_Anterior"]))))
+
+    anteriores = []
+    for f in cambiadas:
+        actual = _fila_sintetica(f["Barcode"], fuentes.get(f["Barcode"], {}))
+        for col, col_at, _ in _ETAPAS:
+            # Vision, reparaciones y scrap tambien cruzan por QR: lo que traiga
+            # la fila se conserva y solo se completa lo que falte.
+            if col in _ETAPAS_POR_BARCODE or (not f.get(col) and actual.get(col)):
+                f[col], f[col_at] = actual[col], actual[col_at]
+
+        anterior = _fila_sintetica(f["Barcode_Anterior"], fuentes.get(f["Barcode_Anterior"], {}))
+        anterior["Reemplazado_Por"] = f["Barcode"]
+        anteriores.append(anterior)
+    return anteriores
+
+
 def _tiene_algo(fila):
     """True si la fila reconstruida registro al menos una etapa."""
     return any(fila.get(col) for col, _, _ in _ETAPAS)
@@ -511,6 +557,8 @@ def _fila_a_item(row):
     return {
         "qr": row.get("QR") or "",
         "barcode": row.get("Barcode") or "",
+        "barcode_anterior": row.get("Barcode_Anterior") or "",
+        "reemplazado_por": row.get("Reemplazado_Por") or "",
         "sin_barcode": sin_barcode,
         "sin_qr": sin_qr,
         "en_exceso": bool(row.get("Exceso_In")),
@@ -531,8 +579,15 @@ def _query_items(limit):
 
     filas = _buscar_filas(codigo, limit)
     if filas:
-        return [dict(_fila_a_item(r), reconstruido=False)
-                for r in _aplicar_retorno(filas)]
+        anteriores = _separar_cambio_de_barcode(filas)
+        _aplicar_retorno(filas + anteriores)
+        items = [dict(_fila_a_item(r), reconstruido=False) for r in filas]
+        for r in anteriores:
+            item = dict(_fila_a_item(r), reconstruido=True)
+            item["estado_global"] = f"Reemplazado por {r['Reemplazado_Por']}"
+            item["clase_global"] = "nd"
+            items.append(item)
+        return items
 
     # No hay fila en Tracking. Puede seguir habiendo historial: si la pieza
     # nunca se vinculo a un QR, ICT/FCT/Packing/OQC igual la registraron por
@@ -648,14 +703,21 @@ def _buscar_lote(codigos):
         chunk = codigos[i:i + _LOTE_CHUNK]
         marcas = ", ".join(["%s"] * len(chunk))
         rows = execute_query(
-            f"SELECT * FROM Tracking WHERE QR IN ({marcas}) OR Barcode IN ({marcas})",
-            chunk + chunk,
+            f"SELECT * FROM Tracking WHERE QR IN ({marcas}) OR Barcode IN ({marcas})"
+            f" OR Barcode_Anterior IN ({marcas})",
+            chunk * 3,
             fetch="all",
         ) or []
+        _separar_cambio_de_barcode(rows)
         for r in rows:
             por_qr[r.get("QR")] = r
             if r.get("Barcode"):
                 por_barcode.setdefault(r["Barcode"], r)
+        # El barcode reemplazado tambien lleva a la pieza, salvo que otra lo
+        # tenga hoy como actual (se le reasigno): esa manda.
+        for r in rows:
+            if r.get("Barcode_Anterior"):
+                por_barcode.setdefault(r["Barcode_Anterior"], r)
 
     # Lo que no esta en Tracking puede seguir teniendo historial por barcode
     # (piezas que nunca se vincularon a un QR). Se reconstruye desde las tablas
