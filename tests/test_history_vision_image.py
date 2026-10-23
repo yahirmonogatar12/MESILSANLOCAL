@@ -138,22 +138,22 @@ def test_photo_without_code_in_name_uses_nearest_time(tmp_path, monkeypatch):
 
 def test_history_query_adds_failures_and_filters(app, monkeypatch):
     monkeypatch.setattr(vision_helpers, "_vision_defects_table_available", lambda: True)
-    with app.test_request_context("/api/vision/data?cf_componente=Conector&cf_tipo_falla=INVERTIDO"):
+    with app.test_request_context("/api/vision/data?cf_tipo=Conector&cf_componente=CN20&cf_tipo_falla=INVERTIDO"):
         sql, params = vision_helpers._build_history_vision_query(100, 0)
 
     assert "AS fallas" in sql
     assert "AS fuente" not in sql  # la fuente solo se usa por dentro para la imagen
     assert "FROM history_vision_defects d WHERE d.source_uid = history_vision.source_uid" in sql
-    assert sql.count("source_uid IN (SELECT d.source_uid FROM history_vision_defects d") == 2
+    assert sql.count("source_uid IN (SELECT d.source_uid FROM history_vision_defects d") == 3
     # Sin '%' literal: execute_query formatea los %s con params.
     assert "%" not in sql.replace("%s", "")
-    assert params == ("%Conector%", "%INVERTIDO%", 100, 0)
+    assert params == ("%Conector%", "%CN20%", "%INVERTIDO%", 100, 0)
 
 
 def test_defect_columns_split_component_type_and_value():
     cols = vision_helpers._vision_defect_columns
     assert cols("Switch", "2", "Maker_Axis", "cantidad:1,coincidencia:75.4567% <- NG", 75.4567) == {
-        "componente": "Switch 2", "tipo_falla": "Maker_Axis", "valor": 75.46, "unidad": "%",
+        "tipo": "Switch", "componente": "2", "tipo_falla": "Maker_Axis", "valor": 75.46, "unidad": "%",
     }
     # Un 0 medido es un valor, no "vacio".
     assert cols("FUSE", "D2", "Measurement-Count", "0", 0.0)["valor"] == 0.0
@@ -161,13 +161,13 @@ def test_defect_columns_split_component_type_and_value():
     assert cols("Condenser_Right", "CE34", "Measurement-Color", "26,27,25", None)["valor"] == "26,27,25"
     # Lectura de codigo NG: sin sub-prueba, el tipo es el motivo.
     assert cols("Barcode (ASSY)", "", "", "no leyo la etiqueta", None) == {
-        "componente": "Barcode (ASSY)", "tipo_falla": "no leyo la etiqueta", "valor": "", "unidad": "",
+        "tipo": "Barcode (ASSY)", "componente": "", "tipo_falla": "no leyo la etiqueta", "valor": "", "unidad": "",
     }
     # Etiqueta de otro modelo (M2 real): tipo corto para agrupar, el codigo leido en el valor.
     assert cols(
         "Barcode (ASSY)", "", "", "etiqueta no corresponde al modelo: EBR23966204922507070020", None
     ) == {
-        "componente": "Barcode (ASSY)", "tipo_falla": "etiqueta no corresponde al modelo",
+        "tipo": "Barcode (ASSY)", "componente": "", "tipo_falla": "etiqueta no corresponde al modelo",
         "valor": "EBR23966204922507070020", "unidad": "",
     }
 
@@ -180,9 +180,9 @@ def test_parse_fallas_from_json_column():
         '"value_text": "1982,1434,824", "value_num": null}]'
     )
     fallas = vision_helpers._vision_parse_fallas(raw)
-    assert [(f["componente"], f["tipo_falla"], f["valor"]) for f in fallas] == [
-        ("Conector CN20", "INVERTIDO", 57.62),
-        ("Conector CN20", "Measurement-Color", "1982,1434,824"),
+    assert [(f["tipo"], f["componente"], f["tipo_falla"], f["valor"]) for f in fallas] == [
+        ("Conector", "CN20", "INVERTIDO", 57.62),
+        ("Conector", "CN20", "Measurement-Color", "1982,1434,824"),
     ]
     assert vision_helpers._vision_parse_fallas(None) == []
     assert vision_helpers._vision_parse_fallas("no es json") == []
@@ -212,13 +212,13 @@ def test_export_writes_one_row_per_failure(client, monkeypatch):
         session["_last_activity_touch_ts"] = int(time.time())
 
     assert client.get("/api/vision/export").status_code == 200
-    assert captured["headers"][-4:] == ["Componente", "Tipo de falla", "Valor", "Unidad"]
+    assert captured["headers"][-5:] == ["Tipo", "Componente", "Tipo de falla", "Valor", "Unidad"]
     items = captured["items"]
     assert len(items) == 3  # 2 fallas de la pieza NG + 1 fila de la OK
-    assert [(i["qr"], i["componente"], i["tipo_falla"], i["valor"]) for i in items] == [
-        ("Q1", "Conector CN20", "INVERTIDO", 57.6),
-        ("Q1", "FUSE D2", "Measurement-Count", 0.0),
-        ("Q2", "", "", ""),
+    assert [(i["qr"], i["tipo"], i["componente"], i["tipo_falla"], i["valor"]) for i in items] == [
+        ("Q1", "Conector", "CN20", "INVERTIDO", 57.6),
+        ("Q1", "FUSE", "D2", "Measurement-Count", 0.0),
+        ("Q2", "", "", "", ""),
     ]
 
 
@@ -285,7 +285,7 @@ def test_image_info_lists_ng_failures(client, monkeypatch):
     assert "fuente" not in payload
     assert payload["match_type"] == "exacta (hora y codigo)"
     assert payload["defects"][0] == {
-        "componente": "Conector 2", "tipo_falla": "Maker-Direction-Percent",
+        "tipo": "Conector", "componente": "2", "tipo_falla": "Maker-Direction-Percent",
         "valor": 84.26, "unidad": "", "detalle": "84.2645",
     }
     assert payload["defects"][1]["tipo_falla"] == "no leyo la etiqueta"

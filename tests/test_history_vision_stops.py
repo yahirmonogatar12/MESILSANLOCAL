@@ -284,7 +284,7 @@ def test_history_vision_template_contains_stops_tab(app):
     assert html.count('<option value="1000" selected>1000</option>') == 2
     assert 'id="vision-preview-qr"' in html
     assert 'id="vision-preview-barcode"' in html
-    assert html.count("data-vision-filter-field=") == 16  # + Componente y Tipo de falla
+    assert html.count("data-vision-filter-field=") == 17  # + Tipo, Componente y Tipo de falla
     assert 'data-vision-filter-table="records"' in html
     assert 'data-vision-filter-table="stops"' in html
     stops_panel = html.split('id="vision-paros-panel"', 1)[1].split(

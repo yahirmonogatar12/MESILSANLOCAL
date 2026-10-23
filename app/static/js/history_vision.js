@@ -558,7 +558,7 @@ function renderHistorialVisionTable(data) {
 
   if (sourceRows.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="10" class="vision-table-empty">No se encontraron registros.</td></tr>';
+      '<tr><td colspan="11" class="vision-table-empty">No se encontraron registros.</td></tr>';
     return;
   }
 
@@ -590,6 +590,7 @@ function renderHistorialVisionTable(data) {
           <td title="${escapeVisionHtml(row.qr ?? "")}">${escapeVisionHtml(row.qr ?? "")}</td>
           <td title="${escapeVisionHtml(row.barcode ?? "")}">${escapeVisionHtml(row.barcode ?? "")}</td>
           <td class="${resultClass}">${escapeVisionHtml(resultado)}</td>
+          ${fallaCell("tipo")}
           ${fallaCell("componente")}
           ${fallaCell("tipo_falla")}
           ${fallaCell("valor")}
@@ -1093,7 +1094,8 @@ function renderVisionPreviewDefects(defects, fallbackFallas = []) {
         falla.detalle && falla.detalle !== String(falla.valor ?? "")
           ? `<small>${escapeVisionHtml(falla.detalle)}</small>`
           : "";
-      return `<li><strong>${escapeVisionHtml(falla.componente || "")}</strong>${what ? `: ${escapeVisionHtml(what)}` : ""}${detail}</li>`;
+      const where = [falla.tipo, falla.componente].filter(Boolean).join(" ");
+      return `<li><strong>${escapeVisionHtml(where)}</strong>${what ? `: ${escapeVisionHtml(what)}` : ""}${detail}</li>`;
     })
     .join("");
   section.hidden = false;

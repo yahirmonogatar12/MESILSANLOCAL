@@ -142,7 +142,7 @@ def _serialize_history_vision(rows):
             "qr": _vision_format_value(row.get("qr", "")) or "",
             "barcode": _vision_format_value(row.get("barcode", "")) or "",
             "resultado": _vision_format_value(row.get("resultado", "")) or "",
-            # [{componente, tipo_falla, valor, unidad}] por cada falla de una pieza NG
+            # [{tipo, componente, tipo_falla, valor, unidad}] por cada falla de una pieza NG
             "fallas": _vision_parse_fallas(row.get("fallas")),
         }
         for row in rows
@@ -465,9 +465,10 @@ def export_vision_excel():
         rows = execute_query(sql, params, fetch="all") or []
 
         piece_keys = ["linea", "fecha", "hora", "numero_parte", "qr", "barcode", "resultado"]
-        defect_keys = ["componente", "tipo_falla", "valor", "unidad"]
+        defect_keys = ["tipo", "componente", "tipo_falla", "valor", "unidad"]
         # Una fila por falla (la pieza se repite): asi una tabla dinamica cuenta fallas por
-        # componente / tipo. Piezas OK o NG sin detalle: una fila con esas columnas vacias.
+        # tipo / componente / tipo de falla. Piezas OK o NG sin detalle: una fila con esas
+        # columnas vacias.
         items = []
         for row in rows:
             piece = {key: _vision_format_value(row.get(key, "")) or "" for key in piece_keys}
@@ -476,11 +477,11 @@ def export_vision_excel():
         keys = piece_keys + defect_keys
         headers = [
             "Linea", "Fecha", "Hora", "Numero de parte", "QR", "Barcode", "Resultado",
-            "Componente", "Tipo de falla", "Valor", "Unidad",
+            "Tipo", "Componente", "Tipo de falla", "Valor", "Unidad",
         ]
         filename = f"historial_vision_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         return excel_response_ict(
-            items, headers, keys, widths=[22, 14, 14, 28, 36, 24, 14, 24, 28, 12, 9],
+            items, headers, keys, widths=[22, 14, 14, 28, 36, 24, 14, 20, 14, 28, 12, 9],
             sheet="Historial Vision", filename=filename,
         )
     except Exception as e:

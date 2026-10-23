@@ -512,13 +512,14 @@ _VISION_FALLAS_SQL = (
 
 def _vision_defect_columns(test_name, position, sub_test, value_text, value_num):
     """Una falla en las columnas del historial / Excel:
-    componente "Switch 2", tipo de falla "Maker_Axis", valor 75.46 (numero) y unidad "%".
+    tipo "Conector", componente "CON101", tipo de falla "Maker_Axis", valor 75.46 (numero)
+    y unidad "%".
 
-    Lecturas de codigo NG no tienen sub-prueba: el tipo es el motivo ("no leyo la etiqueta").
+    Lecturas de codigo NG no tienen posicion (componente vacio) ni sub-prueba: el tipo de
+    falla es el motivo ("no leyo la etiqueta").
     Valores sin un solo numero (color "95,89,24") quedan como texto.
     """
     value_text = str(value_text or "")
-    componente = " ".join(part for part in (str(test_name or ""), str(position or "")) if part)
     if value_num is not None:
         valor = round(float(value_num), 2)
         unidad = "%" if "%" in value_text else ""
@@ -531,7 +532,13 @@ def _vision_defect_columns(test_name, position, sub_test, value_text, value_num)
         # El tipo queda corto (para agrupar en graficas) y el codigo leido va en el valor.
         motivo, _, codigo = value_text.partition(": ")
         tipo, valor = motivo, codigo
-    return {"componente": componente, "tipo_falla": tipo, "valor": valor, "unidad": unidad}
+    return {
+        "tipo": str(test_name or ""),
+        "componente": str(position or ""),
+        "tipo_falla": tipo,
+        "valor": valor,
+        "unidad": unidad,
+    }
 
 
 def _vision_parse_fallas(raw):
@@ -783,9 +790,13 @@ def _build_history_vision_where():
     }
     if _vision_defects_table_available():
         # Semi-join contra la tabla de fallas (chica): piezas con alguna falla que coincida.
+        column_filter_sql["tipo"] = (
+            "source_uid IN (SELECT d.source_uid FROM history_vision_defects d "
+            "WHERE d.test_name LIKE %s)"
+        )
         column_filter_sql["componente"] = (
             "source_uid IN (SELECT d.source_uid FROM history_vision_defects d "
-            "WHERE CONCAT_WS(' ', d.test_name, NULLIF(d.position, '')) LIKE %s)"
+            "WHERE d.position LIKE %s)"
         )
         column_filter_sql["tipo_falla"] = (
             "source_uid IN (SELECT d.source_uid FROM history_vision_defects d "
