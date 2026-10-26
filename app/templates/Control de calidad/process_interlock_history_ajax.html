@@ -7,7 +7,7 @@
 <div class="hist-tbl-tabs-root">
 <div class="hist-tbl-tabs" role="tablist" aria-label="Process interlock History">
   <button type="button" class="hist-tbl-tab is-active" role="tab" aria-selected="true" data-hist-tab="paros">Paros de banda</button>
-  <button type="button" class="hist-tbl-tab" role="tab" aria-selected="false" data-hist-tab="vision">Rechazos escáner ICT</button>
+  <button type="button" class="hist-tbl-tab" role="tab" aria-selected="false" data-hist-tab="vision">Escáner ICT</button>
 </div>
 
 <div data-hist-tab-panel="paros" role="tabpanel">
@@ -204,7 +204,8 @@
 </div>
 
 <!-- Pestana 2: escaneos del escaner COM de QualityLock que la verificacion MES no dejo
-     teclear en la prueba (vision_check_rejections_QA, la escribe la API de QualityLock). -->
+     teclear en la prueba, y PCBs escaneadas 2+ veces en una sesion del COM
+     (vision_check_rejections_QA, la escribe la API de QualityLock). -->
 <div data-hist-tab-panel="vision" role="tabpanel" hidden>
 <div id="pvr-container" class="hist-tbl-area-container"
      data-modulo="vision-rechazos"
@@ -309,7 +310,7 @@
       <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
       </svg>
-      <h3>Rechazos del escáner ICT</h3>
+      <h3>Rechazos y escaneos repetidos del escáner ICT</h3>
       <span class="record-count" id="pvr-record-count">0 registros</span>
       <button id="pvr-btn-export" class="btn-export">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -18,7 +18,8 @@ Rutas:
 Pestana "Rechazos escaner ICT": `vision_check_rejections_QA` la escribe la API de
 QualityLock (Bloqueo calidad) cuando la verificacion MES no deja teclear un codigo
 del escaner COM en la prueba (sin historial de Vision, ultima inspeccion NG o no es
-EBR). Misma base; aqui solo se lee.
+EBR), y cuando la misma PCB se escanea 2+ veces en una sesion del escaner COM
+(REPETIDO, una fila por escaneo). Misma base; aqui solo se lee.
 
 La tabla `interlock_stop_smd` la escribe el proyecto ESCANEO_INPUT (su
 `central/src/worker.js`, via applyInterlockStop) sobre la MISMA base
@@ -221,6 +222,9 @@ VISION_TIPOS = {
     "SIN_HISTORIAL": "Sin historial",
     "NG": "NG en Vision",
     "NO_EBR": "No es EBR",
+    # No es rechazo: misma PCB escaneada 2+ veces en una sesion del escaner COM (una fila
+    # por escaneo, con su hora). El codigo si se tecleo en la prueba.
+    "REPETIDO": "Escaneo repetido",
 }
 
 VISION_COLUMNAS = [

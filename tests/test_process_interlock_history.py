@@ -230,6 +230,18 @@ def test_vision_template_y_opciones_cumplen_el_contrato_del_js(client, monkeypat
     filtros = html.split('data-modulo="vision-rechazos"')[1].split('data-filtros="')[1].split('"')[0]
     for par in filtros.split(","):
         assert f'id="pvr-{par.split(":")[0]}"' in html, par
-    assert payload["tipo"] == ["Sin historial", "NG en Vision", "No es EBR"]
+    assert payload["tipo"] == ["Sin historial", "NG en Vision", "No es EBR", "Escaneo repetido"]
     for sufijo in payload:
         assert f'id="pvr-{sufijo}"' in html, sufijo
+
+
+def test_vision_escaneo_repetido_se_filtra_y_no_se_resalta(client, monkeypatch):
+    capturado = {}
+    monkeypatch.setattr(pih, "execute_query", _fake_query(capturado))
+    _login(client)
+
+    client.get("/api/process-interlock/vision/data?tipo=Escaneo repetido")
+    assert capturado["params"][0] == "REPETIDO"
+
+    fila = pih._fmt_vision_row({"rejection_type": "REPETIDO", "code": "EBR1"})
+    assert fila["tipo"] == "Escaneo repetido" and fila["_destacar"] is False
