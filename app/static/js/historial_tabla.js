@@ -22,7 +22,7 @@
 (function () {
   "use strict";
 
-  const CSS_VERSION = "20260922f";
+  const CSS_VERSION = "20261026a";
 
   // ====== WF_004 capa 2: asegurar CSS en <head> ======
   // MainTemplate.html ya los declara con cache-busting. Esta capa cubre que el
@@ -448,6 +448,23 @@
 
     document.addEventListener("click", event => {
       const target = event.target;
+
+      // Pestanas (Process interlock History): muestra solo el panel de la pulsada.
+      const tab = target.closest?.("[data-hist-tab]");
+      if (tab) {
+        const root = tab.closest(".hist-tbl-tabs-root");
+        root?.querySelectorAll("[data-hist-tab]").forEach(btn => {
+          const activa = btn === tab;
+          btn.classList.toggle("is-active", activa);
+          btn.setAttribute("aria-selected", String(activa));
+        });
+        root?.querySelectorAll("[data-hist-tab-panel]").forEach(panel => {
+          panel.hidden = panel.dataset.histTabPanel !== tab.dataset.histTab;
+        });
+        closeColumnFilterPopovers();
+        return;
+      }
+
       const inst = instanciaDe(target);
 
       const filterButton = target.closest?.(".hist-tbl-column-filter-btn");

@@ -2950,6 +2950,7 @@ window.mostrarProcessInterlockHistory = function () {
     () => {
       if (typeof window.initHistorialTabla === "function") {
         window.initHistorialTabla("interlock");
+        window.initHistorialTabla("vision-rechazos"); // pestana Rechazos escaner ICT
       }
     },
   );

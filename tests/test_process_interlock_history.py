@@ -102,7 +102,7 @@ def test_template_declara_el_contrato_del_js(client, monkeypatch):
 
     html = client.get("/process-interlock-history-ajax").get_data(as_text=True)
 
-    assert html.count("data-hist-filter-field=") == len(pih.COLUMNAS)
+    assert html.count("data-hist-filter-field=") == len(pih.COLUMNAS) + len(pih.VISION_COLUMNAS)
     assert 'data-modulo="interlock"' in html
     assert 'data-api-base="/api/process-interlock"' in html
     assert "historial_tabla.js" in html
@@ -155,3 +155,81 @@ def test_por_defecto_oculta_las_detecciones_cortas(client, monkeypatch):
     monkeypatch.setattr(pih, "execute_query", _fake_query(capturado))
     client.get("/api/process-interlock/data?incluir_cortos=1")
     assert "NOT (stop_reason=" not in capturado["sql"]
+
+
+# ── Pestana "Rechazos escaner ICT" (vision_check_rejections_QA, 2026-10-26) ──
+
+
+def test_vision_fechas_locales_se_filtran_como_rango_utc(client, monkeypatch):
+    """La tabla guarda UTC; el usuario filtra en hora de Mexico (-06:00)."""
+    capturado = {}
+    monkeypatch.setattr(pih, "execute_query", _fake_query(capturado))
+    _login(client)
+
+    client.get(
+        "/api/process-interlock/vision/data?fecha_desde=2026-10-26&fecha_hasta=2026-10-26"
+        "&linea=M1&estacion=ICT-01&tipo=Sin historial&busqueda=EBR437"
+    )
+
+    sql, params = capturado["sql"], capturado["params"]
+    # Indice en rejected_at_utc: la columna no se envuelve en funciones.
+    assert "rejected_at_utc>=%s" in sql and "rejected_at_utc<%s" in sql
+    assert params[:2] == ("2026-10-26 06:00:00", "2026-10-27 06:00:00")
+    assert params[2:4] == ("M1", "ICT-01")
+    # El select manda la etiqueta; se filtra por el codigo guardado.
+    assert params[4] == "SIN_HISTORIAL"
+    assert params[5:7] == ("%EBR437%", "%EBR437%")
+    assert params[-2:] == (1000, 0)
+
+
+def test_vision_filtro_de_columna_tipo_acepta_la_etiqueta(client, monkeypatch):
+    capturado = {}
+    monkeypatch.setattr(pih, "execute_query", _fake_query(capturado))
+    _login(client)
+
+    client.get("/api/process-interlock/vision/data?cf_tipo=ng en&cf_hora=2026-10-26 08")
+    assert "rejection_type IN (%s)" in capturado["sql"]
+    assert "CAST(CONVERT_TZ(rejected_at_utc, '+00:00', '-06:00') AS CHAR) LIKE %s" in capturado["sql"]
+    # En el orden de las columnas: Fecha / hora antes que Tipo.
+    assert capturado["params"][:2] == ("%2026-10-26 08%", "NG")
+
+    # Texto que no es ningun tipo: sin resultados, no la tabla entera.
+    capturado = {}
+    monkeypatch.setattr(pih, "execute_query", _fake_query(capturado))
+    client.get("/api/process-interlock/vision/data?cf_tipo=zzz")
+    assert capturado["params"][0] == ""
+
+
+def test_vision_fila_legible_y_ng_resaltado():
+    from datetime import datetime
+
+    base = {
+        "hora": datetime(2026, 10, 26, 8, 16, 32), "station_code": "ICT-01", "line": "M3",
+        "code": "EBR41039119922610230504", "reason": "Ultima inspeccion de Vision: NG.",
+        "machine": "M3", "inspected_at": datetime(2026, 10, 26, 8, 16, 0),
+    }
+    ng = pih._fmt_vision_row({**base, "rejection_type": "NG"})
+    assert ng["tipo"] == "NG en Vision" and ng["_destacar"] is True
+    assert ng["hora"] == "2026-10-26 08:16:32" and ng["inspeccion"] == "2026-10-26 08:16:00"
+    sin = pih._fmt_vision_row({**base, "rejection_type": "SIN_HISTORIAL", "inspected_at": None})
+    assert sin["tipo"] == "Sin historial" and sin["_destacar"] is False and sin["inspeccion"] == ""
+
+
+def test_vision_template_y_opciones_cumplen_el_contrato_del_js(client, monkeypatch):
+    monkeypatch.setattr(
+        pih, "execute_query", lambda sql, params=None, fetch=None: [{"v": "M1"}]
+    )
+    _login(client)
+
+    html = client.get("/process-interlock-history-ajax").get_data(as_text=True)
+    payload = client.get("/api/process-interlock/vision/opciones").get_json()
+
+    assert 'data-modulo="vision-rechazos"' in html
+    assert 'data-api-base="/api/process-interlock/vision"' in html
+    assert 'data-hist-tab="vision"' in html and 'data-hist-tab-panel="vision"' in html
+    filtros = html.split('data-modulo="vision-rechazos"')[1].split('data-filtros="')[1].split('"')[0]
+    for par in filtros.split(","):
+        assert f'id="pvr-{par.split(":")[0]}"' in html, par
+    assert payload["tipo"] == ["Sin historial", "NG en Vision", "No es EBR"]
+    for sufijo in payload:
+        assert f'id="pvr-{sufijo}"' in html, sufijo

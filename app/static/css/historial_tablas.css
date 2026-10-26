@@ -285,3 +285,40 @@ th.hist-tbl-column-filterable.filter-open {
     font-style: italic;
     padding: 20px;
 }
+
+/* Pestanas (Process interlock History: Paros de banda / Rechazos escaner ICT).
+ * Mismo look que las pestanas del Historial de Vision. */
+.hist-tbl-tabs {
+    display: flex;
+    gap: 4px;
+    min-height: 38px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--ilsan-border);
+}
+
+.hist-tbl-tab {
+    min-height: 38px;
+    padding: 8px 16px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.hist-tbl-tab:hover,
+.hist-tbl-tab:focus-visible {
+    color: var(--ilsan-text-light);
+    background: var(--ilsan-hover);
+    outline: none;
+}
+
+.hist-tbl-tab.is-active {
+    color: var(--accent, #38bdf8);
+    border-bottom-color: var(--accent, #38bdf8);
+}
+
+[data-hist-tab-panel][hidden] {
+    display: none !important;
+}

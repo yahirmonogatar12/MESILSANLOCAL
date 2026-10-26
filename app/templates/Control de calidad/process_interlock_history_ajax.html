@@ -4,6 +4,13 @@
      contenedor raiz son su contrato.
      WF_004: ict.css + historial_tablas.css declarados en MainTemplate.html
      con cache-busting; el JS los reasegura en <head>. -->
+<div class="hist-tbl-tabs-root">
+<div class="hist-tbl-tabs" role="tablist" aria-label="Process interlock History">
+  <button type="button" class="hist-tbl-tab is-active" role="tab" aria-selected="true" data-hist-tab="paros">Paros de banda</button>
+  <button type="button" class="hist-tbl-tab" role="tab" aria-selected="false" data-hist-tab="vision">Rechazos escáner ICT</button>
+</div>
+
+<div data-hist-tab-panel="paros" role="tabpanel">
 <div id="pih-container" class="hist-tbl-area-container"
      data-modulo="interlock"
      data-prefijo="pih"
@@ -194,5 +201,168 @@
 
 </div>
 </div>
+</div>
 
-<script src="{{ url_for('static', filename='js/historial_tabla.js', v='20260922f') }}"></script>
+<!-- Pestana 2: escaneos del escaner COM de QualityLock que la verificacion MES no dejo
+     teclear en la prueba (vision_check_rejections_QA, la escribe la API de QualityLock). -->
+<div data-hist-tab-panel="vision" role="tabpanel" hidden>
+<div id="pvr-container" class="hist-tbl-area-container"
+     data-modulo="vision-rechazos"
+     data-prefijo="pvr"
+     data-api-base="/api/process-interlock/vision"
+     data-archivo="rechazos_escaner_ict"
+     data-filtros="fecha-desde:fecha_desde,fecha-hasta:fecha_hasta,linea:linea,estacion:estacion,tipo:tipo,busqueda:busqueda">
+<div class="ict-page">
+
+  <div class="filters-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+      </svg>
+      <h3>Filtros de Búsqueda</h3>
+    </div>
+    <div id="pvr-filters" class="hist-tbl-filters">
+      <div class="filter-group">
+        <label for="pvr-fecha-desde">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Fecha desde
+        </label>
+        <input type="date" id="pvr-fecha-desde">
+      </div>
+
+      <div class="filter-group">
+        <label for="pvr-fecha-hasta">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Fecha hasta
+        </label>
+        <input type="date" id="pvr-fecha-hasta">
+      </div>
+
+      <div class="filter-group">
+        <label for="pvr-linea">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+          </svg>
+          Línea
+        </label>
+        <select id="pvr-linea">
+          <option value="">Todas</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="pvr-estacion">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="13" rx="2"></rect>
+            <path d="M8 21h8M12 17v4"></path>
+          </svg>
+          Estación
+        </label>
+        <select id="pvr-estacion">
+          <option value="">Todas</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="pvr-tipo">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
+          </svg>
+          Tipo
+        </label>
+        <select id="pvr-tipo">
+          <option value="">Todos</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="pvr-busqueda">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          Código / Motivo
+        </label>
+        <input type="text" id="pvr-busqueda" placeholder="Buscar en texto...">
+      </div>
+
+      <button id="pvr-btn-consultar" class="btn-primary">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        Consultar
+      </button>
+    </div>
+  </div>
+
+  <div class="results-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <h3>Rechazos del escáner ICT</h3>
+      <span class="record-count" id="pvr-record-count">0 registros</span>
+      <button id="pvr-btn-export" class="btn-export">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Exportar Excel
+      </button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-loading" id="pvr-table-loading">
+        <div class="spinner"></div>
+        <span>Cargando datos...</span>
+      </div>
+      <table id="pvr-table" class="hist-tbl-table">
+        <thead>
+          <tr>
+            {% for clave, etiqueta in columnas_vision %}
+            <th data-hist-filter-field="{{ clave }}">{{ etiqueta }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody id="pvr-body"></tbody>
+      </table>
+    </div>
+    <div id="pvr-pagination" class="ict-pagination" style="display:none;">
+      <div class="ict-pagination-info">
+        <span id="pvr-pagination-summary">0 - 0 de 0</span>
+      </div>
+      <div class="ict-pagination-controls">
+        <label class="ict-pagination-perpage">
+          Por pagina
+          <select id="pvr-per-page">
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+            <option value="1000" selected>1000</option>
+          </select>
+        </label>
+        <button id="pvr-page-first" type="button" class="btn-page" title="Primera">«</button>
+        <button id="pvr-page-prev"  type="button" class="btn-page" title="Anterior">‹</button>
+        <span class="ict-pagination-current">
+          <input type="number" id="pvr-page-input" min="1" value="1" step="1">
+          <span> / <span id="pvr-page-total">1</span></span>
+        </span>
+        <button id="pvr-page-next"  type="button" class="btn-page" title="Siguiente">›</button>
+        <button id="pvr-page-last"  type="button" class="btn-page" title="Ultima">»</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+</div>
+
+<script src="{{ url_for('static', filename='js/historial_tabla.js', v='20261026a') }}"></script>
