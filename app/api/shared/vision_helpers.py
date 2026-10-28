@@ -9,6 +9,9 @@ Contenido:
   - Resolucion de imagenes en shares de red (_vision_candidate_share_roots,
     _vision_candidate_hour_directories, _vision_share_name,
     _vision_is_safe_path, _resolve_history_vision_image, _get_history_vision_record).
+    La IP de la PC sale de DeviceHub (_vision_devicehub_ip), el share se monta con
+    VISION_SHARE_USER/PASSWORD del .env (_vision_share_available) y un shlog duplicado
+    toma la foto de su gemelo SHT (_get_history_vision_sht_twin).
   - Builders de query SQL (_build_history_vision_query,
     _build_history_vision_pass_fail_summary_query).
 
@@ -19,8 +22,10 @@ NOTA anti-circular: importa execute_query directo de app.db_mysql.
 """
 
 import json
+import logging
 import os
 import re
+import subprocess
 import time
 from datetime import date, datetime, timedelta
 from datetime import time as dt_time
@@ -29,6 +34,8 @@ from pathlib import Path
 from flask import request
 
 from app.db_mysql import execute_query
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -178,10 +185,89 @@ def _vision_unique_values(values):
     return unique_values
 
 
+# La red da IPs por DHCP sin reserva y cada registro guarda la IP del dia de su captura:
+# M2 paso de .156 a .110 el 2026-10-23 y sus fotos anteriores ya no se encontraban. La IP
+# vigente la reporta el agente de DeviceHub de cada PC; las de vision son VISION-<linea>.
+_VISION_DEVICEHUB_TTL_SECONDS = 30
+_vision_devicehub_cache = {}  # machine_name -> (consultado_en, ip o None)
+
+
+def _vision_devicehub_ip(machine_name):
+    """IP actual de la PC de vision de la linea segun DeviceHub; None si no se sabe."""
+    machine_name = str(machine_name or "").strip()
+    if not machine_name:
+        return None
+    cached = _vision_devicehub_cache.get(machine_name)
+    if cached and time.time() - cached[0] < _VISION_DEVICEHUB_TTL_SECONDS:
+        return cached[1]
+
+    ip = None
+    try:
+        row = execute_query(
+            "SELECT current_ip FROM devicehub.machines "
+            "WHERE machine_code=%s AND retired_at IS NULL AND current_ip IS NOT NULL "
+            "ORDER BY last_seen DESC LIMIT 1",
+            (f"VISION-{machine_name}",),
+            fetch="one",
+        )
+        ip = (row or {}).get("current_ip") or None
+    except Exception:
+        # Sin DeviceHub se busca con la IP guardada en el registro, como antes.
+        logger.warning("No se pudo consultar DeviceHub para %s", machine_name, exc_info=True)
+    _vision_devicehub_cache[machine_name] = (time.time(), ip)
+    return ip
+
+
+def _vision_current_source_file(record):
+    """source_file con el host cambiado por la IP vigente de la PC (DeviceHub), si se conoce."""
+    path = str(record.get("source_file") or "").strip()
+    current_ip = _vision_devicehub_ip(record.get("machine_name"))
+    if not current_ip or not path.startswith("\\\\"):
+        return path
+    rest = path[2:].split("\\", 1)
+    return rf"\\{current_ip}\{rest[1]}" if len(rest) > 1 else path
+
+
+# El MES no tenia credenciales del share: solo entraba mientras otro proceso de Windows
+# tuviera abierta una sesion a esa PC, y al caerse la sesion "no se encontraba la foto".
+_VISION_SHARE_RETRY_SECONDS = 60
+_vision_share_retry_at = {}  # share -> no reintentar net use antes de este momento
+
+
+def _vision_share_available(root_path):
+    """True si la carpeta del share responde; si no, la monta con las credenciales del .env."""
+    return os.path.isdir(str(root_path)) or _vision_mount_share(root_path)
+
+
+def _vision_mount_share(root_path):
+    """net use con VISION_SHARE_USER / VISION_SHARE_PASSWORD del .env (a lo mas cada 60 s
+    por share); True si despues la carpeta responde."""
+    root = str(root_path)
+    user = os.getenv("VISION_SHARE_USER", "").strip()
+    key = root.lower()
+    if os.name != "nt" or not user or time.time() < _vision_share_retry_at.get(key, 0):
+        return False
+    _vision_share_retry_at[key] = time.time() + _VISION_SHARE_RETRY_SECONDS
+    try:
+        # ponytail: la contraseña va en la linea de comandos de net use un instante, igual que el watcher
+        result = subprocess.run(
+            ["net", "use", root, os.getenv("VISION_SHARE_PASSWORD", ""), f"/user:{user}", "/persistent:no"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        logger.warning("net use %s fallo: %s", root, exc)
+        return False
+    if result.returncode != 0:
+        logger.warning("net use %s fallo: %s", root, (result.stderr or result.stdout).strip())
+    return os.path.isdir(root)
+
+
 def _vision_candidate_share_roots(record):
     """Construir raices UNC candidatas para buscar imagenes."""
     machine_name = str(record.get("machine_name") or "").strip()
-    candidate_hosts = _vision_unique_values(
+    current_ip = _vision_devicehub_ip(machine_name)
+    # Con la IP vigente no se busca en la guardada: ya no es de esa PC (o es de otra).
+    candidate_hosts = [current_ip] if current_ip else _vision_unique_values(
         [
             _vision_extract_host_from_source_file(record.get("source_file")),
             record.get("machine_ip"),
@@ -215,7 +301,7 @@ def _vision_candidate_hour_directories(root_path, part_code, reference_dt):
     candidate_hours = [base_hour]
 
     previous_delta = (reference_dt - base_hour).total_seconds()
-    if previous_delta <= 1.0:
+    if previous_delta <= _VISION_SHLOG_BEFORE_SECONDS:  # la foto del shlog puede ser de la hora anterior
         candidate_hours.append(base_hour - timedelta(hours=1))
 
     next_hour = base_hour + timedelta(hours=1)
@@ -298,20 +384,56 @@ def _vision_is_safe_path(target_path, allowed_roots):
     return False
 
 
+_VISION_RECORD_COLUMNS = (
+    "id, source_uid, machine_name, machine_ip, result, log_timestamp, "
+    "log_datetime, log_date, log_time, serial_qr, barcode, qr_payload, work_area, "
+    "part_code, source_file, captured_at_utc, created_at"
+)
+
+
 def _get_history_vision_record(record_id):
     """Obtener un registro completo de history_vision por id."""
-    sql = (
-        "SELECT id, source_uid, machine_name, machine_ip, result, log_timestamp, "
-        "log_datetime, log_date, log_time, serial_qr, barcode, qr_payload, work_area, "
-        "part_code, source_file, captured_at_utc, created_at "
-        "FROM history_vision WHERE id=%s LIMIT 1"
-    )
+    sql = f"SELECT {_VISION_RECORD_COLUMNS} FROM history_vision WHERE id=%s LIMIT 1"
     return execute_query(sql, (record_id,), fetch="one")
+
+
+_VISION_TWIN_WINDOW = timedelta(minutes=10)
+
+
+def _get_history_vision_sht_twin(record):
+    """Registro SHT de la misma pieza (mismo QR o barcode y resultado) cerca de un registro shlog.
+
+    El watcher a veces escribe la pieza dos veces: del .txt SHT y del .shlog con la hora
+    corrida 9-200 s (fuera de su ventana de +-3 s contra el SHT). La foto es la del SHT,
+    sellada con la hora exacta del SHT. Medido 2026-10-27: 13 de 15 shlog en M4, 24 de 72 en M3.
+    """
+    qr = str(record.get("serial_qr") or "").strip()
+    barcode = str(record.get("barcode") or "").strip()
+    reference_dt = _vision_reference_datetime(record)
+    if not reference_dt or not (qr or barcode):
+        return None
+    # None en vez de '': "serial_qr = NULL" nunca empata con las filas sin codigo.
+    sql = (
+        f"SELECT {_VISION_RECORD_COLUMNS} FROM history_vision "
+        "WHERE result=%s AND log_datetime BETWEEN %s AND %s AND machine_name=%s "
+        "AND source_file LIKE %s AND (serial_qr=%s OR barcode=%s) "
+        # El QR de la pieza manda: el .shlog a veces le pega el barcode de la vecina.
+        "ORDER BY (serial_qr <=> %s) DESC, ABS(TIMESTAMPDIFF(MICROSECOND, log_datetime, %s)) "
+        "LIMIT 1"
+    )
+    params = (
+        record.get("result"), reference_dt - _VISION_TWIN_WINDOW, reference_dt + _VISION_TWIN_WINDOW,
+        record.get("machine_name"), "%.txt", qr or None, barcode or None, qr or None, reference_dt,
+    )
+    return execute_query(sql, params, fetch="one")
 
 
 # Tolerancias de la busqueda de imagen (segundos).
 _VISION_EXACT_SECONDS = 0.01  # SHT: el sello de la foto es log_datetime al milisegundo
-_VISION_NEAREST_SECONDS = 1.0  # shlog: la foto es 0.2-0.4 s anterior al fin de la inspeccion
+_VISION_NEAREST_SECONDS = 1.0  # shlog: la foto es 0.2-0.4 s anterior al fin de la inspeccion (OK)
+# shlog NG: la inspeccion tarda mas; M2 2026-10-27 tenia la foto 1.01-1.14 s antes del fin.
+# La foto nunca es posterior al fin, asi que solo hacia atras; misma ventana del watcher (+-3 s).
+_VISION_SHLOG_BEFORE_SECONDS = 3.0
 
 
 def _vision_record_codes(record):
@@ -343,7 +465,11 @@ def _vision_pick_image_candidate(candidates, source):
         best = min(exact, key=lambda c: c["delta_seconds"])
         return best, "exacta (hora y codigo)" if best["code_match"] else "exacta (hora)"
 
-    nearest = [c for c in candidates if c["delta_seconds"] <= _VISION_NEAREST_SECONDS]
+    nearest = [
+        c for c in candidates
+        if c["delta_seconds"] <= _VISION_NEAREST_SECONDS
+        or 0 <= c["photo_before_seconds"] <= _VISION_SHLOG_BEFORE_SECONDS
+    ]
     if not nearest:
         return None, ""
     return min(nearest, key=lambda c: c["delta_seconds"]), "por hora mas cercana"
@@ -387,6 +513,22 @@ def _resolve_history_vision_image(record):
 
     if not share_roots:
         result_payload["error"] = "No se encontraron rutas compartidas candidatas."
+        return result_payload
+
+    # is_dir() de un share sin acceso da False igual que una carpeta que no existe: sin
+    # esta revision, una sesion de red caida se reportaba como "no se encontro la foto".
+    # Solo si ninguna responde se monta: "\\IP\Result" no existe en todas las PCs (error 67).
+    share_roots = (
+        [root for root in share_roots if os.path.isdir(str(root))]
+        or [root for root in share_roots if _vision_mount_share(root)]
+    )
+    if not share_roots:
+        result_payload["error"] = (
+            "Sin acceso a la carpeta de la vision ("
+            + ", ".join(result_payload["share_roots"])
+            + "). Revise la red de la PC o VISION_SHARE_USER / VISION_SHARE_PASSWORD en el .env."
+        )
+        result_payload["share_inaccessible"] = True
         return result_payload
 
     filename_part_prefix = part_code_prefix or part_code.upper()
@@ -462,6 +604,7 @@ def _resolve_history_vision_image(record):
                         "share_name": _vision_share_name(share_root),
                         "side_folder": side_dir.name,
                         "delta_seconds": abs((file_dt - reference_dt).total_seconds()),
+                        "photo_before_seconds": (reference_dt - file_dt).total_seconds(),
                         "code_match": code_match,
                         # Un codigo distinto en el nombre es otra pieza (aunque la hora sea cercana).
                         "code_consistent": code_match or not file_code or not record_codes,
@@ -482,12 +625,41 @@ def _resolve_history_vision_image(record):
         )
         return result_payload
 
+    if source == "SHT":
+        result_payload["error"] = "No se encontro la foto con la misma hora (registro SHT)."
+        return result_payload
+
+    twin_payload = _resolve_from_sht_twin(record, result_payload)
+    if twin_payload:
+        return twin_payload
     result_payload["error"] = (
-        "No se encontro la foto con la misma hora (registro SHT)."
-        if source == "SHT"
-        else "No se encontro una foto dentro de 1 segundo (registro shlog)."
+        "No se encontro una foto cercana (1 s, o hasta 3 s antes) ni un registro SHT de la "
+        "misma pieza (registro shlog)."
     )
     return result_payload
+
+
+def _resolve_from_sht_twin(record, result_payload):
+    """Foto de un registro shlog tomada de su gemelo SHT (misma pieza); None si no hay."""
+    try:
+        twin = _get_history_vision_sht_twin(record)
+    except Exception:
+        logger.warning("No se pudo buscar el registro SHT gemelo de %s", record.get("id"), exc_info=True)
+        return None
+    if not twin:
+        return None
+    twin_payload = _resolve_history_vision_image(twin)  # SHT: no vuelve a buscar gemelo
+    if not twin_payload.get("resolved_path"):
+        return None
+    twin_payload.update({
+        "record_id": result_payload["record_id"],
+        "reference_datetime": result_payload["reference_datetime"],
+        "fuente": result_payload["fuente"],
+        "searched_paths": result_payload["searched_paths"] + twin_payload["searched_paths"],
+        "match_type": f"misma pieza en el registro SHT {twin.get('id')} (QR/barcode)",
+        "twin_record_id": twin.get("id"),
+    })
+    return twin_payload
 
 
 # ---------------------------------------------------------------------------

@@ -44,11 +44,13 @@ from app.api.shared.vision_helpers import (
     _read_sht_row,
     _resolve_history_vision_image,
     _vision_candidate_share_roots,
+    _vision_current_source_file,
     _vision_defect_columns,
     _vision_format_value,
     _vision_is_safe_path,
     _vision_parse_fallas,
     _vision_record_source,
+    _vision_share_available,
     _vision_sht_stamp,
 )
 
@@ -368,10 +370,14 @@ def vision_parameters_api():
     if _vision_record_source(record) != "SHT":
         return jsonify({"error": "Los parametros solo existen para piezas con resultados SHT."}), 400
 
-    path = str(record.get("source_file") or "").strip()
-    # Igual que las imagenes: solo se lee dentro del share de resultados de esa maquina.
-    if not _vision_is_safe_path(path, _vision_candidate_share_roots(record)):
+    # Igual que las imagenes: con la IP vigente de la PC (DeviceHub) y solo dentro del
+    # share de resultados de esa maquina.
+    path = _vision_current_source_file(record)
+    roots = [root for root in _vision_candidate_share_roots(record) if _vision_is_safe_path(path, [root])]
+    if not roots:
         return jsonify({"error": "La ruta del archivo de resultados no es valida."}), 403
+    if not any(_vision_share_available(root) for root in roots):
+        return jsonify({"error": "Sin acceso a la carpeta de la vision (revise la red o las credenciales del .env)."}), 503
 
     stamp = _vision_sht_stamp(record)
     try:

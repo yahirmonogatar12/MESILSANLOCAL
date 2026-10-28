@@ -5,14 +5,27 @@ nombre de la foto trae el ultimo codigo leido. shlog: log_datetime es el fin de 
 inspeccion, 0.2-0.4 s despues de la foto.
 """
 
+import os
 import time
 from datetime import datetime
+from pathlib import Path
+
+import pytest
 
 from app.api.control_resultados import historial_vision
 from app.api.shared import vision_helpers
 
 QR = "I20261012-016-00072;MAIN;EBR30299370;1;"
 SHOT = datetime(2026, 10, 22, 15, 41, 45, 137000)
+_REAL_DEVICEHUB_IP = vision_helpers._vision_devicehub_ip
+_REAL_SHT_TWIN = vision_helpers._get_history_vision_sht_twin
+
+
+@pytest.fixture(autouse=True)
+def _sin_mysql(monkeypatch):
+    """DeviceHub y el gemelo SHT consultan MySQL: los tests no tocan la BD del .env."""
+    monkeypatch.setattr(vision_helpers, "_vision_devicehub_ip", lambda _name: None)
+    monkeypatch.setattr(vision_helpers, "_get_history_vision_sht_twin", lambda _record: None)
 
 
 def _photo_tree(tmp_path, names, part="EBR30299370", result="OK"):
@@ -134,6 +147,157 @@ def test_photo_without_code_in_name_uses_nearest_time(tmp_path, monkeypatch):
 
     assert result["match_type"] == "por hora mas cercana"
     assert result["resolved_path"].endswith("_20261022_154145137_NG.jpg")
+
+
+# ── IP vigente (DeviceHub), acceso al share y gemelo SHT ───────────────────────────
+
+
+def test_current_ip_from_devicehub_replaces_the_stored_one(monkeypatch):
+    # Caso real: M2 paso de .156 a .110 y sus registros viejos buscaban en una PC que ya no esta.
+    record = _record(
+        r"\\192.168.2.156\Result M2\EBR37437070\Data\2026\10\상부\f_20261022.txt", SHOT,
+        machine_name="M2", machine_ip="192.168.2.156",
+    )
+    monkeypatch.setattr(vision_helpers, "_vision_devicehub_ip", lambda name: "192.168.2.110" if name == "M2" else None)
+
+    assert vision_helpers._vision_candidate_share_roots(record) == [
+        Path(r"\\192.168.2.110\Result M2"), Path(r"\\192.168.2.110\Result"),
+    ]
+    assert vision_helpers._vision_current_source_file(record) == (
+        r"\\192.168.2.110\Result M2\EBR37437070\Data\2026\10\상부\f_20261022.txt"
+    )
+
+    # Sin respuesta de DeviceHub: como antes, con la IP guardada en el registro.
+    monkeypatch.setattr(vision_helpers, "_vision_devicehub_ip", lambda _name: None)
+    assert vision_helpers._vision_candidate_share_roots(record)[0] == Path(r"\\192.168.2.156\Result M2")
+    assert vision_helpers._vision_current_source_file(record) == record["source_file"]
+
+
+def test_devicehub_lookup_is_cached_and_tolerates_errors(monkeypatch):
+    calls = []
+
+    def fake_query(sql, params, fetch):
+        calls.append(params)
+        return {"current_ip": "192.168.2.110"}
+
+    monkeypatch.setattr(vision_helpers, "_vision_devicehub_ip", _REAL_DEVICEHUB_IP)
+    monkeypatch.setattr(vision_helpers, "_vision_devicehub_cache", {})
+    monkeypatch.setattr(vision_helpers, "execute_query", fake_query)
+    assert vision_helpers._vision_devicehub_ip("M2") == "192.168.2.110"
+    assert vision_helpers._vision_devicehub_ip("M2") == "192.168.2.110"
+    assert calls == [("VISION-M2",)]  # la segunda vez sale del cache
+
+    def broken(sql, params, fetch):
+        raise RuntimeError("Conexion MySQL no disponible")
+
+    monkeypatch.setattr(vision_helpers, "execute_query", broken)
+    assert vision_helpers._vision_devicehub_ip("M4") is None
+
+
+def test_unreachable_share_is_not_reported_as_missing_photo(tmp_path, monkeypatch):
+    monkeypatch.delenv("VISION_SHARE_USER", raising=False)
+    result = _resolve(monkeypatch, tmp_path / "Result M3", _record(r"\\h\Result M3\x.txt", SHOT))
+
+    assert result["share_inaccessible"] is True
+    assert result["error"].startswith("Sin acceso a la carpeta de la vision")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="net use solo existe en Windows")
+def test_share_is_mounted_with_env_credentials(tmp_path, monkeypatch):
+    root = tmp_path / "Result M2"
+    runs = []
+
+    def fake_run(command, **kwargs):
+        runs.append(command)
+        root.mkdir()  # net use exitoso: la carpeta ya responde
+        return vision_helpers.subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setenv("VISION_SHARE_USER", "user")
+    monkeypatch.setenv("VISION_SHARE_PASSWORD", "1111")
+    monkeypatch.setattr(vision_helpers, "_vision_share_retry_at", {})
+    monkeypatch.setattr(vision_helpers.subprocess, "run", fake_run)
+
+    assert vision_helpers._vision_share_available(root) is True
+    assert runs == [["net", "use", str(root), "1111", "/user:user", "/persistent:no"]]
+    assert vision_helpers._vision_share_available(root) is True and len(runs) == 1  # ya responde
+
+    # Share que sigue sin responder: no se repite net use en cada busqueda.
+    other = tmp_path / "Result M9"
+    monkeypatch.setattr(
+        vision_helpers.subprocess, "run",
+        lambda command, **kwargs: runs.append(command) or vision_helpers.subprocess.CompletedProcess(command, 2, "", "x"),
+    )
+    assert vision_helpers._vision_share_available(other) is False
+    assert vision_helpers._vision_share_available(other) is False
+    assert len(runs) == 2
+
+
+def test_shlog_ng_photo_up_to_3_seconds_before_the_end(tmp_path, monkeypatch):
+    # Caso real M2 13:22:09.213: NG sin lectura de codigo, foto 1.009 s antes del fin.
+    root = _photo_tree(tmp_path, ["EBR30299370_상부_20261022_154145137_NG.jpg"], result="NG")
+    end = datetime(2026, 10, 22, 15, 41, 46, 146000)
+    result = _resolve(monkeypatch, root, _record(r"\\h\Log\x.shlog", end, result="NG"))
+    assert result["resolved_path"].endswith("_20261022_154145137_NG.jpg")
+
+    # La foto nunca es posterior al fin de la inspeccion: 2 s despues es otra pieza.
+    before = datetime(2026, 10, 22, 15, 41, 43, 137000)
+    result = _resolve(monkeypatch, root, _record(r"\\h\Log\x.shlog", before, result="NG"))
+    assert result["resolved_path"] == ""
+
+
+def test_share_not_mounted_when_another_candidate_responds(tmp_path, monkeypatch):
+    root = _photo_tree(tmp_path, [f"EBR30299370_상부_{QR}_20261022_154145137_OK.jpg"])
+    mounted = []
+    monkeypatch.setattr(vision_helpers, "_vision_mount_share", lambda r: mounted.append(r) or False)
+    monkeypatch.setattr(vision_helpers, "_vision_candidate_share_roots", lambda _r: [root, tmp_path / "Result"])
+
+    result = vision_helpers._resolve_history_vision_image(_record(r"\\h\Result M3\x.txt", SHOT))
+
+    assert result["resolved_path"] and mounted == []  # \\IP\Result no existe: no se intenta net use
+
+
+def test_shlog_duplicate_takes_the_photo_of_its_sht_twin(tmp_path, monkeypatch):
+    # Caso real M4: el .shlog escribio la pieza -00458 a las 08:17:08.752; el SHT la misma
+    # pieza a las 08:17:31.228, que es el sello de su foto (22 s despues).
+    root = _photo_tree(tmp_path, [f"EBR30299370_상부_{QR}_20261022_154145137_OK.jpg"])
+    shlog = _record(r"\\h\Log\2026\10\20261022.shlog", datetime(2026, 10, 22, 15, 41, 22, 661000), id=7)
+    twin = _record(r"\\h\Result M3\EBR30299370\Data\f.txt", SHOT, id=8)
+    monkeypatch.setattr(vision_helpers, "_get_history_vision_sht_twin", lambda record: twin if record["id"] == 7 else None)
+
+    result = _resolve(monkeypatch, root, shlog)
+
+    assert result["resolved_path"].endswith("_20261022_154145137_OK.jpg")
+    assert result["twin_record_id"] == 8 and "registro SHT 8" in result["match_type"]
+    assert result["record_id"] == 7 and result["fuente"] == "shlog"
+    assert result["reference_datetime"] == "2026-10-22 15:41:22.661000"  # la hora del registro mostrado
+
+
+def test_shlog_without_photo_nor_twin_explains_it(tmp_path, monkeypatch):
+    root = _photo_tree(tmp_path, [f"EBR30299370_상부_{QR}_20261022_154145137_OK.jpg"])
+    result = _resolve(monkeypatch, root, _record(r"\\h\Log\x.shlog", datetime(2026, 10, 22, 15, 41, 22)))
+
+    assert result["resolved_path"] == ""
+    assert "ni un registro SHT de la misma pieza" in result["error"]
+
+
+def test_sht_twin_query_matches_by_code_and_never_by_empty_code(monkeypatch):
+    seen = {}
+
+    def fake_query(sql, params, fetch):
+        seen.update(sql=sql, params=params)
+        return None
+
+    monkeypatch.setattr(vision_helpers, "execute_query", fake_query)
+    twin_lookup = _REAL_SHT_TWIN
+
+    assert twin_lookup(_record(r"\\h\Log\x.shlog", SHOT, serial_qr="", barcode="")) is None
+    assert not seen  # sin QR ni barcode no se consulta
+
+    twin_lookup(_record(r"\\h\Log\x.shlog", SHOT, serial_qr="", barcode="EBR1"))
+    params = seen["params"]
+    assert params[0] == "OK" and params[3] == "M3" and params[4] == "%.txt"
+    assert params[5] is None and params[6] == "EBR1"  # QR vacio: NULL, no empata filas sin codigo
+    assert "%" not in seen["sql"].replace("%s", "")
 
 
 def test_history_query_adds_failures_and_filters(app, monkeypatch):
