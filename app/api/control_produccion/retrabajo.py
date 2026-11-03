@@ -1,15 +1,18 @@
 """Solicitud de Retrabajo: el MES define el retrabajo y cada area recibe su parte.
 
 No hay tabla de tareas: la parte de cada area se deriva de la solicitud.
-  EMBARQUES       origen EMBARQUES          -> retrabajo_salidas_embarques (MES, Salidas almacen embarques)
+  EMBARQUES       origen EMBARQUES          -> salidas normales de Embarques con departure = folio RT
   MICOM           programacion              -> fpa_requests (cola FPA existente de MICOM)
   IMPRESION       np_destino != np_origen   -> qr_history del lote plan_smt routing RETRABAJO
   CP_RETRABAJO    etiquetas o programacion  -> retrabajo_escaneos (Control_produccion)
   CP_REPARACION   componente ASSY           -> retrabajo_escaneos (Control_produccion)
   SMD_REPARACION  componente SMD            -> retrabajo_escaneos (Control_inventario_SMD)
 
-Las salidas de Embarques viven en tablas propias; no tocan inventario de
-Embarques ni cajas OQC (la conexion se hara despues).
+Embarques surte con su salida normal (folio EMB-SAL, descuenta inventario) y en
+vez de un departure le asigna el folio del retrabajo. Un retrabajo junta varias
+salidas y una salida se reparte entre varios retrabajos asignando cantidades
+parciales (el resto queda en una salida dividida). validar_departure_retrabajo
+lo valida desde app/api/pda/shipping_material.py.
 """
 
 import logging
@@ -36,18 +39,13 @@ logger = logging.getLogger(__name__)
 bp = Blueprint("retrabajo", __name__)
 
 PERMISO_MODULO = ("LISTA_CONTROLDEPRODUCCION", "Retrabajo", "Solicitud de retrabajo")
-PERMISO_EMBARQUES = (
-    "LISTA_CONTROL_DE_PROCESO",
-    "Almacén de Embarques",
-    "Salidas almacen embarques",
-)
-
 PART_RE = re.compile(r"^[A-Z]{3}\d{8}$")
 ORIGENES = ("EMBARQUES", "SMD", "PRODUCCION")
 TIPOS_MATERIAL = ("ASSY", "IMD_SMD")
 # IMD tambien lo repara Control Inventario SMD (etapa SMD_REPARACION).
 TIPOS_COMPONENTE = ("ASSY", "SMD", "IMD")
 MAX_CANTIDAD = 999  # tope de micomQuantity en la cola FPA de MICOM
+FOLIO_RE = re.compile(r"^RT-\d{8}-\d+$")
 ERROR_INTERNO = "Error interno del servidor."
 
 
@@ -111,30 +109,6 @@ def crear_tablas_retrabajo():
             KEY idx_rtb_comp_solicitud (solicitud_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """,
-        """
-        CREATE TABLE IF NOT EXISTS retrabajo_salidas_embarques (
-            id INT NOT NULL AUTO_INCREMENT,
-            folio VARCHAR(30) NULL,
-            solicitud_id INT NOT NULL,
-            part_number VARCHAR(64) NOT NULL,
-            cantidad INT NOT NULL,
-            registrado_por VARCHAR(100) NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY uq_rtb_salida_folio (folio),
-            KEY idx_rtb_salida_solicitud (solicitud_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS retrabajo_salidas_embarques_cajas (
-            id INT NOT NULL AUTO_INCREMENT,
-            salida_id INT NOT NULL,
-            box_code VARCHAR(100) NOT NULL,
-            PRIMARY KEY (id),
-            UNIQUE KEY uq_rtb_caja (box_code),
-            KEY idx_rtb_caja_salida (salida_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        """,
         # Los QR van en utf8mb4_bin igual que tracking.QR.
         """
         CREATE TABLE IF NOT EXISTS retrabajo_escaneos (
@@ -170,6 +144,14 @@ def crear_tablas_retrabajo():
             "ALTER TABLE tracking ADD COLUMN QR_Anterior VARCHAR(255) "
             "CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL, "
             "ADD INDEX idx_tracking_qr_anterior (QR_Anterior)"
+        )
+    # El avance de Embarques suma las salidas por departure_code = folio RT.
+    if not execute_query(
+        "SHOW INDEX FROM embarques_salida_material WHERE Key_name = %s",
+        ("idx_emb_salida_departure",), fetch="one",
+    ):
+        execute_query(
+            "ALTER TABLE embarques_salida_material ADD INDEX idx_emb_salida_departure (departure_code)"
         )
 
 
@@ -266,35 +248,42 @@ def validar_solicitud(data):
     }, errors
 
 
-def validar_salida_embarques(solicitud, data, surtido):
-    """Valida una salida de Embarques a retrabajo. Devuelve (payload, error)."""
-    if not solicitud:
-        return None, "Orden de retrabajo no encontrada."
-    if solicitud.get("status") != "ACTIVA":
-        return None, "La orden de retrabajo está cancelada."
-    solicitado = int(solicitud.get("emb_solicitado") or 0)
-    if solicitado <= 0:
-        return None, "La orden no tiene material de Embarques."
-    part_number = sanitizar_texto(data.get("partNumber"), 64).upper()
-    if part_number != solicitud.get("np_origen"):
-        return None, f"El número de parte debe ser {solicitud.get('np_origen')}."
-    cantidad = _entero(data.get("cantidad"))
-    pendiente = solicitado - int(surtido or 0)
-    if cantidad is None or cantidad < 1:
-        return None, "Cantidad inválida."
-    if cantidad > pendiente:
-        return None, f"La cantidad rebasa lo pendiente para Embarques ({max(pendiente, 0)})."
-    cajas = []
-    for raw in data.get("boxCodes") or []:
-        caja = sanitizar_texto(raw, 100)
-        if not caja:
-            continue
-        if caja.upper() in (c.upper() for c in cajas):
-            return None, f"Caja repetida: {caja}."
-        cajas.append(caja)
-    if not cajas:
-        return None, "Escanee al menos una caja."
-    return {"part_number": part_number, "cantidad": cantidad, "cajas": cajas}, None
+def validar_departure_retrabajo(cursor, departure_code, part_number, cantidad):
+    """Salida de Embarques con departure = folio RT. Devuelve el error o None.
+
+    Un departure sin forma de folio RT no se toca (None). Corre dentro de la
+    transaccion de la salida y bloquea la solicitud para no surtir de mas.
+    """
+    folio = str(departure_code or "").strip().upper()
+    if not FOLIO_RE.match(folio):
+        return None
+    cursor.execute(
+        "SELECT id, status, np_origen FROM retrabajo_solicitudes WHERE folio = %s FOR UPDATE", (folio,)
+    )
+    orden = cursor.fetchone()
+    if not orden:
+        return f"El retrabajo {folio} no existe."
+    if orden["status"] != "ACTIVA":
+        return f"El retrabajo {folio} está cancelado."
+    if str(part_number or "").strip().upper() != orden["np_origen"]:
+        return f"El retrabajo {folio} es del número de parte {orden['np_origen']}, no de {part_number}."
+    cursor.execute(
+        "SELECT COALESCE(SUM(cantidad), 0) AS total FROM retrabajo_origenes "
+        "WHERE solicitud_id = %s AND origen = 'EMBARQUES'",
+        (orden["id"],),
+    )
+    solicitado = int(cursor.fetchone()["total"] or 0)
+    if not solicitado:
+        return f"El retrabajo {folio} no lleva material de Embarques."
+    cursor.execute(
+        "SELECT COALESCE(SUM(quantity), 0) AS total FROM embarques_salida_material "
+        "WHERE departure_code = %s",
+        (folio,),
+    )
+    pendiente = solicitado - int(cursor.fetchone()["total"] or 0)
+    if int(cantidad or 0) > pendiente:
+        return f"La cantidad rebasa lo pendiente de Embarques para {folio} ({max(pendiente, 0)})."
+    return None
 
 
 def _estado(hecho, total, iniciado=None):
@@ -350,14 +339,6 @@ def _rows(sql, params=None):
     return execute_query(sql, params or None, fetch="all") or []
 
 
-def _cursor_rows(cursor):
-    """Las mismas lecturas, dentro de la transaccion abierta en `cursor`."""
-    def run(sql, params=None):
-        cursor.execute(sql, params)
-        return list(cursor.fetchall() or [])
-    return run
-
-
 _SELECT_RESUMEN = """
     SELECT s.*,
       (SELECT GROUP_CONCAT(CONCAT(o.origen, ' ', o.cantidad)
@@ -365,8 +346,8 @@ _SELECT_RESUMEN = """
         FROM retrabajo_origenes o WHERE o.solicitud_id = s.id) AS origenes_txt,
       (SELECT COALESCE(SUM(o.cantidad), 0) FROM retrabajo_origenes o
         WHERE o.solicitud_id = s.id AND o.origen = 'EMBARQUES') AS emb_solicitado,
-      (SELECT COALESCE(SUM(se.cantidad), 0) FROM retrabajo_salidas_embarques se
-        WHERE se.solicitud_id = s.id) AS emb_surtido,
+      (SELECT COALESCE(SUM(m.quantity), 0) FROM embarques_salida_material m
+        WHERE m.departure_code = s.folio COLLATE utf8mb4_0900_ai_ci) AS emb_surtido,
       (SELECT COUNT(*) FROM retrabajo_programaciones p WHERE p.solicitud_id = s.id) AS prog_total,
       (SELECT COUNT(*) FROM retrabajo_programaciones p JOIN fpa_requests f ON f.id = p.fpa_request_id
         WHERE p.solicitud_id = s.id AND f.status = 'COMPLETADA') AS prog_completas,
@@ -425,10 +406,12 @@ def _filtros_lista(args):
                OR s.id IN (SELECT solicitud_id FROM retrabajo_escaneos
                            WHERE qr_smd_anterior = %s OR qr_smd_nuevo = %s
                               OR qr_assy_anterior = %s OR qr_assy_nuevo = %s)
-               OR s.id IN (SELECT se.solicitud_id FROM retrabajo_salidas_embarques se
-                           JOIN retrabajo_salidas_embarques_cajas c ON c.salida_id = se.id
-                           WHERE c.box_code = %s)
-        """, [codigo.upper()] * 3 + [codigo] * 4 + [codigo]
+               OR s.folio COLLATE utf8mb4_0900_ai_ci IN (
+                   SELECT m.departure_code FROM embarques_salida_material m
+                   WHERE m.exit_folio = %s OR m.id IN (
+                       SELECT c.movement_id FROM embarques_movimiento_cajas c
+                       WHERE c.movement_type = 'exit' AND c.box_code = %s))
+        """, [codigo.upper()] * 3 + [codigo] * 4 + [codigo.upper(), codigo]
     where, params = [], []
     desde = sanitizar_texto(args.get("desde"), 10)
     hasta = sanitizar_texto(args.get("hasta"), 10)
@@ -450,8 +433,8 @@ def _listar(args, limit):
     return [r for r in records if r["estado"] == estado] if estado else records
 
 
-def _fetch_resumen(solicitud_id, rows=_rows):
-    found = rows(_SELECT_RESUMEN + " WHERE s.id = %s", (solicitud_id,))
+def _fetch_resumen(solicitud_id):
+    found = _rows(_SELECT_RESUMEN + " WHERE s.id = %s", (solicitud_id,))
     return found[0] if found else None
 
 
@@ -483,7 +466,7 @@ def _detalle(solicitud_id):
         """,
         (solicitud_id,),
     )
-    record["salidas_embarques"] = _salidas_embarques(solicitud_id)
+    record["salidas_embarques"] = _salidas_embarques(record["folio"])
     record["escaneos"] = [
         {**r, "created_at": formatear_fecha_hora(r.get("created_at"))}
         for r in _rows(
@@ -498,25 +481,28 @@ def _detalle(solicitud_id):
     return record
 
 
-def _salidas_embarques(solicitud_id):
+def _salidas_embarques(folio):
+    """Salidas normales de Embarques asignadas al retrabajo (departure = folio)."""
+    # ponytail: una salida dividida al asignar departure muestra las cajas de la original.
     rows = _rows(
         """
-        SELECT se.id, se.folio, se.part_number, se.cantidad, se.registrado_por, se.created_at,
+        SELECT m.id, m.exit_folio, m.part_number, m.quantity, m.departure_assigned_by,
+               m.departure_assigned_at,
                GROUP_CONCAT(c.box_code ORDER BY c.id SEPARATOR ', ') AS cajas
-        FROM retrabajo_salidas_embarques se
-        LEFT JOIN retrabajo_salidas_embarques_cajas c ON c.salida_id = se.id
-        WHERE se.solicitud_id = %s
-        GROUP BY se.id ORDER BY se.id DESC
+        FROM embarques_salida_material m
+        LEFT JOIN embarques_movimiento_cajas c ON c.movement_type = 'exit' AND c.movement_id = m.id
+        WHERE m.departure_code = %s
+        GROUP BY m.id ORDER BY m.id DESC
         """,
-        (solicitud_id,),
+        (folio,),
     )
     return [
         {
-            "folio": r.get("folio") or "",
+            "folio": r.get("exit_folio") or "",
             "part_number": r.get("part_number") or "",
-            "cantidad": int(r.get("cantidad") or 0),
-            "registrado_por": r.get("registrado_por") or "",
-            "created_at": formatear_fecha_hora(r.get("created_at")),
+            "cantidad": int(r.get("quantity") or 0),
+            "registrado_por": r.get("departure_assigned_by") or "",
+            "created_at": formatear_fecha_hora(r.get("departure_assigned_at")),
             "cajas": [c for c in (r.get("cajas") or "").split(", ") if c],
         }
         for r in rows
@@ -873,92 +859,6 @@ def cancelar_solicitud(solicitud_id):
     except Exception as exc:
         conn.rollback()
         logger.exception("Error cancelando retrabajo %s: %s", solicitud_id, exc)
-        return _error(ERROR_INTERNO, 500)
-    finally:
-        cursor.close()
-        conn.close()
-
-
-@bp.route("/api/retrabajo/embarques/pendientes", methods=["GET"])
-@login_requerido
-@requiere_permiso_dropdown(*PERMISO_EMBARQUES)
-def embarques_pendientes():
-    try:
-        rows = _rows(
-            f"""
-            SELECT * FROM ({_SELECT_RESUMEN} WHERE s.status = 'ACTIVA') t
-            WHERE t.emb_solicitado > t.emb_surtido ORDER BY t.id
-            """
-        )
-        return jsonify({"success": True, "records": [_resumen_json(r) for r in rows]})
-    except Exception as exc:
-        logger.exception("Error listando pendientes de Embarques: %s", exc)
-        return _error(ERROR_INTERNO, 500)
-
-
-@bp.route("/api/retrabajo/embarques/salidas", methods=["GET"])
-@login_requerido
-@requiere_permiso_dropdown(*PERMISO_EMBARQUES)
-def embarques_salidas():
-    solicitud_id = _entero(request.args.get("solicitud_id"))
-    if not solicitud_id:
-        return _error("solicitud_id es requerido.")
-    try:
-        return jsonify({"success": True, "records": _salidas_embarques(solicitud_id)})
-    except Exception as exc:
-        logger.exception("Error listando salidas de retrabajo %s: %s", solicitud_id, exc)
-        return _error(ERROR_INTERNO, 500)
-
-
-@bp.route("/api/retrabajo/<int:solicitud_id>/salida-embarques", methods=["POST"])
-@login_requerido
-@requiere_permiso_dropdown(*PERMISO_EMBARQUES)
-def registrar_salida_embarques(solicitud_id):
-    data = request.get_json(silent=True) or {}
-    conn, error_response = conexion_o_error()
-    if error_response:
-        return error_response
-    cursor = dict_cursor(conn)
-    try:
-        cursor.execute("START TRANSACTION")
-        cursor.execute("SELECT id FROM retrabajo_solicitudes WHERE id = %s FOR UPDATE", (solicitud_id,))
-        solicitud = _fetch_resumen(solicitud_id, _cursor_rows(cursor)) if cursor.fetchone() else None
-        salida, error = validar_salida_embarques(
-            solicitud, data, (solicitud or {}).get("emb_surtido")
-        )
-        if error:
-            conn.rollback()
-            return _error(error, 404 if not solicitud else 409)
-        cursor.execute(
-            """
-            INSERT INTO retrabajo_salidas_embarques (solicitud_id, part_number, cantidad, registrado_por)
-            VALUES (%s, %s, %s, %s)
-            """,
-            (solicitud_id, salida["part_number"], salida["cantidad"], _usuario()),
-        )
-        salida_id = cursor.lastrowid
-        folio = f"RTS-{obtener_fecha_hora_mexico().strftime('%Y%m%d')}-{salida_id}"
-        cursor.execute("UPDATE retrabajo_salidas_embarques SET folio = %s WHERE id = %s", (folio, salida_id))
-        for caja in salida["cajas"]:
-            cursor.execute(
-                "INSERT INTO retrabajo_salidas_embarques_cajas (salida_id, box_code) VALUES (%s, %s)",
-                (salida_id, caja),
-            )
-        conn.commit()
-        auth_system.registrar_auditoria(
-            _usuario(), "Salida retrabajo Embarques", "SALIDA",
-            descripcion=f"{folio} para {solicitud['folio']}", datos_despues={**salida, "folio": folio},
-        )
-        return jsonify({
-            "success": True,
-            "folio": folio,
-            "record": _resumen_json(_fetch_resumen(solicitud_id, _cursor_rows(cursor))),
-        }), 201
-    except Exception as exc:
-        conn.rollback()
-        if _es_duplicado(exc):
-            return _error("Una de las cajas ya salió a retrabajo.", 409)
-        logger.exception("Error registrando salida de retrabajo %s: %s", solicitud_id, exc)
         return _error(ERROR_INTERNO, 500)
     finally:
         cursor.close()

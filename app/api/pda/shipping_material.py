@@ -48,6 +48,7 @@ from datetime import datetime
 import pandas as pd
 from flask import Blueprint, jsonify, request
 
+from app.api.control_produccion.retrabajo import validar_departure_retrabajo
 from app.api.pda.shipping import (
     MYSQL_AVAILABLE,
     MySQLdb,
@@ -1797,6 +1798,13 @@ def assign_exit_departure_value(
                 "unchanged": True,
                 "message": "El departure ya estaba asignado",
             }, 200
+
+        retrabajo_error = validar_departure_retrabajo(
+            cursor, normalized_departure, exit_row.get("part_number"), assigned_quantity
+        )
+        if retrabajo_error:
+            conn.rollback()
+            return {"success": False, "error": retrabajo_error}, 409
 
         assignment_timestamp = to_sql_datetime(assigned_at)
         normalized_assigned_by = normalize_search(assigned_by) or "Sistema"
@@ -3691,6 +3699,12 @@ def create_exit_from_oqc_boxes():
         departure_code = normalize_departure_code(
             data.get("departureCode") or data.get("departure")
         )
+        retrabajo_error = validar_departure_retrabajo(
+            cursor, departure_code, inventory["part_number"], quantity
+        )
+        if retrabajo_error:
+            conn.rollback()
+            return jsonify({"success": False, "error": retrabajo_error}), 409
         new_quantity = previous_quantity - quantity
         movement_at = to_sql_datetime(data.get("exitedAt") or data.get("scanned_at"))
         exit_folio = generate_movement_folio("EMB-SAL")
@@ -3965,6 +3979,12 @@ def create_exit():
         departure_code = normalize_departure_code(
             data.get("departureCode") or data.get("departure")
         )
+        retrabajo_error = validar_departure_retrabajo(
+            cursor, departure_code, inventory["part_number"], quantity
+        )
+        if retrabajo_error:
+            conn.rollback()
+            return jsonify({"success": False, "error": retrabajo_error}), 409
 
         new_quantity = previous_quantity - quantity
         movement_at = to_sql_datetime(data.get("exitedAt"))

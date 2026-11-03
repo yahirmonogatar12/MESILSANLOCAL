@@ -1,4 +1,4 @@
-/* Solicitud de retrabajo (MES) y modal "Salida Retrabajo" de Salidas almacen embarques.
+/* Solicitud de retrabajo (MES). Embarques surte con su salida normal y el folio RT como departure.
  * WF_003: loading, notify, load/render, export Excel, cleanup e init idempotente.
  * WF_004: asegura retrabajo.css en <head> (tambien persistente en MainTemplate).
  * WF_007: delegacion de eventos con data-action, sin handlers inline.
@@ -30,8 +30,6 @@
     nueva: '<path d="M12 4v16m8-8H4"></path>',
     detalle:
       '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>',
-    salida:
-      '<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>',
     ver: '<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>',
     seccion: '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>',
   };
@@ -480,7 +478,7 @@
   // Misma derivacion que calcular_areas() en retrabajo.py.
   function areasPrevistas(data) {
     const areas = [];
-    if (data.origenes.some((o) => o.origen === "EMBARQUES")) areas.push("Embarques: surtir material");
+    if (data.origenes.some((o) => o.origen === "EMBARQUES")) areas.push("Embarques: salida con el folio RT como departure");
     const cambioNp = data.np_origen && data.np_destino && data.np_origen !== data.np_destino;
     if (data.programaciones.length) areas.push("MICOM: etiquetas de programación");
     if (cambioNp) areas.push("Impresión: etiquetas SMD");
@@ -647,7 +645,7 @@
 
   function salidasHtml(salidas, clave) {
     return tabla(
-      ["Folio", "NP", "Cantidad", "Cajas", "Registró", "Fecha"],
+      ["Folio salida", "NP", "Cantidad", "Cajas", "Asignó", "Fecha"],
       salidas.map((s) => [
         `<span class="rtb-code">${esc(s.folio)}</span>`,
         esc(s.part_number),
@@ -793,152 +791,6 @@
 
   // WF_003: limpieza al navegar fuera del modulo.
   window.limpiarRetrabajo = function () {
-    ["rtb-form-modal", "rtb-detail-modal", "rtb-emb-modal"].forEach(closeModal);
+    ["rtb-form-modal", "rtb-detail-modal"].forEach(closeModal);
   };
-
-  // ===================== Embarques: "Salida Retrabajo" =====================
-
-  function ordenEmbarquesHtml(o) {
-    const pendiente = o.emb_solicitado - o.emb_surtido;
-    const campo = (label, input) => `<div class="rtb-filter-group"><label>${label}</label>${input}</div>`;
-    return `
-      ${info([
-        ["NP origen", esc(o.np_origen)],
-        ["Solicitado a Embarques", o.emb_solicitado],
-        ["Surtido", o.emb_surtido],
-        ["Pendiente", pendiente],
-      ])}
-      <form data-role="salida" autocomplete="off">
-        ${seccion("Salida")}
-        <div class="rtb-form-grid">
-          ${campo("Número de parte", '<input name="partNumber" maxlength="64" required>')}
-          ${campo("Cantidad", `<input name="cantidad" type="number" min="1" max="${pendiente}" required>`)}
-          ${campo("Escanear caja (Enter)", '<input name="caja" class="rtb-input-scan" maxlength="100">')}
-        </div>
-        <div class="rtb-boxes" data-role="cajas"></div>
-        <div class="rtb-modal-actions">
-          <button type="submit" class="rtb-btn-primary">Dar salida</button>
-        </div>
-      </form>
-      ${seccion("Salidas de esta orden")}
-      <div data-role="historial"></div>`;
-  }
-
-  function abrirSalidaEmbarques() {
-    ensureStylesheet();
-    const body = openModal("rtb-emb-modal", {
-      title: "Salida retrabajo",
-      subtitle: "Cajas que salen de Embarques hacia retrabajo",
-      icon: "salida",
-      overlayClose: false,
-    });
-    body.innerHTML = `<div data-role="embarques">
-        <div class="rtb-filter-group rtb-filter-group--wide"><label>Orden de retrabajo</label>
-          <select data-role="orden"><option value="">Cargando...</option></select></div>
-        <div data-role="orden-info"></div>
-      </div>`;
-    const wrapper = body.firstElementChild;
-    const select = wrapper.querySelector('[data-role="orden"]');
-    const contenedor = wrapper.querySelector('[data-role="orden-info"]');
-    let ordenes = [];
-
-    async function cargarOrdenes(seleccion) {
-      try {
-        ({ records: ordenes } = await fetchJson(`${API}/embarques/pendientes`));
-      } catch (error) {
-        select.innerHTML = '<option value="">Error al cargar</option>';
-        notify(error.message, "error");
-        return;
-      }
-      select.innerHTML = ordenes.length
-        ? '<option value="">Selecciona una orden</option>' +
-          ordenes
-            .map((o) => `<option value="${o.id}">${esc(o.folio)} · ${esc(o.np_origen)} · ${o.emb_surtido}/${o.emb_solicitado}</option>`)
-            .join("")
-        : '<option value="">Sin órdenes pendientes</option>';
-      select.value = ordenes.some((o) => String(o.id) === String(seleccion)) ? seleccion : "";
-      mostrarOrden();
-    }
-
-    async function cargarHistorial(id) {
-      const box = contenedor.querySelector('[data-role="historial"]');
-      if (!box) return;
-      try {
-        const { records } = await fetchJson(`${API}/embarques/salidas?solicitud_id=${id}`);
-        box.innerHTML = salidasHtml(records, "embarques_salidas");
-        activarFiltros(box);
-      } catch (error) {
-        box.innerHTML = `<p class="rtb-hint">${esc(error.message)}</p>`;
-      }
-    }
-
-    function mostrarOrden() {
-      const orden = ordenes.find((o) => String(o.id) === select.value);
-      contenedor.innerHTML = orden ? ordenEmbarquesHtml(orden) : "";
-      if (!orden) return;
-      const form = contenedor.querySelector("form");
-      const cajas = [];
-      const pintarCajas = () => {
-        form.querySelector('[data-role="cajas"]').innerHTML = cajas
-          .map(
-            (c, i) =>
-              `<span class="rtb-chip rtb-chip--EN_PROCESO">${esc(c)} <button type="button" class="rtb-icon-btn rtb-icon-btn--danger" data-quitar="${i}" title="Quitar">✕</button></span>`,
-          )
-          .join("");
-      };
-      form.elements.caja.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
-        const caja = form.elements.caja.value.trim();
-        form.elements.caja.value = "";
-        if (!caja) return;
-        if (cajas.some((c) => c.toUpperCase() === caja.toUpperCase())) {
-          notify(`Caja repetida: ${caja}`, "error");
-          return;
-        }
-        cajas.push(caja);
-        pintarCajas();
-      });
-      form.addEventListener("click", (event) => {
-        const quitar = event.target.closest("[data-quitar]");
-        if (!quitar) return;
-        cajas.splice(Number(quitar.dataset.quitar), 1);
-        pintarCajas();
-      });
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const submit = form.querySelector('[type="submit"]');
-        submit.disabled = true;
-        try {
-          const result = await fetchJson(`${API}/${orden.id}/salida-embarques`, {
-            method: "POST",
-            body: JSON.stringify({
-              partNumber: form.elements.partNumber.value.trim(),
-              cantidad: form.elements.cantidad.value,
-              boxCodes: cajas,
-            }),
-          });
-          notify(`Salida ${result.folio} registrada`, "success");
-          cargarOrdenes(orden.id);
-        } catch (error) {
-          notify(error.message, "error");
-          submit.disabled = false;
-        }
-      });
-      cargarHistorial(orden.id);
-      form.elements.partNumber.focus();
-    }
-
-    select.addEventListener("change", mostrarOrden);
-    cargarOrdenes("");
-  }
-
-  window.abrirSalidaRetrabajoEmbarques = abrirSalidaEmbarques;
-
-  if (!window.__rtbEmbarquesBound) {
-    window.__rtbEmbarquesBound = true;
-    document.addEventListener("click", (event) => {
-      if (event.target.closest("#almacen-embarques-exits-retrabajo-open-btn")) abrirSalidaEmbarques();
-    });
-  }
 })();

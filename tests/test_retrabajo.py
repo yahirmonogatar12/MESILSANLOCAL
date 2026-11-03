@@ -21,9 +21,9 @@ def test_retrabajo_routes_are_registered(app):
     assert "/control_produccion/retrabajo" in rules
     assert "/api/retrabajo" in rules
     assert "/api/retrabajo/<int:solicitud_id>/cancelar" in rules
-    assert "/api/retrabajo/<int:solicitud_id>/salida-embarques" in rules
-    assert "/api/retrabajo/embarques/pendientes" in rules
     assert "/api/retrabajo/export" in rules
+    # Embarques surte con su salida normal (departure = folio RT), sin rutas propias.
+    assert not any(r.startswith("/api/retrabajo/embarques") or r.endswith("salida-embarques") for r in rules)
 
 
 def test_filtros_de_lista_por_fecha_y_codigo():
@@ -34,7 +34,8 @@ def test_filtros_de_lista_por_fecha_y_codigo():
     assert retrabajo._filtros_lista({"desde": "01/10/2026", "hasta": "x"}) == ("", [])
     # El codigo busca en todo el historial: ignora fechas.
     where, params = retrabajo._filtros_lista({"codigo": "rt-1", "desde": "2026-10-01"})
-    assert "created_at" not in where and params[:3] == ["RT-1"] * 3 and params[3:] == ["rt-1"] * 5
+    assert "created_at" not in where and params[:3] == ["RT-1"] * 3 and params[3:7] == ["rt-1"] * 4
+    assert params[7:] == ["RT-1", "rt-1"]  # folio de salida EMB-SAL o caja de la salida
 
 
 def test_programming_label_matches_control_produccion_port():
@@ -97,20 +98,44 @@ def test_areas_y_estado_general():
     assert retrabajo.calcular_areas({**done, "status": "CANCELADA"})[1] == "CANCELADA"
 
 
-def test_salida_embarques_valida_orden_np_cantidad_y_cajas():
-    orden = {"status": "ACTIVA", "np_origen": "EBR11111111", "emb_solicitado": 10}
-    ok = {"partNumber": "ebr11111111", "cantidad": "4", "boxCodes": ["CAJA-1", " CAJA-2 ", ""]}
-    salida, error = retrabajo.validar_salida_embarques(orden, ok, 6)
-    assert error is None
-    assert salida == {"part_number": "EBR11111111", "cantidad": 4, "cajas": ["CAJA-1", "CAJA-2"]}
+class _Cursor:
+    """Responde segun la tabla consultada; registra cada SQL."""
 
-    assert retrabajo.validar_salida_embarques({**orden, "status": "CANCELADA"}, ok, 0)[1]
-    assert retrabajo.validar_salida_embarques({**orden, "emb_solicitado": 0}, ok, 0)[1]
-    assert retrabajo.validar_salida_embarques(orden, {**ok, "partNumber": "EBR99999999"}, 0)[1]
-    assert retrabajo.validar_salida_embarques(orden, ok, 7)[1]  # 4 > pendiente 3
-    assert retrabajo.validar_salida_embarques(orden, {**ok, "boxCodes": ["A", "a"]}, 0)[1]
-    assert retrabajo.validar_salida_embarques(orden, {**ok, "boxCodes": []}, 0)[1]
-    assert retrabajo.validar_salida_embarques(None, ok, 0)[1]
+    def __init__(self, orden, solicitado=0, surtido=0):
+        self.respuestas = {
+            "retrabajo_solicitudes": orden,
+            "retrabajo_origenes": {"total": solicitado},
+            "embarques_salida_material": {"total": surtido},
+        }
+        self.sql = []
+
+    def execute(self, sql, params=None):
+        self.sql.append(sql)
+        self.ultimo = next(v for k, v in self.respuestas.items() if k in sql)
+
+    def fetchone(self):
+        return self.ultimo
+
+
+def test_departure_retrabajo_valida_orden_np_y_pendiente():
+    validar = retrabajo.validar_departure_retrabajo
+    orden = {"id": 1, "status": "ACTIVA", "np_origen": "EBR11111111"}
+
+    # Un departure normal no consulta nada.
+    cursor = _Cursor(orden)
+    assert validar(cursor, "DEP-5521", "EBR11111111", 10) is None and cursor.sql == []
+
+    # Pidio 5 a Embarques y ya salieron 2 con este folio: caben 3, en una o varias salidas.
+    assert validar(_Cursor(orden, 5, 2), "rt-20261022-1", "ebr11111111", 3) is None
+    assert "(3)" in validar(_Cursor(orden, 5, 2), "RT-20261022-1", "EBR11111111", 4)
+    cursor = _Cursor(orden, 5, 2)
+    validar(cursor, "RT-20261022-1", "EBR11111111", 1)
+    assert "FOR UPDATE" in cursor.sql[0]  # serializa salidas concurrentes al mismo folio
+
+    assert validar(_Cursor(None), "RT-20261022-9", "EBR11111111", 1)
+    assert validar(_Cursor({**orden, "status": "CANCELADA"}, 5), "RT-20261022-1", "EBR11111111", 1)
+    assert validar(_Cursor(orden, 5), "RT-20261022-1", "EBR99999999", 1)
+    assert validar(_Cursor(orden, 0), "RT-20261022-1", "EBR11111111", 1)
 
 
 def test_menu_permiso_y_modales_wf_008():
@@ -130,9 +155,11 @@ def test_menu_permiso_y_modales_wf_008():
     assert 'data-rtb-table="lista"' in template
     assert "function aplicarFiltros(table)" in javascript
     for clave in ("detalle_programacion", "detalle_componentes", "detalle_salidas",
-                  "detalle_escaneos", "embarques_salidas"):
+                  "detalle_escaneos"):
         assert f'"{clave}"' in javascript, clave
     tabs = (ROOT / "app/static/js/sidebar-tabs.js").read_text(encoding="utf-8")
     assert "container: 'retrabajo-unique-container'" in tabs  # WF_006 paso 6
-    assert 'id="almacen-embarques-exits-retrabajo-open-btn"' in salidas
-    assert "js/retrabajo.js" in salidas
+    assert "retrabajo" not in salidas
+    shipping = (ROOT / "app/api/pda/shipping_material.py").read_text(encoding="utf-8")
+    # Las 3 rutas que ponen departure (2 altas de salida + asignacion) validan el folio RT.
+    assert shipping.count("validar_departure_retrabajo(") == 3
