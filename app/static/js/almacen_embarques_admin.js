@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20261113b";
+  const ASSET_VERSION = "20261113f";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
 
   const movementModuleState = {
@@ -54,6 +54,8 @@
     boxes: [],
     selectedPart: "",
   };
+
+  let inventoryAuditResizeFrame = 0;
 
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
@@ -1607,7 +1609,62 @@
     moduleRoot.classList.toggle("is-audit-active", Boolean(isOpen));
     if (isOpen) {
       moduleRoot.classList.remove("is-closure-active");
+      scheduleInventoryAuditHeightUpdate();
+    } else {
+      moduleRoot.style.removeProperty("--ae-inventory-audit-height");
+      moduleRoot.style.removeProperty("flex");
+      moduleRoot.style.removeProperty("height");
+      moduleRoot.style.removeProperty("max-height");
+      moduleRoot.querySelector(".ae-inventory-stage")?.style.removeProperty("height");
+      moduleRoot.querySelector(".ae-inventory-stage")?.style.removeProperty("max-height");
+      moduleRoot.querySelector(".ae-inventory-pane--audit")?.style.removeProperty("height");
+      moduleRoot.querySelector(".ae-inventory-pane--audit")?.style.removeProperty("max-height");
     }
+  }
+
+  function updateInventoryAuditAvailableHeight() {
+    const moduleRoot = getModuleRoot("almacen-embarques-inventory");
+    if (!moduleRoot?.classList.contains("is-audit-active")) return;
+
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+    const moduleTop = Math.max(0, moduleRoot.getBoundingClientRect().top);
+    const availableHeight = Math.floor(viewportHeight - moduleTop - 8);
+    if (availableHeight > 0) {
+      const height = `${availableHeight}px`;
+      const stage = moduleRoot.querySelector(".ae-inventory-stage");
+      const auditPane = moduleRoot.querySelector(".ae-inventory-pane--audit");
+
+      moduleRoot.style.setProperty("--ae-inventory-audit-height", height);
+      moduleRoot.style.setProperty("flex", `0 0 ${height}`);
+      moduleRoot.style.setProperty("height", height);
+      moduleRoot.style.setProperty("max-height", height);
+      stage?.style.setProperty("height", height);
+      stage?.style.setProperty("max-height", height);
+      auditPane?.style.setProperty("height", height);
+      auditPane?.style.setProperty("max-height", height);
+    }
+  }
+
+  function scheduleInventoryAuditHeightUpdate() {
+    if (inventoryAuditResizeFrame) {
+      window.cancelAnimationFrame(inventoryAuditResizeFrame);
+    }
+    inventoryAuditResizeFrame = window.requestAnimationFrame(() => {
+      inventoryAuditResizeFrame = 0;
+      updateInventoryAuditAvailableHeight();
+    });
+  }
+
+  function bindInventoryAuditViewport() {
+    const previousHandler = window.__aeInventoryAuditResizeHandler;
+    if (previousHandler) {
+      window.removeEventListener("resize", previousHandler);
+      window.visualViewport?.removeEventListener("resize", previousHandler);
+    }
+
+    window.__aeInventoryAuditResizeHandler = scheduleInventoryAuditHeightUpdate;
+    window.addEventListener("resize", scheduleInventoryAuditHeightUpdate, { passive: true });
+    window.visualViewport?.addEventListener("resize", scheduleInventoryAuditHeightUpdate, { passive: true });
   }
 
   function setInventoryAuditStatus(message = "", isError = false) {
@@ -1787,6 +1844,8 @@
   function bindInventoryAuditModule() {
     const elements = getInventoryAuditElements();
     if (!elements.openBtn || elements.openBtn.dataset.bound === "true") return;
+
+    bindInventoryAuditViewport();
 
     elements.openBtn.addEventListener("click", async () => {
       try {

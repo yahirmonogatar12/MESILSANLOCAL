@@ -772,6 +772,35 @@ body.ae-modal-open {
     transform: translateX(-66.666667%);
 }
 
+#almacen-embarques-inventory-module.is-audit-active {
+    flex: 0 0 var(--ae-inventory-audit-height, 100%);
+    height: var(--ae-inventory-audit-height, 100%);
+    max-height: var(--ae-inventory-audit-height, 100%);
+    min-height: 0;
+    overflow: hidden;
+}
+
+#almacen-embarques-inventory-module.is-audit-active .ae-inventory-stage,
+#almacen-embarques-inventory-module.is-audit-active .ae-inventory-pane--audit {
+    height: var(--ae-inventory-audit-height, 100%);
+    max-height: var(--ae-inventory-audit-height, 100%);
+    min-height: 0;
+}
+
+#almacen-embarques-inventory-module.is-closure-active .ae-inventory-pane--main,
+#almacen-embarques-inventory-module.is-closure-active .ae-inventory-pane--audit,
+#almacen-embarques-inventory-module.is-audit-active .ae-inventory-pane--main,
+#almacen-embarques-inventory-module.is-audit-active .ae-inventory-pane--closure {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#almacen-embarques-inventory-module.is-closure-active .ae-inventory-pane--closure,
+#almacen-embarques-inventory-module.is-audit-active .ae-inventory-pane--audit {
+    visibility: visible;
+    pointer-events: auto;
+}
+
 #almacen-embarques-movements-module.is-history-active .ae-movements-stage {
     transform: translateX(-50%);
 }
@@ -1873,6 +1902,8 @@ body.ae-column-resizing * {
 }
 
 .ae-inventory-pane--audit {
+    display: grid;
+    grid-template-rows: max-content minmax(180px, 0.9fr) minmax(220px, 1.1fr);
     padding-left: 10px;
     padding-right: 0;
     overflow: hidden;
@@ -1897,8 +1928,8 @@ body.ae-column-resizing * {
 }
 
 .ae-audit-history-card {
-    flex: 0 0 clamp(220px, 36%, 330px);
     min-height: 0;
+    height: 100%;
     overflow: hidden;
 }
 
@@ -1920,6 +1951,7 @@ body.ae-column-resizing * {
 }
 
 .ae-inventory-pane--audit .ae-table-shell {
+    flex: 1 1 0;
     min-height: 0;
     height: auto;
     overflow: hidden;
