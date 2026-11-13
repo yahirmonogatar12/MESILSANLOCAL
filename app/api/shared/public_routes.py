@@ -14,6 +14,7 @@ PUBLIC_API_EXACT_PATHS = frozenset(
         "/api/shipping/material/entries/boxes",
         "/api/shipping/material/exits",
         "/api/shipping/material/exits/boxes",
+        "/api/shipping/material/audits",
         "/api/shipping/material/returns",
         "/api/shipping/material/inventory",
         "/api/shipping/material/stats/today",
@@ -27,6 +28,7 @@ PUBLIC_API_PREFIXES = (
     "/api/shipping/users/",
     "/api/shipping/quality/",
     "/api/shipping/entries/",
+    "/api/shipping/material/audits/",
     "/api/shipping/material/boxes/",
 )
 

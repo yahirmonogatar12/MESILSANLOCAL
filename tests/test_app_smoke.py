@@ -10,6 +10,10 @@ def test_public_api_routes():
     from app.api.shared.public_routes import is_public_api_route
 
     assert is_public_api_route("/api/shipping/auth/login") is True
+    assert is_public_api_route("/api/shipping/material/audits") is True
+    assert is_public_api_route("/api/shipping/material/audits/active") is True
+    assert is_public_api_route("/api/shipping/material/audits/42/boxes") is True
+    assert is_public_api_route("/api/shipping/material/audits/42/close") is True
     assert is_public_api_route("/api/mysql") is False
 
 
