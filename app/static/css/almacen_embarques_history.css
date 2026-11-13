@@ -750,7 +750,7 @@ body.ae-modal-open {
 
 .ae-inventory-stage {
     display: flex;
-    width: 200%;
+    width: 300%;
     height: 100%;
     min-height: 0;
     transition: transform 0.28s ease;
@@ -765,7 +765,11 @@ body.ae-modal-open {
 }
 
 #almacen-embarques-inventory-module.is-closure-active .ae-inventory-stage {
-    transform: translateX(-50%);
+    transform: translateX(-33.333333%);
+}
+
+#almacen-embarques-inventory-module.is-audit-active .ae-inventory-stage {
+    transform: translateX(-66.666667%);
 }
 
 #almacen-embarques-movements-module.is-history-active .ae-movements-stage {
@@ -773,9 +777,9 @@ body.ae-modal-open {
 }
 
 .ae-inventory-pane {
-    width: 50%;
-    max-width: 50%;
-    min-width: 50%;
+    width: 33.333333%;
+    max-width: 33.333333%;
+    min-width: 33.333333%;
     display: flex;
     flex-direction: column;
     gap: 18px;
@@ -1868,6 +1872,61 @@ body.ae-column-resizing * {
     white-space: nowrap;
 }
 
+.ae-inventory-pane--audit {
+    padding-left: 10px;
+    padding-right: 0;
+    overflow: hidden;
+}
+
+.ae-audit-header-card {
+    flex: 0 0 auto;
+}
+
+.ae-audit-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px 12px;
+}
+
+.ae-audit-summary .ae-record-count:first-child {
+    color: #bcd7ff;
+}
+
+.ae-audit-history-card {
+    flex: 0 0 clamp(220px, 36%, 330px);
+}
+
+.ae-audit-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 18px;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.ae-audit-detail-grid > .ae-results-card {
+    min-width: 0;
+}
+
+.ae-audit-row {
+    cursor: pointer;
+}
+
+.ae-audit-row:hover td,
+.ae-audit-row.is-selected td {
+    background: rgba(52, 152, 219, 0.13);
+}
+
+.ae-audit-part-row {
+    cursor: pointer;
+}
+
+.ae-audit-part-row:hover td,
+.ae-audit-part-row.is-selected td {
+    background: rgba(39, 174, 96, 0.13);
+}
+
 .ae-invoice-confirmed-notice {
     display: flex;
     align-items: center;
@@ -2458,12 +2517,30 @@ body.ae-column-resizing * {
 
     .ae-inventory-pane,
     .ae-inventory-pane--closure,
+    .ae-inventory-pane--audit,
     .ae-movements-pane,
     .ae-movements-pane--history {
         width: 100%;
         max-width: 100%;
         min-width: 100%;
         padding: 0;
+    }
+
+    .ae-inventory-pane--closure,
+    .ae-inventory-pane--audit {
+        display: none;
+    }
+
+    #almacen-embarques-inventory-module.is-closure-active .ae-inventory-pane--main,
+    #almacen-embarques-inventory-module.is-closure-active .ae-inventory-pane--audit,
+    #almacen-embarques-inventory-module.is-audit-active .ae-inventory-pane--main,
+    #almacen-embarques-inventory-module.is-audit-active .ae-inventory-pane--closure {
+        display: none;
+    }
+
+    #almacen-embarques-inventory-module.is-closure-active .ae-inventory-pane--closure,
+    #almacen-embarques-inventory-module.is-audit-active .ae-inventory-pane--audit {
+        display: flex;
     }
 
     .ae-card-header {
@@ -2496,6 +2573,11 @@ body.ae-column-resizing * {
     .ae-closure-preview-layout,
     .ae-closure-summary-metrics {
         grid-template-columns: 1fr;
+    }
+
+    .ae-audit-detail-grid {
+        grid-template-columns: 1fr;
+        overflow-y: auto;
     }
 
     .ae-closure-meta-grid {

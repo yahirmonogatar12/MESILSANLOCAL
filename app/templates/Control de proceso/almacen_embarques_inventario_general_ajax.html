@@ -32,6 +32,9 @@
                     <button id="almacen-embarques-inventory-open-closure-btn" class="ae-btn-primary">
                         Cierre de inventario
                     </button>
+                    <button id="almacen-embarques-inventory-open-audit-btn" class="ae-btn-primary" type="button">
+                        Auditoría
+                    </button>
                 </div>
             </div>
 
@@ -258,7 +261,158 @@
                 </div>
             </div>
         </section>
+
+        <section class="ae-inventory-pane ae-inventory-pane--audit">
+            <div class="ae-filters-card ae-audit-header-card">
+                <div class="ae-card-header ae-card-header--closure">
+                    <div class="ae-card-header__title-group">
+                        <button id="almacen-embarques-inventory-audit-back-btn" class="ae-back-btn" type="button" aria-label="Regresar a inventario">
+                            &#8592;
+                        </button>
+                        <h3>Auditorías de inventario físico</h3>
+                    </div>
+                    <span id="almacen-embarques-inventory-audit-status" class="ae-status-text"></span>
+                </div>
+                <div class="ae-audit-summary" aria-label="Resumen de la auditoría seleccionada">
+                    <span id="almacen-embarques-inventory-audit-selected-folio" class="ae-record-count">Sin auditoría seleccionada</span>
+                    <span id="almacen-embarques-inventory-audit-selected-boxes" class="ae-record-count">0 cajas</span>
+                    <span id="almacen-embarques-inventory-audit-selected-parts" class="ae-record-count">0 números de parte</span>
+                    <span id="almacen-embarques-inventory-audit-selected-quantity" class="ae-record-count">0 piezas</span>
+                </div>
+            </div>
+
+            <div class="ae-results-card ae-audit-history-card">
+                <div class="ae-card-header">
+                    <h3>Historial de auditorías</h3>
+                    <span id="almacen-embarques-inventory-audit-history-count" class="ae-record-count">0 auditorías</span>
+                </div>
+                <div class="ae-table-shell">
+                    <div class="ae-table-head">
+                        <table class="ae-history-table ae-history-table--head">
+                            <colgroup>
+                                <col style="width: 16%;">
+                                <col style="width: 14%;">
+                                <col style="width: 14%;">
+                                <col style="width: 13%;">
+                                <col style="width: 8%;">
+                                <col style="width: 9%;">
+                                <col style="width: 9%;">
+                                <col style="width: 9%;">
+                                <col style="width: 8%;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Folio</th>
+                                    <th>Inicio</th>
+                                    <th>Cierre</th>
+                                    <th>Usuario</th>
+                                    <th>Cajas</th>
+                                    <th>No. partes</th>
+                                    <th>Piezas</th>
+                                    <th>Estado</th>
+                                    <th>Detalle</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="ae-table-body-wrap" tabindex="0" role="region" aria-label="Historial de auditorías físicas">
+                        <table class="ae-history-table ae-history-table--body">
+                            <colgroup>
+                                <col style="width: 16%;">
+                                <col style="width: 14%;">
+                                <col style="width: 14%;">
+                                <col style="width: 13%;">
+                                <col style="width: 8%;">
+                                <col style="width: 9%;">
+                                <col style="width: 9%;">
+                                <col style="width: 9%;">
+                                <col style="width: 8%;">
+                            </colgroup>
+                            <tbody id="almacen-embarques-inventory-audit-history-tbody">
+                                <tr><td colspan="9" class="ae-empty-cell">Sin auditorías registradas.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ae-audit-detail-grid">
+                <div class="ae-results-card">
+                    <div class="ae-card-header">
+                        <h3>Números de parte escaneados</h3>
+                        <span id="almacen-embarques-inventory-audit-parts-count" class="ae-record-count">0 partes</span>
+                    </div>
+                    <div class="ae-table-shell">
+                        <div class="ae-table-head">
+                            <table class="ae-history-table ae-history-table--head">
+                                <colgroup>
+                                    <col style="width: 52%;">
+                                    <col style="width: 20%;">
+                                    <col style="width: 28%;">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>No. parte</th>
+                                        <th>Cajas</th>
+                                        <th>Piezas</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <div class="ae-table-body-wrap" tabindex="0" role="region" aria-label="Números de parte de la auditoría seleccionada">
+                            <table class="ae-history-table ae-history-table--body">
+                                <colgroup>
+                                    <col style="width: 52%;">
+                                    <col style="width: 20%;">
+                                    <col style="width: 28%;">
+                                </colgroup>
+                                <tbody id="almacen-embarques-inventory-audit-parts-tbody">
+                                    <tr><td colspan="3" class="ae-empty-cell">Selecciona una auditoría.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ae-results-card">
+                    <div class="ae-card-header">
+                        <h3>Box ID registrados</h3>
+                        <span id="almacen-embarques-inventory-audit-boxes-count" class="ae-record-count">0 cajas</span>
+                    </div>
+                    <div class="ae-table-shell">
+                        <div class="ae-table-head">
+                            <table class="ae-history-table ae-history-table--head">
+                                <colgroup>
+                                    <col style="width: 46%;">
+                                    <col style="width: 20%;">
+                                    <col style="width: 34%;">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>Box ID</th>
+                                        <th>Cantidad</th>
+                                        <th>Escaneado</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <div class="ae-table-body-wrap" tabindex="0" role="region" aria-label="Box ID del número de parte seleccionado">
+                            <table class="ae-history-table ae-history-table--body">
+                                <colgroup>
+                                    <col style="width: 46%;">
+                                    <col style="width: 20%;">
+                                    <col style="width: 34%;">
+                                </colgroup>
+                                <tbody id="almacen-embarques-inventory-audit-boxes-tbody">
+                                    <tr><td colspan="3" class="ae-empty-cell">Selecciona un número de parte.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20260821a') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20261113a') }}"></script>

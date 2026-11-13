@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260821a";
+  const ASSET_VERSION = "20261113a";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
 
   const movementModuleState = {
@@ -45,6 +45,14 @@
     history: [],
     metadata: null,
     config: null,
+  };
+
+  const inventoryAuditState = {
+    history: [],
+    audit: null,
+    parts: [],
+    boxes: [],
+    selectedPart: "",
   };
 
   function ensureModuleStyles() {
@@ -1104,6 +1112,9 @@
       return;
     }
     moduleRoot.classList.toggle("is-closure-active", Boolean(isOpen));
+    if (isOpen) {
+      moduleRoot.classList.remove("is-audit-active");
+    }
   }
 
   function renderInventoryClosureErrors(errors = []) {
@@ -1567,6 +1578,247 @@
         return;
       }
       loadInventoryClosureHistoryDetail(button.dataset.batchId);
+    });
+
+    elements.openBtn.dataset.bound = "true";
+  }
+
+  function getInventoryAuditElements() {
+    return {
+      openBtn: document.getElementById("almacen-embarques-inventory-open-audit-btn"),
+      backBtn: document.getElementById("almacen-embarques-inventory-audit-back-btn"),
+      statusLabel: document.getElementById("almacen-embarques-inventory-audit-status"),
+      selectedFolio: document.getElementById("almacen-embarques-inventory-audit-selected-folio"),
+      selectedBoxes: document.getElementById("almacen-embarques-inventory-audit-selected-boxes"),
+      selectedParts: document.getElementById("almacen-embarques-inventory-audit-selected-parts"),
+      selectedQuantity: document.getElementById("almacen-embarques-inventory-audit-selected-quantity"),
+      historyCount: document.getElementById("almacen-embarques-inventory-audit-history-count"),
+      historyTbody: document.getElementById("almacen-embarques-inventory-audit-history-tbody"),
+      partsCount: document.getElementById("almacen-embarques-inventory-audit-parts-count"),
+      partsTbody: document.getElementById("almacen-embarques-inventory-audit-parts-tbody"),
+      boxesCount: document.getElementById("almacen-embarques-inventory-audit-boxes-count"),
+      boxesTbody: document.getElementById("almacen-embarques-inventory-audit-boxes-tbody"),
+    };
+  }
+
+  function setInventoryAuditView(isOpen) {
+    const moduleRoot = getModuleRoot("almacen-embarques-inventory");
+    if (!moduleRoot) return;
+    moduleRoot.classList.toggle("is-audit-active", Boolean(isOpen));
+    if (isOpen) {
+      moduleRoot.classList.remove("is-closure-active");
+    }
+  }
+
+  function setInventoryAuditStatus(message = "", isError = false) {
+    const { statusLabel } = getInventoryAuditElements();
+    if (!statusLabel) return;
+    statusLabel.textContent = message;
+    statusLabel.classList.toggle("is-error", Boolean(isError));
+  }
+
+  function getInventoryAuditStatusLabel(status) {
+    if (status === "open") return "Abierta";
+    if (status === "closed") return "Cerrada";
+    if (status === "cancelled") return "Cancelada";
+    return status || "-";
+  }
+
+  function renderInventoryAuditHistory() {
+    const { historyTbody, historyCount } = getInventoryAuditElements();
+    const selectedId = Number(inventoryAuditState.audit?.id || 0);
+    if (historyTbody) {
+      historyTbody.innerHTML = inventoryAuditState.history.length
+        ? inventoryAuditState.history
+            .map((row) => {
+              const statusVariant = row.status === "closed" ? "success" : row.status === "open" ? "warning" : "neutral";
+              const selectedClass = Number(row.id) === selectedId ? " is-selected" : "";
+              return `
+                <tr class="ae-audit-row${selectedClass}" data-audit-id="${escapeHtml(row.id)}">
+                  <td><strong>${escapeHtml(row.audit_folio || "-")}</strong></td>
+                  <td>${escapeHtml(row.started_at || "-")}</td>
+                  <td>${escapeHtml(row.closed_at || "-")}</td>
+                  <td>${escapeHtml(row.closed_by || row.started_by || "-")}</td>
+                  <td>${formatNumber(row.total_boxes)}</td>
+                  <td>${formatNumber(row.total_parts)}</td>
+                  <td>${formatNumber(row.total_quantity)}</td>
+                  <td>${buildBadge(getInventoryAuditStatusLabel(row.status), statusVariant)}</td>
+                  <td>
+                    <button type="button" class="ae-btn-inline ae-btn-inline-edit" data-action="view-inventory-audit" data-audit-id="${escapeHtml(row.id)}">
+                      Ver
+                    </button>
+                  </td>
+                </tr>
+              `;
+            })
+            .join("")
+        : '<tr><td colspan="9" class="ae-empty-cell">Sin auditorías registradas.</td></tr>';
+    }
+    if (historyCount) {
+      const total = inventoryAuditState.history.length;
+      historyCount.textContent = `${total} ${total === 1 ? "auditoría" : "auditorías"}`;
+    }
+  }
+
+  function renderInventoryAuditParts() {
+    const { partsTbody, partsCount } = getInventoryAuditElements();
+    if (partsTbody) {
+      partsTbody.innerHTML = inventoryAuditState.parts.length
+        ? inventoryAuditState.parts
+            .map((row) => {
+              const selectedClass = row.part_number === inventoryAuditState.selectedPart ? " is-selected" : "";
+              return `
+                <tr class="ae-audit-part-row${selectedClass}" data-part-number="${escapeHtml(row.part_number)}">
+                  <td><strong>${escapeHtml(row.part_number || "-")}</strong></td>
+                  <td>${formatNumber(row.total_boxes)}</td>
+                  <td>${formatNumber(row.total_quantity)}</td>
+                </tr>
+              `;
+            })
+            .join("")
+        : '<tr><td colspan="3" class="ae-empty-cell">La auditoría no tiene cajas registradas.</td></tr>';
+    }
+    if (partsCount) {
+      const total = inventoryAuditState.parts.length;
+      partsCount.textContent = `${total} ${total === 1 ? "parte" : "partes"}`;
+    }
+  }
+
+  function renderInventoryAuditBoxes(partNumber = "") {
+    const { boxesTbody, boxesCount } = getInventoryAuditElements();
+    const boxes = partNumber
+      ? inventoryAuditState.boxes.filter((row) => row.part_number === partNumber)
+      : [];
+    if (boxesTbody) {
+      boxesTbody.innerHTML = boxes.length
+        ? boxes
+            .map(
+              (row) => `
+                <tr>
+                  <td><strong>${escapeHtml(row.box_code || "-")}</strong></td>
+                  <td>${formatNumber(row.quantity)}</td>
+                  <td>${escapeHtml(row.scanned_at || "-")}</td>
+                </tr>
+              `,
+            )
+            .join("")
+        : `<tr><td colspan="3" class="ae-empty-cell">${partNumber ? "No hay cajas para este número de parte." : "Selecciona un número de parte."}</td></tr>`;
+    }
+    if (boxesCount) {
+      boxesCount.textContent = `${boxes.length} ${boxes.length === 1 ? "caja" : "cajas"}`;
+    }
+  }
+
+  function updateInventoryAuditSummary() {
+    const {
+      selectedFolio,
+      selectedBoxes,
+      selectedParts,
+      selectedQuantity,
+    } = getInventoryAuditElements();
+    const audit = inventoryAuditState.audit;
+    if (selectedFolio) selectedFolio.textContent = audit?.audit_folio || "Sin auditoría seleccionada";
+    if (selectedBoxes) selectedBoxes.textContent = `${formatNumber(audit?.total_boxes || 0)} cajas`;
+    if (selectedParts) selectedParts.textContent = `${formatNumber(audit?.total_parts || 0)} números de parte`;
+    if (selectedQuantity) selectedQuantity.textContent = `${formatNumber(audit?.total_quantity || 0)} piezas`;
+  }
+
+  function resetInventoryAuditDetail() {
+    inventoryAuditState.audit = null;
+    inventoryAuditState.parts = [];
+    inventoryAuditState.boxes = [];
+    inventoryAuditState.selectedPart = "";
+    updateInventoryAuditSummary();
+    renderInventoryAuditParts();
+    renderInventoryAuditBoxes();
+    renderInventoryAuditHistory();
+  }
+
+  async function loadInventoryAuditHistory() {
+    const { historyTbody } = getInventoryAuditElements();
+    if (historyTbody) {
+      historyTbody.innerHTML = '<tr><td colspan="9" class="ae-empty-cell">Cargando auditorías...</td></tr>';
+    }
+    setInventoryAuditStatus("Consultando auditorías...");
+    const response = await fetch(
+      "/api/almacen-embarques/inventario-general/auditorias",
+      { credentials: "same-origin" },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.success === false) {
+      throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+    }
+    inventoryAuditState.history = payload.rows || [];
+    renderInventoryAuditHistory();
+    setInventoryAuditStatus("Selecciona una auditoría para consultar su detalle.");
+  }
+
+  async function loadInventoryAuditDetail(auditId) {
+    const { partsTbody, boxesTbody } = getInventoryAuditElements();
+    if (partsTbody) {
+      partsTbody.innerHTML = '<tr><td colspan="3" class="ae-empty-cell">Cargando números de parte...</td></tr>';
+    }
+    if (boxesTbody) {
+      boxesTbody.innerHTML = '<tr><td colspan="3" class="ae-empty-cell">Selecciona un número de parte.</td></tr>';
+    }
+    setInventoryAuditStatus("Consultando detalle de auditoría...");
+    const response = await fetch(
+      `/api/almacen-embarques/inventario-general/auditorias/${encodeURIComponent(auditId)}`,
+      { credentials: "same-origin" },
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.success === false) {
+      throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+    }
+
+    inventoryAuditState.audit = payload.audit || null;
+    inventoryAuditState.parts = payload.parts || [];
+    inventoryAuditState.boxes = payload.boxes || [];
+    inventoryAuditState.selectedPart = "";
+    updateInventoryAuditSummary();
+    renderInventoryAuditHistory();
+    renderInventoryAuditParts();
+    renderInventoryAuditBoxes();
+    setInventoryAuditStatus(
+      `Auditoría ${inventoryAuditState.audit?.audit_folio || "seleccionada"}. Elige un número de parte para ver sus cajas.`,
+    );
+  }
+
+  function bindInventoryAuditModule() {
+    const elements = getInventoryAuditElements();
+    if (!elements.openBtn || elements.openBtn.dataset.bound === "true") return;
+
+    elements.openBtn.addEventListener("click", async () => {
+      try {
+        setInventoryAuditView(true);
+        resetInventoryAuditDetail();
+        await loadInventoryAuditHistory();
+      } catch (error) {
+        setInventoryAuditStatus(error.message || "No fue posible cargar las auditorías.", true);
+      }
+    });
+
+    elements.backBtn?.addEventListener("click", () => {
+      setInventoryAuditView(false);
+      setInventoryAuditStatus("");
+    });
+
+    elements.historyTbody?.addEventListener("click", async (event) => {
+      const target = event.target.closest("[data-audit-id]");
+      if (!target) return;
+      try {
+        await loadInventoryAuditDetail(target.dataset.auditId);
+      } catch (error) {
+        setInventoryAuditStatus(error.message || "No fue posible consultar la auditoría.", true);
+      }
+    });
+
+    elements.partsTbody?.addEventListener("click", (event) => {
+      const row = event.target.closest("[data-part-number]");
+      if (!row) return;
+      inventoryAuditState.selectedPart = row.dataset.partNumber || "";
+      renderInventoryAuditParts();
+      renderInventoryAuditBoxes(inventoryAuditState.selectedPart);
     });
 
     elements.openBtn.dataset.bound = "true";
@@ -2980,6 +3232,7 @@
     };
 
     bindInventoryClosureModule(inventoryConfig);
+    bindInventoryAuditModule();
     initializeModule(inventoryConfig);
   };
 

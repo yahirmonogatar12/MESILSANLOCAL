@@ -74,6 +74,8 @@ SHIPPING_TABLES = {
     "inventory_closure_batches": "embarques_inventario_cierre_lotes",
     "catalog_adjustments": "embarques_catalogo_ajustes_historial",
     "movement_boxes": "embarques_movimiento_cajas",
+    "audits": "embarques_auditorias",
+    "audit_boxes": "embarques_auditoria_cajas",
 }
 
 OQC_RELEASE_BOXES_TABLE = "oqc_release_boxes"
@@ -934,6 +936,62 @@ def init_shipping_material_tables():
               KEY idx_movement_boxes_movement (movement_type, movement_id),
               KEY idx_movement_boxes_oqc_release (oqc_release_box_id),
               KEY idx_movement_boxes_movement_at (movement_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['audits']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              audit_folio VARCHAR(40) NOT NULL,
+              status ENUM('open', 'closed', 'cancelled') NOT NULL DEFAULT 'open',
+              started_by VARCHAR(120) NOT NULL,
+              started_at DATETIME NOT NULL,
+              closed_by VARCHAR(120) NULL,
+              closed_at DATETIME NULL,
+              device_id VARCHAR(120) NULL,
+              notes TEXT NULL,
+              total_boxes INT UNSIGNED NOT NULL DEFAULT 0,
+              total_parts INT UNSIGNED NOT NULL DEFAULT 0,
+              total_quantity BIGINT NOT NULL DEFAULT 0,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              UNIQUE KEY uq_shipping_audits_folio (audit_folio),
+              KEY idx_shipping_audits_status (status),
+              KEY idx_shipping_audits_started_at (started_at),
+              KEY idx_shipping_audits_closed_at (closed_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['audit_boxes']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              audit_id BIGINT UNSIGNED NOT NULL,
+              oqc_release_box_id BIGINT UNSIGNED NULL,
+              box_code VARCHAR(100) NOT NULL,
+              part_number VARCHAR(64) NOT NULL,
+              quantity INT NOT NULL,
+              oqc_folio VARCHAR(40) NULL,
+              oqc_release_status VARCHAR(40) NULL,
+              oqc_released_at DATETIME NULL,
+              entry_folio VARCHAR(40) NULL,
+              exit_folio VARCHAR(40) NULL,
+              scanned_by VARCHAR(120) NOT NULL,
+              scanned_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              UNIQUE KEY uq_shipping_audit_box (audit_id, box_code),
+              KEY idx_shipping_audit_boxes_part (audit_id, part_number),
+              KEY idx_shipping_audit_boxes_code (box_code),
+              KEY idx_shipping_audit_boxes_scanned_at (scanned_at),
+              CONSTRAINT fk_shipping_audit_boxes_audit
+                FOREIGN KEY (audit_id) REFERENCES `{SHIPPING_TABLES['audits']}` (id)
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
         )
@@ -3169,6 +3227,443 @@ def get_transaction_connection():
     conn = get_db_connection()
     conn.autocommit(False)
     return conn
+
+
+def _serialize_shipping_audit_box(row):
+    return {
+        "id": row.get("id"),
+        "boxCode": normalize_box_code(row.get("box_code")),
+        "partNumber": normalize_part_number(row.get("part_number")),
+        "quantity": normalize_integer(row.get("quantity")) or 0,
+        "oqcFolio": normalize_search(row.get("oqc_folio")) or None,
+        "oqcStatus": normalize_search(row.get("oqc_release_status")) or None,
+        "entryFolio": normalize_search(row.get("entry_folio")) or None,
+        "exitFolio": normalize_search(row.get("exit_folio")) or None,
+        "scannedBy": normalize_search(row.get("scanned_by")),
+        "scannedAt": serialize_datetime(row.get("scanned_at")),
+    }
+
+
+def _load_shipping_audit(cursor, audit_id):
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          audit_folio,
+          status,
+          started_by,
+          started_at,
+          closed_by,
+          closed_at,
+          device_id,
+          notes,
+          total_boxes,
+          total_parts,
+          total_quantity
+        FROM `{SHIPPING_TABLES['audits']}`
+        WHERE id = %s
+        LIMIT 1
+        """,
+        (audit_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return None
+
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          box_code,
+          part_number,
+          quantity,
+          oqc_folio,
+          oqc_release_status,
+          entry_folio,
+          exit_folio,
+          scanned_by,
+          scanned_at
+        FROM `{SHIPPING_TABLES['audit_boxes']}`
+        WHERE audit_id = %s
+        ORDER BY scanned_at DESC, id DESC
+        """,
+        (audit_id,),
+    )
+    boxes = [_serialize_shipping_audit_box(item) for item in cursor.fetchall()]
+
+    return {
+        "id": row.get("id"),
+        "auditFolio": normalize_search(row.get("audit_folio")),
+        "status": normalize_search(row.get("status")),
+        "startedBy": normalize_search(row.get("started_by")),
+        "startedAt": serialize_datetime(row.get("started_at")),
+        "closedBy": normalize_search(row.get("closed_by")) or None,
+        "closedAt": serialize_datetime(row.get("closed_at")),
+        "deviceId": normalize_search(row.get("device_id")) or None,
+        "notes": normalize_search(row.get("notes")) or None,
+        "totalBoxes": normalize_integer(row.get("total_boxes")) or 0,
+        "totalParts": normalize_integer(row.get("total_parts")) or 0,
+        "totalQuantity": normalize_integer(row.get("total_quantity")) or 0,
+        "boxes": boxes,
+    }
+
+
+def _refresh_shipping_audit_totals(cursor, audit_id):
+    cursor.execute(
+        f"""
+        UPDATE `{SHIPPING_TABLES['audits']}` a
+        SET
+          total_boxes = (
+            SELECT COUNT(*)
+            FROM `{SHIPPING_TABLES['audit_boxes']}` b
+            WHERE b.audit_id = a.id
+          ),
+          total_parts = (
+            SELECT COUNT(DISTINCT b.part_number)
+            FROM `{SHIPPING_TABLES['audit_boxes']}` b
+            WHERE b.audit_id = a.id
+          ),
+          total_quantity = (
+            SELECT COALESCE(SUM(b.quantity), 0)
+            FROM `{SHIPPING_TABLES['audit_boxes']}` b
+            WHERE b.audit_id = a.id
+          )
+        WHERE a.id = %s
+        """,
+        (audit_id,),
+    )
+
+
+@shipping_material_api.route("/audits/active", methods=["GET"])
+@manejo_errores
+def get_active_shipping_audit():
+    init_shipping_material_tables()
+    conn = get_db_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        cursor.execute(
+            f"""
+            SELECT id
+            FROM `{SHIPPING_TABLES['audits']}`
+            WHERE status = 'open'
+            ORDER BY started_at DESC, id DESC
+            LIMIT 1
+            """
+        )
+        row = cursor.fetchone()
+        audit = _load_shipping_audit(cursor, row.get("id")) if row else None
+        return jsonify({"success": True, "audit": audit})
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@shipping_material_api.route("/audits", methods=["POST"])
+@manejo_errores
+def start_shipping_audit():
+    data = request.get_json(silent=True) or {}
+    started_by = (
+        normalize_search(data.get("startedBy") or data.get("registeredBy"))
+        or "Usuario local"
+    )
+    device_id = normalize_search(data.get("deviceId")) or None
+    notes = normalize_search(data.get("notes")) or None
+    started_at = to_sql_datetime(data.get("startedAt"))
+
+    init_shipping_material_tables()
+    conn = get_transaction_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        cursor.execute(
+            f"""
+            SELECT id
+            FROM `{SHIPPING_TABLES['audits']}`
+            WHERE status = 'open'
+            ORDER BY started_at DESC, id DESC
+            LIMIT 1
+            FOR UPDATE
+            """
+        )
+        existing = cursor.fetchone()
+        if existing:
+            audit = _load_shipping_audit(cursor, existing.get("id"))
+            conn.commit()
+            return jsonify(
+                {
+                    "success": True,
+                    "resumed": True,
+                    "message": "Se retomó la auditoría que estaba abierta.",
+                    "audit": audit,
+                }
+            )
+
+        audit_folio = generate_movement_folio("EMB-AUD")
+        cursor.execute(
+            f"""
+            INSERT INTO `{SHIPPING_TABLES['audits']}` (
+              audit_folio,
+              status,
+              started_by,
+              started_at,
+              device_id,
+              notes
+            ) VALUES (%s, 'open', %s, %s, %s, %s)
+            """,
+            (audit_folio, started_by, started_at, device_id, notes),
+        )
+        audit_id = cursor.lastrowid
+        audit = _load_shipping_audit(cursor, audit_id)
+        conn.commit()
+        return jsonify(
+            {
+                "success": True,
+                "resumed": False,
+                "message": "Auditoría iniciada correctamente.",
+                "audit": audit,
+            }
+        ), 201
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@shipping_material_api.route("/audits/<int:audit_id>", methods=["GET"])
+@manejo_errores
+def get_shipping_audit(audit_id):
+    init_shipping_material_tables()
+    conn = get_db_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        audit = _load_shipping_audit(cursor, audit_id)
+        if not audit:
+            return jsonify({"success": False, "error": "Auditoría no encontrada."}), 404
+        return jsonify({"success": True, "audit": audit})
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@shipping_material_api.route("/audits/<int:audit_id>/boxes", methods=["POST"])
+@manejo_errores
+def scan_shipping_audit_box(audit_id):
+    data = request.get_json(silent=True) or {}
+    box_code = normalize_box_code(
+        data.get("boxCode") or data.get("box_id") or data.get("box_code")
+    )
+    if not box_code:
+        return jsonify({"success": False, "error": "Se requiere un Box ID."}), 400
+
+    scanned_by = (
+        normalize_search(data.get("scannedBy") or data.get("registeredBy"))
+        or "Usuario local"
+    )
+    scanned_at = to_sql_datetime(data.get("scannedAt"))
+
+    init_shipping_material_tables()
+    conn = get_transaction_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        cursor.execute(
+            f"""
+            SELECT id, status
+            FROM `{SHIPPING_TABLES['audits']}`
+            WHERE id = %s
+            LIMIT 1
+            FOR UPDATE
+            """,
+            (audit_id,),
+        )
+        audit_row = cursor.fetchone()
+        if not audit_row:
+            conn.rollback()
+            return jsonify({"success": False, "error": "Auditoría no encontrada."}), 404
+        if audit_row.get("status") != "open":
+            conn.rollback()
+            return jsonify(
+                {"success": False, "error": "La auditoría ya fue cerrada."}
+            ), 409
+
+        cursor.execute(
+            f"""
+            SELECT id
+            FROM `{SHIPPING_TABLES['audit_boxes']}`
+            WHERE audit_id = %s AND box_code = %s
+            LIMIT 1
+            """,
+            (audit_id, box_code),
+        )
+        if cursor.fetchone():
+            conn.rollback()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Este Box ID ya fue registrado en la auditoría.",
+                }
+            ), 409
+
+        oqc_box = fetch_oqc_release_boxes(cursor, [box_code]).get(box_code)
+        if not oqc_box:
+            conn.rollback()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Box ID no encontrado en liberaciones OQC.",
+                }
+            ), 404
+
+        part_number = normalize_part_number(oqc_box.get("part_number"))
+        quantity = normalize_integer(oqc_box.get("quantity")) or 0
+        if not part_number or quantity <= 0:
+            conn.rollback()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "El Box ID no tiene número de parte o cantidad válida.",
+                }
+            ), 422
+
+        movements = fetch_shipping_box_movements(cursor, [box_code]).get(
+            box_code, {}
+        )
+        entry_movement = movements.get("entry") or {}
+        exit_movement = movements.get("exit") or {}
+
+        cursor.execute(
+            f"""
+            INSERT INTO `{SHIPPING_TABLES['audit_boxes']}` (
+              audit_id,
+              oqc_release_box_id,
+              box_code,
+              part_number,
+              quantity,
+              oqc_folio,
+              oqc_release_status,
+              oqc_released_at,
+              entry_folio,
+              exit_folio,
+              scanned_by,
+              scanned_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                audit_id,
+                oqc_box.get("id"),
+                box_code,
+                part_number,
+                quantity,
+                oqc_box.get("oqc_folio"),
+                oqc_box.get("status"),
+                oqc_box.get("released_at"),
+                entry_movement.get("movement_folio"),
+                exit_movement.get("movement_folio"),
+                scanned_by,
+                scanned_at,
+            ),
+        )
+        box_id = cursor.lastrowid
+        _refresh_shipping_audit_totals(cursor, audit_id)
+        audit = _load_shipping_audit(cursor, audit_id)
+        box = next(
+            (item for item in audit.get("boxes", []) if item.get("id") == box_id),
+            None,
+        )
+        conn.commit()
+        return jsonify(
+            {
+                "success": True,
+                "message": "Box ID agregado a la auditoría.",
+                "box": box,
+                "audit": audit,
+            }
+        ), 201
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@shipping_material_api.route("/audits/<int:audit_id>/close", methods=["POST"])
+@manejo_errores
+def close_shipping_audit(audit_id):
+    data = request.get_json(silent=True) or {}
+    closed_by = (
+        normalize_search(data.get("closedBy") or data.get("registeredBy"))
+        or "Usuario local"
+    )
+    closed_at = to_sql_datetime(data.get("closedAt"))
+
+    init_shipping_material_tables()
+    conn = get_transaction_connection()
+    cursor = get_dict_cursor(conn)
+    try:
+        cursor.execute(
+            f"""
+            SELECT id, status
+            FROM `{SHIPPING_TABLES['audits']}`
+            WHERE id = %s
+            LIMIT 1
+            FOR UPDATE
+            """,
+            (audit_id,),
+        )
+        audit_row = cursor.fetchone()
+        if not audit_row:
+            conn.rollback()
+            return jsonify({"success": False, "error": "Auditoría no encontrada."}), 404
+        if audit_row.get("status") != "open":
+            conn.rollback()
+            return jsonify(
+                {"success": False, "error": "La auditoría ya fue cerrada."}
+            ), 409
+
+        _refresh_shipping_audit_totals(cursor, audit_id)
+        cursor.execute(
+            f"""
+            SELECT total_boxes
+            FROM `{SHIPPING_TABLES['audits']}`
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (audit_id,),
+        )
+        totals = cursor.fetchone() or {}
+        if (normalize_integer(totals.get("total_boxes")) or 0) <= 0:
+            conn.rollback()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "No se puede cerrar una auditoría sin cajas escaneadas.",
+                }
+            ), 409
+
+        cursor.execute(
+            f"""
+            UPDATE `{SHIPPING_TABLES['audits']}`
+            SET status = 'closed', closed_by = %s, closed_at = %s
+            WHERE id = %s
+            """,
+            (closed_by, closed_at, audit_id),
+        )
+        audit = _load_shipping_audit(cursor, audit_id)
+        conn.commit()
+        return jsonify(
+            {
+                "success": True,
+                "message": "Auditoría cerrada correctamente.",
+                "audit": audit,
+            }
+        )
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @shipping_material_api.route("/catalog/import", methods=["POST"])

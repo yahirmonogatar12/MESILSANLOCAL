@@ -6,7 +6,7 @@ erDiagram
     material_invoice_lines o|--o{ material_invoice_packing_lines : "invoice_line_id"
 
     material_invoices ||--o{ material_invoice_lot_links : "invoice_id"
-    material_invoice_lines ||--o{ material_invoice_lot_links : "invoice_line_id"
+    material_invoice_lines ||--o{ material_invoice_lot_links : "invoice_line_id"        
     material_invoice_packing_lines o|--o{ material_invoice_lot_links : "packing_line_id"
 
     material_invoices ||--o{ material_invoice_manual_receipts : "invoice_id"

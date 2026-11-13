@@ -1539,6 +1539,198 @@ def _obtener_inventario_general_almacen_embarques(limit=5000):
     }
 
 
+def _serializar_auditoria_inventario_embarques(row):
+    return {
+        "id": row.get("id"),
+        "audit_folio": _normalizar_texto_embarques_historial(
+            row.get("audit_folio")
+        ),
+        "status": _normalizar_texto_embarques_historial(row.get("status")),
+        "started_by": _normalizar_texto_embarques_historial(
+            row.get("started_by")
+        ),
+        "started_at": _normalizar_texto_embarques_historial(
+            row.get("started_at")
+        ),
+        "closed_by": _normalizar_texto_embarques_historial(row.get("closed_by")),
+        "closed_at": _normalizar_texto_embarques_historial(row.get("closed_at")),
+        "device_id": _normalizar_texto_embarques_historial(row.get("device_id")),
+        "notes": _normalizar_texto_embarques_historial(row.get("notes")),
+        "total_boxes": _normalizar_numero_embarques_historial(
+            row.get("total_boxes")
+        )
+        or 0,
+        "total_parts": _normalizar_numero_embarques_historial(
+            row.get("total_parts")
+        )
+        or 0,
+        "total_quantity": _normalizar_numero_embarques_historial(
+            row.get("total_quantity")
+        )
+        or 0,
+    }
+
+
+def _obtener_historial_auditorias_inventario_embarques(limit=500):
+    limit = min(max(int(limit or 500), 1), 5000)
+    rows = execute_query(
+        f"""
+        SELECT
+          id,
+          audit_folio,
+          status,
+          started_by,
+          started_at,
+          closed_by,
+          closed_at,
+          device_id,
+          notes,
+          total_boxes,
+          total_parts,
+          total_quantity
+        FROM `{SHIPPING_TABLES['audits']}`
+        ORDER BY started_at DESC, id DESC
+        LIMIT %s
+        """,
+        (limit,),
+        fetch="all",
+    ) or []
+
+    serialized = [_serializar_auditoria_inventario_embarques(row) for row in rows]
+    return {
+        "rows": serialized,
+        "summary": {
+            "total_audits": len(serialized),
+            "open_audits": sum(1 for row in serialized if row["status"] == "open"),
+        },
+    }
+
+
+def _obtener_detalle_auditoria_inventario_embarques(audit_id):
+    audit_row = execute_query(
+        f"""
+        SELECT
+          id,
+          audit_folio,
+          status,
+          started_by,
+          started_at,
+          closed_by,
+          closed_at,
+          device_id,
+          notes,
+          total_boxes,
+          total_parts,
+          total_quantity
+        FROM `{SHIPPING_TABLES['audits']}`
+        WHERE id = %s
+        LIMIT 1
+        """,
+        (audit_id,),
+        fetch="one",
+    )
+    if not audit_row:
+        return None
+
+    part_rows = execute_query(
+        f"""
+        SELECT
+          part_number,
+          COUNT(*) AS total_boxes,
+          SUM(quantity) AS total_quantity,
+          MIN(scanned_at) AS first_scanned_at,
+          MAX(scanned_at) AS last_scanned_at
+        FROM `{SHIPPING_TABLES['audit_boxes']}`
+        WHERE audit_id = %s
+        GROUP BY part_number
+        ORDER BY part_number ASC
+        """,
+        (audit_id,),
+        fetch="all",
+    ) or []
+
+    box_rows = execute_query(
+        f"""
+        SELECT
+          id,
+          box_code,
+          part_number,
+          quantity,
+          oqc_folio,
+          oqc_release_status,
+          entry_folio,
+          exit_folio,
+          scanned_by,
+          scanned_at
+        FROM `{SHIPPING_TABLES['audit_boxes']}`
+        WHERE audit_id = %s
+        ORDER BY part_number ASC, scanned_at ASC, id ASC
+        """,
+        (audit_id,),
+        fetch="all",
+    ) or []
+
+    return {
+        "audit": _serializar_auditoria_inventario_embarques(audit_row),
+        "parts": [
+            {
+                "part_number": _normalizar_texto_embarques_historial(
+                    row.get("part_number")
+                ),
+                "total_boxes": _normalizar_numero_embarques_historial(
+                    row.get("total_boxes")
+                )
+                or 0,
+                "total_quantity": _normalizar_numero_embarques_historial(
+                    row.get("total_quantity")
+                )
+                or 0,
+                "first_scanned_at": _normalizar_texto_embarques_historial(
+                    row.get("first_scanned_at")
+                ),
+                "last_scanned_at": _normalizar_texto_embarques_historial(
+                    row.get("last_scanned_at")
+                ),
+            }
+            for row in part_rows
+        ],
+        "boxes": [
+            {
+                "id": row.get("id"),
+                "box_code": _normalizar_texto_embarques_historial(
+                    row.get("box_code")
+                ),
+                "part_number": _normalizar_texto_embarques_historial(
+                    row.get("part_number")
+                ),
+                "quantity": _normalizar_numero_embarques_historial(
+                    row.get("quantity")
+                )
+                or 0,
+                "oqc_folio": _normalizar_texto_embarques_historial(
+                    row.get("oqc_folio")
+                ),
+                "oqc_release_status": _normalizar_texto_embarques_historial(
+                    row.get("oqc_release_status")
+                ),
+                "entry_folio": _normalizar_texto_embarques_historial(
+                    row.get("entry_folio")
+                ),
+                "exit_folio": _normalizar_texto_embarques_historial(
+                    row.get("exit_folio")
+                ),
+                "scanned_by": _normalizar_texto_embarques_historial(
+                    row.get("scanned_by")
+                ),
+                "scanned_at": _normalizar_texto_embarques_historial(
+                    row.get("scanned_at")
+                ),
+            }
+            for row in box_rows
+        ],
+    }
+
+
 CATALOG_FIELD_KEYS = [
     "part_number",
     "product_model",
@@ -5051,6 +5243,39 @@ def api_almacen_embarques_inventario_general():
     except Exception as e:
         logger.error(
             f"Error API inventario general embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/almacen-embarques/inventario-general/auditorias")
+@login_requerido
+def api_almacen_embarques_inventario_auditorias():
+    """Obtener el historial de auditorías físicas de almacén."""
+    try:
+        init_shipping_material_tables()
+        payload = _obtener_historial_auditorias_inventario_embarques()
+        return jsonify({"success": True, **payload})
+    except Exception as e:
+        logger.error(
+            f"Error API auditorías inventario embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@bp.route("/api/almacen-embarques/inventario-general/auditorias/<int:audit_id>")
+@login_requerido
+def api_almacen_embarques_inventario_auditoria_detalle(audit_id):
+    """Obtener partes y Box ID registrados en una auditoría física."""
+    try:
+        init_shipping_material_tables()
+        payload = _obtener_detalle_auditoria_inventario_embarques(audit_id)
+        if not payload:
+            return jsonify({"success": False, "error": "Auditoría no encontrada."}), 404
+        return jsonify({"success": True, **payload})
+    except Exception as e:
+        logger.error(
+            f"Error detalle auditoría inventario embarques {audit_id}: "
+            f"{e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
 
