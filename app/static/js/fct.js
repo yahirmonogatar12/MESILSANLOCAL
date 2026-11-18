@@ -5,9 +5,16 @@
     page: 1,
     perPage: 1000,
     totalPages: 1,
+    totalRows: 0,
+    historyRows: [],
+    stepsRows: [],
+    columnFilters: null,
+    historyFilterTimer: null,
     currentStepsHash: "",
     currentStepsSerial: "",
   };
+
+  const COLUMN_FILTERS_STORAGE_KEY = "historialFctColumnFilters";
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -16,6 +23,172 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  function getColumnFilterState() {
+    if (state.columnFilters) return state.columnFilters;
+
+    state.columnFilters = { history: {}, steps: {} };
+    try {
+      const stored = JSON.parse(
+        window.localStorage.getItem(COLUMN_FILTERS_STORAGE_KEY) || "{}",
+      );
+      ["history", "steps"].forEach((tableKey) => {
+        if (stored?.[tableKey] && typeof stored[tableKey] === "object") {
+          state.columnFilters[tableKey] = stored[tableKey];
+        }
+      });
+    } catch (error) {
+      console.warn("No se pudieron leer los filtros por columna de FCT", error);
+    }
+    return state.columnFilters;
+  }
+
+  function saveColumnFilters() {
+    try {
+      window.localStorage.setItem(
+        COLUMN_FILTERS_STORAGE_KEY,
+        JSON.stringify(getColumnFilterState()),
+      );
+    } catch (error) {
+      console.warn("No se pudieron guardar los filtros por columna de FCT", error);
+    }
+  }
+
+  function getColumnFilters(tableKey) {
+    return getColumnFilterState()[tableKey] || {};
+  }
+
+  function setColumnFilter(tableKey, field, value) {
+    const filters = getColumnFilterState();
+    filters[tableKey] ||= {};
+    const normalizedValue = String(value || "").trim();
+    if (normalizedValue) filters[tableKey][field] = normalizedValue;
+    else delete filters[tableKey][field];
+    saveColumnFilters();
+  }
+
+  function clearAllColumnFilters(tableKey) {
+    getColumnFilterState()[tableKey] = {};
+    saveColumnFilters();
+  }
+
+  function renderColumnFilterHeaders() {
+    document
+      .querySelectorAll("th[data-fct-filter-table][data-fct-filter-field]")
+      .forEach((header) => {
+        if (header.dataset.fctFilterReady === "true") return;
+
+        const tableKey = header.dataset.fctFilterTable;
+        const field = header.dataset.fctFilterField;
+        const label = header.textContent.trim();
+        const value = getColumnFilters(tableKey)[field] || "";
+        header.classList.add("fct-column-filterable");
+        header.dataset.fctFilterReady = "true";
+        header.innerHTML = `
+          <div class="fct-column-header">
+            <span>${escapeHtml(label)}</span>
+            <button class="fct-column-filter-btn${value ? " active" : ""}"
+                    type="button"
+                    aria-label="Filtrar ${escapeHtml(label)}"
+                    aria-expanded="false"
+                    title="Filtrar ${escapeHtml(label)}">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="fct-column-filter-popover"
+               data-fct-table-key="${escapeHtml(tableKey)}"
+               data-fct-field="${escapeHtml(field)}">
+            <input class="fct-column-filter-input"
+                   data-fct-table-key="${escapeHtml(tableKey)}"
+                   data-fct-field="${escapeHtml(field)}"
+                   value="${escapeHtml(value)}"
+                   placeholder="Buscar..."
+                   aria-label="Buscar en ${escapeHtml(label)}"
+                   autocomplete="off">
+            <div class="fct-column-filter-actions">
+              <button class="fct-column-filter-clear" type="button">Limpiar</button>
+              <button class="fct-column-filter-clear-all" type="button">Todos</button>
+            </div>
+          </div>`;
+      });
+  }
+
+  function closeColumnFilterPopovers(exceptPopover) {
+    document.querySelectorAll(".fct-column-filter-popover.open").forEach((popover) => {
+      if (popover === exceptPopover) return;
+      popover.classList.remove("open");
+      popover.closest("th")?.classList.remove("filter-open");
+      const button = popover.closest("th")?.querySelector(".fct-column-filter-btn");
+      button?.classList.remove("open");
+      button?.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function syncColumnFilterControls(tableKey) {
+    const filters = getColumnFilters(tableKey);
+    document
+      .querySelectorAll(`.fct-column-filter-input[data-fct-table-key="${tableKey}"]`)
+      .forEach((input) => {
+        const value = filters[input.dataset.fctField] || "";
+        input.value = value;
+        input
+          .closest("th")
+          ?.querySelector(".fct-column-filter-btn")
+          ?.classList.toggle("active", Boolean(value));
+      });
+  }
+
+  function appendHistoryColumnFilters(query) {
+    Object.entries(getColumnFilters("history")).forEach(([field, value]) => {
+      // El operador se relaciona despues del SELECT y se filtra en la pagina cargada.
+      if (field !== "operador" && value) query.set(`cf_${field}`, value);
+    });
+  }
+
+  function filterHistoryRows(rows) {
+    const operatorFilter = String(
+      getColumnFilters("history").operador || "",
+    ).toLocaleLowerCase();
+    if (!operatorFilter) return rows;
+    return rows.filter((row) =>
+      String(row.operador ?? "").toLocaleLowerCase().includes(operatorFilter),
+    );
+  }
+
+  function updateHistoryDisplay() {
+    const rows = filterHistoryRows(state.historyRows);
+    renderRows(rows);
+    const count = document.getElementById("fct-record-count");
+    if (!count) return;
+    count.textContent = getColumnFilters("history").operador
+      ? `${rows.length} en página · ${state.totalRows} registros`
+      : `${state.totalRows} registro${state.totalRows === 1 ? "" : "s"}`;
+  }
+
+  function scheduleHistoryFilter() {
+    window.clearTimeout(state.historyFilterTimer);
+    state.page = 1;
+    state.historyFilterTimer = window.setTimeout(
+      () => loadFctData({ resetPage: false }),
+      250,
+    );
+  }
+
+  function applyStepFilters() {
+    const onlyFail = document.getElementById("fct-modal-only-fail")?.value || "";
+    const filters = getColumnFilters("steps");
+    const rows = state.stepsRows.filter((row) => {
+      if (onlyFail && row.row_result !== "FAIL") return false;
+      return Object.entries(filters).every(([field, value]) =>
+        String(row[field] ?? "")
+          .toLocaleLowerCase()
+          .includes(String(value).toLocaleLowerCase()),
+      );
+    });
+    renderSteps(rows);
   }
 
   function todayIso() {
@@ -62,6 +235,7 @@
       const value = document.getElementById(id)?.value?.trim();
       if (value) query.set(key, value);
     });
+    appendHistoryColumnFilters(query);
     if (includePagination) {
       query.set("page", String(state.page));
       query.set("per_page", String(state.perPage));
@@ -153,11 +327,13 @@
     try {
       const payload = await fetchJson(`/api/fct/data?${buildQuery(true).toString()}`);
       const rows = Array.isArray(payload) ? payload : payload.rows || [];
-      renderRows(rows);
+      state.historyRows = rows;
+      state.totalRows = Number(payload.total ?? rows.length);
+      updateHistoryDisplay();
       renderPagination(Array.isArray(payload) ? { total: rows.length, page: 1, per_page: rows.length, total_pages: 1 } : payload);
-      const count = document.getElementById("fct-record-count");
-      if (count) count.textContent = `${payload.total ?? rows.length} registros`;
     } catch (error) {
+      state.historyRows = [];
+      state.totalRows = 0;
       renderRows([]);
       notify(`Error cargando FCT: ${error.message}`, "error");
     } finally {
@@ -219,15 +395,15 @@
 
   async function loadSteps() {
     if (!state.currentStepsHash) return;
-    const onlyFail = document.getElementById("fct-modal-only-fail")?.value || "";
     const query = new URLSearchParams({ source_path_hash: state.currentStepsHash });
-    if (onlyFail) query.set("only_fail", onlyFail);
     setLoading("fct-steps-loading", true);
     try {
       const rows = await fetchJson(`/api/fct/steps?${query.toString()}`);
-      renderSteps(Array.isArray(rows) ? rows : []);
+      state.stepsRows = Array.isArray(rows) ? rows : [];
+      applyStepFilters();
     } catch (error) {
-      renderSteps([]);
+      state.stepsRows = [];
+      applyStepFilters();
       notify(`Error cargando pasos FCT: ${error.message}`, "error");
     } finally {
       setLoading("fct-steps-loading", false);
@@ -257,6 +433,8 @@
   }
 
   function cleanupFctModule() {
+    window.clearTimeout(state.historyFilterTimer);
+    closeColumnFilterPopovers();
     closeStepsModal();
     setLoading("fct-table-loading", false);
     setLoading("fct-steps-loading", false);
@@ -264,11 +442,69 @@
 
   function initializeFctEventListeners() {
     setDefaultDates();
+    renderColumnFilterHeaders();
     if (document.body.dataset.fctListenersAttached === "true") return;
 
     document.body.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+
+      if (!target.closest(".fct-column-filterable")) {
+        closeColumnFilterPopovers();
+      }
+
+      const clearButton = target.closest(".fct-column-filter-clear");
+      if (clearButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const popover = clearButton.closest(".fct-column-filter-popover");
+        const tableKey = popover?.dataset.fctTableKey;
+        const field = popover?.dataset.fctField;
+        if (tableKey && field) {
+          setColumnFilter(tableKey, field, "");
+          syncColumnFilterControls(tableKey);
+          if (tableKey === "steps") applyStepFilters();
+          else if (field === "operador") updateHistoryDisplay();
+          else scheduleHistoryFilter();
+          popover.querySelector(".fct-column-filter-input")?.focus();
+        }
+        return;
+      }
+
+      const clearAllButton = target.closest(".fct-column-filter-clear-all");
+      if (clearAllButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const popover = clearAllButton.closest(".fct-column-filter-popover");
+        const tableKey = popover?.dataset.fctTableKey;
+        if (tableKey) {
+          clearAllColumnFilters(tableKey);
+          syncColumnFilterControls(tableKey);
+          if (tableKey === "steps") applyStepFilters();
+          else scheduleHistoryFilter();
+          popover.querySelector(".fct-column-filter-input")?.focus();
+        }
+        return;
+      }
+
+      const filterButton = target.closest(".fct-column-filter-btn");
+      if (filterButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const header = filterButton.closest("th");
+        const popover = header?.querySelector(".fct-column-filter-popover");
+        if (!popover) return;
+        const shouldOpen = !popover.classList.contains("open");
+        closeColumnFilterPopovers();
+        if (shouldOpen) {
+          popover.classList.add("open");
+          header.classList.add("filter-open");
+          filterButton.classList.add("open");
+          filterButton.setAttribute("aria-expanded", "true");
+          popover.querySelector(".fct-column-filter-input")?.focus();
+        }
+        return;
+      }
 
       if (target.id === "fct-btn-consultar" || target.closest("#fct-btn-consultar")) {
         loadFctData({ resetPage: true });
@@ -316,13 +552,38 @@
         loadFctData({ resetPage: true });
       }
       if (target.id === "fct-modal-only-fail") {
-        loadSteps();
+        applyStepFilters();
       }
+    });
+
+    document.body.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      if (!target.matches(".fct-column-filter-input")) return;
+
+      const tableKey = target.dataset.fctTableKey;
+      const field = target.dataset.fctField;
+      if (!tableKey || !field) return;
+      setColumnFilter(tableKey, field, target.value);
+      target
+        .closest("th")
+        ?.querySelector(".fct-column-filter-btn")
+        ?.classList.toggle("active", Boolean(target.value.trim()));
+      if (tableKey === "steps") applyStepFilters();
+      else if (field === "operador") updateHistoryDisplay();
+      else scheduleHistoryFilter();
     });
 
     document.body.addEventListener("keydown", (event) => {
       const target = event.target;
       if (!(target instanceof HTMLInputElement)) return;
+      if (target.matches(".fct-column-filter-input")) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeColumnFilterPopovers();
+        }
+        return;
+      }
       if (target.id === "fct-page-input" && event.key === "Enter") {
         state.page = Math.min(state.totalPages, Math.max(1, Number(target.value || 1)));
         loadFctData({ resetPage: false });

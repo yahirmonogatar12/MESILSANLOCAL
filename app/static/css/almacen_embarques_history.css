@@ -1916,15 +1916,22 @@ body.ae-column-resizing * {
     flex: 0 0 auto;
 }
 
-.ae-audit-summary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+.ae-audit-filter-search {
+    display: block;
+}
+
+.ae-audit-filters {
     padding: 10px 14px 12px;
 }
 
-.ae-audit-summary .ae-record-count:first-child {
-    color: #bcd7ff;
+.ae-audit-filters .ae-filter-group--wide {
+    flex: 0 1 420px;
+    max-width: 320px;
+}
+
+.ae-audit-filters .ae-btn-primary,
+.ae-audit-filters .ae-btn-secondary {
+    min-height: 32px;
 }
 
 .ae-audit-history-card {

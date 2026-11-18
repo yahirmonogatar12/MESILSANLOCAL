@@ -55,7 +55,7 @@
         <span class="record-count" id="fct-record-count">0 registros</span>
         <button id="fct-btn-export-excel" class="btn-export" type="button">Exportar Excel</button>
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Historial de máquina FCT">
         <div class="table-loading" id="fct-table-loading">
           <div class="spinner"></div>
           <span>Cargando datos...</span>
@@ -63,19 +63,19 @@
         <table id="fct-table">
           <thead>
             <tr>
-              <th>Fecha</th>
-              <th>Hora</th>
-              <th>Línea</th>
-              <th>Estación</th>
-              <th>Resultado</th>
-              <th>Operador</th>
-              <th>No Parte</th>
-              <th>Serial</th>
-              <th>Fuente</th>
-              <th>Paso fallo</th>
-              <th>Prueba fallo</th>
-              <th>Valor</th>
-              <th>Detalle</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="fecha">Fecha</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="hora">Hora</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="linea">Línea</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="estacion">Estación</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="resultado">Resultado</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="operador">Operador</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="no_parte">No Parte</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="serial_number">Serial</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="fuente_archivo">Fuente</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="failed_step">Paso fallo</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="failed_test_name">Prueba fallo</th>
+              <th scope="col" data-fct-filter-table="history" data-fct-filter-field="failed_value">Valor</th>
+              <th scope="col">Detalle</th>
             </tr>
           </thead>
           <tbody id="fct-body"></tbody>
@@ -124,7 +124,7 @@
           </select>
         </div>
         <div class="modal-body">
-          <div class="table-wrap">
+          <div class="table-wrap" tabindex="0" role="region" aria-label="Pasos de la prueba FCT">
             <div class="table-loading" id="fct-steps-loading">
               <div class="spinner"></div>
               <span>Cargando pasos...</span>
@@ -132,16 +132,16 @@
             <table id="fct-steps-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Paso</th>
-                  <th>Fecha/Hora</th>
-                  <th>Prueba</th>
-                  <th>Valor</th>
-                  <th>Unidad</th>
-                  <th>Nominal</th>
-                  <th>LS</th>
-                  <th>LI</th>
-                  <th>Resultado</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="idx">#</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="step">Paso</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="tested_at">Fecha/Hora</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="test_name">Prueba</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="measured_value">Valor</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="unit">Unidad</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="nominal">Nominal</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="upper_limit">LS</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="lower_limit">LI</th>
+                  <th scope="col" data-fct-filter-table="steps" data-fct-filter-field="row_result">Resultado</th>
                 </tr>
               </thead>
               <tbody id="fct-steps-body"></tbody>
@@ -153,4 +153,4 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/fct.js', v='20260803a') }}"></script>
+<script src="{{ url_for('static', filename='js/fct.js', v='20261118a') }}"></script>

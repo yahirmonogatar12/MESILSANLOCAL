@@ -1777,7 +1777,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesInventarioGeneral = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-inventario-general-unique-container",
-      "/almacen-embarques-inventario-general-ajax?v=20261113f",
+      "/almacen-embarques-inventario-general-ajax?v=20261117b",
       "inicializarAlmacenEmbarquesInventarioGeneralAjax",
     );
   };

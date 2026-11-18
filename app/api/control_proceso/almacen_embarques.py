@@ -1573,8 +1573,11 @@ def _serializar_auditoria_inventario_embarques(row):
 
 def _obtener_historial_auditorias_inventario_embarques(limit=500):
     limit = min(max(int(limit or 500), 1), 5000)
-    rows = execute_query(
-        f"""
+    folio = normalize_search(request.args.get("folio"))
+    fecha_desde = normalize_search(request.args.get("fecha_desde"))
+    fecha_hasta = normalize_search(request.args.get("fecha_hasta"))
+
+    sql = f"""
         SELECT
           id,
           audit_folio,
@@ -1589,12 +1592,25 @@ def _obtener_historial_auditorias_inventario_embarques(limit=500):
           total_parts,
           total_quantity
         FROM `{SHIPPING_TABLES['audits']}`
-        ORDER BY started_at DESC, id DESC
-        LIMIT %s
-        """,
-        (limit,),
-        fetch="all",
-    ) or []
+        WHERE 1 = 1
+    """
+    params = []
+
+    if folio:
+        sql += " AND COALESCE(audit_folio, '') LIKE %s"
+        params.append(f"%{folio}%")
+
+    if fecha_desde:
+        sql += " AND DATE(started_at) >= %s"
+        params.append(fecha_desde)
+
+    if fecha_hasta:
+        sql += " AND DATE(started_at) <= %s"
+        params.append(fecha_hasta)
+
+    sql += " ORDER BY started_at DESC, id DESC LIMIT %s"
+    params.append(limit)
+    rows = execute_query(sql, tuple(params), fetch="all") or []
 
     serialized = [_serializar_auditoria_inventario_embarques(row) for row in rows]
     return {

@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20261113f";
+  const ASSET_VERSION = "20261117b";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
 
   const movementModuleState = {
@@ -1590,10 +1590,11 @@
       openBtn: document.getElementById("almacen-embarques-inventory-open-audit-btn"),
       backBtn: document.getElementById("almacen-embarques-inventory-audit-back-btn"),
       statusLabel: document.getElementById("almacen-embarques-inventory-audit-status"),
-      selectedFolio: document.getElementById("almacen-embarques-inventory-audit-selected-folio"),
-      selectedBoxes: document.getElementById("almacen-embarques-inventory-audit-selected-boxes"),
-      selectedParts: document.getElementById("almacen-embarques-inventory-audit-selected-parts"),
-      selectedQuantity: document.getElementById("almacen-embarques-inventory-audit-selected-quantity"),
+      filterForm: document.getElementById("almacen-embarques-inventory-audit-filter-form"),
+      folioInput: document.getElementById("almacen-embarques-inventory-audit-folio"),
+      dateFromInput: document.getElementById("almacen-embarques-inventory-audit-date-from"),
+      dateToInput: document.getElementById("almacen-embarques-inventory-audit-date-to"),
+      clearBtn: document.getElementById("almacen-embarques-inventory-audit-clear-btn"),
       historyCount: document.getElementById("almacen-embarques-inventory-audit-history-count"),
       historyTbody: document.getElementById("almacen-embarques-inventory-audit-history-tbody"),
       partsCount: document.getElementById("almacen-embarques-inventory-audit-parts-count"),
@@ -1601,6 +1602,34 @@
       boxesCount: document.getElementById("almacen-embarques-inventory-audit-boxes-count"),
       boxesTbody: document.getElementById("almacen-embarques-inventory-audit-boxes-tbody"),
     };
+  }
+
+  function getInventoryAuditTodayValue() {
+    if (globalThis.Temporal?.Now?.plainDateISO) {
+      return globalThis.Temporal.Now.plainDateISO().toString();
+    }
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function resetInventoryAuditFiltersToToday() {
+    const {
+      filterForm,
+      dateFromInput,
+      dateToInput,
+    } = getInventoryAuditElements();
+    const today = getInventoryAuditTodayValue();
+
+    filterForm?.reset();
+    if (dateFromInput) dateFromInput.value = today;
+    if (dateToInput) {
+      dateToInput.value = today;
+      dateToInput.setCustomValidity("");
+    }
   }
 
   function setInventoryAuditView(isOpen) {
@@ -1766,39 +1795,34 @@
     }
   }
 
-  function updateInventoryAuditSummary() {
-    const {
-      selectedFolio,
-      selectedBoxes,
-      selectedParts,
-      selectedQuantity,
-    } = getInventoryAuditElements();
-    const audit = inventoryAuditState.audit;
-    if (selectedFolio) selectedFolio.textContent = audit?.audit_folio || "Sin auditoría seleccionada";
-    if (selectedBoxes) selectedBoxes.textContent = `${formatNumber(audit?.total_boxes || 0)} cajas`;
-    if (selectedParts) selectedParts.textContent = `${formatNumber(audit?.total_parts || 0)} números de parte`;
-    if (selectedQuantity) selectedQuantity.textContent = `${formatNumber(audit?.total_quantity || 0)} piezas`;
-  }
-
   function resetInventoryAuditDetail() {
     inventoryAuditState.audit = null;
     inventoryAuditState.parts = [];
     inventoryAuditState.boxes = [];
     inventoryAuditState.selectedPart = "";
-    updateInventoryAuditSummary();
     renderInventoryAuditParts();
     renderInventoryAuditBoxes();
     renderInventoryAuditHistory();
   }
 
   async function loadInventoryAuditHistory() {
-    const { historyTbody } = getInventoryAuditElements();
+    const {
+      historyTbody,
+      folioInput,
+      dateFromInput,
+      dateToInput,
+    } = getInventoryAuditElements();
+    const params = new URLSearchParams();
+    if (folioInput?.value.trim()) params.set("folio", folioInput.value.trim());
+    if (dateFromInput?.value) params.set("fecha_desde", dateFromInput.value);
+    if (dateToInput?.value) params.set("fecha_hasta", dateToInput.value);
     if (historyTbody) {
       historyTbody.innerHTML = '<tr><td colspan="9" class="ae-empty-cell">Cargando auditorías...</td></tr>';
     }
     setInventoryAuditStatus("Consultando auditorías...");
+    const query = params.toString();
     const response = await fetch(
-      "/api/almacen-embarques/inventario-general/auditorias",
+      `/api/almacen-embarques/inventario-general/auditorias${query ? `?${query}` : ""}`,
       { credentials: "same-origin" },
     );
     const payload = await response.json().catch(() => ({}));
@@ -1807,7 +1831,11 @@
     }
     inventoryAuditState.history = payload.rows || [];
     renderInventoryAuditHistory();
-    setInventoryAuditStatus("Selecciona una auditoría para consultar su detalle.");
+    setInventoryAuditStatus(
+      inventoryAuditState.history.length
+        ? "Selecciona una auditoría para consultar su detalle."
+        : "No se encontraron auditorías con los filtros seleccionados.",
+    );
   }
 
   async function loadInventoryAuditDetail(auditId) {
@@ -1832,7 +1860,6 @@
     inventoryAuditState.parts = payload.parts || [];
     inventoryAuditState.boxes = payload.boxes || [];
     inventoryAuditState.selectedPart = "";
-    updateInventoryAuditSummary();
     renderInventoryAuditHistory();
     renderInventoryAuditParts();
     renderInventoryAuditBoxes();
@@ -1850,6 +1877,7 @@
     elements.openBtn.addEventListener("click", async () => {
       try {
         setInventoryAuditView(true);
+        resetInventoryAuditFiltersToToday();
         resetInventoryAuditDetail();
         await loadInventoryAuditHistory();
       } catch (error) {
@@ -1860,6 +1888,38 @@
     elements.backBtn?.addEventListener("click", () => {
       setInventoryAuditView(false);
       setInventoryAuditStatus("");
+    });
+
+    elements.filterForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const invalidRange = elements.dateFromInput?.value
+        && elements.dateToInput?.value
+        && elements.dateFromInput.value > elements.dateToInput.value;
+      elements.dateToInput?.setCustomValidity(
+        invalidRange ? "La fecha hasta debe ser igual o posterior a la fecha desde." : "",
+      );
+      if (!elements.filterForm.reportValidity()) return;
+
+      try {
+        resetInventoryAuditDetail();
+        await loadInventoryAuditHistory();
+      } catch (error) {
+        setInventoryAuditStatus(error.message || "No fue posible cargar las auditorías.", true);
+      }
+    });
+
+    elements.dateToInput?.addEventListener("input", () => {
+      elements.dateToInput.setCustomValidity("");
+    });
+
+    elements.clearBtn?.addEventListener("click", async () => {
+      resetInventoryAuditFiltersToToday();
+      try {
+        resetInventoryAuditDetail();
+        await loadInventoryAuditHistory();
+      } catch (error) {
+        setInventoryAuditStatus(error.message || "No fue posible cargar las auditorías.", true);
+      }
     });
 
     elements.historyTbody?.addEventListener("click", async (event) => {

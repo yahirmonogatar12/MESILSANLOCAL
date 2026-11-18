@@ -271,14 +271,41 @@
                         </button>
                         <h3>Auditorías de inventario físico</h3>
                     </div>
-                    <span id="almacen-embarques-inventory-audit-status" class="ae-status-text"></span>
+                    <span id="almacen-embarques-inventory-audit-status" class="ae-status-text" role="status" aria-live="polite"></span>
                 </div>
-                <div class="ae-audit-summary" aria-label="Resumen de la auditoría seleccionada">
-                    <span id="almacen-embarques-inventory-audit-selected-folio" class="ae-record-count">Sin auditoría seleccionada</span>
-                    <span id="almacen-embarques-inventory-audit-selected-boxes" class="ae-record-count">0 cajas</span>
-                    <span id="almacen-embarques-inventory-audit-selected-parts" class="ae-record-count">0 números de parte</span>
-                    <span id="almacen-embarques-inventory-audit-selected-quantity" class="ae-record-count">0 piezas</span>
-                </div>
+                <search class="ae-audit-filter-search">
+                    <form
+                        id="almacen-embarques-inventory-audit-filter-form"
+                        class="ae-filters ae-audit-filters"
+                        action="/api/almacen-embarques/inventario-general/auditorias"
+                        method="get"
+                        aria-label="Filtros del historial de auditorías"
+                    >
+                        <div class="ae-filter-group ae-filter-group--wide">
+                            <label for="almacen-embarques-inventory-audit-folio">Folio</label>
+                            <input
+                                id="almacen-embarques-inventory-audit-folio"
+                                name="folio"
+                                type="search"
+                                placeholder="Buscar folio de auditoría"
+                                autocomplete="off"
+                                autocorrect="off"
+                                autocapitalize="none"
+                                spellcheck="false"
+                            >
+                        </div>
+                        <div class="ae-filter-group">
+                            <label for="almacen-embarques-inventory-audit-date-from">Fecha desde</label>
+                            <input id="almacen-embarques-inventory-audit-date-from" name="fecha_desde" type="date">
+                        </div>
+                        <div class="ae-filter-group">
+                            <label for="almacen-embarques-inventory-audit-date-to">Fecha hasta</label>
+                            <input id="almacen-embarques-inventory-audit-date-to" name="fecha_hasta" type="date">
+                        </div>
+                        <button class="ae-btn-primary" type="submit">Consultar</button>
+                        <button id="almacen-embarques-inventory-audit-clear-btn" class="ae-btn-secondary" type="button">Limpiar</button>
+                    </form>
+                </search>
             </div>
 
             <div class="ae-results-card ae-audit-history-card">
@@ -415,4 +442,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20261113f') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20261117b') }}"></script>

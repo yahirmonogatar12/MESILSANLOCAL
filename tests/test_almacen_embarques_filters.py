@@ -65,6 +65,38 @@ def test_limite_historial_embarques_con_tipo_usa_limite_de_export():
     assert _obtener_limite("?tipo=OS%26D") == 5000
 
 
+def test_historial_auditorias_filtra_folio_y_rango_de_inicio():
+    app = Flask(__name__)
+    with patch.object(ae, "execute_query", return_value=[]) as mocked_query:
+        with app.test_request_context(
+            "/api/almacen-embarques/inventario-general/auditorias"
+            "?folio=EMB-AUD-202611&fecha_desde=2026-11-01&fecha_hasta=2026-11-30"
+        ):
+            payload = ae._obtener_historial_auditorias_inventario_embarques(limit=25)
+
+    sql, params = mocked_query.call_args.args[:2]
+    assert "COALESCE(audit_folio, '') LIKE %s" in sql
+    assert "DATE(started_at) >= %s" in sql
+    assert "DATE(started_at) <= %s" in sql
+    assert params == ("%EMB-AUD-202611%", "2026-11-01", "2026-11-30", 25)
+    assert payload["rows"] == []
+    assert payload["summary"] == {"total_audits": 0, "open_audits": 0}
+
+
+def test_historial_auditorias_sin_filtros_solo_aplica_limite():
+    app = Flask(__name__)
+    with patch.object(ae, "execute_query", return_value=[]) as mocked_query:
+        with app.test_request_context(
+            "/api/almacen-embarques/inventario-general/auditorias"
+        ):
+            ae._obtener_historial_auditorias_inventario_embarques(limit=10)
+
+    sql, params = mocked_query.call_args.args[:2]
+    assert "COALESCE(audit_folio, '') LIKE %s" not in sql
+    assert "DATE(started_at)" not in sql
+    assert params == (10,)
+
+
 def test_historial_retorno_filtra_tipo_normalizado():
     app = Flask(__name__)
     with patch.object(ae, "execute_query", return_value=[]) as mocked_query:

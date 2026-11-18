@@ -39,12 +39,15 @@ _FCT_HISTORY_COLUMN_FILTER_SQL = {
     "linea": f"{fct_line_expr()} LIKE %s",
     "estacion": "f.station LIKE %s",
     "resultado": "f.final_result LIKE %s",
-    "operador": f"'{PENDING_TEXT}' LIKE %s",
     "no_parte": "f.part_number LIKE %s",
     "serial_number": "f.serial_number LIKE %s",
     "fuente_archivo": "f.source_file LIKE %s",
     "failed_step": "COALESCE(f.failed_step, '') LIKE %s",
     "failed_test_name": "COALESCE(f.failed_test_name, '') LIKE %s",
+    "failed_value": (
+        "CONCAT(COALESCE(f.failed_measured_value, ''), ' ', "
+        "COALESCE(f.failed_unit, '')) LIKE %s"
+    ),
 }
 
 
