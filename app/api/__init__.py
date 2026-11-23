@@ -128,6 +128,9 @@ _MODULOS_REGISTRADOS = [
     # Trazabilidad de PCB: reporte solo-lectura que unifica ASSY/IMD/SMT
     # (trazabilidad_material_pcb + _imd + _smt). Material<->PCB<->lote proveedor.
     "control_resultados.trazabilidad_pcb",
+    # Verificacion BOM 2.0 (2026-11-12): misma trazabilidad desde las tablas vb2_, con costo
+    # real y estimado por PCB. Convive con la anterior hasta la fase 8 del plan.
+    "control_resultados.trazabilidad_vb2",
     # WF_001-WF_004 (2026-06-09): Historial de Operadores por Maquina
     # (vista historial_estaciones_qa, solo lectura).
     "control_resultados.historial_operadores_maquina",

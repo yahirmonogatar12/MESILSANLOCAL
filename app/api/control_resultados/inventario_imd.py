@@ -43,6 +43,12 @@ IMD_PERMISO_PAGINA = "LISTA_DE_CONTROL_DE_RESULTADOS"
 IMD_PERMISO_SECCION = "Control de inventario"
 IMD_PERMISO_BOTON = "IMD-SMD TERMINADO"
 
+# Los formatos de fecha viajan como parametros: un '%Y' literal en el SQL
+# rompe el formateo de pymysql ("unsupported format character 'Y'") en cuanto
+# la consulta lleva filtros, porque entonces se ejecuta con `sql % params`.
+FECHA_HORA_SQL = "%Y-%m-%d %H:%i:%s"
+FECHA_SQL = "%Y-%m-%d"
+
 
 # Decorador con el permiso fijo del modulo, construido sobre el canonico de
 # app/api/shared/permisos.py (la fachada accede a auth_system de forma lazy en
@@ -114,8 +120,8 @@ def api_inventario_general():
               nparte,
               stock_total,
               ubicaciones,
-              DATE_FORMAT(ultima_entrada, '%Y-%m-%d %H:%i:%s') AS ultima_entrada,
-              DATE_FORMAT(ultima_salida,  '%Y-%m-%d %H:%i:%s') AS ultima_salida,
+              DATE_FORMAT(ultima_entrada, %s) AS ultima_entrada,
+              DATE_FORMAT(ultima_salida,  %s) AS ultima_salida,
               tipo_inventario
             FROM inv_resumen_modelo
             {where_sql}
@@ -123,7 +129,9 @@ def api_inventario_general():
             LIMIT 2000
         """
 
-        results = execute_query(sql, params, fetch="all")
+        results = execute_query(
+            sql, [FECHA_HORA_SQL, FECHA_HORA_SQL, *params], fetch="all"
+        )
 
         return jsonify({"status": "success", "items": results or []})
 
@@ -152,14 +160,15 @@ def api_ubicacion():
         params = []
 
         # Normalizamos fecha: usamos fecha_subida si existe, si no, parseamos 'fecha'
-        fecha_expr = "COALESCE(DATE(fecha), STR_TO_DATE(fecha, '%Y-%m-%d'))"
+        # Cada uso de fecha_expr consume FECHA_SQL como parametro.
+        fecha_expr = "COALESCE(DATE(fecha), STR_TO_DATE(fecha, %s))"
 
         if desde:
             where_conditions.append(f"{fecha_expr} >= %s")
-            params.append(desde)
+            params.extend([FECHA_SQL, desde])
         if hasta:
             where_conditions.append(f"{fecha_expr} <= %s")
-            params.append(hasta)
+            params.extend([FECHA_SQL, hasta])
         if q:
             where_conditions.append(
                 "(modelo LIKE %s OR nparte LIKE %s OR ubicacion LIKE %s OR carro LIKE %s)"
@@ -192,7 +201,8 @@ def api_ubicacion():
             LIMIT 5000
         """
 
-        results = execute_query(sql, params, fetch="all")
+        # El ultimo FECHA_SQL corresponde al ORDER BY.
+        results = execute_query(sql, [*params, FECHA_SQL], fetch="all")
 
         return jsonify({"status": "success", "items": results or []})
 

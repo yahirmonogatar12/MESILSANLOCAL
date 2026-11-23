@@ -4,8 +4,8 @@ No hay tabla de tareas: la parte de cada area se deriva de la solicitud.
   EMBARQUES       origen EMBARQUES          -> salidas normales de Embarques con departure = folio RT
   MICOM           programacion              -> fpa_requests (cola FPA existente de MICOM)
   IMPRESION       np_destino != np_origen   -> qr_history del lote plan_smt routing RETRABAJO
-  CP_RETRABAJO    etiquetas o programacion  -> retrabajo_escaneos (Control_produccion)
-  CP_REPARACION   componente ASSY           -> retrabajo_escaneos (Control_produccion)
+  CP_RETRABAJO    etiquetas o programacion  -> retrabajo_escaneos (Control_inventario_SMD; el codigo de etapa conserva CP_)
+  CP_REPARACION   componente ASSY           -> retrabajo_escaneos (Control_inventario_SMD; el codigo de etapa conserva CP_)
   SMD_REPARACION  componente SMD            -> retrabajo_escaneos (Control_inventario_SMD)
 
 Embarques surte con su salida normal (folio EMB-SAL, descuenta inventario) y en
@@ -138,7 +138,7 @@ def crear_tablas_retrabajo():
     tipo = execute_query("SHOW COLUMNS FROM retrabajo_componentes LIKE %s", ("tipo",), fetch="one")
     if tipo and "IMD" not in str(tipo.get("Type", "")):
         execute_query("ALTER TABLE retrabajo_componentes MODIFY tipo ENUM('ASSY','SMD','IMD') NOT NULL")
-    # Mismo patron que tracking.Barcode_Anterior (Control_produccion).
+    # Mismo patron que tracking.Barcode_Anterior (Control_inventario_SMD).
     if not execute_query("SHOW COLUMNS FROM tracking LIKE %s", ("QR_Anterior",), fetch="one"):
         execute_query(
             "ALTER TABLE tracking ADD COLUMN QR_Anterior VARCHAR(255) "
@@ -165,7 +165,7 @@ def _entero(value):
 
 
 def opcion_programacion(row):
-    """Puerto de parseProgramming (Control_produccion pcbReprogrammingRules.js)."""
+    """Puerto de parseProgramming (Control_inventario_SMD pcbReprogrammingRules.js)."""
     micom = re.sub(r"_\((IC[^)]*)\)$", "", str(row.get("item_no") or "").strip(), flags=re.I)
     spec = str(row.get("spec") or "").strip()
     location = str(row.get("location_text") or "").strip()
@@ -532,7 +532,7 @@ def _crear_lote_impresion(cursor, folio, np_destino, cantidad, fecha):
     """Fila plan_smt que Modulo IMPRESION muestra como lote pendiente de retrabajo.
 
     Lote SMT-YYMMDD-8NNN: el generador de lotes del MES solo cuenta sufijos de
-    1-3 digitos y el 'sin plan' de IMPRESION usa 9NNN. working_date NULL la
+    1-3 digitos (sin 9NN) y el 'sin plan' de IMPRESION usa 9NN. working_date NULL la
     deja fuera de las vistas de plan del MES. Requiere el GET_LOCK del caller.
     """
     prefix = f"SMT-{fecha.strftime('%y%m%d')}"
