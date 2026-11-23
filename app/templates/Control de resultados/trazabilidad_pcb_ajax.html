@@ -7,6 +7,7 @@
     <button class="tab-trz active" data-panel="pcb">Por PCB (QR / barcode)</button>
     <button class="tab-trz" data-panel="materiales">Por lote de producción</button>
     <button class="tab-trz" data-panel="proveedor">Por lote de proveedor (inversa)</button>
+    <button class="tab-trz" data-panel="v2">Verificación BOM 2.0 (costo)</button>
   </div>
 
   <!-- ===================== POR PCB (QR / BARCODE) ===================== -->
@@ -165,6 +166,40 @@
     </div>
   </section>
 
+  <!-- ===================== VERIFICACION BOM 2.0 (tablas vb2_) ===================== -->
+  <section id="trz-panel-v2" class="panel-trz">
+    <div class="controls-trz">
+      <div class="group-trz">
+        <label class="label-trz">Buscar por</label>
+        <select id="trz-v2-tipo" class="select-trz">
+          <option value="pcb">PCB (QR)</option>
+          <option value="lote">Lote de producción</option>
+          <option value="etiqueta">Etiqueta de material</option>
+        </select>
+      </div>
+      <div class="group-trz">
+        <label class="label-trz">Valor *</label>
+        <input type="text" id="trz-v2-valor" class="input-trz" style="min-width:300px" placeholder="QR, lote o etiqueta..."/>
+      </div>
+      <label class="label-trz" style="display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="trz-v2-estimado"/> Ver costo estimado (aparte)
+      </label>
+      <button class="btn-trz" id="trz-v2-buscar">Consultar</button>
+      <div class="status-trz" id="trz-v2-status">Fuente: Verificación BOM 2.0. Solo líneas ya calculadas.</div>
+    </div>
+    <div class="table-container-trz">
+      <table class="table-trz" id="trz-v2-table">
+        <thead>
+          <tr>
+            <th>Etapa</th><th>Estado</th><th>Lote</th><th>Línea</th><th>Partida BOM</th><th>Material</th>
+            <th>Etiqueta</th><th>Certeza</th><th>PCBs</th><th>Cantidad</th><th>Costo real</th><th class="trz-v2-est">Costo estimado</th>
+          </tr>
+        </thead>
+        <tbody id="trz-v2-body"></tbody>
+      </table>
+    </div>
+  </section>
+
 </div>
 
-<script src="{{ url_for('static', filename='js/trazabilidad-pcb.js', v='20260623g') }}"></script>
+<script src="{{ url_for('static', filename='js/trazabilidad-pcb.js', v='20261112vb2') }}"></script>

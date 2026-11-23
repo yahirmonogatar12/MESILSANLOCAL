@@ -126,6 +126,7 @@ def _ensure_qr_required_count_column():
 # queda arriba y se escanea) y TOP (el QR queda abajo: cuenta el sensor, 0 QR).
 # El TOP es sublote de su BOTTOM: lote "<BOTTOM>-T" con lote_padre = BOTTOM.
 LADOS = ("", "BOTTOM", "TOP")
+_MSG_TOP_SIN_PADRE = "Un plan TOP (paso sin QR) necesita lote_padre: el lote BOTTOM del que es sublote"
 
 
 def _lado(value):
@@ -284,7 +285,8 @@ def api_plan_smt_create():
         max_result = execute_query(
             "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(lot_no, '-', -1) AS UNSIGNED)), 0) AS max_seq "
             "FROM plan_smt WHERE lot_no REGEXP %s",
-            (f"^{lot_prefix}-[0-9]{{1,3}}$",),
+            # 900-999 son los lotes "sin plan" de Modulo IMPRESION: no cuentan.
+            (f"^{lot_prefix}-([0-8][0-9]{{2}}|[0-9]{{1,2}})$",),
             fetch="one",
         )
         next_seq = int((max_result or {}).get("max_seq") or 0) + 1
@@ -314,6 +316,10 @@ def api_plan_smt_create():
         qr_required_count = _int_en_rango(data.get("qr_required_count"), 1, *QR_RANGE)
         array_size = _int_en_rango(data.get("array_size"), 1, *ARRAY_RANGE)
         lado = _lado(data.get("lado"))
+        # Verificacion BOM 2.0 (D10): el material del paso sin QR se liga a las PCBs por su lote padre.
+        lote_padre = str(data.get("lote_padre") or "").strip() or None
+        if lado == "TOP" and not lote_padre:
+            return jsonify({"error": _MSG_TOP_SIN_PADRE}), 400
 
         sql = (
             "INSERT INTO plan_smt (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
@@ -323,7 +329,7 @@ def api_plan_smt_create():
         comunes = (wo_code, po_code, fecha, line, shift, model_code, part_no, project,
                    process, plan_count, ct, uph, group_no, sequence)
 
-        execute_query(sql, (lot_no, *comunes, qr_required_count, array_size, lado, None))
+        execute_query(sql, (lot_no, *comunes, qr_required_count, array_size, lado, lote_padre if lado == "TOP" else None))
 
         # BOTTOM de doble cara: su TOP nace ligado. En TOP el QR queda debajo
         # de la PCB, asi que 0 QR (cuenta el sensor) con el mismo array.
@@ -400,7 +406,15 @@ def api_plan_smt_update():
             "qr_required_count",
             "array_size",
             "lado",
+            "lote_padre",
         ]
+        if _lado(data.get("lado")) == "TOP":
+            padre = str(data.get("lote_padre") or "").strip()
+            if not padre and "lote_padre" not in data:
+                actual = execute_query("SELECT lote_padre FROM plan_smt WHERE lot_no = %s", (lot_no,), fetch="one")
+                padre = str((actual or {}).get("lote_padre") or "").strip()
+            if not padre:
+                return jsonify({"error": _MSG_TOP_SIN_PADRE}), 400
         for field in allowed_fields:
             if field in data:
                 value = data[field]
@@ -866,7 +880,8 @@ def api_plan_smt_import_excel():
         max_result = execute_query(
             "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(lot_no, '-', -1) AS UNSIGNED)), 0) AS max_seq "
             "FROM plan_smt WHERE lot_no REGEXP %s",
-            (f"^{lot_prefix}-[0-9]{{1,3}}$",),
+            # 900-999 son los lotes "sin plan" de Modulo IMPRESION: no cuentan.
+            (f"^{lot_prefix}-([0-8][0-9]{{2}}|[0-9]{{1,2}})$",),
             fetch="one",
         )
         base_count = int((max_result or {}).get("max_seq") or 0)

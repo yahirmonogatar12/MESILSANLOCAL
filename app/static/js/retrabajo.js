@@ -482,9 +482,9 @@
     const cambioNp = data.np_origen && data.np_destino && data.np_origen !== data.np_destino;
     if (data.programaciones.length) areas.push("MICOM: etiquetas de programación");
     if (cambioNp) areas.push("Impresión: etiquetas SMD");
-    if (data.programaciones.length) areas.push("Control Producción: reprogramación");
-    else if (cambioNp) areas.push("Control Producción: cambio de etiquetas");
-    if (data.componentes.some((c) => c.tipo === "ASSY")) areas.push("Control Producción: reparación ASSY");
+    if (data.programaciones.length) areas.push("Inventario SMD: reprogramación");
+    else if (cambioNp) areas.push("Inventario SMD: cambio de etiquetas");
+    if (data.componentes.some((c) => c.tipo === "ASSY")) areas.push("Inventario SMD: reparación ASSY");
     if (data.componentes.some((c) => c.tipo === "SMD" || c.tipo === "IMD")) areas.push("Inventario SMD: reparación SMD/IMD");
     return areas;
   }

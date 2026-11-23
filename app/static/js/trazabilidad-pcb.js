@@ -271,12 +271,55 @@ function trzClearP() {
   trzLoadProveedor();
 }
 
+// ── Verificación BOM 2.0: /api/trazabilidad_pcb/v2/* (costo real por defecto; estimado aparte, D5) ──
+async function trzLoadV2() {
+  const tipo = document.getElementById("trz-v2-tipo").value;
+  const valor = document.getElementById("trz-v2-valor").value.trim();
+  const estimado = document.getElementById("trz-v2-estimado").checked;
+  const status = document.getElementById("trz-v2-status");
+  const body = document.getElementById("trz-v2-body");
+  document.querySelectorAll(".trz-v2-est").forEach((th) => (th.style.display = estimado ? "" : "none"));
+  if (!valor) { status.textContent = "Escribe o escanea un valor"; return; }
+  const param = { pcb: "qr", lote: "lot_no", etiqueta: "bolsa" }[tipo];
+  status.textContent = "Consultando…";
+  body.innerHTML = "";
+  try {
+    const qs = new URLSearchParams({ [param]: valor, estimado: estimado ? "1" : "" });
+    const r = await fetch(`/api/trazabilidad_pcb/v2/${tipo}?${qs}`);
+    const d = await r.json();
+    if (d.status !== "success") throw new Error(d.message || r.statusText);
+    const grupos = tipo === "pcb" ? d.etapas : [{ etapa: "", estado: "", items: d.items }];
+    const dinero = (v) => (v == null ? "—" : `$${Number(v).toFixed(4)}`);
+    const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+    const filas = [];
+    for (const g of grupos) {
+      if (!g.items.length) {
+        filas.push(`<tr><td>${esc(g.etapa)}</td><td>${esc(g.estado)}</td><td>${esc(g.lot_no)}</td><td>${esc(g.linea)}</td><td colspan="8">Sin material vinculado</td></tr>`);
+      }
+      for (const f of g.items) {
+        filas.push(`<tr><td>${esc(f.etapa)}</td><td>${esc(g.estado)}</td><td>${esc(f.lot_no)}</td><td>${esc(f.linea)}</td>
+          <td>${esc(f.item_no)}</td><td>${esc(f.material)}</td><td>${esc(f.bolsa)}</td><td>${esc(f.certeza)}</td>
+          <td>${f.pcbs}</td><td>${Number(f.cantidad).toFixed(4)}</td><td title="${esc(f.fuente_costo)}">${dinero(f.costo)}</td>
+          ${estimado ? `<td title="${esc(f.fuente_estimado)}">${dinero(f.costo_estimado)}</td>` : ""}</tr>`);
+      }
+    }
+    body.innerHTML = filas.join("");
+    const t = d.totales;
+    status.textContent = `Costo real: ${dinero(t.costo_real)}` + (estimado ? ` · Estimado (aparte): ${dinero(t.costo_estimado)}` : "")
+      + (t.filas_sin_costo_real ? ` · ${t.filas_sin_costo_real} filas sin costo real` : "");
+  } catch (err) {
+    status.textContent = `Error: ${err.message}`;
+  }
+}
+
 function trzSwitchTab(panel) {
   document.querySelectorAll(".tab-trz").forEach((t) =>
     t.classList.toggle("active", t.dataset.panel === panel));
   document.getElementById("trz-panel-pcb")?.classList.toggle("active", panel === "pcb");
   document.getElementById("trz-panel-materiales")?.classList.toggle("active", panel === "materiales");
   document.getElementById("trz-panel-proveedor")?.classList.toggle("active", panel === "proveedor");
+  document.getElementById("trz-panel-v2")?.classList.toggle("active", panel === "v2");
+  if (panel === "v2") document.getElementById("trz-v2-valor")?.focus();
   if (panel === "pcb") document.getElementById("trz-q-pcb")?.focus();
   if (panel === "materiales") trzLoadMateriales();
   if (panel === "proveedor") trzLoadProveedor();
@@ -297,10 +340,12 @@ function trzInitListeners() {
     if (t.id === "trz-p-buscar") { e.preventDefault(); trzLoadProveedor(); return; }
     if (t.id === "trz-p-limpiar") { e.preventDefault(); trzClearP(); return; }
     if (t.id === "trz-p-exportar") { e.preventDefault(); trzExport("por_proveedor", "p"); return; }
+    if (t.id === "trz-v2-buscar") { e.preventDefault(); trzLoadV2(); return; }
   });
   // Enter en el campo de PCB = buscar (la pistola termina el scan con Enter).
   document.body.addEventListener("keydown", (e) => {
     if (e.target.id === "trz-q-pcb" && e.key === "Enter") { e.preventDefault(); trzLoadPcb(); }
+    if (e.target.id === "trz-v2-valor" && e.key === "Enter") { e.preventDefault(); trzLoadV2(); }
   });
   document.body.dataset.trzListenersAttached = "true";
 }
