@@ -1,8 +1,31 @@
 from datetime import datetime
+from pathlib import Path
 from flask import Flask
 from unittest.mock import patch
 
 from app.api.control_proceso import almacen_embarques as ae
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SHARED_ASSET_VERSION = "20261123a"
+
+
+def test_modulos_almacen_embarques_comparten_version_del_script_admin():
+    script = (
+        PROJECT_ROOT / "app" / "static" / "js" / "almacen_embarques_admin.js"
+    ).read_text(encoding="utf-8")
+    assert f'ASSET_VERSION = "{SHARED_ASSET_VERSION}"' in script
+    assert "changes.quantity = draftValue;" in script
+
+    template_names = (
+        "almacen_embarques_movimientos_ajax.html",
+        "almacen_embarques_inventario_general_ajax.html",
+        "almacen_embarques_catalogo_ajax.html",
+    )
+    templates_dir = PROJECT_ROOT / "app" / "templates" / "Control de proceso"
+    for template_name in template_names:
+        template = (templates_dir / template_name).read_text(encoding="utf-8")
+        assert f"v='{SHARED_ASSET_VERSION}'" in template
 
 
 def _aplicar_filtros(query_string=""):
