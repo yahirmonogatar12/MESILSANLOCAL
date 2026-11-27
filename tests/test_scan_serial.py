@@ -23,6 +23,9 @@ CASOS = [
     # Por debajo de 15 caracteres parser.js no lo toma como barcode: se
     # devuelve tal cual en vez de inventar un recorte.
     ("TEST123", "TEST123"),
+    # El escaner a veces manda todo en minusculas: es la misma parte.
+    ("i20260929-009-00009;main;ebr76683912;1;", "EBR76683912"),
+    ("acq30372826922609220001", "ACQ30372826"),
     ("", ""),
     (None, ""),
 ]
@@ -54,3 +57,9 @@ def test_el_qr_gana_sobre_la_regla_de_longitud():
     """Un QR mide mas de 15 caracteres: si se evaluara primero la rama de
     barcode devolveria `I20260921-0` en vez del numero de parte."""
     assert part_no_desde_serial("I20260921-013-00480;MAIN;EBR76683912;1;") == "EBR76683912"
+
+
+def test_la_expresion_sql_devuelve_la_parte_en_mayusculas():
+    """Sin UPPER, ebr76683912 y EBR76683912 salian como dos partes al agrupar."""
+    sql = part_no_desde_serial_sql("b.serial")
+    assert sql.startswith("UPPER(CASE") and sql.endswith("END)")

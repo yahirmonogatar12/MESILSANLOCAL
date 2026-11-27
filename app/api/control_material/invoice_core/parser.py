@@ -45,6 +45,9 @@ CONVERTED_HEADER_ALIASES = {
     "COSTOS": "unit_cost",
     "COSTO": "unit_cost",
     "UNITCOST": "unit_cost",
+    # Desde la V-60 (oct 2026) el Excel trae PRECIO en lugar de COSTO.
+    "PRECIO": "unit_cost",
+    "PRECIOUNITARIO": "unit_cost",
     "TOTAL": "total_cost",
     "TOTALCOST": "total_cost",
 }

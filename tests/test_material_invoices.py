@@ -129,6 +129,23 @@ def test_parse_invoice_workbook_lee_hoja_converted():
     assert parsed["packing_lines"][2]["pallet_no"] == "2"
 
 
+def test_parse_converted_acepta_columna_precio():
+    """Desde la V-60 el Excel llama PRECIO a la columna del costo unitario."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "INVOICE (CONVERTED)"
+    ws.append(["IM20261021-V70"])
+    ws.append(["TARIMA", "PART NO", "Part Sys", "ITEM", "SPEC", "QTY", "PRECIO", "TOTAL "])
+    ws.append(["1", "EAX65150407-1.0", "EAX65150407", "PCB", "FR-4", 4032, 1.4379, 5797.6128])
+    out = BytesIO()
+    wb.save(out)
+
+    linea = parse_invoice_workbook(out.getvalue(), "V-70.xlsx")["invoice_lines"][0]
+
+    assert (str(linea["costo_unitario"]), linea["raw_unit_cost"]) == ("1.4379", "1.4379")
+    assert str(linea["costo_total"]) == "5797.6128"
+
+
 def test_parse_plantilla_embarques_solo_part_sys():
     """La plantilla de embarques no trae TARIMA ni PART NO: PART SYS es la parte."""
     wb = Workbook()

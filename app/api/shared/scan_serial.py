@@ -46,8 +46,10 @@ def part_no_desde_serial_sql(columna="b.serial"):
     # Sin LIKE a proposito: un '%' literal en el SQL rompe el formateo de
     # pymysql en cuanto la query lleva params, y las tres que usan esto los
     # llevan. LEFT/LOCATE hacen lo mismo sin comodines.
+    # UPPER: el escaner a veces manda el codigo en minusculas y la misma
+    # parte salia en dos filas al agrupar (EBR76683912 / ebr76683912).
     return (
-        "CASE"
+        "UPPER(CASE"
         f" WHEN LEFT({col}, 1) = 'I' AND LOCATE(';', {col}) > 0"
         f" THEN SUBSTRING_INDEX(SUBSTRING_INDEX({col}, ';', {_QR_PART_FIELD}), ';', -1)"
         f" WHEN LEFT({col}, 1) = 'I' AND LOCATE('ñ', {col}) > 0"
@@ -55,7 +57,7 @@ def part_no_desde_serial_sql(columna="b.serial"):
         f" WHEN CHAR_LENGTH({col}) >= {_BARCODE_MIN_LEN}"
         f" THEN LEFT({col}, {_BARCODE_PART_LEN})"
         f" ELSE {col}"
-        " END"
+        " END)"
     )
 
 
@@ -64,12 +66,12 @@ def part_no_desde_serial(serial):
     texto = str(serial or "").strip()
     if not texto:
         return ""
-    if texto.startswith("I"):
+    if texto[:1].upper() == "I":
         for separador in (";", "ñ"):
             if separador in texto:
                 campos = texto.split(separador)
                 if len(campos) >= _QR_PART_FIELD:
-                    return campos[_QR_PART_FIELD - 1]
+                    return campos[_QR_PART_FIELD - 1].upper()
     if len(texto) >= _BARCODE_MIN_LEN:
-        return texto[:_BARCODE_PART_LEN]
-    return texto
+        return texto[:_BARCODE_PART_LEN].upper()
+    return texto.upper()
